@@ -1,0 +1,181 @@
+Prompt Mestre para a Recriação do Site do Idasam (Versão Final)
+Objetivo: Gerar o código completo para o novo site do Instituto de Desenvolvimento Ambiental e Social da Amazônia (Idasam), utilizando os componentes React especificados, com todo o conteúdo, imagens e identidade visual definidos.
+
+Estrutura do Projeto:
+O projeto deve ser compatível com a estrutura shadcn, utilizando Tailwind CSS e TypeScript.
+
+Tema Geral e Paleta de Cores:
+O design deve ser moderno, limpo e profissional, com uma forte identidade visual amazônica.
+
+Paleta de Cores Principal:
+
+Verde Escuro (floresta): #1A4D2E
+
+Terracota (terra): #C86A3B
+
+Bege (areia/fundo): #F5EFE6
+
+Azul-petróleo (rios/destaque): #008080
+
+Tipografia: Utilizar uma fonte limpa e legível (Ex: Inter, Lato).
+
+Ícones: Utilizar a biblioteca lucide-react.
+
+1. Componente: Menu de Navegação (floating-navbar.tsx)
+Objetivo: Criar um menu flutuante que aparece suavemente durante o scroll.
+
+Conteúdo:
+
+Itens do Menu (navItems):
+
+{ name: "Home", link: "/" }
+
+{ name: "Quem Somos", link: "/quem-somos" }
+
+{ name: "Pesquisadores", link: "/pesquisadores" }
+
+{ name: "Parcerias", link: "/parcerias" }
+
+{ name: "Legislação", link: "/legislacao" }
+
+{ name: "Contato", link: "/contato" }
+
+Botão: Alterar o texto de "Login" para "Doe Agora". O estilo do botão deve usar a cor de destaque (#008080).
+
+2. Componente: Seção de Abertura (animated-hero.tsx)
+Objetivo: Uma seção de herói impactante com texto animado.
+
+Conteúdo:
+
+Título Principal (estático): "Desenvolvendo um futuro"
+
+Títulos Animados (titles): ["sustentável", "inovador", "consciente", "tecnológico", "amazônico"]
+
+Cor do Título Animado: Utilizar a cor verde escuro (#1A4D2E).
+
+Parágrafo de Descrição: "Contribuir para um futuro mais sustentável através da criação de projetos e plataformas focados na inovação tecnológica para o desenvolvimento da Amazônia."
+
+Botões:
+
+Botão Principal: Texto "Nossos Projetos", com ícone MoveRight.
+
+Botão Secundário: Texto "Fale Conosco", com ícone PhoneCall.
+
+3. Componente: Seção de Pesquisadores (animated-testimonials.tsx)
+Objetivo: Apresentar a equipe de pesquisadores de forma interativa e visual.
+
+Modificação: O componente deve ser adaptado. O campo quote será usado para exibir o ID Lattes, e um novo botão de CTA será adicionado.
+
+Título da Seção: "Nossa Equipe de Pesquisadores"
+
+Dados (testimonials):
+
+Pesquisador 1:
+
+name: "Prof. Dr. Francisco Miranda"
+
+designation: "Pesquisador Associado"
+
+quote: "ID Lattes: 2549543844450894"
+
+src: "https://i.imgur.com/6snY0Jc.png"
+
+Pesquisador 2:
+
+name: "Prof. Dr. Elton Santos"
+
+designation: "Pesquisador Associado"
+
+quote: "ID Lattes: 3240855513970442"
+
+src: "https://i.imgur.com/QgY3PJN.png"
+
+Pesquisador 3:
+
+name: "Prof. Dr. João Orestes"
+
+designation: "Pesquisador Associado"
+
+quote: "ID Lattes: 5516771589110657"
+
+src: "https://i.imgur.com/wrdBH9N.png"
+
+Pesquisador 4:
+
+name: "Prof. Dr. Léo Bruno"
+
+designation: "Pesquisador Associado"
+
+quote: "ID Lattes: 0430663064387301"
+
+src: "https://i.imgur.com/0mQl0Ko.png"
+
+Pesquisador 5:
+
+name: "Prof. Dr. Marceliano Oliveira"
+
+designation: "Pesquisador Associado"
+
+quote: "ID Lattes: 3008131259766638"
+
+src: "https://i.imgur.com/89x0hfD.png"
+
+Pesquisador 6:
+
+name: "Prof. Dr. Orlem Pinheiro"
+
+designation: "Pesquisador Associado"
+
+quote: "ID Lattes: 8148029403735260"
+
+src: "https://i.imgur.com/U4jmzGW.png"
+
+Botão CTA: Adicionar, abaixo do ID Lattes, um botão com o texto "Acesse o currículo". O link (href) de cada botão deve ser http://lattes.cnpq.br/[ID_LATTES_CORRESPONDENTE].
+
+4. Componente: Seção de Parceiros (logos3.tsx)
+Objetivo: Exibir os logotipos dos parceiros em um carrossel contínuo.
+
+Estilo: O fundo da seção (<section>) deve ser branco (#FFFFFF) para garantir a correta visualização dos logos.
+
+Título (heading): "Nossos Parceiros Estratégicos"
+
+Dados (logos):
+
+{ id: "veritas", description: "VERITAS", image: "https://i.imgur.com/JQWy2H9.png" }
+
+{ id: "cesp", description: "CESP", image: "https://i.imgur.com/tX2ow1D.png" }
+
+{ id: "pimm", description: "PIMM", image: "https://i.imgur.com/0dAOlFa.png" }
+
+{ id: "climento", description: "CLIMETO", image: "https://i.imgur.com/i9kbW8L.png" }
+
+{ id: "q3", description: "Q3 QUALIDADE", image: "https://i.imgur.com/XG4LgbN.png" }
+
+{ id: "manausplay", description: "Manaus Play", image: "https://i.imgur.com/nBx71ZQ.png" }
+
+5. Componente: Rodapé (shadcnblocks-com-footer2.tsx)
+Objetivo: Um rodapé completo com informações de contato e links de navegação.
+
+Conteúdo:
+
+Logo (logo):
+
+src: "https://i.imgur.com/4aHWM3c.png"
+
+alt: "Logomarca Idasam"
+
+title: "Idasam"
+
+Tagline: "Inovação e Tecnologia para o Desenvolvimento da Amazônia."
+
+Colunas de Menu (menuItems):
+
+Institucional: Sobre Nós, Equipe, Notícias, Contato.
+
+Atuação: Bioeconomia, Projetos, Governança Territorial.
+
+Transparência: Legislação, Relatórios.
+
+Social: Links para as redes sociais do instituto (LinkedIn, Instagram, etc.).
+
+Copyright: "© 2024 Idasam. Todos os direitos reservados."
