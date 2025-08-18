@@ -30,7 +30,7 @@ export default function ShadcnblocksComFooter2() {
           <div className="md:col-span-1">
             <div className="flex items-center mb-6" data-testid="footer-logo">
               <img 
-                src="https://i.imgur.com/EVmCDF8.png" 
+                src="https://i.imgur.com/mMkkWWt.png" 
                 alt="Logomarca Idasam" 
                 className="w-[153px] h-[133px] object-contain" 
                 title="Idasam"
