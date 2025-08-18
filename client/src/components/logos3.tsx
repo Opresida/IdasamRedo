@@ -31,37 +31,33 @@ export default function Logos3() {
         <div className="relative overflow-hidden">
           <div className="flex animate-scroll-infinite" data-testid="partners-carousel">
             {/* First set */}
-            <div className="flex gap-12 items-center justify-center min-w-full">
-              {logos.map((logo) => (
-                <div 
-                  key={`first-${logo.id}`}
-                  className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
-                  data-testid={`partner-logo-${logo.id}`}
-                >
-                  <img 
-                    src={logo.image} 
-                    alt={logo.description} 
-                    className="max-w-full max-h-full object-contain p-4"
-                  />
-                </div>
-              ))}
-            </div>
+            {logos.map((logo) => (
+              <div 
+                key={`first-${logo.id}`}
+                className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mx-6"
+                data-testid={`partner-logo-${logo.id}`}
+              >
+                <img 
+                  src={logo.image} 
+                  alt={logo.description} 
+                  className="max-w-full max-h-full object-contain p-4"
+                />
+              </div>
+            ))}
             
             {/* Duplicate set for seamless loop */}
-            <div className="flex gap-12 items-center justify-center min-w-full">
-              {logos.map((logo) => (
-                <div 
-                  key={`second-${logo.id}`}
-                  className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
-                >
-                  <img 
-                    src={logo.image} 
-                    alt={logo.description} 
-                    className="max-w-full max-h-full object-contain p-4"
-                  />
-                </div>
-              ))}
-            </div>
+            {logos.map((logo) => (
+              <div 
+                key={`second-${logo.id}`}
+                className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mx-6"
+              >
+                <img 
+                  src={logo.image} 
+                  alt={logo.description} 
+                  className="max-w-full max-h-full object-contain p-4"
+                />
+              </div>
+            ))}
           </div>
         </div>
       </div>
