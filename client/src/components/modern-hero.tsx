@@ -72,8 +72,8 @@ export default function ModernHero() {
     <div className='min-h-screen' data-testid="modern-hero">
       <ScrollExpandMedia
         mediaType="video"
-        mediaSrc="https://videos.pexels.com/video-files/17976655/17976655-uhd_2560_1440_30fps.mp4"
-        posterSrc="https://images.pexels.com/videos/17976655/4k-4k-image-s-4k-video-amazon-rain-forest-17976655.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=1920&h=1080"
+        mediaSrc="https://www.youtube.com/embed/Gb2jGy76v0Y"
+        posterSrc="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1280&h=720"
         bgImageSrc="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2560&h=1440"
         title="Desenvolvendo um Futuro Sustentável"
         date="Idasam - Amazônia"
