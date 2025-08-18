@@ -30,12 +30,11 @@ export default function ShadcnblocksComFooter2() {
           <div className="md:col-span-1">
             <div className="flex items-center mb-6" data-testid="footer-logo">
               <img 
-                src="https://i.imgur.com/4aHWM3c.png" 
+                src="https://i.imgur.com/EVmCDF8.png" 
                 alt="Logomarca Idasam" 
-                className="h-12 w-auto mr-3" 
+                className="h-16 w-auto" 
                 title="Idasam"
               />
-              <span className="text-2xl font-bold">Idasam</span>
             </div>
             <p className="text-gray-300 leading-relaxed mb-6" data-testid="footer-tagline">
               Inovação e Tecnologia para o Desenvolvimento da Amazônia.
