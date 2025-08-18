@@ -32,7 +32,7 @@ export default function ShadcnblocksComFooter2() {
               <img 
                 src="https://i.imgur.com/EVmCDF8.png" 
                 alt="Logomarca Idasam" 
-                className="h-16 w-auto" 
+                className="w-[153px] h-[133px] object-contain" 
                 title="Idasam"
               />
             </div>
