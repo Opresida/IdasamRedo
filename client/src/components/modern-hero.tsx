@@ -72,7 +72,7 @@ export default function ModernHero() {
     <div className='min-h-screen' data-testid="modern-hero">
       <ScrollExpandMedia
         mediaType="video"
-        mediaSrc="https://www.youtube.com/embed/Gb2jGy76v0Y"
+        mediaSrc="https://www.youtube.com/watch?v=M-2eAiU09qg"
         posterSrc="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1280&h=720"
         bgImageSrc="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2560&h=1440"
         title="Desenvolvendo um Futuro Sustentável"
