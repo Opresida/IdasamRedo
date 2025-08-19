@@ -4,6 +4,7 @@ import AnimatedHero from '@/components/animated-hero';
 import AboutSection from '@/components/about-section';
 import AnimatedTestimonials from '@/components/animated-testimonials';
 import TestimonialsSection from '@/components/testimonials-section';
+import GlobeFeatureSection from '@/components/ui/globe-feature-section';
 import Logos3 from '@/components/logos3';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 
@@ -15,6 +16,7 @@ export default function Home() {
       <AboutSection />
       <AnimatedTestimonials />
       <TestimonialsSection />
+      <GlobeFeatureSection />
       <Logos3 />
       <ShadcnblocksComFooter2 />
     </div>
