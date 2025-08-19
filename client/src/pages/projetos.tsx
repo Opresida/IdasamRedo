@@ -482,45 +482,18 @@ export default function ProjetosPage() {
       {/* WhatsApp Float */}
       <WhatsAppFloat />
 
-      {/* Nova Seção Hero com Parallax */}
-      <section className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-idasam-green-dark via-idasam-green-medium to-idasam-green-dark">
-        <Floating
-          sensitivity={1}
-          easingFactor={0.05}
-          className="absolute inset-0 z-0"
-        >
-          <FloatingElement
-            className="absolute top-1/4 left-1/4 w-32 h-32 bg-idasam-yellow-accent rounded-full opacity-60 blur-xl"
-            depth={2}
-          />
-          <FloatingElement
-            className="absolute top-1/2 right-1/4 w-48 h-48 bg-white rounded-full opacity-20 blur-2xl"
-            depth={3}
-          />
-          <FloatingElement
-            className="absolute bottom-1/4 left-1/3 w-24 h-24 bg-idasam-yellow-accent rounded-full opacity-50 blur-lg"
-            depth={1.5}
-          />
-          <FloatingElement
-            className="absolute top-1/6 right-1/3 w-20 h-20 bg-white rounded-full opacity-40 blur-lg"
-            depth={2.5}
-          />
-          <FloatingElement
-            className="absolute bottom-1/3 right-1/5 w-36 h-36 bg-idasam-yellow-accent rounded-full opacity-30 blur-xl"
-            depth={1}
-          />
-        </Floating>
-
-        <div className="max-w-7xl mx-auto px-4 text-center relative z-10 text-white">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 font-montserrat animate-fade-in-up">
-            Nossos Projetos para 2025
+      {/* Seção Hero Simplificada */}
+      <section className="bg-idasam-green-dark text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 font-montserrat">
+            Projetos 2025
           </h1>
-          <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto opacity-90 animate-fade-in-up animation-delay-200">
+          <p className="text-xl mb-8 max-w-3xl mx-auto opacity-90">
             Inovação, sustentabilidade e impacto social para transformar a Amazônia.
           </p>
 
           {/* Barra de Filtros */}
-          <div className="flex flex-wrap justify-center gap-3 mt-8 animate-fade-in-up animation-delay-400">
+          <div className="flex flex-wrap justify-center gap-3 mt-8">
             {categories.map((category) => (
               <button
                 key={category}
