@@ -483,31 +483,31 @@ export default function ProjetosPage() {
       <WhatsAppFloat />
 
       {/* Nova Seção Hero com Parallax */}
-      <section className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden">
+      <section className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-idasam-green-dark via-idasam-green-medium to-idasam-green-dark">
         <Floating
-          speed={0.05}
+          sensitivity={1}
+          easingFactor={0.05}
           className="absolute inset-0 z-0"
-          containerClassName="absolute inset-0 z-0"
         >
           <FloatingElement
-            className="absolute top-1/4 left-1/4 w-32 h-32 bg-idasam-yellow-accent rounded-full opacity-50 blur-xl"
-            direction="up"
-            intensity={2}
+            className="absolute top-1/4 left-1/4 w-32 h-32 bg-idasam-yellow-accent rounded-full opacity-60 blur-xl"
+            depth={2}
           />
           <FloatingElement
-            className="absolute top-1/2 right-1/4 w-48 h-48 bg-idasam-green-medium rounded-full opacity-30 blur-2xl"
-            direction="down"
-            intensity={3}
+            className="absolute top-1/2 right-1/4 w-48 h-48 bg-white rounded-full opacity-20 blur-2xl"
+            depth={3}
           />
           <FloatingElement
-            className="absolute bottom-1/4 left-1/3 w-24 h-24 bg-idasam-green-dark rounded-full opacity-40 blur-lg"
-            direction="left"
-            intensity={1.5}
+            className="absolute bottom-1/4 left-1/3 w-24 h-24 bg-idasam-yellow-accent rounded-full opacity-50 blur-lg"
+            depth={1.5}
           />
-           <FloatingElement
-            className="absolute top-1/6 right-1/3 w-20 h-20 bg-idasam-yellow-accent rounded-full opacity-50 blur-lg"
-            direction="right"
-            intensity={2.5}
+          <FloatingElement
+            className="absolute top-1/6 right-1/3 w-20 h-20 bg-white rounded-full opacity-40 blur-lg"
+            depth={2.5}
+          />
+          <FloatingElement
+            className="absolute bottom-1/3 right-1/5 w-36 h-36 bg-idasam-yellow-accent rounded-full opacity-30 blur-xl"
+            depth={1}
           />
         </Floating>
 
