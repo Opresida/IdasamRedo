@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { MoveRight, PhoneCall } from 'lucide-react';
 import { ImagesSlider } from '@/components/ui/images-slider';
 import { motion } from 'framer-motion';
+import { useLocation } from 'wouter';
 
 const titles = ["sustentável", "inovador", "consciente", "tecnológico", "amazônico"];
 
@@ -16,6 +17,7 @@ const images = [
 export default function AnimatedHero() {
   const [currentTitleIndex, setCurrentTitleIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -70,7 +72,10 @@ export default function AnimatedHero() {
         </motion.p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <button className="px-8 py-3 backdrop-blur-sm border bg-emerald-300/10 border-emerald-500/20 text-white mx-auto text-center rounded-full relative">
+          <button 
+            onClick={() => navigate('/projetos')}
+            className="px-8 py-3 backdrop-blur-sm border bg-emerald-300/10 border-emerald-500/20 text-white mx-auto text-center rounded-full relative hover:bg-emerald-300/20 transition-colors cursor-pointer"
+          >
             <span className="flex items-center gap-2">
               Nossos Projetos
               <MoveRight className="w-4 h-4" />
