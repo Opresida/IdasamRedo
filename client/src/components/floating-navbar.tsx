@@ -44,13 +44,20 @@ export default function FloatingNavbar() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       setTimeout(() => setIsNavigating(false), 800);
     } else if (link.startsWith('#')) {
-      const element = document.querySelector(link);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-        setTimeout(() => setIsNavigating(false), 800);
-      } else {
+      // Wait a bit for DOM to be ready, then scroll
+      setTimeout(() => {
+        const element = document.querySelector(link);
+        if (element) {
+          const offsetTop = element.offsetTop - 100; // Offset para compensar navbar
+          window.scrollTo({
+            top: offsetTop,
+            behavior: 'smooth'
+          });
+        } else {
+          console.warn(`Elemento não encontrado para: ${link}`);
+        }
         setIsNavigating(false);
-      }
+      }, 100);
     } else {
       // For external routes or actual page changes
       setTimeout(() => setIsNavigating(false), 1000);
