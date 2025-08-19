@@ -1,9 +1,8 @@
+
 import React, { useState } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
-import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
-import Floating, { FloatingElement } from '@/components/ui/parallax-floating';
 
 // Definição dos tipos
 interface Project {
@@ -478,75 +477,37 @@ export default function ProjetosPage() {
     <div className="min-h-screen bg-idasam-bg font-inter">
       {/* Floating Navbar */}
       <FloatingNavbar />
-
+      
       {/* WhatsApp Float */}
       <WhatsAppFloat />
 
-      {/* Hero Section com Efeito Parallax */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-idasam-green-dark via-idasam-green-medium to-idasam-green-dark">
-        <Floating className="w-full h-full" sensitivity={2} easingFactor={0.1}>
-          {/* Elementos flutuantes de fundo */}
-          <FloatingElement 
-            as="div" 
-            className="absolute top-20 left-10 w-32 h-32 bg-idasam-yellow-accent/20 rounded-full blur-xl" 
-            depth={1}
-          />
-          <FloatingElement 
-            as="div" 
-            className="absolute top-40 right-20 w-24 h-24 bg-white/10 rounded-full blur-lg" 
-            depth={2}
-          />
-          <FloatingElement 
-            as="div" 
-            className="absolute bottom-40 left-1/4 w-40 h-40 bg-idasam-yellow-accent/10 rounded-full blur-2xl" 
-            depth={3}
-          />
-          <FloatingElement 
-            as="div" 
-            className="absolute bottom-20 right-10 w-28 h-28 bg-white/5 rounded-full blur-xl" 
-            depth={1.5}
-          />
+      {/* Seção de Título e Filtros */}
+      <section className="bg-idasam-green-dark text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 font-montserrat">
+            Nossos Projetos para 2025
+          </h1>
+          <p className="text-xl mb-8 max-w-3xl mx-auto opacity-90">
+            Inovação, sustentabilidade e impacto social para transformar a Amazônia.
+          </p>
           
-          {/* Conteúdo principal */}
-          <div className="relative z-10 text-center px-4 py-20">
-            <FloatingElement 
-              as="h1" 
-              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 font-montserrat bg-clip-text text-transparent bg-gradient-to-b from-white to-idasam-yellow-accent"
-              depth={0.5}
-            >
-              Nossos Projetos para 2025
-            </FloatingElement>
-            
-            <FloatingElement 
-              as="p" 
-              className="text-xl mb-8 max-w-3xl mx-auto text-white/90"
-              depth={1}
-            >
-              Inovação, sustentabilidade e impacto social para transformar a Amazônia.
-            </FloatingElement>
-
-            {/* Barra de Filtros */}
-            <FloatingElement 
-              as="div" 
-              className="flex flex-wrap justify-center gap-3 mt-8"
-              depth={0.8}
-            >
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-6 py-3 rounded-full font-medium transition-all duration-300 backdrop-blur-sm ${
-                    selectedCategory === category
-                      ? 'bg-idasam-yellow-accent text-idasam-text-main shadow-lg'
-                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </FloatingElement>
+          {/* Barra de Filtros */}
+          <div className="flex flex-wrap justify-center gap-3 mt-8">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                  selectedCategory === category
+                    ? 'bg-idasam-yellow-accent text-idasam-text-main'
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
           </div>
-        </Floating>
+        </div>
       </section>
 
       {/* Grade de Projetos */}
@@ -565,24 +526,24 @@ export default function ProjetosPage() {
                     {project.icon}
                   </div>
                 </div>
-
+                
                 {/* Título */}
                 <h3 className="text-xl font-bold text-idasam-text-main mb-3 text-center">
                   {project.title}
                 </h3>
-
+                
                 {/* Descrição Curta */}
                 <p className="text-idasam-gray-text text-sm leading-relaxed mb-4">
                   {project.shortDescription}
                 </p>
-
+                
                 {/* Tag de Categoria */}
                 <div className="flex justify-center mb-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(project.category)}`}>
                     {project.category}
                   </span>
                 </div>
-
+                
                 {/* Botão */}
                 <div className="flex justify-center">
                   <button className="inline-flex items-center gap-2 bg-idasam-green-dark text-white px-4 py-2 rounded-lg hover:bg-idasam-green-medium transition-colors">
@@ -722,9 +683,7 @@ export default function ProjetosPage() {
               <button className="bg-idasam-green-dark text-white px-8 py-4 rounded-xl font-semibold hover:bg-idasam-green-medium transition-colors shadow-lg">
                 Seja um Parceiro
               </button>
-              <button 
-                onClick={() => setSelectedProject(null)}
-                className="px-8 py-4 rounded-xl font-semibold bg-idasam-yellow-accent text-idasam-text-main hover:bg-yellow-300 transition-colors shadow-lg">
+              <button className="bg-idasam-yellow-accent text-idasam-text-main px-8 py-4 rounded-xl font-semibold hover:bg-yellow-300 transition-colors shadow-lg">
                 Conheça Mais Projetos
               </button>
             </div>
@@ -759,14 +718,14 @@ export default function ProjetosPage() {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
+              
               {/* Descrição Completa */}
               <div className="prose prose-lg max-w-none">
                 <p className="text-idasam-gray-text leading-relaxed">
                   {selectedProject.fullDescription}
                 </p>
               </div>
-
+              
               {/* Botões do Modal */}
               <div className="flex gap-3 mt-8">
                 <button className="flex-1 bg-idasam-green-dark text-white py-3 px-6 rounded-lg hover:bg-idasam-green-medium transition-colors">
