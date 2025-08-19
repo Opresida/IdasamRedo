@@ -74,9 +74,16 @@ export default function ShadcnblocksComFooter2() {
         </div>
 
         <div className="border-t border-gray-600 pt-8">
-          <p className="text-center text-gray-300" data-testid="copyright">
-            © 2024 Idasam. Todos os direitos reservados.
-          </p>
+          <div className="text-center text-gray-300 space-y-4">
+            <p className="text-sm leading-relaxed max-w-4xl mx-auto" data-testid="compliance-info">
+              O Instituto de Desenvolvimento Ambiental e Social da Amazônia – IDASAM (CNPJ: 02.906.177/0001-87) 
+              cumpre rigorosamente as leis brasileiras de combate à corrupção, assegurando transparência, ética e 
+              integridade em todas as suas atividades.
+            </p>
+            <p data-testid="copyright">
+              © 2024 Idasam. Todos os direitos reservados.
+            </p>
+          </div>
         </div>
       </div>
     </footer>
