@@ -12,7 +12,7 @@ const testimonials = [
   },
   {
     text: "Os projetos de pesquisa do instituto são revolucionários. Eles conseguem aliar tecnologia de ponta com o respeito às tradições amazônicas, criando soluções inovadoras.",
-    image: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=100&h=100&fit=crop&crop=face",
+    image: "https://via.placeholder.com/100x100/0d9488/ffffff?text=MS",
     name: "Dra. Maria Santos",
     role: "Pesquisadora Ambiental",
   },
