@@ -8,6 +8,7 @@ import GlobeFeatureSection from '@/components/ui/globe-feature-section';
 import Logos3 from '@/components/logos3';
 import { List2 } from '@/components/ui/list-2';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import WhatsAppFloat from '@/components/whatsapp-float';
 
 export default function Home() {
   return (
@@ -21,6 +22,7 @@ export default function Home() {
       <Logos3 />
       <List2 />
       <ShadcnblocksComFooter2 />
+      <WhatsAppFloat />
     </div>
   );
 }
