@@ -13,9 +13,9 @@ export default function GlobeFeatureSection() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [globeOpacity, setGlobeOpacity] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [width, setWidth] = useState(0); // State for width
 
   let phi = 0
-  let width = 0
   const pointerInteracting = useRef<number | null>(null)
   const pointerInteractionMovement = useRef(0)
   const [r, setR] = useState(0)
@@ -43,12 +43,12 @@ export default function GlobeFeatureSection() {
       state.width = width * 2
       state.height = width * 2
     },
-    [r],
+    [r, width], // Include width as a dependency
   )
 
   const onResize = useCallback(() => {
     if (canvasRef.current && canvasRef.current.offsetWidth > 0) {
-      width = canvasRef.current.offsetWidth
+      setWidth(canvasRef.current.offsetWidth)
     }
   }, [])
 
@@ -100,7 +100,7 @@ export default function GlobeFeatureSection() {
         }
       }
     }
-  }, [onRender, onResize]) // Include dependencies
+  }, [onRender, onResize, width]) // Include width as dependency
 
   return (
     <section className="relative w-full mx-auto overflow-hidden rounded-3xl bg-white border border-gray-200 shadow-lg px-6 py-16 md:px-16 md:py-24 my-20" data-testid="globe-feature-section">
@@ -207,7 +207,7 @@ export function Globe({
   config?: COBEOptions
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  let width = 0
+  const [width, setWidth] = useState(0); // State for width
   const pointerInteracting = useRef<number | null>(null)
   const pointerInteractionMovement = useRef(0)
   const [r, setR] = useState(0)
@@ -246,7 +246,7 @@ export function Globe({
 
   const onResize = useCallback(() => {
     if (canvasRef.current && canvasRef.current.offsetWidth > 0) {
-      width = canvasRef.current.offsetWidth
+      setWidth(canvasRef.current.offsetWidth)
     }
   }, [])
 
