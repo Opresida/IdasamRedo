@@ -80,13 +80,13 @@ export default function FloatingNavbar() {
       >
         <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md shadow-xl rounded-2xl border border-gray-200 dark:border-gray-700">
           {/* Desktop Menu */}
-          <div className="hidden lg:flex items-center space-x-6 xl:space-x-8 px-4 xl:px-6 py-3">
-            <div className="flex items-center space-x-4 xl:space-x-6 text-sm font-medium">
+          <div className="hidden md:flex items-center space-x-8 px-6 py-3">
+            <div className="flex items-center space-x-6 text-sm font-medium">
               {navItems.map((item, index) => (
                 <button
                   key={index}
                   onClick={() => handleNavigation(item.link)}
-                  className="text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors whitespace-nowrap"
+                  className="text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors"
                   data-testid={`nav-link-${item.name.toLowerCase().replace(' ', '-')}`}
                   disabled={isNavigating}
                 >
@@ -95,42 +95,18 @@ export default function FloatingNavbar() {
               ))}
             </div>
             <Button 
-              className="bg-forest hover:bg-forest/80 text-white px-3 xl:px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+              className="bg-forest hover:bg-forest/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               data-testid="button-donate"
-              onClick={() => handleNavigation('/donate')}
+              onClick={() => handleNavigation('/donate')} // Assuming a donate route
             >
               Doe Agora
             </Button>
           </div>
 
-          {/* Tablet Menu */}
-          <div className="hidden md:flex lg:hidden items-center justify-between px-4 py-3">
-            <div className="flex items-center space-x-4 text-sm font-medium overflow-x-auto">
-              {navItems.slice(0, 4).map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleNavigation(item.link)}
-                  className="text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors whitespace-nowrap"
-                  data-testid={`nav-link-${item.name.toLowerCase().replace(' ', '-')}`}
-                  disabled={isNavigating}
-                >
-                  {item.name}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors"
-              data-testid="tablet-menu-toggle"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-
           {/* Mobile Menu */}
           <div className="md:hidden">
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">IDASAM</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Menu</span>
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors"

@@ -3,20 +3,17 @@ import { Target, Eye, Heart, Calendar } from 'lucide-react';
 
 export default function AboutSection() {
   return (
-    <section id="quem-somos" className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-sand/30 to-white" data-testid="about-section">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 sm:mb-16">
-          <div className="flex justify-center mb-4 sm:mb-6">
-            <div className="border border-forest/20 py-2 px-4 sm:px-6 rounded-full bg-sand/50 backdrop-blur-sm">
-              <span className="text-forest font-medium text-sm sm:text-base">Quem Somos</span>
-            </div>
-          </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-forest mb-4 sm:mb-6 px-4 leading-tight" data-testid="about-title">
-            Instituto de Desenvolvimento do Amazonas
+    <section id="quem-somos" className="py-20 px-4" data-testid="about-section">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6" data-testid="about-title">
+            Sobre o Idasam
           </h2>
-          <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed px-4" data-testid="about-description">
-            O IDASAM é uma organização dedicada ao desenvolvimento sustentável da região amazônica através de pesquisa, 
-            inovação e parcerias estratégicas que promovem o equilíbrio entre preservação ambiental e progresso social.
+          <p className="text-xl text-gray-600 max-w-5xl mx-auto mb-8" data-testid="about-description">
+            O Instituto de Desenvolvimento Ambiental e Social da Amazônia (IDASAM) é uma entidade privada fundada em 1996 na capital do Amazonas, com foco em desenvolver soluções transformadoras para o mundo sustentável.
+          </p>
+          <p className="text-lg text-gray-600 max-w-4xl mx-auto" data-testid="about-additional-info">
+            Promovemos impacto positivo em políticas públicas, modelos de negócio e tomada de decisão junto a governos, empresas, organizações multilaterais e da sociedade civil, atuando para o fortalecimento da região amazônica e impulsionando a bioeconomia.
           </p>
         </div>
 

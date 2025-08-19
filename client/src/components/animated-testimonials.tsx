@@ -88,22 +88,17 @@ export default function AnimatedTestimonials() {
   };
 
   return (
-    <section id="pesquisadores" className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-sand/30 to-white" data-testid="testimonials-section">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 sm:mb-16">
-          <div className="flex justify-center mb-4 sm:mb-6">
-            <div className="border border-forest/20 py-2 px-4 sm:px-6 rounded-full bg-sand/50 backdrop-blur-sm">
-              <span className="text-forest font-medium text-sm sm:text-base">Pesquisadores</span>
-            </div>
-          </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-forest mb-4 sm:mb-6 px-4" data-testid="testimonials-title">
-            Nossos Especialistas
+    <section id="pesquisadores" className="py-20 px-4 bg-white" data-testid="researchers-section">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6" data-testid="researchers-title">
+            Nossa Equipe de Pesquisadores
           </h2>
-          <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4" data-testid="testimonials-description">
-            Conheça os pesquisadores dedicados que impulsionam a inovação e o desenvolvimento sustentável na Amazônia.
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto" data-testid="researchers-description">
+            Conheça os especialistas que lideram nossas pesquisas e projetos de desenvolvimento sustentável na Amazônia.
           </p>
         </div>
-
+        
         <div className="relative">
           <div className="overflow-hidden" data-testid="researchers-slider">
             <div 
@@ -155,7 +150,7 @@ export default function AnimatedTestimonials() {
               ))}
             </div>
           </div>
-
+          
           {/* Navigation buttons */}
           <div className="flex justify-center mt-12 gap-4">
             <Button 

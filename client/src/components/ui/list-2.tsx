@@ -1,3 +1,4 @@
+
 import {
   ArrowRight,
   Scale,
@@ -81,38 +82,41 @@ export const List2 = ({
             pesquisa e desenvolvimento sustentável no Estado do Amazonas.
           </p>
         </div>
-
+        
         <div className="flex flex-col bg-sand/30 rounded-2xl overflow-hidden shadow-lg">
           <Separator className="bg-forest/10" />
           {items.map((item, index) => (
             <React.Fragment key={index}>
-              <div className="flex flex-col sm:flex-row items-start p-4 sm:p-6 hover:bg-sand/20 transition-colors group">
-                <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-forest/10 rounded-lg flex items-center justify-center mb-3 sm:mb-0 sm:mr-4 group-hover:bg-forest/20 transition-colors">
-                  {item.icon}
-                </div>
-                <div className="flex-1 min-w-0 w-full">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                    <h3 className="text-base sm:text-lg font-semibold text-forest" data-testid={`legal-item-title-${index}`}>
-                      {item.title}
-                    </h3>
-                    <span className="px-2 sm:px-3 py-1 bg-forest/10 text-forest text-xs sm:text-sm rounded-full font-medium w-fit">
+              <div className="grid items-center gap-6 px-6 py-8 md:grid-cols-4 hover:bg-white/50 transition-colors">
+                <div className="order-2 flex items-center gap-4 md:order-none">
+                  <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-forest/10 text-forest">
+                    {item.icon}
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    <h3 className="font-bold text-forest text-lg">{item.title}</h3>
+                    <p className="text-sm font-medium text-teal">
                       {item.category}
-                    </span>
+                    </p>
                   </div>
-                  <p className="text-gray-600 text-sm leading-relaxed mb-3" data-testid={`legal-item-description-${index}`}>
-                    {item.description}
-                  </p>
+                </div>
+                <p className="order-1 text-lg text-gray-700 leading-relaxed md:order-none md:col-span-2">
+                  {item.description}
+                </p>
+                <Button 
+                  variant="outline" 
+                  asChild
+                  className="order-3 ml-auto w-fit gap-2 md:order-none border-forest text-forest hover:bg-forest hover:text-white transition-colors"
+                >
                   <a
                     href={item.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center text-forest hover:text-forest/80 transition-colors text-sm font-medium group"
-                    data-testid={`legal-item-link-${index}`}
+                    data-testid={`legal-link-${index}`}
                   >
-                    Ver documento completo
-                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <span>Ler na íntegra</span>
+                    <ArrowRight className="h-4 w-4" />
                   </a>
-                </div>
+                </Button>
               </div>
               {index < items.length - 1 && <Separator className="bg-forest/10" />}
             </React.Fragment>
