@@ -17,6 +17,12 @@ export default {
         terracotta: "var(--terracotta)",
         sand: "var(--sand)",
         teal: "var(--teal)",
+        'idasam-green-dark': '#2A5B46',
+        'idasam-green-medium': '#4E8D7C',
+        'idasam-bg': '#F0F4F8',
+        'idasam-gray-text': '#6B7280',
+        'idasam-yellow-accent': '#FBBF24',
+        'idasam-text-main': '#1F2937',
         card: {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",

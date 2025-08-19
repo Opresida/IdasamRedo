@@ -11,7 +11,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: "Home", link: "#" },
   { name: "Quem Somos", link: "#quem-somos" },
-  { name: "Pesquisadores", link: "#pesquisadores" },
+  { name: "Projetos", link: "/projetos" },
   { name: "Parcerias", link: "#parcerias" },
   { name: "Legislação", link: "#legislacao" },
   { name: "Contato", link: "#contato" }
@@ -58,6 +58,10 @@ export default function FloatingNavbar() {
         }
         setIsNavigating(false);
       }, 100);
+    } else if (link.startsWith('/')) {
+      // For internal routes
+      window.location.href = link;
+      setTimeout(() => setIsNavigating(false), 1000);
     } else {
       // For external routes or actual page changes
       setTimeout(() => setIsNavigating(false), 1000);
