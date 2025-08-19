@@ -72,16 +72,48 @@ export default function GlobeFeatureSection() {
     let globe: any = null
 
     try {
-      globe = createGlobe(canvas, {
-        ...GLOBE_CONFIG,
-        width: width * 2,
-        height: width * 2,
-        onRender,
-      })
+      // Aguardar um frame antes de inicializar o globo
+      requestAnimationFrame(() => {
+        try {
+          globe = createGlobe(canvas, {
+            devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+            width: width * 2,
+            height: width * 2,
+            phi: 0,
+            theta: 0.3,
+            dark: 0,
+            diffuse: 0.4,
+            mapSamples: 16000,
+            mapBrightness: 1.2,
+            baseColor: [1, 1, 1],
+            markerColor: [20 / 255, 184 / 255, 166 / 255],
+            glowColor: [1, 1, 1],
+            markers: [
+              { location: [-15.7801, -47.9292], size: 0.1 },
+              { location: [-23.5505, -46.6333], size: 0.12 },
+              { location: [-22.9068, -43.1729], size: 0.1 },
+              { location: [-3.1190, -60.0217], size: 0.15 },
+              { location: [-12.9714, -38.5014], size: 0.08 },
+              { location: [-8.0476, -34.8770], size: 0.06 },
+              { location: [-25.4284, -49.2733], size: 0.06 },
+              { location: [-30.0346, -51.2177], size: 0.07 },
+              { location: [-19.9167, -43.9345], size: 0.08 },
+              { location: [-16.6799, -49.2550], size: 0.06 },
+            ],
+            onRender,
+          })
 
-      setTimeout(() => {
-        setGlobeOpacity(1); // Set opacity to 1 after a delay
-      }, 100)
+          setTimeout(() => {
+            setGlobeOpacity(1);
+          }, 200)
+
+        } catch (innerError) {
+          console.error("Erro ao criar globo:", innerError)
+          if (canvasRef.current) {
+            canvasRef.current.style.display = "none"
+          }
+        }
+      })
 
     } catch (error) {
       console.error("Erro ao inicializar o globo:", error)
