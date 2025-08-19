@@ -94,7 +94,7 @@ export function AnimatedGlobe({ className }: { className?: string }) {
         <div className="absolute inset-0 rounded-full overflow-hidden shadow-2xl bg-gradient-to-br from-teal-50 to-blue-100">
           {/* GIF do globo girando */}
           <img
-            src="https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif"
+            src="https://i.pinimg.com/originals/f3/7e/bb/f37ebbea1f4318dec775a4d705bd7cca.gif"
             alt="Globo terrestre girando"
             className="w-full h-full object-cover rounded-full"
             onError={(e) => {
