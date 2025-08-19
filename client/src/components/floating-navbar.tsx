@@ -9,7 +9,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: "Home", link: "#" },
+  { name: "Home", link: "/" },
   { name: "Quem Somos", link: "#quem-somos" },
   { name: "Projetos", link: "/projetos" },
   { name: "Parcerias", link: "#parcerias" },
@@ -39,10 +39,10 @@ export default function FloatingNavbar() {
   const handleNavigation = (link: string) => {
     setIsNavigating(true); // Start navigation, show loader
     
-    if (link === '#') {
-      // Scroll to top for home
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => setIsNavigating(false), 800);
+    if (link === '/') {
+      // Navigate to home page
+      window.location.href = '/';
+      setTimeout(() => setIsNavigating(false), 1000);
     } else if (link.startsWith('#')) {
       // Wait a bit for DOM to be ready, then scroll
       setTimeout(() => {
