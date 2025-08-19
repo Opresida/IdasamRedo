@@ -30,7 +30,7 @@ const ArrowRight = ({ className }: { className?: string }) => (
 );
 
 // --- IMPORTAÇÕES ---
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // --- COMPONENTE PRINCIPAL ---
 export default function GlobeFeatureSection() {
@@ -68,17 +68,149 @@ export default function GlobeFeatureSection() {
   );
 }
 
-// --- COMPONENTE DO GLOBO ANIMADO ---
+// --- COMPONENTE DO GLOBO ANIMADO 3D ---
 export function AnimatedGlobe({ className }: { className?: string }) {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<any>(null);
+  const rendererRef = useRef<any>(null);
+  const animationRef = useRef<number>();
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Simula carregamento para efeito de transição
-    const timer = setTimeout(() => {
-      setIsLoaded(true);
-    }, 100);
+    if (!mountRef.current) return;
 
-    return () => clearTimeout(timer);
+    // Função para carregar Three.js dinamicamente
+    const loadThreeJS = async () => {
+      try {
+        // Carrega Three.js do CDN
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+
+        // Carrega OrbitControls
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+
+        initializeGlobe();
+      } catch (error) {
+        console.error('Erro ao carregar Three.js:', error);
+        setIsLoaded(false);
+      }
+    };
+
+    const initializeGlobe = () => {
+      if (!mountRef.current || !(window as any).THREE) return;
+
+      const THREE = (window as any).THREE;
+      const container = mountRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+
+      // Scene
+      const scene = new THREE.Scene();
+      sceneRef.current = scene;
+
+      // Camera
+      const camera = new THREE.PerspectiveCamera(75, containerWidth / containerHeight, 0.1, 1000);
+      camera.position.z = 5;
+
+      // Renderer com transparência
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(containerWidth, containerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      rendererRef.current = renderer;
+      container.appendChild(renderer.domElement);
+
+      // Geometry e Material da Terra
+      const sphereGeometry = new THREE.SphereGeometry(2, 64, 64);
+      const textureLoader = new THREE.TextureLoader();
+      
+      const earthTexture = textureLoader.load(
+        'https://unpkg.com/three-globe@2.27.1/example/img/earth-day.jpg',
+        () => {
+          setIsLoaded(true);
+        },
+        undefined,
+        (err) => {
+          console.error('Erro ao carregar a textura da Terra:', err);
+          setIsLoaded(true); // Mostra mesmo sem textura
+        }
+      );
+
+      const sphereMaterial = new THREE.MeshStandardMaterial({ map: earthTexture });
+      const earth = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      scene.add(earth);
+
+      // Luzes
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 3, 5);
+      scene.add(directionalLight);
+
+      // Controles
+      const OrbitControls = (window as any).THREE.OrbitControls;
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.screenSpacePanning = false;
+      controls.minDistance = 3;
+      controls.maxDistance = 10;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.5;
+
+      // Animação
+      const animate = () => {
+        animationRef.current = requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      // Resize handler
+      const handleResize = () => {
+        if (!mountRef.current) return;
+        const newWidth = mountRef.current.clientWidth;
+        const newHeight = mountRef.current.clientHeight;
+        camera.aspect = newWidth / newHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(newWidth, newHeight);
+      };
+
+      window.addEventListener('resize', handleResize);
+
+      // Cleanup function
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+        if (container && renderer.domElement) {
+          container.removeChild(renderer.domElement);
+        }
+        renderer.dispose();
+      };
+    };
+
+    loadThreeJS();
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
+    };
   }, []);
 
   return (
@@ -90,78 +222,30 @@ export function AnimatedGlobe({ className }: { className?: string }) {
           isLoaded ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        {/* Contêiner do GIF */}
-        <div className="absolute inset-0 rounded-full overflow-hidden shadow-2xl bg-gradient-to-br from-teal-50 to-blue-100">
-          {/* GIF do globo girando */}
-          <img
-            src="https://i.pinimg.com/originals/f3/7e/bb/f37ebbea1f4318dec775a4d705bd7cca.gif"
-            alt="Globo terrestre girando"
-            className="w-full h-full object-cover rounded-full"
-            onError={(e) => {
-              // Fallback caso o GIF não carregue
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-            }}
-          />
-          
-          {/* Fallback SVG caso o GIF não carregue */}
-          <div className="hidden w-full h-full flex items-center justify-center">
-            <svg
-              className="w-3/4 h-3/4"
-              viewBox="0 0 400 400"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Círculo principal */}
-              <circle
-                cx="200"
-                cy="200"
-                r="180"
-                fill="url(#globeGradient)"
-                stroke="#0d9488"
-                strokeWidth="2"
-              />
+        {/* Container do Globo 3D */}
+        <div 
+          ref={mountRef} 
+          className="absolute inset-0 rounded-full overflow-hidden shadow-2xl bg-gradient-to-br from-teal-50 to-blue-100"
+          style={{ width: '100%', height: '100%' }}
+        />
 
-              {/* Linhas de latitude */}
-              <ellipse cx="200" cy="200" rx="180" ry="60" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
-              <ellipse cx="200" cy="200" rx="180" ry="120" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
-              <line x1="20" y1="200" x2="380" y2="200" stroke="#0d9488" strokeWidth="1" opacity="0.3" />
-
-              {/* Linhas de longitude */}
-              <ellipse cx="200" cy="200" rx="60" ry="180" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
-              <ellipse cx="200" cy="200" rx="120" ry="180" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
-              <line x1="200" y1="20" x2="200" y2="380" stroke="#0d9488" strokeWidth="1" opacity="0.3" />
-
-              {/* Brasil destacado */}
-              <circle cx="170" cy="220" r="8" fill="#0d9488" />
-              <circle cx="185" cy="235" r="6" fill="#0d9488" />
-              <circle cx="175" cy="250" r="5" fill="#0d9488" />
-
-              {/* Pontos de impacto animados */}
-              <circle cx="170" cy="220" r="3" fill="#ff6b35" className="animate-pulse" />
-              <circle cx="185" cy="235" r="2" fill="#ff6b35" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
-              <circle cx="175" cy="250" r="2" fill="#ff6b35" className="animate-pulse" style={{ animationDelay: '1s' }} />
-
-              {/* Gradiente */}
-              <defs>
-                <radialGradient id="globeGradient" cx="0.3" cy="0.3">
-                  <stop offset="0%" stopColor="#e6fffa" />
-                  <stop offset="70%" stopColor="#a7f3d0" />
-                  <stop offset="100%" stopColor="#6ee7b7" />
-                </radialGradient>
-              </defs>
-            </svg>
+        {/* Fallback enquanto carrega */}
+        {!isLoaded && (
+          <div className="absolute inset-0 rounded-full overflow-hidden shadow-2xl bg-gradient-to-br from-teal-50 to-blue-100 flex items-center justify-center">
+            <div className="text-teal-600 text-center">
+              <div className="w-16 h-16 rounded-full bg-teal-500 mx-auto mb-2 animate-bounce"></div>
+              <p className="text-sm font-medium">Carregando Globo 3D...</p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Overlay de brilho sutil */}
         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white to-transparent opacity-10 hover:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
 
-        {/* Pontos de impacto sobrepostos no GIF */}
-        <div className="absolute inset-0 rounded-full">
+        {/* Pontos de impacto sobrepostos */}
+        <div className="absolute inset-0 rounded-full pointer-events-none">
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
             <div className="relative">
-              {/* Pontos representando projetos no Brasil */}
               <div className="absolute -top-4 -left-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
               <div className="absolute top-2 left-4 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
               <div className="absolute top-6 -left-1 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
