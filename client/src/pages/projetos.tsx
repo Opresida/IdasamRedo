@@ -557,6 +557,140 @@ export default function ProjetosPage() {
         </div>
       </section>
 
+      {/* Seção Inspiração, Disrupção e Ação */}
+      <section className="py-20 bg-gradient-to-br from-idasam-green-dark to-idasam-green-medium">
+        <div className="max-w-7xl mx-auto px-4">
+          {/* Título Principal */}
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 font-montserrat">
+              Transformando a Amazônia
+            </h2>
+            <p className="text-xl text-white/90 max-w-4xl mx-auto">
+              O portfólio 2025 do IDASAM representa uma oportunidade única de integração entre 
+              inovação, tecnologia e sustentabilidade para o futuro da Amazônia.
+            </p>
+          </div>
+
+          {/* Grid de Cards */}
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {/* Card Inspiração */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 hover:bg-white/15 transition-all duration-300">
+              <div className="w-16 h-16 bg-idasam-yellow-accent rounded-xl flex items-center justify-center mb-6 mx-auto">
+                <svg className="w-8 h-8 text-idasam-text-main" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4 text-center">Inspiração</h3>
+              <p className="text-white/90 leading-relaxed text-center">
+                Cada projeto foi cuidadosamente elaborado para abordar desafios específicos da região, 
+                desde a saúde e educação até o fortalecimento econômico e a conservação ambiental.
+              </p>
+            </div>
+
+            {/* Card Disrupção */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 hover:bg-white/15 transition-all duration-300">
+              <div className="w-16 h-16 bg-idasam-yellow-accent rounded-xl flex items-center justify-center mb-6 mx-auto">
+                <svg className="w-8 h-8 text-idasam-text-main" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18z"/>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4 text-center">Disrupção</h3>
+              <p className="text-white/90 leading-relaxed text-center">
+                Projetos como o CEIBA e Capacity Gaming trazem modernização necessária para inserir 
+                a região amazônica no cenário global de competitividade e inovação tecnológica.
+              </p>
+            </div>
+
+            {/* Card Ação */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 hover:bg-white/15 transition-all duration-300">
+              <div className="w-16 h-16 bg-idasam-yellow-accent rounded-xl flex items-center justify-center mb-6 mx-auto">
+                <svg className="w-8 h-8 text-idasam-text-main" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4 text-center">Ação</h3>
+              <p className="text-white/90 leading-relaxed text-center">
+                O conceito de bioeconomia permeia todo o portfólio, aproveitando os recursos únicos 
+                da Amazônia de forma sustentável e respeitando o meio ambiente.
+              </p>
+            </div>
+          </div>
+
+          {/* Seção de Impactos */}
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {/* Impacto Ambiental */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z"/>
+                </svg>
+              </div>
+              <h4 className="text-xl font-bold text-idasam-text-main mb-3">Impacto Ambiental</h4>
+              <p className="text-idasam-gray-text text-sm leading-relaxed">
+                Utilização responsável de recursos naturais, reforçando que o desenvolvimento 
+                econômico pode coexistir com a conservação da floresta.
+              </p>
+            </div>
+
+            {/* Impacto Social */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M16,4C18.11,4 20.11,4.89 21.61,6.39C23.11,7.89 24,9.89 24,12A8,8 0 0,1 16,20H6A6,6 0 0,1 0,14C0,10.69 2.69,8 6,8H6.76C7.56,5.03 10.54,3 14,3C15.64,3 17.09,3.63 18.26,4.59C17.55,4.22 16.8,4 16,4M18,9V12H15L19,16L23,12H20V9H18Z"/>
+                </svg>
+              </div>
+              <h4 className="text-xl font-bold text-idasam-text-main mb-3">Impacto Social</h4>
+              <p className="text-idasam-gray-text text-sm leading-relaxed">
+                Abordagem inclusiva em saúde, educação e geração de renda, garantindo 
+                que a tecnologia alcance as comunidades mais remotas.
+              </p>
+            </div>
+
+            {/* Impacto Econômico */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M7,15H9C9,16.08 10.37,17 12,17C13.63,17 15,16.08 15,15C15,13.9 13.96,13.5 11.76,12.97C9.64,12.44 7,11.78 7,9C7,7.21 8.47,5.69 10.5,5.18V3H13.5V5.18C15.53,5.69 17,7.21 17,9H15C15,7.92 13.63,7 12,7C10.37,7 9,7.92 9,9C9,10.1 10.04,10.5 12.24,11.03C14.36,11.56 17,12.22 17,15C17,16.79 15.53,18.31 13.5,18.82V21H10.5V18.82C8.47,18.31 7,16.79 7,15Z"/>
+                </svg>
+              </div>
+              <h4 className="text-xl font-bold text-idasam-text-main mb-3">Impacto Econômico</h4>
+              <p className="text-idasam-gray-text text-sm leading-relaxed">
+                Criação de cadeias produtivas locais promovendo autonomia das comunidades 
+                e desenvolvimento sustentável com geração de emprego.
+              </p>
+            </div>
+          </div>
+
+          {/* Chamado à Ação */}
+          <div className="bg-white rounded-3xl p-8 md:p-12 text-center">
+            <h3 className="text-3xl md:text-4xl font-bold text-idasam-text-main mb-6">
+              Chamado à Ação
+            </h3>
+            <p className="text-lg text-idasam-gray-text mb-8 max-w-5xl mx-auto leading-relaxed">
+              Convidamos todos os stakeholders, investidores, parceiros e líderes políticos a se juntarem 
+              a nós nesta jornada. Ao apoiar esses projetos, não apenas ajudaremos a transformar a Amazônia 
+              em um polo global de inovação e sustentabilidade, mas também contribuiremos para um legado 
+              de preservação sustentável, inclusão e prosperidade para as futuras gerações.
+            </p>
+            <p className="text-base text-idasam-gray-text mb-10 max-w-4xl mx-auto">
+              <strong className="text-idasam-green-dark">A Amazônia é uma riqueza global</strong>, e a responsabilidade 
+              de protegê-la e desenvolvê-la de forma sustentável é de todos nós. Ao colaborar com esses projetos, 
+              você estará fazendo parte de uma mudança com impacto mundial, garantindo que a Amazônia continue 
+              sendo um pilar de biodiversidade, um centro de inovação tecnológica e uma fonte de inspiração 
+              para iniciativas de bioeconomia ao redor do globo.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button className="bg-idasam-green-dark text-white px-8 py-4 rounded-xl font-semibold hover:bg-idasam-green-medium transition-colors shadow-lg">
+                Seja um Parceiro
+              </button>
+              <button className="bg-idasam-yellow-accent text-idasam-text-main px-8 py-4 rounded-xl font-semibold hover:bg-yellow-300 transition-colors shadow-lg">
+                Conheça Mais Projetos
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Modal de Detalhes */}
       {selectedProject && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
