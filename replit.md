@@ -67,3 +67,4 @@ Preferred communication style: Simple, everyday language.
 - **Production Build**: Optimized builds with separate client and server bundling
 - **Environment Variables**: Database URL and NODE_ENV configuration
 - **Static Assets**: Public directory serving with Express static middleware
+- **Deployment Fix**: Custom build script (`build.js`) resolves Replit deployment issue by copying files from `dist/public` to `dist` root for proper static deployment structure
