@@ -83,7 +83,10 @@ export default function AnimatedHero() {
             <div className="absolute inset-x-0 h-px -bottom-px bg-gradient-to-r w-3/4 mx-auto from-transparent via-emerald-500 to-transparent" />
           </button>
           
-          <button className="px-8 py-3 backdrop-blur-sm border bg-amber-300/10 border-amber-500/20 text-white mx-auto text-center rounded-full relative">
+          <button 
+            onClick={() => window.open('https://wa.me/5592982200093', '_blank')}
+            className="px-8 py-3 backdrop-blur-sm border bg-amber-300/10 border-amber-500/20 text-white mx-auto text-center rounded-full relative hover:bg-amber-300/20 transition-colors cursor-pointer"
+          >
             <span className="flex items-center gap-2">
               Fale Conosco
               <PhoneCall className="w-4 h-4" />
