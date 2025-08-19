@@ -3,6 +3,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Melhorias de responsividade global */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Evita overflow horizontal */
+  * {
+    box-sizing: border-box;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  /* Text responsivo */
+  .text-responsive-xs { @apply text-xs sm:text-sm; }
+  .text-responsive-sm { @apply text-sm sm:text-base; }
+  .text-responsive-base { @apply text-base sm:text-lg; }
+  .text-responsive-lg { @apply text-lg sm:text-xl; }
+  .text-responsive-xl { @apply text-xl sm:text-2xl; }
+  .text-responsive-2xl { @apply text-2xl sm:text-3xl md:text-4xl; }
+  .text-responsive-3xl { @apply text-3xl sm:text-4xl md:text-5xl; }
+  
+  /* Spacing responsivo */
+  .spacing-responsive-sm { @apply p-4 sm:p-6 lg:p-8; }
+  .spacing-responsive-md { @apply p-6 sm:p-8 lg:p-12; }
+  .spacing-responsive-lg { @apply p-8 sm:p-12 lg:p-16; }
+  
+  /* Container responsivo */
+  .container-responsive {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
 :root {
   --background: hsl(44, 33%, 95%);
   --foreground: hsl(210, 25%, 7.8431%);

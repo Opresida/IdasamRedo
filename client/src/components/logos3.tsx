@@ -17,14 +17,19 @@ const logos: Logo[] = [
 
 export default function Logos3() {
   return (
-    <section id="parcerias" className="py-20 px-4 bg-white" data-testid="partners-section">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6" data-testid="partners-title">
-            Nossos Parceiros Estratégicos
+    <section id="parcerias" className="py-12 sm:py-16 lg:py-20 bg-white overflow-hidden" data-testid="partnerships-section">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="flex justify-center mb-4 sm:mb-6">
+            <div className="border border-forest/20 py-2 px-4 sm:px-6 rounded-full bg-sand/50 backdrop-blur-sm">
+              <span className="text-forest font-medium text-sm sm:text-base">Parcerias</span>
+            </div>
+          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-forest mb-4 sm:mb-6 px-4" data-testid="partnerships-title">
+            Nossos Parceiros
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto" data-testid="partners-description">
-            Trabalhamos em colaboração com organizações líderes para amplificar nosso impacto na região amazônica.
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4" data-testid="partnerships-description">
+            Colaboramos com instituições de renome para amplificar nosso impacto na região amazônica.
           </p>
         </div>
 
@@ -32,14 +37,14 @@ export default function Logos3() {
           <div className="flex animate-scroll-infinite" data-testid="partners-carousel">
             {/* First set */}
             {logos.map((logo) => (
-              <div 
+              <div
                 key={`first-${logo.id}`}
-                className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mx-6"
+                className="flex-shrink-0 w-32 sm:w-48 h-24 sm:h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mx-4 sm:mx-6"
                 data-testid={`partner-logo-${logo.id}`}
               >
-                <img 
-                  src={logo.image} 
-                  alt={logo.description} 
+                <img
+                  src={logo.image}
+                  alt={logo.description}
                   className="max-w-full max-h-full object-contain p-4"
                 />
               </div>
@@ -47,13 +52,13 @@ export default function Logos3() {
 
             {/* Duplicate set for seamless loop */}
             {logos.map((logo) => (
-              <div 
+              <div
                 key={`second-${logo.id}`}
-                className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mx-6"
+                className="flex-shrink-0 w-32 sm:w-48 h-24 sm:h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mx-4 sm:mx-6"
               >
-                <img 
-                  src={logo.image} 
-                  alt={logo.description} 
+                <img
+                  src={logo.image}
+                  alt={logo.description}
                   className="max-w-full max-h-full object-contain p-4"
                 />
               </div>
