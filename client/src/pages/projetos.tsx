@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
-import { BackgroundCells } from '@/components/ui/background-ripple-effect';
+import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import Floating, { FloatingElement } from '@/components/ui/parallax-floating';
 
 // Definição dos tipos
 interface Project {
@@ -478,13 +478,18 @@ export default function ProjetosPage() {
     <div className="min-h-screen bg-idasam-bg font-inter">
       {/* Floating Navbar */}
       <FloatingNavbar />
-      
+
       {/* WhatsApp Float */}
       <WhatsAppFloat />
 
       {/* Seção de Título e Filtros com Efeito de Fundo */}
       <section className="relative">
-        <BackgroundCells className="bg-idasam-green-dark">
+        {/* Replaced BackgroundCells with Floating component */}
+        <Floating
+          className="bg-idasam-green-dark"
+          element={FloatingElement.BackgroundCells} // Assuming this is the correct prop for background cells
+          speed={0.05} // Example speed, adjust as needed
+        >
           <div className="text-center pointer-events-auto px-4">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 font-montserrat bg-clip-text text-transparent bg-gradient-to-b from-white to-idasam-yellow-accent">
               Nossos Projetos para 2025
@@ -492,7 +497,7 @@ export default function ProjetosPage() {
             <p className="text-xl mb-8 max-w-3xl mx-auto text-white/90">
               Inovação, sustentabilidade e impacto social para transformar a Amazônia.
             </p>
-            
+
             {/* Barra de Filtros */}
             <div className="flex flex-wrap justify-center gap-3 mt-8">
               {categories.map((category) => (
@@ -510,7 +515,7 @@ export default function ProjetosPage() {
               ))}
             </div>
           </div>
-        </BackgroundCells>
+        </Floating>
       </section>
 
       {/* Grade de Projetos */}
@@ -529,24 +534,24 @@ export default function ProjetosPage() {
                     {project.icon}
                   </div>
                 </div>
-                
+
                 {/* Título */}
                 <h3 className="text-xl font-bold text-idasam-text-main mb-3 text-center">
                   {project.title}
                 </h3>
-                
+
                 {/* Descrição Curta */}
                 <p className="text-idasam-gray-text text-sm leading-relaxed mb-4">
                   {project.shortDescription}
                 </p>
-                
+
                 {/* Tag de Categoria */}
                 <div className="flex justify-center mb-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(project.category)}`}>
                     {project.category}
                   </span>
                 </div>
-                
+
                 {/* Botão */}
                 <div className="flex justify-center">
                   <button className="inline-flex items-center gap-2 bg-idasam-green-dark text-white px-4 py-2 rounded-lg hover:bg-idasam-green-medium transition-colors">
@@ -686,7 +691,9 @@ export default function ProjetosPage() {
               <button className="bg-idasam-green-dark text-white px-8 py-4 rounded-xl font-semibold hover:bg-idasam-green-medium transition-colors shadow-lg">
                 Seja um Parceiro
               </button>
-              <button className="bg-idasam-yellow-accent text-idasam-text-main px-8 py-4 rounded-xl font-semibold hover:bg-yellow-300 transition-colors shadow-lg">
+              <button 
+                onClick={() => setSelectedProject(null)}
+                className="px-8 py-4 rounded-xl font-semibold bg-idasam-yellow-accent text-idasam-text-main hover:bg-yellow-300 transition-colors shadow-lg">
                 Conheça Mais Projetos
               </button>
             </div>
@@ -721,14 +728,14 @@ export default function ProjetosPage() {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              
+
               {/* Descrição Completa */}
               <div className="prose prose-lg max-w-none">
                 <p className="text-idasam-gray-text leading-relaxed">
                   {selectedProject.fullDescription}
                 </p>
               </div>
-              
+
               {/* Botões do Modal */}
               <div className="flex gap-3 mt-8">
                 <button className="flex-1 bg-idasam-green-dark text-white py-3 px-6 rounded-lg hover:bg-idasam-green-medium transition-colors">
