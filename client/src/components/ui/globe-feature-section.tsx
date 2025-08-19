@@ -2,8 +2,6 @@
 
 // --- COMPONENTES SUBSTITUTOS ---
 const Button = ({ className, children }: { className?: string, children: React.ReactNode }) => (
-  // --- CORREÇÃO APLICADA AQUI ---
-  // Adicionado estilo inline para garantir que a cor do botão seja exibida.
   <button
     className={className}
     style={{ backgroundColor: '#0d9488', color: 'white' }}
@@ -61,8 +59,7 @@ export default function GlobeFeatureSection() {
           </Button>
         </div>
 
-        {/* --- CORREÇÃO APLICADA AQUI --- */}
-        {/* Contêiner do Globo ajustado para ser um quadrado responsivo. */}
+        {/* Contêiner do Globo Responsivo */}
         <div className="relative w-full aspect-square max-w-lg mx-auto md:w-1/2 md:max-w-xl">
           <Globe />
         </div>
@@ -108,6 +105,9 @@ export function Globe({
   const pointerInteracting = useRef<number | null>(null);
   const pointerInteractionMovement = useRef(0);
   const [r, setR] = useState(0);
+  // --- CORREÇÃO APLICADA AQUI ---
+  // Estado para controlar se o globo é suportado ou se falhou ao carregar.
+  const [isSupported, setIsSupported] = useState(true);
 
   const updatePointerInteraction = (value: number | null) => {
     pointerInteracting.current = value;
@@ -158,12 +158,25 @@ export function Globe({
         if (canvasRef.current) canvasRef.current.style.opacity = "1";
       }, 100);
     } catch (e) {
-      console.error("Erro ao criar o globo:", e);
+      // --- CORREÇÃO APLICADA AQUI ---
+      // Se a criação do globo falhar, atualizamos o estado para mostrar o fallback.
+      console.error("Erro ao criar o globo, mostrando fallback:", e);
+      setIsSupported(false);
       return;
     }
 
     return () => globe.destroy();
   }, [config, onRender, onResize]);
+
+  // --- CORREÇÃO APLICADA AQUI ---
+  // Se o globo não for suportado, mostramos um componente de fallback visual.
+  if (!isSupported) {
+    return (
+      <div className="absolute inset-0 mx-auto aspect-[1/1] w-full max-w-[600px] flex items-center justify-center">
+        <div className="w-full h-full max-w-[300px] max-h-[300px] rounded-full bg-gradient-to-br from-teal-100 to-gray-200 animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div
