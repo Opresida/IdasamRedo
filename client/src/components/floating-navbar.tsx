@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
 import { Component as LumaSpin } from "@/components/ui/luma-spin"; // Import the LumaSpin component
-import Link from 'next/link'; // Import Link from Next.js
 
 interface NavItem {
   name: string;
@@ -39,7 +38,7 @@ export default function FloatingNavbar() {
 
   const handleNavigation = (link: string) => {
     setIsNavigating(true); // Start navigation, show loader
-
+    
     if (link === '#') {
       // Scroll to top for home
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -83,12 +82,6 @@ export default function FloatingNavbar() {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8 px-6 py-3">
             <div className="flex items-center space-x-6 text-sm font-medium">
-              <Link href="/" className="text-gray-700 hover:text-gray-900 px-3 py-2 transition-colors">
-            Início
-          </Link>
-          <Link href="/projetos" className="text-gray-700 hover:text-gray-900 px-3 py-2 transition-colors">
-            Projetos
-          </Link>
               {navItems.map((item, index) => (
                 <button
                   key={index}
