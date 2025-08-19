@@ -120,7 +120,7 @@ export const List2 = ({
         <div className="flex flex-col bg-sand/30 rounded-2xl overflow-hidden shadow-lg">
           <Separator className="bg-forest/10" />
           {items.map((item, index) => (
-            <React.Fragment key={index}>
+            <div key={index}>
               <div className="grid items-center gap-6 px-6 py-8 md:grid-cols-4 hover:bg-white/50 transition-colors">
                 <div className="order-2 flex items-center gap-4 md:order-none">
                   <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-forest/10 text-forest">
@@ -153,7 +153,7 @@ export const List2 = ({
                 </Button>
               </div>
               {index < items.length - 1 && <Separator className="bg-forest/10" />}
-            </React.Fragment>
+            </div>
           ))}
         </div>
       </div>
