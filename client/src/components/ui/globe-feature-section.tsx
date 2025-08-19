@@ -121,7 +121,7 @@ export function AnimatedGlobe({ className }: { className?: string }) {
 
       // Camera
       const camera = new THREE.PerspectiveCamera(75, containerWidth / containerHeight, 0.1, 1000);
-      camera.position.z = 5;
+      camera.position.z = 6;
 
       // Renderer com transparência
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -131,7 +131,7 @@ export function AnimatedGlobe({ className }: { className?: string }) {
       container.appendChild(renderer.domElement);
 
       // Geometry e Material da Terra
-      const sphereGeometry = new THREE.SphereGeometry(2, 64, 64);
+      const sphereGeometry = new THREE.SphereGeometry(2.8, 64, 64);
       const textureLoader = new THREE.TextureLoader();
       
       const earthTexture = textureLoader.load(
@@ -163,8 +163,8 @@ export function AnimatedGlobe({ className }: { className?: string }) {
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
       controls.screenSpacePanning = false;
-      controls.minDistance = 3;
-      controls.maxDistance = 10;
+      controls.minDistance = 4;
+      controls.maxDistance = 12;
       controls.autoRotate = true;
       controls.autoRotateSpeed = 0.5;
 
