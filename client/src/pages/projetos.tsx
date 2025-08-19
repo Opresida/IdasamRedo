@@ -1,8 +1,9 @@
-
 import React, { useState } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
+import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import Floating, { FloatingElement } from '@/components/ui/parallax-floating';
 
 // Definição dos tipos
 interface Project {
@@ -324,7 +325,7 @@ const projects: Project[] = [
     id: 'ceiba',
     title: 'CEIBA: Centro de Inovação e Biotecnologia da Amazônia',
     shortDescription: 'Criar infraestrutura de ponta para promover formação profissional em Bioeconomia e Biotecnologia.',
-    fullDescription: 'Criar uma infraestrutura de ponta para promover a formação de profissionais qualificados e apoiar a produção nas áreas de Bioeconomia e Biotecnologia. O centro será construído seguindo altos padrões ambientais, com uso de energia renovável e minimização de resíduos, fomentando o desenvolvimento regional.',
+    fullDescription: 'Criar uma infraestrutura de ponta para promover a formação de profissionais qualificados e apoiar a produção nas áreas de Biotecnologia e Bioeconomia. O centro será construído seguindo altos padrões ambientais, com uso de energia renovável e minimização de resíduos, fomentando o desenvolvimento regional.',
     category: 'Bioeconomia',
     icon: ProjectIcons.ceiba
   },
@@ -453,8 +454,8 @@ export default function ProjetosPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   // Filtrar projetos por categoria
-  const filteredProjects = selectedCategory === 'Todos' 
-    ? projects 
+  const filteredProjects = selectedCategory === 'Todos'
+    ? projects
     : projects.filter(project => project.category === selectedCategory);
 
   // Função para obter cor da categoria
@@ -477,22 +478,49 @@ export default function ProjetosPage() {
     <div className="min-h-screen bg-idasam-bg font-inter">
       {/* Floating Navbar */}
       <FloatingNavbar />
-      
+
       {/* WhatsApp Float */}
       <WhatsAppFloat />
 
-      {/* Seção de Título e Filtros */}
-      <section className="bg-idasam-green-dark text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 font-montserrat">
+      {/* Nova Seção Hero com Parallax */}
+      <section className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden">
+        <Floating
+          speed={0.05}
+          className="absolute inset-0 z-0"
+          containerClassName="absolute inset-0 z-0"
+        >
+          <FloatingElement
+            className="absolute top-1/4 left-1/4 w-32 h-32 bg-idasam-yellow-accent rounded-full opacity-50 blur-xl"
+            direction="up"
+            intensity={2}
+          />
+          <FloatingElement
+            className="absolute top-1/2 right-1/4 w-48 h-48 bg-idasam-green-medium rounded-full opacity-30 blur-2xl"
+            direction="down"
+            intensity={3}
+          />
+          <FloatingElement
+            className="absolute bottom-1/4 left-1/3 w-24 h-24 bg-idasam-green-dark rounded-full opacity-40 blur-lg"
+            direction="left"
+            intensity={1.5}
+          />
+           <FloatingElement
+            className="absolute top-1/6 right-1/3 w-20 h-20 bg-idasam-yellow-accent rounded-full opacity-50 blur-lg"
+            direction="right"
+            intensity={2.5}
+          />
+        </Floating>
+
+        <div className="max-w-7xl mx-auto px-4 text-center relative z-10 text-white">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 font-montserrat animate-fade-in-up">
             Nossos Projetos para 2025
           </h1>
-          <p className="text-xl mb-8 max-w-3xl mx-auto opacity-90">
+          <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto opacity-90 animate-fade-in-up animation-delay-200">
             Inovação, sustentabilidade e impacto social para transformar a Amazônia.
           </p>
-          
+
           {/* Barra de Filtros */}
-          <div className="flex flex-wrap justify-center gap-3 mt-8">
+          <div className="flex flex-wrap justify-center gap-3 mt-8 animate-fade-in-up animation-delay-400">
             {categories.map((category) => (
               <button
                 key={category}
@@ -526,24 +554,24 @@ export default function ProjetosPage() {
                     {project.icon}
                   </div>
                 </div>
-                
+
                 {/* Título */}
                 <h3 className="text-xl font-bold text-idasam-text-main mb-3 text-center">
                   {project.title}
                 </h3>
-                
+
                 {/* Descrição Curta */}
                 <p className="text-idasam-gray-text text-sm leading-relaxed mb-4">
                   {project.shortDescription}
                 </p>
-                
+
                 {/* Tag de Categoria */}
                 <div className="flex justify-center mb-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(project.category)}`}>
                     {project.category}
                   </span>
                 </div>
-                
+
                 {/* Botão */}
                 <div className="flex justify-center">
                   <button className="inline-flex items-center gap-2 bg-idasam-green-dark text-white px-4 py-2 rounded-lg hover:bg-idasam-green-medium transition-colors">
@@ -566,7 +594,7 @@ export default function ProjetosPage() {
               Transformando a Amazônia
             </h2>
             <p className="text-xl text-white/90 max-w-4xl mx-auto">
-              O portfólio 2025 do IDASAM representa uma oportunidade única de integração entre 
+              O portfólio 2025 do IDASAM representa uma oportunidade única de integração entre
               inovação, tecnologia e sustentabilidade para o futuro da Amazônia.
             </p>
           </div>
@@ -582,7 +610,7 @@ export default function ProjetosPage() {
               </div>
               <h3 className="text-2xl font-bold text-white mb-4 text-center">Inspiração</h3>
               <p className="text-white/90 leading-relaxed text-center">
-                Cada projeto foi cuidadosamente elaborado para abordar desafios específicos da região, 
+                Cada projeto foi cuidadosamente elaborado para abordar desafios específicos da região,
                 desde a saúde e educação até o fortalecimento econômico e a conservação ambiental.
               </p>
             </div>
@@ -596,7 +624,7 @@ export default function ProjetosPage() {
               </div>
               <h3 className="text-2xl font-bold text-white mb-4 text-center">Disrupção</h3>
               <p className="text-white/90 leading-relaxed text-center">
-                Projetos como o CEIBA e Capacity Gaming trazem modernização necessária para inserir 
+                Projetos como o CEIBA e Capacity Gaming trazem modernização necessária para inserir
                 a região amazônica no cenário global de competitividade e inovação tecnológica.
               </p>
             </div>
@@ -610,7 +638,7 @@ export default function ProjetosPage() {
               </div>
               <h3 className="text-2xl font-bold text-white mb-4 text-center">Ação</h3>
               <p className="text-white/90 leading-relaxed text-center">
-                O conceito de bioeconomia permeia todo o portfólio, aproveitando os recursos únicos 
+                O conceito de bioeconomia permeia todo o portfólio, aproveitando os recursos únicos
                 da Amazônia de forma sustentável e respeitando o meio ambiente.
               </p>
             </div>
@@ -627,7 +655,7 @@ export default function ProjetosPage() {
               </div>
               <h4 className="text-xl font-bold text-idasam-text-main mb-3">Impacto Ambiental</h4>
               <p className="text-idasam-gray-text text-sm leading-relaxed">
-                Utilização responsável de recursos naturais, reforçando que o desenvolvimento 
+                Utilização responsável de recursos naturais, reforçando que o desenvolvimento
                 econômico pode coexistir com a conservação da floresta.
               </p>
             </div>
@@ -641,7 +669,7 @@ export default function ProjetosPage() {
               </div>
               <h4 className="text-xl font-bold text-idasam-text-main mb-3">Impacto Social</h4>
               <p className="text-idasam-gray-text text-sm leading-relaxed">
-                Abordagem inclusiva em saúde, educação e geração de renda, garantindo 
+                Abordagem inclusiva em saúde, educação e geração de renda, garantindo
                 que a tecnologia alcance as comunidades mais remotas.
               </p>
             </div>
@@ -655,7 +683,7 @@ export default function ProjetosPage() {
               </div>
               <h4 className="text-xl font-bold text-idasam-text-main mb-3">Impacto Econômico</h4>
               <p className="text-idasam-gray-text text-sm leading-relaxed">
-                Criação de cadeias produtivas locais promovendo autonomia das comunidades 
+                Criação de cadeias produtivas locais promovendo autonomia das comunidades
                 e desenvolvimento sustentável com geração de emprego.
               </p>
             </div>
@@ -667,16 +695,16 @@ export default function ProjetosPage() {
               Chamado à Ação
             </h3>
             <p className="text-lg text-idasam-gray-text mb-8 max-w-5xl mx-auto leading-relaxed">
-              Convidamos todos os stakeholders, investidores, parceiros e líderes políticos a se juntarem 
-              a nós nesta jornada. Ao apoiar esses projetos, não apenas ajudaremos a transformar a Amazônia 
-              em um polo global de inovação e sustentabilidade, mas também contribuiremos para um legado 
+              Convidamos todos os stakeholders, investidores, parceiros e líderes políticos a se juntarem
+              a nós nesta jornada. Ao apoiar esses projetos, não apenas ajudaremos a transformar a Amazônia
+              em um polo global de inovação e sustentabilidade, mas também contribuiremos para um legado
               de preservação sustentável, inclusão e prosperidade para as futuras gerações.
             </p>
             <p className="text-base text-idasam-gray-text mb-10 max-w-4xl mx-auto">
-              <strong className="text-idasam-green-dark">A Amazônia é uma riqueza global</strong>, e a responsabilidade 
-              de protegê-la e desenvolvê-la de forma sustentável é de todos nós. Ao colaborar com esses projetos, 
-              você estará fazendo parte de uma mudança com impacto mundial, garantindo que a Amazônia continue 
-              sendo um pilar de biodiversidade, um centro de inovação tecnológica e uma fonte de inspiração 
+              <strong className="text-idasam-green-dark">A Amazônia é uma riqueza global</strong>, e a responsabilidade
+              de protegê-la e desenvolvê-la de forma sustentável é de todos nós. Ao colaborar com esses projetos,
+              você estará fazendo parte de uma mudança com impacto mundial, garantindo que a Amazônia continue
+              sendo um pilar de biodiversidade, um centro de inovação tecnológica e uma fonte de inspiração
               para iniciativas de bioeconomia ao redor do globo.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -718,20 +746,20 @@ export default function ProjetosPage() {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              
+
               {/* Descrição Completa */}
               <div className="prose prose-lg max-w-none">
                 <p className="text-idasam-gray-text leading-relaxed">
                   {selectedProject.fullDescription}
                 </p>
               </div>
-              
+
               {/* Botões do Modal */}
               <div className="flex gap-3 mt-8">
                 <button className="flex-1 bg-idasam-green-dark text-white py-3 px-6 rounded-lg hover:bg-idasam-green-medium transition-colors">
                   Participar do Projeto
                 </button>
-                <button 
+                <button
                   onClick={() => setSelectedProject(null)}
                   className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
@@ -742,6 +770,7 @@ export default function ProjetosPage() {
           </div>
         </div>
       )}
+      <ShadcnblocksComFooter2 />
     </div>
   );
 }
