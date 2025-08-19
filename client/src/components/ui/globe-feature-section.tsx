@@ -75,14 +75,14 @@ export function Globe({
   const pointerInteractionMovement = useRef(0)
   const [r, setR] = useState(0)
 
-  const updatePointerInteraction = (value: any) => {
+  const updatePointerInteraction = (value: number | null) => {
     pointerInteracting.current = value
     if (canvasRef.current) {
-      canvasRef.current.style.cursor = value ? "grabbing" : "grab"
+      canvasRef.current.style.cursor = value !== null ? "grabbing" : "grab"
     }
   }
 
-  const updateMovement = (clientX: any) => {
+  const updateMovement = (clientX: number) => {
     if (pointerInteracting.current !== null) {
       const delta = clientX - pointerInteracting.current
       pointerInteractionMovement.current = delta
@@ -100,25 +100,39 @@ export function Globe({
     [r],
   )
 
-  const onResize = () => {
-    if (canvasRef.current) {
+  const onResize = useCallback(() => {
+    if (canvasRef.current && canvasRef.current.offsetWidth > 0) {
       width = canvasRef.current.offsetWidth
     }
-  }
+  }, [])
 
   useEffect(() => {
+    if (!canvasRef.current) return
+
     window.addEventListener("resize", onResize)
     onResize()
 
-    const globe = createGlobe(canvasRef.current!, {
-      ...config,
-      width: width * 2,
-      height: width * 2,
-      onRender,
-    })
+    try {
+      const globe = createGlobe(canvasRef.current, {
+        ...config,
+        width: width * 2,
+        height: width * 2,
+        onRender,
+      })
 
-    setTimeout(() => (canvasRef.current!.style.opacity = "1"))
-    return () => globe.destroy()
+      setTimeout(() => {
+        if (canvasRef.current) {
+          canvasRef.current.style.opacity = "1"
+        }
+      }, 100)
+      
+      return () => {
+        window.removeEventListener("resize", onResize)
+        globe.destroy()
+      }
+    } catch (error) {
+      console.error("Erro ao inicializar o globo:", error)
+    }
   }, [])
 
   return (
@@ -141,9 +155,11 @@ export function Globe({
         onPointerUp={() => updatePointerInteraction(null)}
         onPointerOut={() => updatePointerInteraction(null)}
         onMouseMove={(e) => updateMovement(e.clientX)}
-        onTouchMove={(e) =>
-          e.touches[0] && updateMovement(e.touches[0].clientX)
-        }
+        onTouchMove={(e) => {
+          if (e.touches[0]) {
+            updateMovement(e.touches[0].clientX)
+          }
+        }}
       />
     </div>
   )
