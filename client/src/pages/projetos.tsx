@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
+import { BackgroundCells } from '@/components/ui/background-ripple-effect';
 
 // Definição dos tipos
 interface Project {
@@ -481,33 +482,35 @@ export default function ProjetosPage() {
       {/* WhatsApp Float */}
       <WhatsAppFloat />
 
-      {/* Seção de Título e Filtros */}
-      <section className="bg-idasam-green-dark text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 font-montserrat">
-            Nossos Projetos para 2025
-          </h1>
-          <p className="text-xl mb-8 max-w-3xl mx-auto opacity-90">
-            Inovação, sustentabilidade e impacto social para transformar a Amazônia.
-          </p>
-          
-          {/* Barra de Filtros */}
-          <div className="flex flex-wrap justify-center gap-3 mt-8">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                  selectedCategory === category
-                    ? 'bg-idasam-yellow-accent text-idasam-text-main'
-                    : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+      {/* Seção de Título e Filtros com Efeito de Fundo */}
+      <section className="relative">
+        <BackgroundCells className="bg-idasam-green-dark">
+          <div className="text-center pointer-events-auto px-4">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 font-montserrat bg-clip-text text-transparent bg-gradient-to-b from-white to-idasam-yellow-accent">
+              Nossos Projetos para 2025
+            </h1>
+            <p className="text-xl mb-8 max-w-3xl mx-auto text-white/90">
+              Inovação, sustentabilidade e impacto social para transformar a Amazônia.
+            </p>
+            
+            {/* Barra de Filtros */}
+            <div className="flex flex-wrap justify-center gap-3 mt-8">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-6 py-3 rounded-full font-medium transition-all duration-300 backdrop-blur-sm ${
+                    selectedCategory === category
+                      ? 'bg-idasam-yellow-accent text-idasam-text-main shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </BackgroundCells>
       </section>
 
       {/* Grade de Projetos */}
