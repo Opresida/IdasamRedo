@@ -48,3 +48,31 @@ if (fs.existsSync(sourceDir)) {
 } else {
   console.log('Source directory dist/public not found. Build may not have completed successfully.');
 }
+#!/usr/bin/env node
+
+import { execSync } from 'child_process';
+import { existsSync, mkdirSync, copyFileSync } from 'fs';
+import path from 'path';
+
+try {
+  console.log('Running post-build script...');
+  
+  // Ensure dist directory exists
+  if (!existsSync('dist')) {
+    mkdirSync('dist', { recursive: true });
+  }
+  
+  // Copy _redirects file to the build output
+  const redirectsSource = 'client/public/_redirects';
+  const redirectsTarget = 'dist/public/_redirects';
+  
+  if (existsSync(redirectsSource)) {
+    copyFileSync(redirectsSource, redirectsTarget);
+    console.log('✓ _redirects file copied to build output');
+  }
+  
+  console.log('✓ Post-build completed successfully');
+} catch (error) {
+  console.error('Post-build failed:', error.message);
+  process.exit(1);
+}

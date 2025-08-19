@@ -29,7 +29,7 @@ const ArrowRight = ({ className }: { className?: string }) => (
 );
 
 // --- IMPORTAÇÕES ---
-import createGlobe, { COBEOptions } from "https://esm.sh/cobe";
+import createGlobe, { COBEOptions } from "cobe";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // --- COMPONENTE PRINCIPAL ---
