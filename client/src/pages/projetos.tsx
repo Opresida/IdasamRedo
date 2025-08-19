@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
+import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 import { BackgroundCells } from '@/components/ui/background-ripple-effect';
 
 // Definição dos tipos
@@ -745,6 +746,9 @@ export default function ProjetosPage() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <ShadcnblocksComFooter2 />
     </div>
   );
 }
