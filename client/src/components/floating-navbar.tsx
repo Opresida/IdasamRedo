@@ -9,12 +9,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: "Home", link: "/" },
-  { name: "Quem Somos", link: "/quem-somos" },
-  { name: "Pesquisadores", link: "/pesquisadores" },
-  { name: "Parcerias", link: "/parcerias" },
-  { name: "Legislação", link: "/legislacao" },
-  { name: "Contato", link: "/contato" }
+  { name: "Home", link: "#" },
+  { name: "Quem Somos", link: "#quem-somos" },
+  { name: "Pesquisadores", link: "#pesquisadores" },
+  { name: "Parcerias", link: "#parcerias" },
+  { name: "Legislação", link: "#legislacao" },
+  { name: "Contato", link: "#contato" }
 ];
 
 export default function FloatingNavbar() {
@@ -38,20 +38,22 @@ export default function FloatingNavbar() {
 
   const handleNavigation = (link: string) => {
     setIsNavigating(true); // Start navigation, show loader
-    // For internal page scrolls, we don't need to wait for a route change.
-    // For actual route changes, you might need a router hook to know when the new page is loaded.
-    if (link.startsWith('#')) {
+    
+    if (link === '#') {
+      // Scroll to top for home
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => setIsNavigating(false), 800);
+    } else if (link.startsWith('#')) {
       const element = document.querySelector(link);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => setIsNavigating(false), 800);
+      } else {
+        setIsNavigating(false);
       }
-      // Simulate loader hiding after scroll animation
-      setTimeout(() => setIsNavigating(false), 1000); 
     } else {
-      // For actual route changes, you'd typically use a router's navigation hook
-      // and set isNavigating to false when the new page component mounts or finishes loading.
-      // For this example, we'll simulate it.
-      setTimeout(() => setIsNavigating(false), 1000); 
+      // For external routes or actual page changes
+      setTimeout(() => setIsNavigating(false), 1000);
     }
     setIsMobileMenuOpen(false); // Close mobile menu on navigation
   };

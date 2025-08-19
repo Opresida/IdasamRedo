@@ -17,7 +17,7 @@ const logos: Logo[] = [
 
 export default function Logos3() {
   return (
-    <section className="py-20 px-4 bg-white" data-testid="partners-section">
+    <section id="parcerias" className="py-20 px-4 bg-white" data-testid="partners-section">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6" data-testid="partners-title">
@@ -27,7 +27,7 @@ export default function Logos3() {
             Trabalhamos em colaboração com organizações líderes para amplificar nosso impacto na região amazônica.
           </p>
         </div>
-        
+
         <div className="relative overflow-hidden">
           <div className="flex animate-scroll-infinite" data-testid="partners-carousel">
             {/* First set */}
@@ -44,7 +44,7 @@ export default function Logos3() {
                 />
               </div>
             ))}
-            
+
             {/* Duplicate set for seamless loop */}
             {logos.map((logo) => (
               <div 

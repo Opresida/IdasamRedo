@@ -23,7 +23,7 @@ const menuItems: MenuSection[] = [
 
 export default function ShadcnblocksComFooter2() {
   return (
-    <footer className="bg-forest text-white py-16 px-4" data-testid="footer">
+    <footer id="contato" className="bg-forest text-white py-16 px-4" data-testid="footer">
       <div className="max-w-7xl mx-auto">
         <div className="grid md:grid-cols-4 gap-12 mb-12">
           {/* Logo and description */}
@@ -51,7 +51,7 @@ export default function ShadcnblocksComFooter2() {
               </a>
             </div>
           </div>
-          
+
           {/* Menu sections */}
           {menuItems.map((section, sectionIndex) => (
             <div key={sectionIndex} data-testid={`footer-section-${section.title.toLowerCase()}`}>
@@ -72,7 +72,7 @@ export default function ShadcnblocksComFooter2() {
             </div>
           ))}
         </div>
-        
+
         <div className="border-t border-gray-600 pt-8">
           <p className="text-center text-gray-300" data-testid="copyright">
             © 2024 Idasam. Todos os direitos reservados.

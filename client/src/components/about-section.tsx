@@ -3,7 +3,7 @@ import { Target, Eye, Heart, Calendar } from 'lucide-react';
 
 export default function AboutSection() {
   return (
-    <section className="py-20 px-4" data-testid="about-section">
+    <section id="quem-somos" className="py-20 px-4" data-testid="about-section">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6" data-testid="about-title">
@@ -16,7 +16,7 @@ export default function AboutSection() {
             Promovemos impacto positivo em políticas públicas, modelos de negócio e tomada de decisão junto a governos, empresas, organizações multilaterais e da sociedade civil, atuando para o fortalecimento da região amazônica e impulsionando a bioeconomia.
           </p>
         </div>
-        
+
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
           <div className="text-center group" data-testid="founded-card">
             <div className="w-20 h-20 bg-forest/10 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-forest/20 transition-colors">
@@ -27,7 +27,7 @@ export default function AboutSection() {
               Fundado em Manaus, Amazonas
             </p>
           </div>
-          
+
           <div className="text-center group" data-testid="mission-card">
             <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-emerald-200 transition-colors">
               <Target className="w-10 h-10 text-emerald-600" />
@@ -37,7 +37,7 @@ export default function AboutSection() {
               Contribuir para um futuro sustentável através de projetos e inovação tecnológica
             </p>
           </div>
-          
+
           <div className="text-center group" data-testid="vision-card">
             <div className="w-20 h-20 bg-teal/10 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-teal/20 transition-colors">
               <Eye className="w-10 h-10 text-teal" />
@@ -47,7 +47,7 @@ export default function AboutSection() {
               Organização de excelência na geração de conhecimento e inovações sustentáveis
             </p>
           </div>
-          
+
           <div className="text-center group" data-testid="values-card">
             <div className="w-20 h-20 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:bg-amber-200 transition-colors">
               <Heart className="w-10 h-10 text-amber-600" />
@@ -69,7 +69,7 @@ export default function AboutSection() {
               Contribuir para um futuro mais sustentável através da criação de projetos e plataformas focados na inovação tecnológica para o desenvolvimento da Amazônia.
             </p>
           </div>
-          
+
           <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow" data-testid="vision-detail-card">
             <div className="w-16 h-16 bg-teal/10 rounded-xl flex items-center justify-center mb-6">
               <Eye className="w-8 h-8 text-teal" />
@@ -79,7 +79,7 @@ export default function AboutSection() {
               Estabelecer uma organização de excelência na geração do conhecimento e na promoção de inovações com o foco na construção de um futuro mais sustentável e um padrão de vida mais saudável.
             </p>
           </div>
-          
+
           <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow" data-testid="values-detail-card">
             <div className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center mb-6">
               <Heart className="w-8 h-8 text-amber-600" />

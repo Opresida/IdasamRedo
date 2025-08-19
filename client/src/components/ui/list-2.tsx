@@ -66,7 +66,7 @@ export const List2 = ({
   ],
 }: List2Props) => {
   return (
-    <section className="py-20 bg-white" data-testid="legal-framework-section">
+    <section id="legislacao" className="py-20 bg-white" data-testid="legal-framework-section">
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-16">
           <div className="flex justify-center mb-6">
