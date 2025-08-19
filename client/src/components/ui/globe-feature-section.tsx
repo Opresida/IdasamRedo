@@ -1,3 +1,4 @@
+
 "use client";
 
 // --- COMPONENTES SUBSTITUTOS ---
@@ -60,15 +61,15 @@ export default function GlobeFeatureSection() {
 
         {/* Contêiner do Globo Responsivo */}
         <div className="relative w-full aspect-square max-w-lg mx-auto md:w-1/2 md:max-w-xl">
-          <StaticGlobe />
+          <AnimatedGlobe />
         </div>
       </div>
     </section>
   );
 }
 
-// --- COMPONENTE DO GLOBO ESTÁTICO ---
-export function StaticGlobe({ className }: { className?: string }) {
+// --- COMPONENTE DO GLOBO ANIMADO ---
+export function AnimatedGlobe({ className }: { className?: string }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -89,83 +90,84 @@ export function StaticGlobe({ className }: { className?: string }) {
           isLoaded ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        {/* Imagem de fundo do globo */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-teal-50 to-blue-100 shadow-2xl">
-          {/* SVG do globo */}
-          <svg
-            className="w-full h-full"
-            viewBox="0 0 400 400"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Círculo principal */}
-            <circle
-              cx="200"
-              cy="200"
-              r="180"
-              fill="url(#globeGradient)"
-              stroke="#0d9488"
-              strokeWidth="2"
-            />
+        {/* Contêiner do GIF */}
+        <div className="absolute inset-0 rounded-full overflow-hidden shadow-2xl bg-gradient-to-br from-teal-50 to-blue-100">
+          {/* GIF do globo girando */}
+          <img
+            src="https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif"
+            alt="Globo terrestre girando"
+            className="w-full h-full object-cover rounded-full"
+            onError={(e) => {
+              // Fallback caso o GIF não carregue
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+          
+          {/* Fallback SVG caso o GIF não carregue */}
+          <div className="hidden w-full h-full flex items-center justify-center">
+            <svg
+              className="w-3/4 h-3/4"
+              viewBox="0 0 400 400"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Círculo principal */}
+              <circle
+                cx="200"
+                cy="200"
+                r="180"
+                fill="url(#globeGradient)"
+                stroke="#0d9488"
+                strokeWidth="2"
+              />
 
-            {/* Linhas de latitude */}
-            <ellipse cx="200" cy="200" rx="180" ry="60" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
-            <ellipse cx="200" cy="200" rx="180" ry="120" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
-            <line x1="20" y1="200" x2="380" y2="200" stroke="#0d9488" strokeWidth="1" opacity="0.3" />
+              {/* Linhas de latitude */}
+              <ellipse cx="200" cy="200" rx="180" ry="60" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
+              <ellipse cx="200" cy="200" rx="180" ry="120" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
+              <line x1="20" y1="200" x2="380" y2="200" stroke="#0d9488" strokeWidth="1" opacity="0.3" />
 
-            {/* Linhas de longitude */}
-            <ellipse cx="200" cy="200" rx="60" ry="180" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
-            <ellipse cx="200" cy="200" rx="120" ry="180" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
-            <line x1="200" y1="20" x2="200" y2="380" stroke="#0d9488" strokeWidth="1" opacity="0.3" />
+              {/* Linhas de longitude */}
+              <ellipse cx="200" cy="200" rx="60" ry="180" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
+              <ellipse cx="200" cy="200" rx="120" ry="180" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
+              <line x1="200" y1="20" x2="200" y2="380" stroke="#0d9488" strokeWidth="1" opacity="0.3" />
 
-            {/* Continentes simplificados */}
-            {/* América do Sul */}
-            <path
-              d="M160 180 Q150 200 160 240 Q170 260 180 280 Q190 270 185 250 Q190 230 185 210 Q180 190 160 180"
-              fill="#059669"
-              opacity="0.7"
-            />
+              {/* Brasil destacado */}
+              <circle cx="170" cy="220" r="8" fill="#0d9488" />
+              <circle cx="185" cy="235" r="6" fill="#0d9488" />
+              <circle cx="175" cy="250" r="5" fill="#0d9488" />
 
-            {/* América do Norte */}
-            <path
-              d="M140 120 Q130 140 140 160 Q150 150 160 140 Q170 130 160 120 Q150 110 140 120"
-              fill="#059669"
-              opacity="0.7"
-            />
+              {/* Pontos de impacto animados */}
+              <circle cx="170" cy="220" r="3" fill="#ff6b35" className="animate-pulse" />
+              <circle cx="185" cy="235" r="2" fill="#ff6b35" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
+              <circle cx="175" cy="250" r="2" fill="#ff6b35" className="animate-pulse" style={{ animationDelay: '1s' }} />
 
-            {/* África */}
-            <path
-              d="M220 160 Q210 180 220 220 Q230 240 240 260 Q250 250 245 230 Q250 210 245 190 Q240 170 220 160"
-              fill="#059669"
-              opacity="0.7"
-            />
-
-            {/* Brasil destacado */}
-            <circle cx="170" cy="220" r="8" fill="#0d9488" />
-            <circle cx="185" cy="235" r="6" fill="#0d9488" />
-            <circle cx="175" cy="250" r="5" fill="#0d9488" />
-
-            {/* Pontos de impacto */}
-            <circle cx="170" cy="220" r="3" fill="#ff6b35" className="animate-pulse" />
-            <circle cx="185" cy="235" r="2" fill="#ff6b35" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
-            <circle cx="175" cy="250" r="2" fill="#ff6b35" className="animate-pulse" style={{ animationDelay: '1s' }} />
-
-            {/* Gradiente */}
-            <defs>
-              <radialGradient id="globeGradient" cx="0.3" cy="0.3">
-                <stop offset="0%" stopColor="#e6fffa" />
-                <stop offset="70%" stopColor="#a7f3d0" />
-                <stop offset="100%" stopColor="#6ee7b7" />
-              </radialGradient>
-            </defs>
-          </svg>
+              {/* Gradiente */}
+              <defs>
+                <radialGradient id="globeGradient" cx="0.3" cy="0.3">
+                  <stop offset="0%" stopColor="#e6fffa" />
+                  <stop offset="70%" stopColor="#a7f3d0" />
+                  <stop offset="100%" stopColor="#6ee7b7" />
+                </radialGradient>
+              </defs>
+            </svg>
+          </div>
         </div>
 
-        {/* Efeito de brilho/hover */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white to-transparent opacity-20 hover:opacity-30 transition-opacity duration-300"></div>
+        {/* Overlay de brilho sutil */}
+        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white to-transparent opacity-10 hover:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
 
-        {/* Sombra interna */}
-        <div className="absolute inset-4 rounded-full shadow-inner"></div>
+        {/* Pontos de impacto sobrepostos no GIF */}
+        <div className="absolute inset-0 rounded-full">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="relative">
+              {/* Pontos representando projetos no Brasil */}
+              <div className="absolute -top-4 -left-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              <div className="absolute top-2 left-4 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+              <div className="absolute top-6 -left-1 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
