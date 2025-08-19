@@ -29,7 +29,7 @@ export default function Logos3() {
         </div>
 
         <div className="relative overflow-hidden">
-          <div className="flex animate-scroll-infinite" data-testid="partners-carousel">
+          <div className="flex animate-scroll-infinite" style={{animationDuration: '15s'}} data-testid="partners-carousel">
             {/* First set */}
             {logos.map((logo) => (
               <div 
