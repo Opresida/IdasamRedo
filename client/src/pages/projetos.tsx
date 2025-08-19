@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { X, ExternalLink } from 'lucide-react';
+import FloatingNavbar from '@/components/floating-navbar';
+import WhatsAppFloat from '@/components/whatsapp-float';
 
 // Definição dos tipos
 interface Project {
@@ -473,24 +475,11 @@ export default function ProjetosPage() {
 
   return (
     <div className="min-h-screen bg-idasam-bg font-inter">
-      {/* Header */}
-      <header className="bg-white shadow-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <img 
-              src="https://i.imgur.com/01OfFEi.png" 
-              alt="Logomarca IDASAM" 
-              className="w-16 h-14 object-contain mr-3"
-            />
-            <span className="text-xl font-bold text-idasam-green-dark">IDASAM</span>
-          </div>
-          <nav className="hidden md:flex space-x-6">
-            <a href="/" className="text-idasam-gray-text hover:text-idasam-green-dark transition-colors">Início</a>
-            <a href="#sobre" className="text-idasam-gray-text hover:text-idasam-green-dark transition-colors">Sobre</a>
-            <span className="text-idasam-green-dark font-semibold border-b-2 border-idasam-green-dark">Projetos</span>
-          </nav>
-        </div>
-      </header>
+      {/* Floating Navbar */}
+      <FloatingNavbar />
+      
+      {/* WhatsApp Float */}
+      <WhatsAppFloat />
 
       {/* Seção de Título e Filtros */}
       <section className="bg-idasam-green-dark text-white py-16">
