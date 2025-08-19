@@ -1,4 +1,3 @@
-
 import {
   ArrowRight,
   Scale,
@@ -58,10 +57,45 @@ export const List2 = ({
     },
     {
       icon: <Shield className="w-6 h-6" />,
-      title: "DOE 15.12.2011 LEI 3.686",
+      title: "DOE 11 LEI 3.686",
       category: "Reconhecimento",
       description: "Considera como utilidade pública a ASSOCIAÇÃO DOS AMIGOS DO PROJETO CULTURAL 'VIDA ABUNDANTE'.",
       link: "https://www.idasam.org/_files/ugd/f50247_4ec4937911964e7382945fd3057ee687.pdf",
+    },
+    {
+      icon: <Gavel className="w-6 h-6" />,
+      title: "Lei nº 12.846/2013",
+      category: "Lei Anticorrupção",
+      description: "Lei Anticorrupção Empresarial - Dispõe sobre a responsabilização administrativa e civil de pessoas jurídicas pela prática de atos contra a administração pública.",
+      link: "http://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/lei/l12846.htm",
+    },
+    {
+      icon: <Scale className="w-6 h-6" />,
+      title: "Lei nº 8.429/1992",
+      category: "Improbidade Administrativa",
+      description: "Lei de Improbidade Administrativa - Dispõe sobre as sanções aplicáveis em virtude da prática de atos de improbidade administrativa.",
+      link: "http://www.planalto.gov.br/ccivil_03/leis/l8429.htm",
+    },
+    {
+      icon: <FileText className="w-6 h-6" />,
+      title: "Lei nº 13.303/2016",
+      category: "Lei das Estatais",
+      description: "Lei das Estatais - Dispõe sobre o estatuto jurídico da empresa pública, da sociedade de economia mista e de suas subsidiárias.",
+      link: "http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/lei/l13303.htm",
+    },
+    {
+      icon: <Shield className="w-6 h-6" />,
+      title: "Lei nº 9.613/1998",
+      category: "Lavagem de Dinheiro",
+      description: "Lei de Lavagem de Dinheiro - Dispõe sobre os crimes de 'lavagem' ou ocultação de bens, direitos e valores.",
+      link: "http://www.planalto.gov.br/ccivil_03/leis/l9613.htm",
+    },
+    {
+      icon: <BookOpen className="w-6 h-6" />,
+      title: "Decreto nº 11.129/2022",
+      category: "Programas de Integridade",
+      description: "Regulamentação dos Programas de Integridade - Regulamenta a Lei nº 12.846/2013 para dispor sobre a avaliação de programas de integridade.",
+      link: "http://www.planalto.gov.br/ccivil_03/_ato2019-2022/2022/decreto/D11129.htm",
     },
   ],
 }: List2Props) => {
@@ -78,11 +112,11 @@ export const List2 = ({
             {heading}
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto" data-testid="legal-framework-description">
-            O IDASAM opera em conformidade com as principais legislações que regem a inovação, 
+            O IDASAM opera em conformidade com as principais legislações que regem a inovação,
             pesquisa e desenvolvimento sustentável no Estado do Amazonas.
           </p>
         </div>
-        
+
         <div className="flex flex-col bg-sand/30 rounded-2xl overflow-hidden shadow-lg">
           <Separator className="bg-forest/10" />
           {items.map((item, index) => (
@@ -102,8 +136,8 @@ export const List2 = ({
                 <p className="order-1 text-lg text-gray-700 leading-relaxed md:order-none md:col-span-2">
                   {item.description}
                 </p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   asChild
                   className="order-3 ml-auto w-fit gap-2 md:order-none border-forest text-forest hover:bg-forest hover:text-white transition-colors"
                 >
