@@ -242,16 +242,7 @@ export function AnimatedGlobe({ className }: { className?: string }) {
         {/* Overlay de brilho sutil */}
         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white to-transparent opacity-10 hover:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
 
-        {/* Pontos de impacto sobrepostos */}
-        <div className="absolute inset-0 rounded-full pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="relative">
-              <div className="absolute -top-4 -left-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-              <div className="absolute top-2 left-4 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-              <div className="absolute top-6 -left-1 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
-            </div>
-          </div>
-        </div>
+        
       </div>
     </div>
   );
