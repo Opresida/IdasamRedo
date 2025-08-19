@@ -29,8 +29,7 @@ const ArrowRight = ({ className }: { className?: string }) => (
 );
 
 // --- IMPORTAÇÕES ---
-import createGlobe, { COBEOptions } from "cobe";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 // --- COMPONENTE PRINCIPAL ---
 export default function GlobeFeatureSection() {
@@ -61,141 +60,113 @@ export default function GlobeFeatureSection() {
 
         {/* Contêiner do Globo Responsivo */}
         <div className="relative w-full aspect-square max-w-lg mx-auto md:w-1/2 md:max-w-xl">
-          <Globe />
+          <StaticGlobe />
         </div>
       </div>
     </section>
   );
 }
 
-// --- CONFIGURAÇÕES DO GLOBO ---
-const GLOBE_CONFIG: COBEOptions = {
-  width: 800,
-  height: 800,
-  onRender: () => {},
-  devicePixelRatio: 2,
-  phi: 0,
-  theta: 0.3,
-  dark: 0,
-  diffuse: 0.4,
-  mapSamples: 16000,
-  mapBrightness: 1.2,
-  baseColor: [1, 1, 1],
-  markerColor: [20 / 255, 184 / 255, 166 / 255], // Cor teal
-  glowColor: [1.05, 1.05, 1.05],
-  markers: [
-    { location: [-15.7801, -47.9292], size: 0.1 },
-    { location: [-23.5505, -46.6333], size: 0.12 },
-    { location: [-22.9068, -43.1729], size: 0.1 },
-    { location: [-3.119, -60.0217], size: 0.15 },
-  ],
-};
-
-// --- COMPONENTE DO GLOBO ---
-export function Globe({
-  className,
-  config = GLOBE_CONFIG,
-}: {
-  className?: string;
-  config?: COBEOptions;
-}) {
-  let phi = 0;
-  let width = 0;
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pointerInteracting = useRef<number | null>(null);
-  const pointerInteractionMovement = useRef(0);
-  const [r, setR] = useState(0);
-  // --- CORREÇÃO APLICADA AQUI ---
-  // Estado para controlar se o globo é suportado ou se falhou ao carregar.
-  const [isSupported, setIsSupported] = useState(true);
-
-  const updatePointerInteraction = (value: number | null) => {
-    pointerInteracting.current = value;
-    if (canvasRef.current) {
-      canvasRef.current.style.cursor = value !== null ? "grabbing" : "grab";
-    }
-  };
-
-  const updateMovement = (clientX: number) => {
-    if (pointerInteracting.current !== null) {
-      const delta = clientX - pointerInteracting.current;
-      pointerInteractionMovement.current = delta;
-      setR(delta / 200);
-    }
-  };
-
-  const onRender = useCallback(
-    (state: Record<string, any>) => {
-      if (!pointerInteracting.current) phi += 0.005;
-      state.phi = phi + r;
-      state.width = width * 2;
-      state.height = width * 2;
-    },
-    [r]
-  );
-
-  const onResize = useCallback(() => {
-    if (canvasRef.current && canvasRef.current.offsetWidth > 0) {
-      width = canvasRef.current.offsetWidth;
-    }
-  }, []);
+// --- COMPONENTE DO GLOBO ESTÁTICO ---
+export function StaticGlobe({ className }: { className?: string }) {
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    // Simula carregamento para efeito de transição
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 100);
 
-    window.addEventListener("resize", onResize);
-    onResize();
-
-    let globe: any;
-    try {
-      globe = createGlobe(canvasRef.current, {
-        ...config,
-        width: width * 2,
-        height: width * 2,
-        onRender,
-      });
-      setTimeout(() => {
-        if (canvasRef.current) canvasRef.current.style.opacity = "1";
-      }, 100);
-    } catch (e) {
-      // --- CORREÇÃO APLICADA AQUI ---
-      // Se a criação do globo falhar, atualizamos o estado para mostrar o fallback.
-      console.error("Erro ao criar o globo, mostrando fallback:", e);
-      setIsSupported(false);
-      return;
-    }
-
-    return () => globe.destroy();
-  }, [config, onRender, onResize]);
-
-  // --- CORREÇÃO APLICADA AQUI ---
-  // Se o globo não for suportado, mostramos um componente de fallback visual.
-  if (!isSupported) {
-    return (
-      <div className="absolute inset-0 mx-auto aspect-[1/1] w-full max-w-[600px] flex items-center justify-center">
-        <div className="w-full h-full max-w-[300px] max-h-[300px] rounded-full bg-gradient-to-br from-teal-100 to-teal-300 flex items-center justify-center">
-          <div className="text-teal-600 text-center">
-            <div className="w-16 h-16 rounded-full bg-teal-500 mx-auto mb-2 animate-bounce"></div>
-            <p className="text-sm font-medium">Globo 3D</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div
       className={`absolute inset-0 mx-auto aspect-[1/1] w-full max-w-[600px] ${className || ''}`}
     >
-      <canvas
-        ref={canvasRef}
-        className="h-full w-full opacity-0 transition-opacity duration-500 [contain:layout_paint_size]"
-        onPointerDown={(e) => updatePointerInteraction(e.clientX - pointerInteractionMovement.current)}
-        onPointerUp={() => updatePointerInteraction(null)}
-        onPointerOut={() => updatePointerInteraction(null)}
-        onMouseMove={(e) => updateMovement(e.clientX)}
-        onTouchMove={(e) => e.touches[0] && updateMovement(e.touches[0].clientX)}
-      />
+      <div
+        className={`relative h-full w-full transition-opacity duration-500 ${
+          isLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        {/* Imagem de fundo do globo */}
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-teal-50 to-blue-100 shadow-2xl">
+          {/* SVG do globo */}
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 400 400"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* Círculo principal */}
+            <circle
+              cx="200"
+              cy="200"
+              r="180"
+              fill="url(#globeGradient)"
+              stroke="#0d9488"
+              strokeWidth="2"
+            />
+
+            {/* Linhas de latitude */}
+            <ellipse cx="200" cy="200" rx="180" ry="60" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
+            <ellipse cx="200" cy="200" rx="180" ry="120" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
+            <line x1="20" y1="200" x2="380" y2="200" stroke="#0d9488" strokeWidth="1" opacity="0.3" />
+
+            {/* Linhas de longitude */}
+            <ellipse cx="200" cy="200" rx="60" ry="180" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
+            <ellipse cx="200" cy="200" rx="120" ry="180" stroke="#0d9488" strokeWidth="1" opacity="0.3" fill="none" />
+            <line x1="200" y1="20" x2="200" y2="380" stroke="#0d9488" strokeWidth="1" opacity="0.3" />
+
+            {/* Continentes simplificados */}
+            {/* América do Sul */}
+            <path
+              d="M160 180 Q150 200 160 240 Q170 260 180 280 Q190 270 185 250 Q190 230 185 210 Q180 190 160 180"
+              fill="#059669"
+              opacity="0.7"
+            />
+
+            {/* América do Norte */}
+            <path
+              d="M140 120 Q130 140 140 160 Q150 150 160 140 Q170 130 160 120 Q150 110 140 120"
+              fill="#059669"
+              opacity="0.7"
+            />
+
+            {/* África */}
+            <path
+              d="M220 160 Q210 180 220 220 Q230 240 240 260 Q250 250 245 230 Q250 210 245 190 Q240 170 220 160"
+              fill="#059669"
+              opacity="0.7"
+            />
+
+            {/* Brasil destacado */}
+            <circle cx="170" cy="220" r="8" fill="#0d9488" />
+            <circle cx="185" cy="235" r="6" fill="#0d9488" />
+            <circle cx="175" cy="250" r="5" fill="#0d9488" />
+
+            {/* Pontos de impacto */}
+            <circle cx="170" cy="220" r="3" fill="#ff6b35" className="animate-pulse" />
+            <circle cx="185" cy="235" r="2" fill="#ff6b35" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <circle cx="175" cy="250" r="2" fill="#ff6b35" className="animate-pulse" style={{ animationDelay: '1s' }} />
+
+            {/* Gradiente */}
+            <defs>
+              <radialGradient id="globeGradient" cx="0.3" cy="0.3">
+                <stop offset="0%" stopColor="#e6fffa" />
+                <stop offset="70%" stopColor="#a7f3d0" />
+                <stop offset="100%" stopColor="#6ee7b7" />
+              </radialGradient>
+            </defs>
+          </svg>
+        </div>
+
+        {/* Efeito de brilho/hover */}
+        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white to-transparent opacity-20 hover:opacity-30 transition-opacity duration-300"></div>
+
+        {/* Sombra interna */}
+        <div className="absolute inset-4 rounded-full shadow-inner"></div>
+      </div>
     </div>
   );
 }
