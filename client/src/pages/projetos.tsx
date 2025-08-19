@@ -482,24 +482,55 @@ export default function ProjetosPage() {
       {/* WhatsApp Float */}
       <WhatsAppFloat />
 
-      {/* Seção de Título e Filtros com Efeito de Fundo */}
-      <section className="relative">
-        {/* Replaced BackgroundCells with Floating component */}
-        <Floating
-          className="bg-idasam-green-dark"
-          element={FloatingElement.BackgroundCells} // Assuming this is the correct prop for background cells
-          speed={0.05} // Example speed, adjust as needed
-        >
-          <div className="text-center pointer-events-auto px-4">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 font-montserrat bg-clip-text text-transparent bg-gradient-to-b from-white to-idasam-yellow-accent">
+      {/* Hero Section com Efeito Parallax */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-idasam-green-dark via-idasam-green-medium to-idasam-green-dark">
+        <Floating className="w-full h-full" sensitivity={2} easingFactor={0.1}>
+          {/* Elementos flutuantes de fundo */}
+          <FloatingElement 
+            as="div" 
+            className="absolute top-20 left-10 w-32 h-32 bg-idasam-yellow-accent/20 rounded-full blur-xl" 
+            depth={1}
+          />
+          <FloatingElement 
+            as="div" 
+            className="absolute top-40 right-20 w-24 h-24 bg-white/10 rounded-full blur-lg" 
+            depth={2}
+          />
+          <FloatingElement 
+            as="div" 
+            className="absolute bottom-40 left-1/4 w-40 h-40 bg-idasam-yellow-accent/10 rounded-full blur-2xl" 
+            depth={3}
+          />
+          <FloatingElement 
+            as="div" 
+            className="absolute bottom-20 right-10 w-28 h-28 bg-white/5 rounded-full blur-xl" 
+            depth={1.5}
+          />
+          
+          {/* Conteúdo principal */}
+          <div className="relative z-10 text-center px-4 py-20">
+            <FloatingElement 
+              as="h1" 
+              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 font-montserrat bg-clip-text text-transparent bg-gradient-to-b from-white to-idasam-yellow-accent"
+              depth={0.5}
+            >
               Nossos Projetos para 2025
-            </h1>
-            <p className="text-xl mb-8 max-w-3xl mx-auto text-white/90">
+            </FloatingElement>
+            
+            <FloatingElement 
+              as="p" 
+              className="text-xl mb-8 max-w-3xl mx-auto text-white/90"
+              depth={1}
+            >
               Inovação, sustentabilidade e impacto social para transformar a Amazônia.
-            </p>
+            </FloatingElement>
 
             {/* Barra de Filtros */}
-            <div className="flex flex-wrap justify-center gap-3 mt-8">
+            <FloatingElement 
+              as="div" 
+              className="flex flex-wrap justify-center gap-3 mt-8"
+              depth={0.8}
+            >
               {categories.map((category) => (
                 <button
                   key={category}
@@ -513,7 +544,7 @@ export default function ProjetosPage() {
                   {category}
                 </button>
               ))}
-            </div>
+            </FloatingElement>
           </div>
         </Floating>
       </section>
