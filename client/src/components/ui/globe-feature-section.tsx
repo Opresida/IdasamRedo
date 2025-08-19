@@ -169,10 +169,10 @@ export default function GlobeFeatureSection() {
         </div>
 
         <div className="order-1 lg:order-2 flex justify-center px-4 sm:px-0">
-          <div className="relative w-full max-w-[280px] sm:max-w-[400px] md:max-w-[480px] lg:max-w-lg xl:max-w-xl">
+          <div className="relative flex h-[400px] w-full max-w-xl items-center justify-center md:h-[500px]">
             <canvas
               ref={canvasRef}
-              className="w-full h-auto opacity-0 transition-opacity duration-500 [contain:layout_paint_size]"
+              className="w-full h-auto opacity-0 transition-opacity duration-500 [contain:layout_paint_size] scale-125"
               width={540}
               height={540}
               style={{
