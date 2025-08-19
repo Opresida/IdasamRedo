@@ -173,7 +173,12 @@ export function Globe({
   if (!isSupported) {
     return (
       <div className="absolute inset-0 mx-auto aspect-[1/1] w-full max-w-[600px] flex items-center justify-center">
-        <div className="w-full h-full max-w-[300px] max-h-[300px] rounded-full bg-gradient-to-br from-teal-100 to-gray-200 animate-pulse" />
+        <div className="w-full h-full max-w-[300px] max-h-[300px] rounded-full bg-gradient-to-br from-teal-100 to-teal-300 flex items-center justify-center">
+          <div className="text-teal-600 text-center">
+            <div className="w-16 h-16 rounded-full bg-teal-500 mx-auto mb-2 animate-bounce"></div>
+            <p className="text-sm font-medium">Globo 3D</p>
+          </div>
+        </div>
       </div>
     );
   }

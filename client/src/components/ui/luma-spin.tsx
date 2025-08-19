@@ -8,7 +8,7 @@ export const Component = () => {
     <div className="relative w-[65px] aspect-square">
       <span className="absolute rounded-[50px] animate-loaderAnim shadow-[inset_0_0_0_3px] shadow-forest dark:shadow-teal" />
       <span className="absolute rounded-[50px] animate-loaderAnim animation-delay shadow-[inset_0_0_0_3px] shadow-terracotta dark:shadow-sand" />
-      <style jsx>{`
+      <style>{`
         @keyframes loaderAnim {
           0% {
             inset: 0 35px 35px 0;
