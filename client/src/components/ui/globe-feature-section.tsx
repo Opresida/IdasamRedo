@@ -178,24 +178,24 @@ const GLOBE_CONFIG: COBEOptions = {
   phi: 0,
   theta: 0.3,
   dark: 0,
-  diffuse: 0.4,
+  diffuse: 1.2,
   mapSamples: 16000,
-  mapBrightness: 1.2,
-  baseColor: [1, 1, 1],
-  markerColor: [20 / 255, 184 / 255, 166 / 255], // teal color
+  mapBrightness: 6,
+  baseColor: [0.3, 0.3, 0.3],
+  markerColor: [0.1, 0.8, 0.7],
   glowColor: [1, 1, 1],
   markers: [
     // Brazil regions
-    { location: [-15.7801, -47.9292], size: 0.1 }, // Brasília
-    { location: [-23.5505, -46.6333], size: 0.12 }, // São Paulo
-    { location: [-22.9068, -43.1729], size: 0.1 }, // Rio de Janeiro
-    { location: [-3.1190, -60.0217], size: 0.15 }, // Manaus (destaque)
-    { location: [-12.9714, -38.5014], size: 0.08 }, // Salvador
-    { location: [-8.0476, -34.8770], size: 0.06 }, // Recife
-    { location: [-25.4284, -49.2733], size: 0.06 }, // Curitiba
-    { location: [-30.0346, -51.2177], size: 0.07 }, // Porto Alegre
-    { location: [-19.9167, -43.9345], size: 0.08 }, // Belo Horizonte
-    { location: [-16.6799, -49.2550], size: 0.06 }, // Goiânia
+    { location: [-15.7801, -47.9292], size: 0.03 }, // Brasília
+    { location: [-23.5505, -46.6333], size: 0.05 }, // São Paulo
+    { location: [-22.9068, -43.1729], size: 0.04 }, // Rio de Janeiro
+    { location: [-3.1190, -60.0217], size: 0.07 }, // Manaus (destaque)
+    { location: [-12.9714, -38.5014], size: 0.03 }, // Salvador
+    { location: [-8.0476, -34.8770], size: 0.02 }, // Recife
+    { location: [-25.4284, -49.2733], size: 0.02 }, // Curitiba
+    { location: [-30.0346, -51.2177], size: 0.03 }, // Porto Alegre
+    { location: [-19.9167, -43.9345], size: 0.03 }, // Belo Horizonte
+    { location: [-16.6799, -49.2550], size: 0.02 }, // Goiânia
   ],
 }
 
