@@ -3,6 +3,7 @@ import { X, ExternalLink } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import GlobeFeatureSection from '@/components/ui/globe-feature-section';
 import Floating, { FloatingElement } from '@/components/ui/parallax-floating';
 
 // Definição dos tipos
@@ -691,6 +692,9 @@ export default function ProjetosPage() {
           </div>
         </div>
       </section>
+
+      {/* Globe Feature Section */}
+      <GlobeFeatureSection />
 
       {/* Modal de Detalhes */}
       {selectedProject && (
