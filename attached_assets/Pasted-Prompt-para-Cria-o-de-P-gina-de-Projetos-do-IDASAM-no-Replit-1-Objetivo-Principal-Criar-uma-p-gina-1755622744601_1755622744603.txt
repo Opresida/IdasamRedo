@@ -1,0 +1,251 @@
+Prompt para Criação de Página de Projetos do IDASAM no Replit
+1. Objetivo Principal
+Criar uma página web moderna, responsiva e dinâmica para apresentar o portfólio de "Projetos 2025" do IDASAM (Instituto de Desenvolvimento Ambiental e Social da Amazônia). A página deve ser visualmente atraente, informativa e interativa.
+
+Rota da Página: A página deve ser acessível pela rota /projetos.
+
+2. Stack de Tecnologia Sugerida
+Framework: React (usando Vite para uma configuração rápida).
+
+Estilização: Tailwind CSS para um design moderno e responsivo.
+
+Ícones: react-icons ou SVGs gerados.
+
+2.1. Configuração do Tailwind CSS
+Para que a paleta de cores personalizada funcione, o arquivo tailwind.config.ts deve ser modificado para incluir as cores do projeto. Use a seguinte configuração:
+
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        'idasam-green-dark': '#2A5B46',
+        'idasam-green-medium': '#4E8D7C',
+        'idasam-bg': '#F0F4F8',
+        'idasam-gray-text': '#6B7280',
+        'idasam-yellow-accent': '#FBBF24',
+        'idasam-text-main': '#1F2937',
+      }
+    },
+  },
+  plugins: [],
+}
+
+3. Design e Identidade Visual
+Paleta de Cores (Baseada nos materiais do IDASAM):
+
+Primária (Verdes): idasam-green-dark (#2A5B46), idasam-green-medium (#4E8D7C).
+
+Secundária (Fundo/Cinza): idasam-bg (#F0F4F8), idasam-gray-text (#6B7280).
+
+Acento (Amarelo): idasam-yellow-accent (#FBBF24).
+
+Texto: idasam-text-main (#1F2937), #FFFFFF (sobre fundos escuros).
+
+Tipografia:
+
+Títulos: Fonte "Montserrat" ou similar (sans-serif, moderna e com peso).
+
+Corpo do Texto: Fonte "Inter" ou "Lato" (sans-serif, alta legibilidade).
+
+4. Estrutura da Página /projetos
+A página deve ser dividida nas seguintes seções:
+
+A. Header (Cabeçalho):
+
+Logo do IDASAM à esquerda.
+
+Menu de navegação simples à direita (Ex: "Início", "Sobre", "Projetos"). A aba "Projetos" deve estar marcada como ativa.
+
+B. Seção de Título e Filtros:
+
+Título Principal: "Nossos Projetos para 2025".
+
+Subtítulo: "Inovação, sustentabilidade e impacto social para transformar a Amazônia."
+
+Barra de Filtros: Botões interativos para filtrar os projetos por categoria. Ao clicar em uma categoria, a grade de projetos abaixo deve ser atualizada dinamicamente (com uma animação suave).
+
+Categorias: Todos, Bioeconomia, Sustentabilidade, Saúde e Social, Capacitação.
+
+C. Grade de Projetos:
+
+Um layout em grid responsivo (Ex: 1 coluna em mobile, 2 em tablet, 3 ou 4 em desktop).
+
+Cada projeto será representado por um "Card de Projeto".
+
+D. Componente "Card de Projeto":
+
+Estrutura do Card: Deve ter padding, border-radius e uma sombra sutil (box-shadow).
+
+Animação: Efeito de hover suave (ex: leve aumento de tamanho ou mudança na sombra).
+
+Conteúdo do Card:
+
+Logo/Ícone do Projeto: No topo do card, um ícone SVG único que represente o projeto.
+
+Título do Projeto: Em destaque.
+
+Descrição Curta: Um resumo de 2-3 linhas do objetivo do projeto.
+
+Tag de Categoria: Uma pequena "pílula" colorida indicando a categoria principal do projeto.
+
+Botão/Link: "Ver Detalhes" ou "Saiba Mais".
+
+E. Modal de Detalhes do Projeto:
+
+Ao clicar em "Ver Detalhes" em um card, um modal (janela pop-up) deve abrir sobre a página com uma sobreposição escura no fundo.
+
+O modal deve conter:
+
+Título Completo do Projeto.
+
+Logo do Projeto em tamanho maior.
+
+Descrição Completa e Detalhada (conforme o conteúdo abaixo).
+
+Tópicos de Impacto: Se houver, listar os impactos (Econômico, Ambiental, Social, etc.).
+
+Botão para fechar o modal.
+
+5. Conteúdo dos Projetos
+Organize os seguintes projetos na grade. Para cada um, crie um logo/ícone SVG único e simbólico.
+
+Categoria: Bioeconomia
+Projeto Curupira (Fecularia de Mandioca)
+
+Ícone Sugerido: Uma raiz de mandioca estilizada.
+
+Descrição: Implantar uma fecularia de mandioca em municípios remotos do Amazonas para promover a agricultura familiar e a sustentabilidade. A iniciativa visa reduzir a dependência de fécula de outras regiões, fomentando a produção local de fécula de mandioca, goma de tapioca, tucupi e farinha. Utiliza práticas ecológicas como energia solar, captação de água da chuva e reciclagem de resíduos para adubo e ração.
+
+Goma Sustentável: Produção em Roraima
+
+Ícone Sugerido: Um grão de tapioca com uma folha.
+
+Descrição: Promover a produção sustentável de goma de tapioca em Roraima, capacitando agricultores e comunidades em práticas de cultivo e processamento que aumentem a produtividade e a qualidade, preservando os recursos naturais. O projeto visa fortalecer a economia local, agregar valor com certificações e integrar comunidades rurais e indígenas.
+
+Produção de Biofertilizantes e Insumos
+
+Ícone Sugerido: Uma mão segurando terra fértil com uma planta brotando.
+
+Descrição: Produzir biofertilizantes e insumos agropecuários a partir de resíduos sólidos orgânicos para mitigar impactos ambientais. A indústria será instalada em parceria com o IDASAM, respeitando as características ambientais e socioculturais da região, com foco em sustentabilidade e segurança alimentar.
+
+Produção de Camarão Amazônico e Obtenção de Quitosana
+
+Ícone Sugerido: Um camarão estilizado ao lado de uma estrutura molecular.
+
+Descrição: Criar um módulo sustentável para a produção de camarão amazônico e extração de quitosana (substância com aplicações farmacêuticas e industriais) na região de Parintins. O projeto promove o desenvolvimento econômico e social via cooperativas, garantindo a preservação ambiental, com foco na qualidade da água e no habitat natural do camarão.
+
+Biossíntese de Cogumelos Amazônicos
+
+Ícone Sugerido: Um conjunto de cogumelos estilizados.
+
+Descrição: Promover a produção sustentável de cogumelos comestíveis na região amazônica. A iniciativa envolve a melhoria de laboratórios e a capacitação de recursos humanos para desenvolver uma cadeia produtiva sustentável, gerando impactos econômicos, ambientais e sociais positivos para as comunidades locais através de cooperativas.
+
+Chás Medicinais Amazônicos Liofilizados
+
+Ícone Sugerido: Uma xícara de chá com uma folha de planta medicinal.
+
+Descrição: Desenvolver um modelo de produção sustentável e geração de renda a partir de chás medicinais amazônicos liofilizados. O projeto busca melhorar a renda de comunidades ribeirinhas e povos primitivos, manter a "floresta em pé" e contribuir para a fixação de habitantes no interior da Amazônia.
+
+Cesta Verde (Reaproveitamento de Alimentos)
+
+Ícone Sugerido: Uma cesta cheia de frutas e vegetais.
+
+Descrição: Reduzir o desperdício de alimentos na região amazônica através da coleta e reaproveitamento de frutas e vegetais descartados em feiras e mercados. O projeto visa gerar emprego, renda e contribuir para a segurança alimentar, alinhado com os Objetivos de Desenvolvimento Sustentável (ODS).
+
+CEIBA: Centro de Inovação e Biotecnologia da Amazônia
+
+Ícone Sugerido: Um edifício circular moderno cercado por vegetação.
+
+Descrição: Criar uma infraestrutura de ponta para promover a formação de profissionais qualificados e apoiar a produção nas áreas de Bioeconomia e Biotecnologia. O centro será construído seguindo altos padrões ambientais, com uso de energia renovável e minimização de resíduos, fomentando o desenvolvimento regional.
+
+Categoria: Sustentabilidade
+Projeto Plantio Sustentável
+
+Ícone Sugerido: Um drone sobrevoando uma plantação.
+
+Descrição: Capacitar pequenos agricultores, comunidades indígenas e assentamentos rurais em Roraima em práticas de plantio sustentável. O objetivo é aumentar a produtividade agrícola com menor impacto ambiental, promovendo a preservação dos recursos naturais e a geração de renda local através de técnicas de manejo de solos, insumos orgânicos e conservação de água.
+
+Tratamento de Resíduos Sólidos
+
+Ícone Sugerido: Um ícone de reciclagem se transformando em uma árvore.
+
+Descrição: Implementar soluções para o tratamento de resíduos sólidos nos municípios da Amazônia, com foco na sustentabilidade. A proposta visa cessar a poluição dos lençóis freáticos e revitalizar áreas degradadas, transformando-as em parques. Utiliza tecnologia inovadora para a produção de hidrogênio verde.
+
+Smart Amazônia: Cidades Inteligentes e Sustentáveis
+
+Ícone Sugerido: O contorno de uma cidade com um sinal de Wi-Fi e uma folha.
+
+Descrição: Transformar municípios da Amazônia em cidades inteligentes, integrando tecnologia avançada, sustentabilidade e inovação. A iniciativa busca modernizar a infraestrutura urbana, promovendo energias renováveis, sistemas inteligentes de transporte e gestão eficiente de recursos naturais através de plataformas digitais (IoT).
+
+Projeto Míraia – Sentinela Viva da Amazônia
+
+Ícone Sugerido: Um satélite com um olho no centro, focado em uma árvore.
+
+Descrição: Solução tecnológica e territorial que utiliza Inteligência Artificial (IA) para monitoramento, prevenção e combate inteligente a queimadas na Amazônia Legal. Combina satélites, sensores IoT, drones e IA com a força de brigadas indígenas e comunitárias para promover proteção ambiental e resposta rápida.
+
+Categoria: Saúde e Social
+Projeto SALTA-Z (Filtragem de Água)
+
+Ícone Sugerido: Uma gota d'água sendo filtrada.
+
+Descrição: Atender comunidades na Amazônia com dificuldades de acesso à água potável, utilizando a zeólita como meio filtrante. O sistema oferece uma solução sustentável para a remoção de metais pesados, amônia e outras impurezas da água de poços e mananciais, melhorando a qualidade de vida e a saúde pública.
+
+Saúde Digital para os Povos Originários da Amazônia
+
+Ícone Sugerido: Um estetoscópio se transformando em um cursor de mouse.
+
+Descrição: Levar atendimento médico especializado a comunidades indígenas remotas da Amazônia utilizando telemedicina. A iniciativa inclui a instalação de internet via satélite, fornecimento de dispositivos para consultas virtuais e capacitação de agentes comunitários de saúde para melhorar o acesso à saúde e reduzir deslocamentos.
+
+Carreta da Saúde – Saúde Itinerante
+
+Ícone Sugerido: Um caminhão com uma cruz de saúde.
+
+Descrição: Levar atendimento médico a comunidades rurais e áreas isoladas de Roraima. A iniciativa utiliza uma carreta adaptada com consultórios médicos, oftalmológicos e odontológicos para oferecer atendimento completo, com capacidade para atender até 3.000 pessoas por mês, melhorando o acesso à saúde para populações que enfrentam barreiras geográficas.
+
+Renova Mulher: Caminhos para a Independência
+
+Ícone Sugerido: O símbolo feminino (♀) com uma seta de crescimento.
+
+Descrição: Empoderar mulheres em condições de vulnerabilidade familiar e vítimas de violência doméstica, oferecendo atendimento psicológico, capacitação profissional e apoio para alcançar a independência financeira. O projeto visa criar uma rede de apoio comunitário para oferecer oportunidades de emprego e incentivar o empreendedorismo feminino.
+
+Juventude em Ação
+
+Ícone Sugerido: Silhuetas de jovens praticando esportes.
+
+Descrição: Promover a inclusão social de jovens em situação de vulnerabilidade por meio de práticas esportivas, prevenindo o envolvimento com o crime e o uso de drogas. O projeto oferece atividades regulares, desenvolve habilidades sociais e emocionais (trabalho em equipe, disciplina) e cria um ambiente de apoio e mentoria.
+
+Mulheres do Campo - Quintais Produtivos em Roraima
+
+Ícone Sugerido: Três figuras femininas estilizadas cuidando de uma horta.
+
+Descrição: Promover o empoderamento econômico e social de mulheres rurais na comunidade PA Nova Amazônia, em Boa Vista. Com foco na implementação de quintais produtivos sustentáveis, o projeto capacita as participantes em técnicas de agroecologia, manejo sustentável e empreendedorismo, fortalecendo redes de apoio.
+
+HTI | Hospital da Terceira Idade
+
+Ícone Sugerido: Uma cruz de hospital com a silhueta de um idoso no centro.
+
+Descrição: Projeto pioneiro para a criação de um hospital inteligente, conectado e inclusivo, exclusivamente voltado à saúde do idoso. Utiliza tecnologias como dispositivos wearable, IA para antecipar riscos, telemedicina para conectar especialistas, robôs assistivos e Big Data para integrar históricos de saúde, criando um hub de inovação para a longevidade.
+
+Categoria: Capacitação
+MPBiot (Mestrado Profissional em Biotecnologia)
+
+Ícone Sugerido: Um chapéu de formatura (capelo) sobre um microscópio.
+
+Descrição: Oferecer oportunidades de formação continuada para graduados de Parintins e regiões adjacentes, fortalecendo os setores de Biotecnologia e Bioeconomia. O projeto visa formar recursos humanos altamente qualificados, promover o desenvolvimento econômico regional e conectar a pesquisa científica com a economia.
+
+Letramento Digital e Robótica no Ensino
+
+Ícone Sugerido: Um pequeno robô segurando um livro aberto.
+
+Descrição: Implementar programas de educação digital e ensino de robótica em 10 municípios, com foco em aprimorar o ensino público. A iniciativa pretende melhorar a qualidade do ensino, aumentar o interesse dos alunos e promover o engajamento dos professores, oferecendo novas oportunidades de aprendizado e introdução à robótica.
+
+Capacity Gaming (Indústria 4.0)
+
+Ícone Sugerido: Um controle de videogame com uma engrenagem no centro.
+
+Descrição: Solução tecnológica gamificada para capacitação e transformação digital de empresas, com foco na Indústria 4.0. Propõe uma abordagem educacional através de um jogo interativo onde os usuários podem simular e aplicar boas práticas de gestão, produtividade e inovação digital em um ambiente virtual.
