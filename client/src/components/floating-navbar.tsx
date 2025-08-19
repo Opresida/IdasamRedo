@@ -44,20 +44,27 @@ export default function FloatingNavbar() {
       window.location.href = '/';
       setTimeout(() => setIsNavigating(false), 1000);
     } else if (link.startsWith('#')) {
-      // Wait a bit for DOM to be ready, then scroll
-      setTimeout(() => {
-        const element = document.querySelector(link);
-        if (element) {
-          const offsetTop = element.offsetTop - 100; // Offset para compensar navbar
-          window.scrollTo({
-            top: offsetTop,
-            behavior: 'smooth'
-          });
-        } else {
-          console.warn(`Elemento não encontrado para: ${link}`);
-        }
-        setIsNavigating(false);
-      }, 100);
+      // Check if we're already on the home page
+      if (window.location.pathname === '/') {
+        // We're on home, just scroll to the anchor
+        setTimeout(() => {
+          const element = document.querySelector(link);
+          if (element) {
+            const offsetTop = element.offsetTop - 100; // Offset para compensar navbar
+            window.scrollTo({
+              top: offsetTop,
+              behavior: 'smooth'
+            });
+          } else {
+            console.warn(`Elemento não encontrado para: ${link}`);
+          }
+          setIsNavigating(false);
+        }, 100);
+      } else {
+        // We're not on home, navigate to home first then scroll to anchor
+        window.location.href = '/' + link;
+        setTimeout(() => setIsNavigating(false), 1000);
+      }
     } else if (link.startsWith('/')) {
       // For internal routes
       window.location.href = link;
