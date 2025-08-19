@@ -26,6 +26,10 @@ export default function GlobeFeatureSection() {
         </div>
         <div className="relative h-[180px] w-full max-w-xl">
           <Globe className="absolute -bottom-20 -right-40 scale-150" />
+          {/* Fallback visual quando o globo não carrega */}
+          <div className="absolute -bottom-20 -right-40 scale-150 opacity-20">
+            <div className="w-[180px] h-[180px] rounded-full bg-gradient-to-br from-teal/30 to-forest/30 animate-pulse" />
+          </div>
         </div>
       </div>
     </section>
@@ -112,8 +116,22 @@ export function Globe({
     window.addEventListener("resize", onResize)
     onResize()
 
+    // Verificar se WebGL está disponível
+    const canvas = canvasRef.current
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+    
+    if (!gl) {
+      console.warn("WebGL não está disponível, globo será ocultado")
+      if (canvasRef.current) {
+        canvasRef.current.style.display = "none"
+      }
+      return
+    }
+
+    let globe: any = null
+
     try {
-      const globe = createGlobe(canvasRef.current, {
+      globe = createGlobe(canvas, {
         ...config,
         width: width * 2,
         height: width * 2,
@@ -126,12 +144,23 @@ export function Globe({
         }
       }, 100)
       
-      return () => {
-        window.removeEventListener("resize", onResize)
-        globe.destroy()
-      }
     } catch (error) {
       console.error("Erro ao inicializar o globo:", error)
+      // Fallback: ocultar o canvas se houver erro
+      if (canvasRef.current) {
+        canvasRef.current.style.display = "none"
+      }
+    }
+
+    return () => {
+      window.removeEventListener("resize", onResize)
+      if (globe) {
+        try {
+          globe.destroy()
+        } catch (error) {
+          console.warn("Erro ao destruir o globo:", error)
+        }
+      }
     }
   }, [])
 
