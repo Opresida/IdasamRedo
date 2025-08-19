@@ -1,7 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
+import { Component as LumaSpin } from "@/components/ui/luma-spin"; // Import the LumaSpin component
 
 interface NavItem {
   name: string;
@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
 export default function FloatingNavbar() {
   const [isVisible, setIsVisible] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false); // State to track navigation
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,75 +36,106 @@ export default function FloatingNavbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  return (
-    <nav 
-      className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-500 ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'
-      }`}
-      data-testid="floating-navbar"
-    >
-      <div className="bg-white/90 backdrop-blur-md shadow-xl rounded-2xl border border-gray-200">
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center space-x-8 px-6 py-3">
-          <div className="flex items-center space-x-6 text-sm font-medium">
-            {navItems.map((item, index) => (
-              <a 
-                key={index}
-                href={item.link}
-                className="text-gray-700 hover:text-forest transition-colors"
-                data-testid={`nav-link-${item.name.toLowerCase().replace(' ', '-')}`}
-              >
-                {item.name}
-              </a>
-            ))}
-          </div>
-          <Button 
-            className="bg-teal hover:bg-teal/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            data-testid="button-donate"
-          >
-            Doe Agora
-          </Button>
-        </div>
+  const handleNavigation = (link: string) => {
+    setIsNavigating(true); // Start navigation, show loader
+    // For internal page scrolls, we don't need to wait for a route change.
+    // For actual route changes, you might need a router hook to know when the new page is loaded.
+    if (link.startsWith('#')) {
+      const element = document.querySelector(link);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+      // Simulate loader hiding after scroll animation
+      setTimeout(() => setIsNavigating(false), 1000); 
+    } else {
+      // For actual route changes, you'd typically use a router's navigation hook
+      // and set isNavigating to false when the new page component mounts or finishes loading.
+      // For this example, we'll simulate it.
+      setTimeout(() => setIsNavigating(false), 1000); 
+    }
+    setIsMobileMenuOpen(false); // Close mobile menu on navigation
+  };
 
-        {/* Mobile Menu */}
-        <div className="md:hidden">
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm font-medium text-gray-700">Menu</span>
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 text-gray-700 hover:text-forest transition-colors"
-              data-testid="mobile-menu-toggle"
-            >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-          
-          {/* Mobile Menu Items */}
-          {isMobileMenuOpen && (
-            <div className="border-t border-gray-200 bg-white/95 backdrop-blur-md rounded-b-2xl">
-              <div className="flex flex-col px-4 py-3 space-y-3">
-                {navItems.map((item, index) => (
-                  <a 
-                    key={index}
-                    href={item.link}
-                    className="text-gray-700 hover:text-forest transition-colors text-sm font-medium py-2"
-                    data-testid={`mobile-nav-link-${item.name.toLowerCase().replace(' ', '-')}`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {item.name}
-                  </a>
-                ))}
-                <Button 
-                  className="bg-teal hover:bg-teal/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mt-3 w-full"
-                  data-testid="mobile-button-donate"
-                >
-                  Doe Agora
-                </Button>
-              </div>
-            </div>
-          )}
+  return (
+    <>
+      {isNavigating && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <LumaSpin />
         </div>
-      </div>
-    </nav>
+      )}
+      <nav 
+        className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-500 ${
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'
+        }`}
+        data-testid="floating-navbar"
+      >
+        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md shadow-xl rounded-2xl border border-gray-200 dark:border-gray-700">
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center space-x-8 px-6 py-3">
+            <div className="flex items-center space-x-6 text-sm font-medium">
+              {navItems.map((item, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleNavigation(item.link)}
+                  className="text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors"
+                  data-testid={`nav-link-${item.name.toLowerCase().replace(' ', '-')}`}
+                  disabled={isNavigating}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+            <Button 
+              className="bg-forest hover:bg-forest/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              data-testid="button-donate"
+              onClick={() => handleNavigation('/donate')} // Assuming a donate route
+            >
+              Doe Agora
+            </Button>
+          </div>
+
+          {/* Mobile Menu */}
+          <div className="md:hidden">
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Menu</span>
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors"
+                data-testid="mobile-menu-toggle"
+              >
+                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
+
+            {/* Mobile Menu Items */}
+            {isMobileMenuOpen && (
+              <div className="border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-b-2xl">
+                <div className="flex flex-col px-4 py-3 space-y-3">
+                  {navItems.map((item, index) => (
+                    <button 
+                      key={index}
+                      href={item.link}
+                      className="text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors text-sm font-medium py-2 text-left"
+                      data-testid={`mobile-nav-link-${item.name.toLowerCase().replace(' ', '-')}`}
+                      onClick={() => handleNavigation(item.link)}
+                      disabled={isNavigating}
+                    >
+                      {item.name}
+                    </button>
+                  ))}
+                  <Button 
+                    className="bg-forest hover:bg-forest/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mt-3 w-full"
+                    data-testid="mobile-button-donate"
+                    onClick={() => handleNavigation('/donate')} // Assuming a donate route
+                  >
+                    Doe Agora
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+    </>
   );
 }
