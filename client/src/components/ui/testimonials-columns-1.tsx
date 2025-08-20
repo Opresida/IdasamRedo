@@ -23,7 +23,7 @@ export const TestimonialsColumn = (props: {
       >
         {[
           ...new Array(2).fill(0).map((_, index) => (
-            <div key={index}>
+            <div key={index} className="flex flex-col gap-12">
               {props.testimonials.map(({ text, image, name, role }, i) => (
                 <div className="p-6 rounded-3xl border shadow-lg shadow-primary/10 max-w-xs w-full bg-white" key={i}>
                   <div className="text-gray-700 text-sm leading-relaxed">{text}</div>
