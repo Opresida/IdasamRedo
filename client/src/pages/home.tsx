@@ -38,8 +38,6 @@ export default function Home() {
               Profissionais dedicados à pesquisa científica e inovação tecnológica para o desenvolvimento sustentável da Amazônia
             </p>
           </div>
-
-          <TestimonialsSection />
         </div>
       </section>
 
