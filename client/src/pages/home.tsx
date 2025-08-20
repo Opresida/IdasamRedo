@@ -17,16 +17,12 @@ export default function Home() {
       <FloatingNavbar />
       <AnimatedHero />
       <AboutSection />
-      <AnimatedTestimonials />
       <TestimonialsSection />
+      <CoracaoRibeirinhoSection />
+      <AnimatedTestimonials />
       <GlobeFeatureSection />
       <Logos3 />
       <List2 />
-
-      {/* Projeto Coração Ribeirinho */}
-      <CoracaoRibeirinhoSection />
-
-      {/* Seção de Contato */}
       <ShadcnblocksComFooter2 />
       <WhatsAppFloat />
     </div>
