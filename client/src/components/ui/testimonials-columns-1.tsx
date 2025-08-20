@@ -19,7 +19,7 @@ export const TestimonialsColumn = (props: {
           ease: "linear",
           repeatType: "loop",
         }}
-        className="flex flex-col gap-6 pb-6 bg-background"
+        className="flex flex-col gap-12 pb-12 bg-background"
       >
         {[
           ...new Array(2).fill(0).map((_, index) => (
