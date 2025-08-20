@@ -5,6 +5,7 @@ import WhatsAppFloat from '@/components/whatsapp-float';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 import GlobeFeatureSection from '@/components/ui/globe-feature-section';
 import Floating, { FloatingElement } from '@/components/ui/parallax-floating';
+import ContactForm from '@/components/contact-form';
 
 // Definição dos tipos
 interface Project {
@@ -251,7 +252,7 @@ const ProjectIcons = {
     <svg className="w-12 h-12" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="12" y="25" width="40" height="20" rx="10" fill="#666"/>
       <circle cx="22" cy="35" r="4" fill="#4169E1"/>
-      <circle cx="42" cy="32" r="2" fill="#FF6347"/>
+      <circle cx="42" cy="35" r="2" fill="#FF6347"/>
       <circle cx="46" cy="35" r="2" fill="#32CD32"/>
       <circle cx="42" cy="38" r="2" fill="#FFD700"/>
       <circle cx="38" cy="35" r="2" fill="#FF69B4"/>
@@ -782,6 +783,19 @@ export default function ProjetosPage() {
 
       {/* Globe Feature Section */}
       <GlobeFeatureSection />
+
+      {/* Formulário de Contato */}
+        <section className="py-20 px-4 bg-gradient-to-br from-sand/30 to-teal/5">
+          <div className="max-w-4xl mx-auto text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-forest mb-4">
+              Tem um projeto inovador?
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Queremos conhecer sua proposta! Envie os detalhes do seu projeto e nossa equipe entrará em contato para avaliar as possibilidades de parceria.
+            </p>
+          </div>
+          <ContactForm />
+        </section>
 
       {/* Modal de Detalhes */}
       {selectedProject && (
