@@ -205,7 +205,7 @@ const CoracaoRibeirinhoSection = () => {
               <button
                 onClick={handleDonate}
                 disabled={!selectedValue && !customValue}
-                className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl text-lg transition-colors shadow-lg"
+                className="w-full bg-teal hover:bg-teal/90 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl text-lg transition-colors shadow-lg"
               >
                 <QrCode className="w-6 h-6 inline mr-2" />
                 QUERO DOAR AGORA
