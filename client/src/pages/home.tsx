@@ -22,24 +22,6 @@ export default function Home() {
       <GlobeFeatureSection />
       <Logos3 />
       <List2 />
-      {/* Nossa Equipe de Pesquisadores */}
-      <section className="py-20 bg-gradient-to-br from-sand/30 to-teal/5">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="flex justify-center mb-6">
-              <div className="border border-forest/20 py-2 px-6 rounded-full bg-sand/50 backdrop-blur-sm">
-                <span className="text-forest font-medium">Pesquisa e Inovação</span>
-              </div>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6">
-              Nossa Equipe de Pesquisadores
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Profissionais dedicados à pesquisa científica e inovação tecnológica para o desenvolvimento sustentável da Amazônia
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* Projeto Coração Ribeirinho */}
       <CoracaoRibeirinhoSection />
