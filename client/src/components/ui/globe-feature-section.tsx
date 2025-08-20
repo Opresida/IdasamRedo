@@ -82,6 +82,19 @@ export function AnimatedGlobe({ className }: { className?: string }) {
     // Função para carregar Three.js dinamicamente
     const loadThreeJS = async () => {
       try {
+        // Verifica se Three.js já foi carregado
+        if ((window as any).THREE) {
+          initializeGlobe();
+          return;
+        }
+
+        // Verifica se já existe um script Three.js carregando
+        const existingScript = document.querySelector('script[src*="three.min.js"]');
+        if (existingScript) {
+          existingScript.addEventListener('load', initializeGlobe);
+          return;
+        }
+
         // Carrega Three.js do CDN
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
