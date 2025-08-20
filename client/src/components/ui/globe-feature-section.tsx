@@ -1,4 +1,3 @@
-
 "use client";
 
 // --- COMPONENTES SUBSTITUTOS ---
@@ -171,7 +170,7 @@ export function AnimatedGlobe({ className }: { className?: string }) {
       // Geometry e Material da Terra
       const sphereGeometry = new THREE.SphereGeometry(2.8, 64, 64);
       const textureLoader = new THREE.TextureLoader();
-      
+
       const earthTexture = textureLoader.load(
         'https://unpkg.com/three-globe@2.27.1/example/img/earth-day.jpg',
         () => {
@@ -280,7 +279,7 @@ export function AnimatedGlobe({ className }: { className?: string }) {
         {/* Overlay de brilho sutil */}
         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white to-transparent opacity-10 hover:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
 
-        
+
       </div>
     </div>
   );
