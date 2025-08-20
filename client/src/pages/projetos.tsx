@@ -784,19 +784,6 @@ export default function ProjetosPage() {
       {/* Globe Feature Section */}
       <GlobeFeatureSection />
 
-      {/* Formulário de Contato */}
-        <section className="py-20 px-4 bg-gradient-to-br from-sand/30 to-teal/5">
-          <div className="max-w-4xl mx-auto text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-forest mb-4">
-              Tem um projeto inovador?
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Queremos conhecer sua proposta! Envie os detalhes do seu projeto e nossa equipe entrará em contato para avaliar as possibilidades de parceria.
-            </p>
-          </div>
-          <ContactForm />
-        </section>
-
       {/* Modal de Detalhes */}
       {selectedProject && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
