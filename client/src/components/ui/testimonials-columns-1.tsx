@@ -19,11 +19,11 @@ export const TestimonialsColumn = (props: {
           ease: "linear",
           repeatType: "loop",
         }}
-        className="flex flex-col gap-9 pb-9 bg-background"
+        className="flex flex-col gap-7 pb-7 bg-background"
       >
         {[
           ...new Array(2).fill(0).map((_, index) => (
-            <div key={index} className="flex flex-col gap-9">
+            <div key={index} className="flex flex-col gap-7">
               {props.testimonials.map(({ text, image, name, role }, i) => (
                 <div className="p-6 rounded-3xl border shadow-lg shadow-primary/10 max-w-xs w-full bg-white" key={i}>
                   <div className="text-gray-700 text-sm leading-relaxed">{text}</div>
