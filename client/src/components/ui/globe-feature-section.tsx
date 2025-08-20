@@ -2,14 +2,19 @@
 "use client";
 
 // --- COMPONENTES SUBSTITUTOS ---
-const Button = ({ className, children }: { className?: string, children: React.ReactNode }) => (
+const Button = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { className?: string }
+>(({ className, children, ...props }, ref) => (
   <button
+    ref={ref}
     className={className}
     style={{ backgroundColor: '#0d9488', color: 'white' }}
+    {...props}
   >
     {children}
   </button>
-);
+));
 
 const ArrowRight = ({ className }: { className?: string }) => (
   <svg
@@ -30,7 +35,7 @@ const ArrowRight = ({ className }: { className?: string }) => (
 );
 
 // --- IMPORTAÇÕES ---
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
