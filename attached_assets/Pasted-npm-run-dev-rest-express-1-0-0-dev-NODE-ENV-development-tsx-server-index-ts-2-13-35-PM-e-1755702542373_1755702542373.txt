@@ -1,0 +1,80 @@
+npm run dev
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+2:13:35 PM [express] serving on port 5000
+Error:   Failed to scan for dependencies from entries:
+  /home/runner/workspace/client/index.html
+/home/runner/workspace/client/public/form.html
+
+  ✘ [ERROR] The symbol "labelVariants" has already been declared
+
+    client/src/components/ui/label.tsx:30:6:
+      30 │ const labelVariants = cva(
+         ╵       ~~~~~~~~~~~~~
+
+  The symbol "labelVariants" was originally declared here:
+
+    client/src/components/ui/label.tsx:7:6:
+      7 │ const labelVariants = cva(
+        ╵       ~~~~~~~~~~~~~
+
+
+✘ [ERROR] The symbol "Label" has already been declared
+
+    client/src/components/ui/label.tsx:34:6:
+      34 │ const Label = React.forwardRef<
+         ╵       ~~~~~
+
+  The symbol "Label" was originally declared here:
+
+    client/src/components/ui/label.tsx:11:6:
+      11 │ const Label = React.forwardRef<
+         ╵       ~~~~~
+
+
+✘ [ERROR] Expected identifier but found "/"
+
+    client/src/components/ui/label.tsx:48:1:
+      48 │ </label>
+         ╵  ^
+
+
+✘ [ERROR] The symbol "Textarea" has already been declared
+
+    client/src/components/ui/textarea.tsx:26:6:
+      26 │ const Textarea = React.forwardRef<
+         ╵       ~~~~~~~~
+
+  The symbol "Textarea" was originally declared here:
+
+    client/src/components/ui/textarea.tsx:5:6:
+      5 │ const Textarea = React.forwardRef<
+        ╵       ~~~~~~~~
+
+
+✘ [ERROR] Multiple exports with the same name "Textarea"
+
+    client/src/components/ui/textarea.tsx:43:9:
+      43 │ export { Textarea }
+         ╵          ~~~~~~~~
+
+  The name "Textarea" was originally exported here:
+
+    client/src/components/ui/textarea.tsx:22:9:
+      22 │ export { Textarea }
+         ╵          ~~~~~~~~
+
+
+    at failureErrorWithLog (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1472:15)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:943:7)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:955:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:954:54)
+    at handleRequest (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:647:17)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:672:7)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:600:7)
+~/workspace$ 
