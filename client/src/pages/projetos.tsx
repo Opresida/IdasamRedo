@@ -6,6 +6,13 @@ import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 import GlobeFeatureSection from '@/components/ui/globe-feature-section';
 import Floating, { FloatingElement } from '@/components/ui/parallax-floating';
 import ContactForm from '@/components/contact-form';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 // Definição dos tipos
 interface Project {
