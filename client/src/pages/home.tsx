@@ -17,9 +17,9 @@ export default function Home() {
       <FloatingNavbar />
       <AnimatedHero />
       <AboutSection />
-      <TestimonialsSection />
-      <CoracaoRibeirinhoSection />
       <AnimatedTestimonials />
+      <CoracaoRibeirinhoSection />
+      <TestimonialsSection />
       <GlobeFeatureSection />
       <Logos3 />
       <List2 />
