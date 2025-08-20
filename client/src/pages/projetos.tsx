@@ -728,65 +728,7 @@ export default function ProjetosPage() {
         </div>
       </section>
 
-    {/* Seção do Diretor de Projetos */}
-    <section className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center mb-16">
-          <div className="flex justify-center mb-6">
-            <div className="border border-forest/20 py-2 px-6 rounded-full bg-sand/50 backdrop-blur-sm">
-              <span className="text-forest font-medium">Liderança</span>
-            </div>
-          </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6">
-            Direção de Projetos
-          </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Conheça o responsável pela direção estratégica dos projetos institucionais do IDASAM
-          </p>
-        </div>
-
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-sand/30 rounded-3xl p-8 md:p-12 shadow-lg">
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              {/* Foto do Diretor */}
-              <div className="flex-shrink-0">
-                <img 
-                  src="https://i.imgur.com/ywlpUOU.png" 
-                  alt="Mauricio Rocha - Diretor Comercial e de Projetos Institucionais"
-                  className="w-48 h-48 md:w-56 md:h-56 rounded-2xl object-cover shadow-lg"
-                />
-              </div>
-
-              {/* Informações do Diretor */}
-              <div className="flex-1 text-center md:text-left">
-                <h3 className="text-3xl md:text-4xl font-bold text-forest mb-2">
-                  Mauricio Rocha
-                </h3>
-                <p className="text-xl text-teal font-semibold mb-6">
-                  Diretor Comercial e de Projetos Institucionais
-                </p>
-                <div className="prose prose-lg max-w-none">
-                  <p className="text-gray-700 leading-relaxed mb-4">
-                    À frente da Diretoria Comercial e de Projetos Institucionais do IDASAM, Mauricio Rocha 
-                    desempenha um papel fundamental na conexão entre o potencial inovador da Amazônia e as 
-                    oportunidades de mercado globais. Sua gestão é focada em estruturar e viabilizar iniciativas 
-                    de alto impacto, que abrangem desde a bioeconomia e sustentabilidade até a saúde digital 
-                    e a capacitação tecnológica de comunidades locais.
-                  </p>
-                  <p className="text-gray-700 leading-relaxed">
-                    Mauricio é especialista em construir pontes entre o setor público, a iniciativa privada 
-                    e organizações internacionais, garantindo os recursos e a viabilidade necessários para o 
-                    portfólio de projetos do instituto. Sua liderança é movida pela convicção de que é possível 
-                    aliar progresso econômico com a preservação da biodiversidade e o desenvolvimento social, 
-                    posicionando a Amazônia como um polo global de inovação sustentável.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    
 
       {/* Globe Feature Section */}
       <GlobeFeatureSection />
