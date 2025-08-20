@@ -1,5 +1,8 @@
 "use client";
 
+// --- IMPORTAÇÕES ---
+import React, { useEffect, useRef, useState } from "react";
+
 // --- COMPONENTES SUBSTITUTOS ---
 const Button = React.forwardRef<
   HTMLButtonElement,
@@ -32,9 +35,6 @@ const ArrowRight = ({ className }: { className?: string }) => (
     <polyline points="12 5 19 12 12 19" />
   </svg>
 );
-
-// --- IMPORTAÇÕES ---
-import React, { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
