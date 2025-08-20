@@ -1,0 +1,84 @@
+Prompt para Criação da Seção de Doação "Projeto Coração Ribeirinho" no Replit
+1. Objetivo Principal
+Criar uma seção de destaque na página principal para a campanha de doação de alimentos "Coração Ribeirinho". A seção deve ser emocionalmente envolvente, informativa e funcional, incentivando os visitantes a doarem através de um QR Code PIX e visualizando o impacto de sua contribuição em um medidor de progresso.
+
+2. Estrutura e Componentes
+A seção deve ser dividida em duas colunas em telas maiores (desktop/tablet) e empilhada verticalmente em telas menores (mobile).
+
+Coluna Esquerda (Conteúdo e Copy):
+
+Título: Projeto Coração Ribeirinho
+
+Subtítulo: Levando alimento e esperança para as comunidades ribeirinhas da Amazônia desde 2021.
+
+Parágrafo 1 (O Problema):
+
+"Nas margens dos rios da Amazônia, milhares de famílias enfrentam um desafio diário: a insegurança alimentar. A distância, a logística e as dificuldades sazonais tornam o acesso a alimentos nutritivos uma luta constante. Para uma criança, isso significa um futuro incerto. Para um idoso, significa vulnerabilidade."
+
+Parágrafo 2 (A Solução):
+
+"Desde 2021, o projeto Coração Ribeirinho atua como uma ponte de solidariedade. Com a sua ajuda, transformamos doações em cestas básicas completas, que viajam por rios e igarapés para chegar a quem mais precisa. Cada cesta não leva apenas comida, leva a certeza de que ninguém foi esquecido."
+
+Chamada para Ação (Call to Action):
+
+Faça parte deste movimento. Com um simples gesto, você nutre uma família e fortalece o coração da Amazônia.
+
+Coluna Direita (Interação e Medidor):
+
+Título do Bloco: Nossa Meta: 5.000 Cestas Básicas
+
+Medidor de Doação (Barra de Progresso):
+
+Uma barra de progresso visualmente atraente.
+
+Deve exibir o número de cestas já alcançadas (ex: 452 / 5.000 Cestas).
+
+A barra deve ser preenchida com um gradiente usando a cor de acento da nossa paleta (#FBBF24).
+
+Seleção de Valores:
+
+Botões pré-definidos para doação (ex: R$ 25, R$ 50, R$ 10, R$ 120 (Doe uma cesta completa).
+
+R$ 50 deve vir pré-selecionado ou em destaque.
+
+Um campo para "Outro Valor", onde o usuário pode digitar uma quantia.
+
+Botão Principal:
+
+Um botão grande e chamativo com o texto QUERO DOAR AGORA.
+
+3. Lógica e Funcionalidade (Front-End)
+A. Medidor de Doação (Simulação):
+
+Estado Inicial: A barra deve começar com um valor fixo para simular que a campanha já está em andamento. Por exemplo, inicie com 452 cestas de uma meta de 1.000.
+
+Atualização: Quando o usuário "paga" via QR Code e fecha o modal, a barra deve ser atualizada. A lógica será: valorDoado / custoPorCesta. Vamos definir que cada cesta custa R$ 120.
+
+Exemplo: Se o usuário doa R$ 240, a barra deve aumentar em 2 cestas. A animação do preenchimento da barra deve ser suave (transition).
+
+Persistência: Use o localStorage do navegador para salvar o valor atual da barra. Assim, se o usuário recarregar a página, o progresso que ele ajudou a criar permanecerá visível (para ele).
+
+B. Geração do QR Code:
+
+Biblioteca: Utilize uma biblioteca JavaScript leve para gerar o QR Code, como a qrcode-generator ou qrcode.js.
+
+Instrução de Importação (exemplo): <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.js"></script>
+
+Modal: Ao clicar em "QUERO DOAR AGORA", um modal (pop-up) deve aparecer.
+
+Conteúdo do Modal:
+
+Título: Obrigado por aquecer um coração ribeirinho!
+
+Instrução: Abra o aplicativo do seu banco e escaneie o QR Code abaixo para doar via PIX.
+
+O QR Code Gerado: O QR Code deve ser gerado dinamicamente com base no valor selecionado. Use um gerador de "Copia e Cola" do PIX para criar um código base.
+
+Botão "Já fiz a doação!" ou um "X" para fechar o modal. Ao fechar, a barra de progresso é atualizada.
+
+4. Design e Estilo
+Cores: Respeite a paleta de cores já definida para o site. Use o verde (#2A5B46) para os textos, o amarelo (#FBBF24) para o botão principal e a barra de progresso.
+
+Fonte: Mantenha a consistência com as fontes do site ("Montserrat" para títulos, "Inter" para textos).
+
+Ícones: Adicione um ícone de coração ao lado do título "Projeto Coração Ribeirinho" para reforçar a identidade.
