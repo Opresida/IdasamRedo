@@ -821,9 +821,21 @@ export default function ProjetosPage() {
 
               {/* Botões do Modal */}
               <div className="flex gap-3 mt-8">
-                <button className="flex-1 bg-idasam-green-dark text-white py-3 px-6 rounded-lg hover:bg-idasam-green-medium transition-colors">
-                  Participar do Projeto
-                </button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="flex-1 bg-idasam-green-dark text-white py-3 px-6 rounded-lg hover:bg-idasam-green-medium transition-colors">
+                      Participar do Projeto
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl text-center text-teal-600">
+                        Participar do Projeto: {selectedProject.title}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <ContactForm />
+                  </DialogContent>
+                </Dialog>
                 <button
                   onClick={() => setSelectedProject(null)}
                   className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
