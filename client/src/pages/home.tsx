@@ -18,17 +18,15 @@ export default function Home() {
       <AnimatedHero />
       <AboutSection />
       <AnimatedTestimonials />
-      
+      <TestimonialsSection />
       <GlobeFeatureSection />
       <Logos3 />
       <List2 />
 
-      {/* Testimonials / Nossa Equipe de Pesquisadores */}
-      <TestimonialsSection />
-
       {/* Projeto Coração Ribeirinho */}
       <CoracaoRibeirinhoSection />
 
+      {/* Seção de Contato */}
       <ShadcnblocksComFooter2 />
       <WhatsAppFloat />
     </div>
