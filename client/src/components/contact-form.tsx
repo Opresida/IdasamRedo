@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardDescription } from '@/components/ui/card';
 import { Upload, Send, CheckCircle } from 'lucide-react';
 
 export default function ContactForm() {
@@ -28,31 +28,24 @@ export default function ContactForm() {
 
   if (isSubmitted) {
     return (
-      <Card className="max-w-lg mx-auto">
-        <CardContent className="pt-6">
-          <div className="text-center">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Mensagem Enviada!</h3>
-            <p className="text-gray-600">
-              Obrigado pelo seu interesse. Entraremos em contato em breve!
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <CardContent className="pt-6">
+        <div className="text-center">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Mensagem Enviada!</h3>
+          <p className="text-gray-600">
+            Obrigado pelo seu interesse. Entraremos em contato em breve!
+          </p>
+        </div>
+      </CardContent>
     );
   }
 
   return (
-    <Card className="max-w-lg mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl text-center text-forest">
-          Apresente seu Projeto
-        </CardTitle>
-        <CardDescription className="text-center">
-          Preencha os dados abaixo para enviar sua proposta
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div>
+      <CardDescription className="text-center mb-6">
+        Preencha os dados abaixo para enviar sua proposta
+      </CardDescription>
+      <div>
         <form 
           name="projeto-submission" 
           method="POST" 
@@ -181,7 +174,7 @@ export default function ContactForm() {
             Ao enviar, você concorda com nossos termos de privacidade.
           </p>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -31,6 +31,14 @@ const ArrowRight = ({ className }: { className?: string }) => (
 
 // --- IMPORTAÇÕES ---
 import { useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./dialog";
+import ContactForm from "../contact-form";
 
 // --- COMPONENTE PRINCIPAL ---
 export default function GlobeFeatureSection() {
@@ -54,9 +62,21 @@ export default function GlobeFeatureSection() {
             o desenvolvimento sustentável de todo o Brasil e inspirando
             soluções globais.
           </p>
-          <Button className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-semibold transition-colors shadow-lg">
-            Apresente seu projeto <ArrowRight className="h-4 w-4" />
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-semibold transition-colors shadow-lg">
+                Apresente seu projeto <ArrowRight className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl text-center text-teal-600">
+                  Apresente seu Projeto
+                </DialogTitle>
+              </DialogHeader>
+              <ContactForm />
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Contêiner do Globo Responsivo */}
