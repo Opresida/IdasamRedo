@@ -93,7 +93,7 @@ const CoracaoRibeirinhoSection = () => {
         }
       `}</style>
 
-      <section className="py-20 bg-gray-50 relative overflow-hidden">
+      <section id="coracao-ribeirinho" className="py-20 bg-gray-50 relative overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-10" 
           style={{backgroundImage: "url('https://images.unsplash.com/photo-1611599296386-214d33407a2b?q=80&w=2070&auto=format&fit=crop')"}}

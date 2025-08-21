@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Heart, DollarSign } from 'lucide-react';
 import { Component as LumaSpin } from "@/components/ui/luma-spin"; // Import the LumaSpin component
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface NavItem {
   name: string;
@@ -21,6 +28,7 @@ export default function FloatingNavbar() {
   const [isVisible, setIsVisible] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false); // State to track navigation
+  const [showDonationModal, setShowDonationModal] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -76,6 +84,33 @@ export default function FloatingNavbar() {
     setIsMobileMenuOpen(false); // Close mobile menu on navigation
   };
 
+  const handleDonationCurrency = (currency: 'BRL' | 'USD') => {
+    setShowDonationModal(false);
+    // Aqui você pode implementar a lógica específica para cada moeda
+    if (currency === 'BRL') {
+      // Redirecionar para doação em Real - pode ser PIX ou outro método
+      console.log('Doação em Real selecionada');
+      // Exemplo: redirecionar para seção Coração Ribeirinho
+      if (window.location.pathname === '/') {
+        const element = document.querySelector('#coracao-ribeirinho');
+        if (element) {
+          const offsetTop = element.offsetTop - 100;
+          window.scrollTo({
+            top: offsetTop,
+            behavior: 'smooth'
+          });
+        }
+      } else {
+        window.location.href = '/#coracao-ribeirinho';
+      }
+    } else {
+      // Redirecionar para doação em Dólar - pode ser PayPal, Stripe, etc.
+      console.log('Doação em Dólar selecionada');
+      // Aqui você pode implementar a lógica para doação internacional
+      alert('Funcionalidade de doação em dólar em desenvolvimento');
+    }
+  };
+
   return (
     <>
       {isNavigating && (
@@ -105,13 +140,58 @@ export default function FloatingNavbar() {
                 </button>
               ))}
             </div>
-            <Button 
-              className="bg-forest hover:bg-forest/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              data-testid="button-donate"
-              onClick={() => handleNavigation('/donate')} // Assuming a donate route
-            >
-              Doe Agora
-            </Button>
+            <Dialog open={showDonationModal} onOpenChange={setShowDonationModal}>
+              <DialogTrigger asChild>
+                <Button 
+                  className="bg-forest hover:bg-forest/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  data-testid="button-donate"
+                >
+                  Doe Agora
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl text-center text-forest mb-4">
+                    <Heart className="w-8 h-8 mx-auto mb-2 text-red-500" />
+                    Escolha sua Moeda
+                  </DialogTitle>
+                </DialogHeader>
+                
+                <div className="space-y-4 p-2">
+                  <p className="text-center text-gray-600 mb-6">
+                    Selecione em qual moeda você gostaria de fazer sua doação:
+                  </p>
+                  
+                  <div className="grid gap-4">
+                    <button
+                      onClick={() => handleDonationCurrency('BRL')}
+                      className="flex items-center justify-center gap-3 w-full p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:bg-green-100 hover:border-green-300 transition-all"
+                    >
+                      <span className="text-2xl">🇧🇷</span>
+                      <div className="text-left">
+                        <div className="font-semibold text-green-700">Real (BRL)</div>
+                        <div className="text-sm text-green-600">PIX, Cartão de Crédito</div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleDonationCurrency('USD')}
+                      className="flex items-center justify-center gap-3 w-full p-4 bg-blue-50 border-2 border-blue-200 rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-all"
+                    >
+                      <DollarSign className="w-6 h-6 text-blue-600" />
+                      <div className="text-left">
+                        <div className="font-semibold text-blue-700">Dólar (USD)</div>
+                        <div className="text-sm text-blue-600">PayPal, Cartão Internacional</div>
+                      </div>
+                    </button>
+                  </div>
+                  
+                  <p className="text-xs text-center text-gray-500 mt-4">
+                    Sua doação ajuda a transformar vidas na Amazônia
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Mobile Menu */}
@@ -143,13 +223,58 @@ export default function FloatingNavbar() {
                       {item.name}
                     </button>
                   ))}
-                  <Button 
-                    className="bg-forest hover:bg-forest/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mt-3 w-full"
-                    data-testid="mobile-button-donate"
-                    onClick={() => handleNavigation('/donate')} // Assuming a donate route
-                  >
-                    Doe Agora
-                  </Button>
+                  <Dialog open={showDonationModal} onOpenChange={setShowDonationModal}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        className="bg-forest hover:bg-forest/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors mt-3 w-full"
+                        data-testid="mobile-button-donate"
+                      >
+                        Doe Agora
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl text-center text-forest mb-4">
+                          <Heart className="w-8 h-8 mx-auto mb-2 text-red-500" />
+                          Escolha sua Moeda
+                        </DialogTitle>
+                      </DialogHeader>
+                      
+                      <div className="space-y-4 p-2">
+                        <p className="text-center text-gray-600 mb-6">
+                          Selecione em qual moeda você gostaria de fazer sua doação:
+                        </p>
+                        
+                        <div className="grid gap-4">
+                          <button
+                            onClick={() => handleDonationCurrency('BRL')}
+                            className="flex items-center justify-center gap-3 w-full p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:bg-green-100 hover:border-green-300 transition-all"
+                          >
+                            <span className="text-2xl">🇧🇷</span>
+                            <div className="text-left">
+                              <div className="font-semibold text-green-700">Real (BRL)</div>
+                              <div className="text-sm text-green-600">PIX, Cartão de Crédito</div>
+                            </div>
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDonationCurrency('USD')}
+                            className="flex items-center justify-center gap-3 w-full p-4 bg-blue-50 border-2 border-blue-200 rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-all"
+                          >
+                            <DollarSign className="w-6 h-6 text-blue-600" />
+                            <div className="text-left">
+                              <div className="font-semibold text-blue-700">Dólar (USD)</div>
+                              <div className="text-sm text-blue-600">PayPal, Cartão Internacional</div>
+                            </div>
+                          </button>
+                        </div>
+                        
+                        <p className="text-xs text-center text-gray-500 mt-4">
+                          Sua doação ajuda a transformar vidas na Amazônia
+                        </p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
             )}
