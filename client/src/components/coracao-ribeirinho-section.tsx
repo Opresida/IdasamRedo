@@ -11,36 +11,15 @@ const projectImages = [
   'https://i.imgur.com/1gi4Eay.jpeg',
 ];
 
-// --- FUNÇÃO PARA CALCULAR O CRC16 (Checksum do PIX) ---
-// Esta função é necessária para gerar um código PIX válido dinamicamente.
-const crc16 = (payload) => {
-  let crc = 0xFFFF;
-  for (let i = 0; i < payload.length; i++) {
-    crc ^= payload.charCodeAt(i) << 8;
-    for (let j = 0; j < 8; j++) {
-      crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
-    }
-  }
-  return ('0000' + (crc & 0xFFFF).toString(16).toUpperCase()).slice(-4);
+// MUDANÇA: Armazenando os códigos PIX fornecidos
+const pixCodes = {
+  25: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam520400005303986540525.005802BR5906IDASAM6006MANAUS62070503***630430D9',
+  50: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam520400005303986540550.005802BR5906IDASAM6006MANAUS62070503***6304EE99',
+  120: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam5204000053039865406120.005802BR5906IDASAM6006MANAUS62070503***6304E3FD',
+  noValue: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam5204000053039865802BR5906IDASAM6006MANAUS62070503***63046351',
 };
 
-// --- FUNÇÃO PARA GERAR O CÓDIGO PIX COMPLETO ---
-const generatePixCode = (baseKey, amount) => {
-  const formattedAmount = amount.toFixed(2).toString();
-  const amountLength = formattedAmount.length < 10 ? `0${formattedAmount.length}` : formattedAmount.length.toString();
-
-  // Monta o campo de valor (ID 54)
-  const amountField = `54${amountLength}${formattedAmount}`;
-
-  // Insere o campo de valor na chave base
-  const payloadWithoutCrc = `${baseKey}${amountField}5802BR5925IDASAM INSTITUTO DE DESEN6009SAO PAULO62070503***6304`;
-
-  // Calcula o CRC16 do payload completo
-  const checksum = crc16(payloadWithoutCrc);
-
-  return `${payloadWithoutCrc}${checksum}`;
-};
-
+// MUDANÇA: Funções de geração dinâmica de PIX foram removidas por não serem mais necessárias.
 
 const CoracaoRibeirinhoSection = () => {
   const [selectedValue, setSelectedValue] = useState(50);
@@ -74,9 +53,13 @@ const CoracaoRibeirinhoSection = () => {
   const handleDonateClick = () => {
     const amount = customValue ? parseInt(customValue, 10) : selectedValue;
     if (amount > 0) {
-      // Chave PIX base (sem valor e sem os campos finais)
-      const basePixKey = '00020126580014BR.GOV.BCB.PIX01363634316600015800520400005303986';
-      const finalPixCode = generatePixCode(basePixKey, amount);
+      let finalPixCode;
+      // MUDANÇA: Seleciona o código PIX correto com base na escolha do usuário
+      if (customValue) {
+        finalPixCode = pixCodes.noValue;
+      } else {
+        finalPixCode = pixCodes[selectedValue] || pixCodes.noValue;
+      }
       setPixCode(finalPixCode);
       setShowModal(true);
     }
