@@ -7,6 +7,9 @@ import { Globe, Users, Droplet } from 'lucide-react';
 import DonationFormUSD from './DonationFormUSD';
 // Importe o componente de Footer
 import ShadcnblocksComFooter2 from './components/shadcnblocks-com-footer2';
+// Importe o menu flutuante e botão WhatsApp
+import FloatingNavbar from './components/floating-navbar';
+import WhatsAppFloat from './components/whatsapp-float';
 
 // Carrega o Stripe com sua chave publicável lida dos "Secrets" do Replit
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -22,6 +25,8 @@ const actionPhotos = [
 const PaginaDeDoacao = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <FloatingNavbar />
+      <WhatsAppFloat />
       <main className="flex-grow">
         {/* Seção Hero - Imagem de Fundo ATUALIZADA */}
         <div 
