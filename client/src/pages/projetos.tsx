@@ -473,6 +473,7 @@ export default function ProjetosPage() {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showPixModal, setShowPixModal] = useState(false);
+  const [showPixValueModal, setShowPixValueModal] = useState(false);
   const [selectedPixValue, setSelectedPixValue] = useState(0);
   const [pixCode, setPixCode] = useState('');
   const [pixCopied, setPixCopied] = useState(false);
@@ -487,7 +488,8 @@ export default function ProjetosPage() {
     setSelectedPixValue(value);
     const finalPixCode = pixCodes[value] || pixCodes.noValue;
     setPixCode(finalPixCode);
-    setShowPixModal(true);
+    setShowPixValueModal(false); // Fecha o modal de seleção de valores
+    setShowPixModal(true); // Abre o modal do QR Code
   };
 
   // Função para copiar código PIX
@@ -512,6 +514,7 @@ export default function ProjetosPage() {
   // Função para finalizar doação
   const handlePixDonationComplete = () => {
     setShowPixModal(false);
+    setShowPixValueModal(false);
     setPixCopied(false);
     setSelectedPixValue(0);
     setPixCode('');
@@ -838,9 +841,12 @@ export default function ProjetosPage() {
                 
                 {/* Botões de Doação */}
                 <div className="grid grid-cols-2 gap-3">
-                  <Dialog>
+                  <Dialog open={showPixValueModal} onOpenChange={setShowPixValueModal}>
                     <DialogTrigger asChild>
-                      <button className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
+                      <button 
+                        onClick={() => setShowPixValueModal(true)}
+                        className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                      >
                         <span className="text-lg">🇧🇷</span>
                         <span>Doar em Real</span>
                       </button>
