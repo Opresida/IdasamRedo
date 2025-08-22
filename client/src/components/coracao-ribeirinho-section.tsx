@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Heart, X, QrCode } from 'lucide-react';
+import { Heart, X, QrCode, Copy, Check } from 'lucide-react';
 
 // Array com as imagens do projeto
 const projectImages = [
@@ -27,6 +27,7 @@ const CoracaoRibeirinhoSection = () => {
   const [showModal, setShowModal] = useState(false);
   const [progress, setProgress] = useState(452); // Valor inicial
   const [pixCode, setPixCode] = useState('');
+  const [pixCopied, setPixCopied] = useState(false);
 
   const TOTAL_GOAL = 5000;
   const COST_PER_BASKET = 120;
@@ -75,6 +76,26 @@ const CoracaoRibeirinhoSection = () => {
 
     setShowModal(false);
     setCustomValue('');
+    setPixCopied(false);
+  };
+
+  const handleCopyPixCode = async () => {
+    try {
+      await navigator.clipboard.writeText(pixCode);
+      setPixCopied(true);
+      setTimeout(() => setPixCopied(false), 3000); // Volta ao estado normal após 3 segundos
+    } catch (err) {
+      console.error('Erro ao copiar código PIX:', err);
+      // Fallback para navegadores mais antigos
+      const textArea = document.createElement('textarea');
+      textArea.value = pixCode;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setPixCopied(true);
+      setTimeout(() => setPixCopied(false), 3000);
+    }
   };
 
   const progressPercentage = (progress / TOTAL_GOAL) * 100;
@@ -240,8 +261,36 @@ const CoracaoRibeirinhoSection = () => {
               <span className="font-bold"> R$ {donationAmountForQR}</span>.
             </p>
 
-            <div className="flex justify-center p-4 bg-gray-50 rounded-lg border">
-              <img src={qrCodeUrl} alt="QR Code PIX" />
+            <div className="space-y-4">
+              <div className="flex justify-center p-4 bg-gray-50 rounded-lg border">
+                <img src={qrCodeUrl} alt="QR Code PIX" />
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600 text-center">
+                  Ou copie o código PIX:
+                </p>
+                <button
+                  onClick={handleCopyPixCode}
+                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${
+                    pixCopied 
+                      ? 'bg-green-50 border-green-300 text-green-700' 
+                      : 'bg-gray-50 border-gray-300 hover:border-[#FBBF24] hover:bg-yellow-50'
+                  }`}
+                >
+                  {pixCopied ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span className="font-medium">Código copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span className="font-medium">Copiar código PIX</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             <button
