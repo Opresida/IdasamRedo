@@ -181,7 +181,7 @@ export default function FloatingNavbar() {
                       <DollarSign className="w-6 h-6 text-blue-600" />
                       <div className="text-left">
                         <div className="font-semibold text-blue-700">Dólar (USD)</div>
-                        <div className="text-sm text-blue-600">PayPal, Cartão Internacional</div>
+                        <div className="text-sm text-blue-600">Stripe, Cartão Internacional</div>
                       </div>
                     </button>
                   </div>
