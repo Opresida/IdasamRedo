@@ -234,6 +234,15 @@ const CoracaoRibeirinhoSection = () => {
                 <QrCode className="w-6 h-6" />
                 <span>QUERO DOAR AGORA</span>
               </button>
+
+              {/* Botão Doação em Dólar */}
+              <button
+                onClick={() => window.location.href = '/doacao-usd'}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-3"
+              >
+                <span className="text-xl">💵</span>
+                <span>QUERO DOAR EM DÓLAR</span>
+              </button>
             </div>
           </div>
         </div>
