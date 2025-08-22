@@ -8,6 +8,7 @@ import PageLoader from '@/components/page-loader';
 import Home from '@/pages/home';
 import Projetos from '@/pages/projetos';
 import NotFound from '@/pages/not-found';
+import PaginaDeDoacao from '@/PaginaDeDoacao';
 
 function AppContent() {
   const [location] = useLocation();
@@ -27,6 +28,7 @@ function AppContent() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/projetos" component={Projetos} />
+        <Route path="/doacao-usd" component={PaginaDeDoacao} />
         <Route component={NotFound} />
       </Switch>
     </PageLoader>
