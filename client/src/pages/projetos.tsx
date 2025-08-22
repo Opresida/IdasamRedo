@@ -769,10 +769,10 @@ export default function ProjetosPage() {
               </div>
 
               {/* Botões do Modal */}
-              <div className="flex gap-3 mt-8">
+              <div className="space-y-4 mt-8">
                 <Dialog>
                   <DialogTrigger asChild>
-                    <button className="flex-1 bg-idasam-green-dark text-white py-3 px-6 rounded-lg hover:bg-idasam-green-medium transition-colors">
+                    <button className="w-full bg-idasam-green-dark text-white py-3 px-6 rounded-lg hover:bg-idasam-green-medium transition-colors">
                       Participar do Projeto
                     </button>
                   </DialogTrigger>
@@ -785,9 +785,64 @@ export default function ProjetosPage() {
                     <ContactForm />
                   </DialogContent>
                 </Dialog>
+                
+                {/* Botões de Doação */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
+                        <span className="text-lg">🇧🇷</span>
+                        <span>Doar em Real</span>
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl text-center text-green-600 mb-4">
+                          <svg className="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                          </svg>
+                          Escolha o Valor da Doação
+                        </DialogTitle>
+                      </DialogHeader>
+
+                      <div className="space-y-4 p-2">
+                        <p className="text-center text-gray-600 mb-6">
+                          Selecione um valor para sua doação em reais:
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          {[25, 50, 100, 200, 500, 1000].map((value) => (
+                            <button
+                              key={value}
+                              onClick={() => {
+                                window.location.href = `/#coracao-ribeirinho?valor=${value}`;
+                              }}
+                              className="p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:bg-green-100 hover:border-green-300 transition-all"
+                            >
+                              <div className="font-semibold text-green-700">R$ {value}</div>
+                            </button>
+                          ))}
+                        </div>
+
+                        <p className="text-xs text-center text-gray-500 mt-4">
+                          Você será direcionado para a página de doação
+                        </p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <button
+                    onClick={() => window.location.href = '/doacao-usd'}
+                    className="bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="text-lg">$</span>
+                    <span>Doar em Dólar</span>
+                  </button>
+                </div>
+                
                 <button
                   onClick={() => setSelectedProject(null)}
-                  className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Fechar
                 </button>
