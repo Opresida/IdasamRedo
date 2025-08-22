@@ -5,9 +5,8 @@ import { Globe, Users, Droplet } from 'lucide-react';
 
 // Importe o componente de doação em Dólar
 import DonationFormUSD from './DonationFormUSD';
-// 1. Importe o seu componente de Footer
-// (Ajuste o caminho './Footer' se o arquivo estiver em outra pasta)
-import Footer from './Footer';
+// Importe o componente de Footer
+import ShadcnblocksComFooter2 from './components/shadcnblocks-com-footer2';
 
 // Carrega o Stripe com sua chave publicável lida dos "Secrets" do Replit
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -96,8 +95,8 @@ const PaginaDeDoacao = () => {
         </div>
       </main>
 
-      {/* 2. Adicione o componente Footer no final da página */}
-      <Footer />
+      {/* Footer no final da página */}
+      <ShadcnblocksComFooter2 />
     </div>
   );
 };
