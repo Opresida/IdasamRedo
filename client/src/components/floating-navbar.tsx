@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Heart, DollarSign } from 'lucide-react';
 import { Component as LumaSpin } from "@/components/ui/luma-spin"; // Import the LumaSpin component
@@ -46,7 +48,7 @@ export default function FloatingNavbar() {
 
   const handleNavigation = (link: string) => {
     setIsNavigating(true); // Start navigation, show loader
-    
+
     if (link === '/') {
       // Navigate to home page
       window.location.href = '/';
@@ -58,7 +60,7 @@ export default function FloatingNavbar() {
         setTimeout(() => {
           const element = document.querySelector(link);
           if (element) {
-            const offsetTop = element.offsetTop - 100; // Offset para compensar navbar
+            const offsetTop = (element as HTMLElement).offsetTop - 100; // Offset para compensar navbar
             window.scrollTo({
               top: offsetTop,
               behavior: 'smooth'
@@ -94,7 +96,7 @@ export default function FloatingNavbar() {
       if (window.location.pathname === '/') {
         const element = document.querySelector('#coracao-ribeirinho');
         if (element) {
-          const offsetTop = element.offsetTop - 100;
+          const offsetTop = (element as HTMLElement).offsetTop - 100;
           window.scrollTo({
             top: offsetTop,
             behavior: 'smooth'
@@ -107,7 +109,8 @@ export default function FloatingNavbar() {
       // Redirecionar para doação em Dólar - Stripe
       console.log('Doação em Dólar selecionada');
       // Redirecionar para a página de doação USD
-      window.location.href = '/doacao-usd';esenvolvimento');
+      // CORREÇÃO: Removido o texto extra que causava o erro.
+      window.location.href = '/doacao-usd';
     }
   };
 
@@ -156,12 +159,12 @@ export default function FloatingNavbar() {
                     Escolha sua Moeda
                   </DialogTitle>
                 </DialogHeader>
-                
+
                 <div className="space-y-4 p-2">
                   <p className="text-center text-gray-600 mb-6">
                     Selecione em qual moeda você gostaria de fazer sua doação:
                   </p>
-                  
+
                   <div className="grid gap-4">
                     <button
                       onClick={() => handleDonationCurrency('BRL')}
@@ -173,7 +176,7 @@ export default function FloatingNavbar() {
                         <div className="text-sm text-green-600">PIX, Cartão de Crédito</div>
                       </div>
                     </button>
-                    
+
                     <button
                       onClick={() => handleDonationCurrency('USD')}
                       className="flex items-center justify-center gap-3 w-full p-4 bg-blue-50 border-2 border-blue-200 rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-all"
@@ -185,7 +188,7 @@ export default function FloatingNavbar() {
                       </div>
                     </button>
                   </div>
-                  
+
                   <p className="text-xs text-center text-gray-500 mt-4">
                     Sua doação ajuda a transformar vidas na Amazônia
                   </p>
@@ -214,10 +217,9 @@ export default function FloatingNavbar() {
                   {navItems.map((item, index) => (
                     <button 
                       key={index}
-                      href={item.link}
+                      onClick={() => handleNavigation(item.link)}
                       className="text-gray-700 dark:text-gray-300 hover:text-forest dark:hover:text-green-400 transition-colors text-sm font-medium py-2 text-left"
                       data-testid={`mobile-nav-link-${item.name.toLowerCase().replace(' ', '-')}`}
-                      onClick={() => handleNavigation(item.link)}
                       disabled={isNavigating}
                     >
                       {item.name}
@@ -239,12 +241,12 @@ export default function FloatingNavbar() {
                           Escolha sua Moeda
                         </DialogTitle>
                       </DialogHeader>
-                      
+
                       <div className="space-y-4 p-2">
                         <p className="text-center text-gray-600 mb-6">
                           Selecione em qual moeda você gostaria de fazer sua doação:
                         </p>
-                        
+
                         <div className="grid gap-4">
                           <button
                             onClick={() => handleDonationCurrency('BRL')}
@@ -256,7 +258,7 @@ export default function FloatingNavbar() {
                               <div className="text-sm text-green-600">PIX, Cartão de Crédito</div>
                             </div>
                           </button>
-                          
+
                           <button
                             onClick={() => handleDonationCurrency('USD')}
                             className="flex items-center justify-center gap-3 w-full p-4 bg-blue-50 border-2 border-blue-200 rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-all"
@@ -268,7 +270,7 @@ export default function FloatingNavbar() {
                             </div>
                           </button>
                         </div>
-                        
+
                         <p className="text-xs text-center text-gray-500 mt-4">
                           Sua doação ajuda a transformar vidas na Amazônia
                         </p>
