@@ -104,10 +104,10 @@ export default function FloatingNavbar() {
         window.location.href = '/#coracao-ribeirinho';
       }
     } else {
-      // Redirecionar para doação em Dólar - pode ser PayPal, Stripe, etc.
+      // Redirecionar para doação em Dólar - Stripe
       console.log('Doação em Dólar selecionada');
-      // Aqui você pode implementar a lógica para doação internacional
-      alert('Funcionalidade de doação em dólar em desenvolvimento');
+      // Redirecionar para a página de doação USD
+      window.location.href = '/doacao-usd';esenvolvimento');
     }
   };
 
