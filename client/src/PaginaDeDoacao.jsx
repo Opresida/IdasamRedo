@@ -31,7 +31,7 @@ const PaginaDeDoacao = () => {
         {/* Seção Hero - Imagem de Fundo ATUALIZADA */}
         <div 
           className="relative bg-cover bg-center h-80 md:h-96" 
-          style={{backgroundImage: "url('https://i.imgur.com/R9rQRGL.jpeg')"}}
+          style={{backgroundImage: "url('https://i.imgur.com/i74pvbH.jpeg')"}}
         >
           {/* O conteúdo de texto foi removido pois já está na imagem */}
         </div>
