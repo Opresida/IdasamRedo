@@ -33,9 +33,6 @@ const PaginaDeDoacaoEUR = () => {
           className="relative bg-cover bg-center h-80 md:h-96"
           style={{backgroundImage: "url('https://i.imgur.com/5o2gRIQ.jpeg')"}}
         >
-          {/* Overlay com gradiente */}
-          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-          </div>
         </div>
 
         {/* Conteúdo Principal da Página */}
