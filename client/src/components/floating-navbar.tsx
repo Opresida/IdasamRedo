@@ -86,7 +86,7 @@ export default function FloatingNavbar() {
     setIsMobileMenuOpen(false); // Close mobile menu on navigation
   };
 
-  const handleDonationCurrency = (currency: 'BRL' | 'USD') => {
+  const handleDonationCurrency = (currency: 'BRL' | 'USD' | 'EUR') => {
     setShowDonationModal(false);
     // Aqui você pode implementar a lógica específica para cada moeda
     if (currency === 'BRL') {
@@ -105,12 +105,14 @@ export default function FloatingNavbar() {
       } else {
         window.location.href = '/#coracao-ribeirinho';
       }
-    } else {
+    } else if (currency === 'USD') {
       // Redirecionar para doação em Dólar - Stripe
       console.log('Doação em Dólar selecionada');
-      // Redirecionar para a página de doação USD
-      // CORREÇÃO: Removido o texto extra que causava o erro.
       window.location.href = '/doacao-usd';
+    } else if (currency === 'EUR') {
+      // Redirecionar para doação em Euro - Stripe
+      console.log('Doação em Euro selecionada');
+      window.location.href = '/doacao-eur';
     }
   };
 
@@ -185,6 +187,17 @@ export default function FloatingNavbar() {
                       <div className="text-left">
                         <div className="font-semibold text-blue-700">Dólar (USD)</div>
                         <div className="text-sm text-blue-600">Stripe, Cartão Internacional</div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleDonationCurrency('EUR')}
+                      className="flex items-center justify-center gap-3 w-full p-4 bg-purple-50 border-2 border-purple-200 rounded-xl hover:bg-purple-100 hover:border-purple-300 transition-all"
+                    >
+                      <span className="text-2xl">🇪🇺</span>
+                      <div className="text-left">
+                        <div className="font-semibold text-purple-700">Euro (EUR)</div>
+                        <div className="text-sm text-purple-600">Stripe, Cartão Europeu</div>
                       </div>
                     </button>
                   </div>
@@ -267,6 +280,17 @@ export default function FloatingNavbar() {
                             <div className="text-left">
                               <div className="font-semibold text-blue-700">Dólar (USD)</div>
                               <div className="text-sm text-blue-600">PayPal, Cartão Internacional</div>
+                            </div>
+                          </button>
+
+                          <button
+                            onClick={() => handleDonationCurrency('EUR')}
+                            className="flex items-center justify-center gap-3 w-full p-4 bg-purple-50 border-2 border-purple-200 rounded-xl hover:bg-purple-100 hover:border-purple-300 transition-all"
+                          >
+                            <span className="text-2xl">🇪🇺</span>
+                            <div className="text-left">
+                              <div className="font-semibold text-purple-700">Euro (EUR)</div>
+                              <div className="text-sm text-purple-600">Stripe, Cartão Europeu</div>
                             </div>
                           </button>
                         </div>
