@@ -194,7 +194,7 @@ export default function FloatingNavbar() {
                       onClick={() => handleDonationCurrency('EUR')}
                       className="flex items-center justify-center gap-3 w-full p-4 bg-purple-50 border-2 border-purple-200 rounded-xl hover:bg-purple-100 hover:border-purple-300 transition-all"
                     >
-                      <span className="text-2xl">🇪🇺</span>
+                      <span className="text-2xl text-purple-600 font-bold">€</span>
                       <div className="text-left">
                         <div className="font-semibold text-purple-700">Euro (EUR)</div>
                         <div className="text-sm text-purple-600">Stripe, Cartão Europeu</div>
@@ -287,7 +287,7 @@ export default function FloatingNavbar() {
                             onClick={() => handleDonationCurrency('EUR')}
                             className="flex items-center justify-center gap-3 w-full p-4 bg-purple-50 border-2 border-purple-200 rounded-xl hover:bg-purple-100 hover:border-purple-300 transition-all"
                           >
-                            <span className="text-2xl">🇪🇺</span>
+                            <span className="text-2xl text-purple-600 font-bold">€</span>
                             <div className="text-left">
                               <div className="font-semibold text-purple-700">Euro (EUR)</div>
                               <div className="text-sm text-purple-600">Stripe, Cartão Europeu</div>
