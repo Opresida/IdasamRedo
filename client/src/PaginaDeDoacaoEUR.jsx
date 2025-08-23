@@ -34,13 +34,8 @@ const PaginaDeDoacaoEUR = () => {
           className="relative bg-cover bg-center h-80 md:h-96" 
           style={{backgroundImage: "url('https://i.imgur.com/R9rQRGL.jpeg')"}}
         >
-          {/* Overlay com gradiente e bandeira da EU */}
+          {/* Overlay com gradiente */}
           <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-            <div className="text-center text-white">
-              <div className="text-6xl mb-4">🇪🇺</div>
-              <h1 className="text-4xl md:text-6xl font-bold mb-4">Doação em Euro</h1>
-              <p className="text-xl md:text-2xl">Apoie nossos projetos na Amazônia</p>
-            </div>
           </div>
         </div>
 
