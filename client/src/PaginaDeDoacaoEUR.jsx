@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
@@ -30,9 +29,9 @@ const PaginaDeDoacaoEUR = () => {
       <WhatsAppFloat />
       <main className="flex-grow">
         {/* Seção Hero - Imagem de Fundo */}
-        <div 
-          className="relative bg-cover bg-center h-80 md:h-96" 
-          style={{backgroundImage: "url('https://i.imgur.com/MjZlQQx.jpeg')"}}
+        <div
+          className="relative bg-cover bg-center h-80 md:h-96"
+          style={{backgroundImage: "url('https://i.imgur.com/vVksMXp.jpeg')"}}
         >
           {/* Overlay com gradiente */}
           <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
@@ -58,9 +57,9 @@ const PaginaDeDoacaoEUR = () => {
                   <h3 className="text-2xl font-semibold text-[#2A5B46] mb-4">Veja Nossas Ações</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {actionPhotos.map((photo, index) => (
-                      <img 
+                      <img
                         key={index}
-                        src={photo} 
+                        src={photo}
                         alt={`Ação do IDASAM na comunidade ${index + 1}`}
                         className="rounded-lg shadow-md aspect-video object-cover w-full h-full"
                       />
