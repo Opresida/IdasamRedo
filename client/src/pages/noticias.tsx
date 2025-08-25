@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter, Heart, MessageCircle, Globe, Send, ThumbsUp, Share2, Mail } from 'lucide-react';
 import SocialReactions, { ReactionStats } from '@/components/social-reactions';
@@ -21,6 +20,10 @@ import {
 import { supabase } from '@/supabaseClient';
 import { newsCache, cacheHelpers } from '@/lib/newsCache';
 import { useAnalyticsAndSEO } from '@/hooks/use-analytics';
+import { Badge } from '@/components/ui/badge'; // Import Badge
+
+// Import TTS Audio Player
+import TTSAudioPlayer from '@/components/tts-audio-player'; // Assume this component exists
 
 // Tipos para as notícias
 interface Article {
@@ -153,8 +156,8 @@ const NewsCardSkeleton = ({ featured = false }: { featured?: boolean }) => (
     <div className="p-6">
       <div className="flex items-center gap-4 mb-3">
         <div className="px-3 py-1 rounded-full bg-gray-200 animate-pulse w-20 h-6"></div>
-        <div className="bg-gray-200 animate-pulse w-24 h-4 rounded"></div>
-        <div className="bg-gray-200 animate-pulse w-16 h-4 rounded"></div>
+        <div className="bg-gray-200 animate-pulse w-24 h-6 rounded"></div>
+        <div className="bg-gray-200 animate-pulse w-16 h-6 rounded"></div>
       </div>
       <div className="space-y-2 mb-3">
         <div className="bg-gray-200 animate-pulse h-6 rounded w-full"></div>
@@ -183,7 +186,7 @@ const EmptyNewsState = () => (
       Nenhuma notícia encontrada
     </h3>
     <p className="text-gray-500 text-center max-w-md">
-      Não encontramos notícias que correspondam aos seus critérios de busca. 
+      Não encontramos notícias que correspondam aos seus critérios de busca.
       Tente alterar os filtros ou termos de pesquisa.
     </p>
   </div>
@@ -205,29 +208,29 @@ export default function NoticiasPage() {
   const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
-  
+
   // Estados para paginação
   const [displayedArticles, setDisplayedArticles] = useState(6);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreArticles, setHasMoreArticles] = useState(true);
-  
+
   // Estados para newsletter
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [subscriptionMessage, setSubscriptionMessage] = useState('');
 
   // Hooks de analytics e SEO
-  const { 
-    trackPageView, 
-    trackArticleView, 
-    trackArticleLike, 
-    trackComment, 
-    trackShare, 
+  const {
+    trackPageView,
+    trackArticleView,
+    trackArticleLike,
+    trackComment,
+    trackShare,
     trackSearch,
     trackNewsletterSignup,
     trackError,
     updateSEO,
-    updateArticleSEO 
+    updateArticleSEO
   } = useAnalyticsAndSEO();
 
   // Inicializar SEO da página
@@ -249,7 +252,7 @@ export default function NoticiasPage() {
       'articles',
       async () => {
         console.log('🌐 Buscando artigos do Supabase...');
-        
+
         try {
           // Tentar buscar do Supabase primeiro
           const { data, error } = await supabase
@@ -270,7 +273,7 @@ export default function NoticiasPage() {
 
           console.log(`✅ ${data.length} artigos carregados do Supabase`);
           return data;
-          
+
         } catch (error) {
           console.warn('⚠️ Erro de conexão com Supabase:', error);
           trackError(`Erro ao carregar artigos: ${error}`, 'loadArticles');
@@ -300,18 +303,18 @@ export default function NoticiasPage() {
   // Função para carregar mais artigos
   const loadMoreArticles = () => {
     if (isLoadingMore || !hasMoreArticles) return;
-    
+
     setIsLoadingMore(true);
-    
+
     // Simular carregamento
     setTimeout(() => {
       const newDisplayedCount = displayedArticles + 6;
       setDisplayedArticles(newDisplayedCount);
-      
+
       if (newDisplayedCount >= regularArticles.length) {
         setHasMoreArticles(false);
       }
-      
+
       setIsLoadingMore(false);
     }, 1000);
   };
@@ -320,7 +323,7 @@ export default function NoticiasPage() {
   useEffect(() => {
     setDisplayedArticles(6);
     setHasMoreArticles(regularArticles.length > 6);
-    
+
     // Rastrear busca se houver termo
     if (searchTerm.trim()) {
       trackSearch(searchTerm, filteredArticles.length);
@@ -413,7 +416,7 @@ export default function NoticiasPage() {
         } catch (error) {
           console.error('Erro ao carregar dados do artigo:', error);
           trackError(`Erro geral ao carregar artigo: ${error}`, 'loadArticleData');
-          
+
           // Retornar dados padrão em caso de erro
           return {
             likes: Math.floor(Math.random() * 50) + 10,
@@ -438,7 +441,7 @@ export default function NoticiasPage() {
   const handleArticleReactionToggle = async (articleId: string, reactionType: string) => {
     try {
       const wasAdded = await socialInteractions.toggleArticleReaction(articleId, reactionType, userIdentifier);
-      
+
       // Recarregar dados do artigo
       const updatedData = await loadArticleData(articleId);
       if (updatedData) {
@@ -476,7 +479,7 @@ export default function NoticiasPage() {
 
       // Recarregar comentários organizados
       const updatedComments = await socialInteractions.getCommentsWithThreads(articleId);
-      
+
       // Atualizar estado local
       setArticleStats(prev => ({
         ...prev,
@@ -504,13 +507,13 @@ export default function NoticiasPage() {
   // Responder a um comentário específico
   const handleReply = async (parentCommentId: string, content: string, author: string) => {
     if (!selectedArticle) return;
-    
+
     try {
       await socialInteractions.addComment(selectedArticle.id, author, content, parentCommentId);
-      
+
       // Recarregar comentários
       const updatedComments = await socialInteractions.getCommentsWithThreads(selectedArticle.id);
-      
+
       setArticleStats(prev => ({
         ...prev,
         [selectedArticle.id]: {
@@ -520,7 +523,7 @@ export default function NoticiasPage() {
       }));
 
       trackComment(selectedArticle.id, content);
-      
+
     } catch (error) {
       console.error('Erro ao responder comentário:', error);
       trackError(`Erro ao responder comentário: ${error}`, 'handleReply');
@@ -531,18 +534,18 @@ export default function NoticiasPage() {
   // Alternar reação do comentário
   const handleCommentReactionToggle = async (commentId: string, reactionType: string) => {
     if (!selectedArticle) return;
-    
+
     try {
       await socialInteractions.toggleCommentReaction(commentId, reactionType, userIdentifier);
-      
+
       // Recarregar comentários para refletir as mudanças
       const updatedComments = await socialInteractions.getCommentsWithThreads(selectedArticle.id);
-      
+
       // Atualizar reações do usuário para comentários
       const allCommentIds = getAllCommentIds(updatedComments);
       const userCommentsReactions = await socialInteractions.getUserCommentReactions(allCommentIds, userIdentifier);
       setUserCommentReactions(userCommentsReactions);
-      
+
       // Atualizar estado local
       setArticleStats(prev => ({
         ...prev,
@@ -559,10 +562,10 @@ export default function NoticiasPage() {
   };
 
   const getArticleStats = (articleId: string): ArticleStats => {
-    return articleStats[articleId] || { 
-      likes: 0, 
-      views: 0, 
-      comments: [], 
+    return articleStats[articleId] || {
+      likes: 0,
+      views: 0,
+      comments: [],
       reaction_counts: { like: 0, love: 0, clap: 0, wow: 0, sad: 0, angry: 0 },
       userReactions: []
     };
@@ -571,7 +574,7 @@ export default function NoticiasPage() {
   // Função utilitária para extrair todos os IDs de comentários (incluindo respostas)
   const getAllCommentIds = (comments: CommentWithThread[]): string[] => {
     const ids: string[] = [];
-    
+
     const extractIds = (commentList: CommentWithThread[]) => {
       commentList.forEach(comment => {
         ids.push(comment.id);
@@ -580,7 +583,7 @@ export default function NoticiasPage() {
         }
       });
     };
-    
+
     extractIds(comments);
     return ids;
   };
@@ -667,10 +670,10 @@ export default function NoticiasPage() {
     try {
       // Em um caso real, aqui você faria uma chamada para sua API ou serviço de newsletter
       // Por exemplo: Mailchimp, SendGrid, ou sua própria tabela no Supabase
-      
+
       // Simulação de inscrição
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Aqui você poderia salvar no Supabase
       // const { error } = await supabase
       //   .from('newsletter_subscriptions')
@@ -679,7 +682,7 @@ export default function NoticiasPage() {
       trackNewsletterSignup(newsletterEmail.trim());
       setSubscriptionMessage('✅ Inscrição realizada com sucesso! Você receberá nossas novidades.');
       setNewsletterEmail('');
-      
+
     } catch (error) {
       console.error('Erro ao inscrever na newsletter:', error);
       trackError(`Erro na newsletter: ${error}`, 'handleNewsletterSubscription');
@@ -714,13 +717,13 @@ export default function NoticiasPage() {
   useEffect(() => {
     if (selectedArticle) {
       setIsLoadingComments(true);
-      
+
       // Atualizar SEO do artigo
       updateArticleSEO(selectedArticle);
-      
+
       // Rastrear visualização
       trackArticleView(selectedArticle.id, selectedArticle.title);
-      
+
       // Carregar dados
       loadArticleData(selectedArticle.id).then((data) => {
         if (data) {
@@ -755,7 +758,7 @@ export default function NoticiasPage() {
       <WhatsAppFloat />
 
       {/* Hero Section */}
-      <section 
+      <section
         className="relative w-full h-[60vh] flex items-center justify-center overflow-hidden bg-cover bg-center"
         style={{backgroundImage: "url('https://i.imgur.com/SUSPfjl.jpeg')"}}
       >
@@ -961,7 +964,7 @@ export default function NoticiasPage() {
                   <span className="text-gray-600">Carregando mais artigos...</span>
                 </div>
               )}
-              
+
               {hasMoreArticles && !isLoadingMore && (
                 <Button
                   onClick={loadMoreArticles}
@@ -970,7 +973,7 @@ export default function NoticiasPage() {
                   Carregar Mais Artigos
                 </Button>
               )}
-              
+
               {!hasMoreArticles && paginatedRegularArticles.length > 6 && (
                 <p className="text-gray-500 text-sm">
                   Você viu todos os {regularArticles.length} artigos disponíveis
@@ -1148,7 +1151,7 @@ export default function NoticiasPage() {
               </div>
 
               {/* Estatísticas das Reações */}
-              <ReactionStats 
+              <ReactionStats
                 reactions={getArticleStats(selectedArticle.id).reaction_counts}
                 className="mb-8 pb-6 border-b border-gray-100"
               />
@@ -1256,13 +1259,13 @@ export default function NoticiasPage() {
                 <Mail className="w-8 h-8 text-white" />
               </div>
             </div>
-            
+
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-montserrat">
               📧 Newsletter IDASAM
             </h2>
-            
+
             <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
-              Mantenha-se atualizado com as últimas novidades, projetos e conquistas do IDASAM. 
+              Mantenha-se atualizado com as últimas novidades, projetos e conquistas do IDASAM.
               Receba conteúdo exclusivo diretamente em seu email!
             </p>
 
@@ -1301,8 +1304,8 @@ export default function NoticiasPage() {
 
             {subscriptionMessage && (
               <div className={`text-sm px-4 py-2 rounded-lg inline-block ${
-                subscriptionMessage.includes('✅') 
-                  ? 'bg-green-100 text-green-800' 
+                subscriptionMessage.includes('✅')
+                  ? 'bg-green-100 text-green-800'
                   : 'bg-red-100 text-red-800'
               }`}>
                 {subscriptionMessage}
