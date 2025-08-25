@@ -243,6 +243,15 @@ const CoracaoRibeirinhoSection = () => {
                 <span className="text-xl">$</span>
                 <span>QUERO DOAR EM DÓLAR</span>
               </button>
+
+              {/* Botão Doação em Euro */}
+              <button
+                onClick={() => window.location.href = '/doacao-eur'}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-3"
+              >
+                <span className="text-xl font-bold">€</span>
+                <span>QUERO DOAR EM EURO</span>
+              </button>
             </div>
           </div>
         </div>
