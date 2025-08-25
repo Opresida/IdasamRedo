@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter, Heart, MessageCircle, Globe, Send, ThumbsUp, Share2, Mail } from 'lucide-react';
+import SocialReactions, { ReactionStats } from '@/components/social-reactions';
+import CommentThread, { organizeCommentsIntoThreads } from '@/components/comment-thread';
+import { socialInteractions, type CommentWithThread, type ReactionCounts } from '@/lib/socialInteractions';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import Logos3 from '@/components/logos3';
@@ -34,19 +37,12 @@ interface Article {
   featured: boolean;
 }
 
-interface Comment {
-  id: string;
-  author: string;
-  content: string;
-  created_at: string;
-  likes: number;
-}
-
 interface ArticleStats {
   likes: number;
   views: number;
-  comments: Comment[];
-  isLiked: boolean;
+  comments: CommentWithThread[];
+  reaction_counts: ReactionCounts;
+  userReactions: string[];
 }
 
 // Dados das notícias (fallback se Supabase não estiver disponível)
@@ -200,6 +196,8 @@ export default function NoticiasPage() {
   const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
   const [newComment, setNewComment] = useState('');
   const [commentAuthor, setCommentAuthor] = useState('');
+  const [userCommentReactions, setUserCommentReactions] = useState<Record<string, string[]>>({});
+  const [userIdentifier] = useState(() => socialInteractions.getUserIdentifier());
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedContent, setTranslatedContent] = useState<string>('');
   const [selectedLanguage, setSelectedLanguage] = useState('pt');
@@ -361,12 +359,22 @@ export default function NoticiasPage() {
 
           if (statsError && statsError.code === 'PGRST116') {
             // Artigo não existe, criar novo
+            const defaultReactionCounts = {
+              like: Math.floor(Math.random() * 20) + 5,
+              love: Math.floor(Math.random() * 15) + 3,
+              clap: Math.floor(Math.random() * 10) + 2,
+              wow: Math.floor(Math.random() * 8) + 1,
+              sad: Math.floor(Math.random() * 3),
+              angry: Math.floor(Math.random() * 2)
+            };
+
             const { data: newStats, error: createError } = await supabase
               .from('article_stats')
               .insert({
                 article_id: articleId,
-                likes: Math.floor(Math.random() * 50) + 10,
-                views: Math.floor(Math.random() * 500) + 100
+                likes: defaultReactionCounts.like,
+                views: Math.floor(Math.random() * 500) + 100,
+                reaction_counts: defaultReactionCounts
               })
               .select()
               .single();
@@ -379,28 +387,25 @@ export default function NoticiasPage() {
             articleStatsData = newStats;
           }
 
-          // Buscar comentários
-          const { data: commentsData, error: commentsError } = await supabase
-            .from('comments')
-            .select('*')
-            .eq('article_id', articleId)
-            .order('created_at', { ascending: false });
+          // Buscar comentários com threads organizadas
+          const commentsData = await socialInteractions.getCommentsWithThreads(articleId);
 
-          if (commentsError) {
-            console.error('Erro ao buscar comentários:', commentsError);
-            trackError(`Erro ao buscar comentários: ${commentsError.message}`, 'loadArticleData');
-            return null;
-          }
+          // Buscar reações do usuário para o artigo
+          const userArticleReactions = await socialInteractions.getUserArticleReactions(articleId, userIdentifier);
 
-          // Verificar se o usuário já curtiu (simulado com localStorage por ora)
-          const userLikes = JSON.parse(localStorage.getItem('userLikes') || '[]');
-          const isLiked = userLikes.includes(articleId);
+          // Buscar reações do usuário para comentários
+          const allCommentIds = getAllCommentIds(commentsData);
+          const userCommentsReactions = await socialInteractions.getUserCommentReactions(allCommentIds, userIdentifier);
+          setUserCommentReactions(prev => ({ ...prev, ...userCommentsReactions }));
 
           const result = {
             likes: articleStatsData?.likes || 0,
             views: articleStatsData?.views || 0,
-            comments: commentsData || [],
-            isLiked
+            comments: commentsData,
+            reaction_counts: articleStatsData?.reaction_counts || {
+              like: 0, love: 0, clap: 0, wow: 0, sad: 0, angry: 0
+            },
+            userReactions: userArticleReactions
           };
 
           return result;
@@ -414,7 +419,8 @@ export default function NoticiasPage() {
             likes: Math.floor(Math.random() * 50) + 10,
             views: Math.floor(Math.random() * 500) + 100,
             comments: [],
-            isLiked: false
+            reaction_counts: { like: 0, love: 0, clap: 0, wow: 0, sad: 0, angry: 0 },
+            userReactions: []
           };
         }
       },
@@ -428,95 +434,59 @@ export default function NoticiasPage() {
     );
   };
 
-  // Curtir/descurtir artigo
-  const handleLike = async (articleId: string) => {
-    const currentStats = articleStats[articleId];
-    if (!currentStats) return;
-
-    const newIsLiked = !currentStats.isLiked;
-    const newLikes = newIsLiked ? currentStats.likes + 1 : currentStats.likes - 1;
-
+  // Alternar reação do artigo
+  const handleArticleReactionToggle = async (articleId: string, reactionType: string) => {
     try {
-      // Atualizar no Supabase
-      const { error } = await supabase
-        .from('article_stats')
-        .update({ likes: newLikes })
-        .eq('article_id', articleId);
-
-      if (error) {
-        console.error('Erro ao atualizar curtidas:', error);
-        trackError(`Erro ao curtir: ${error.message}`, 'handleLike');
-        return;
-      }
-
-      // Atualizar localStorage para rastrear curtidas do usuário
-      const userLikes = JSON.parse(localStorage.getItem('userLikes') || '[]');
-      if (newIsLiked) {
-        userLikes.push(articleId);
-      } else {
-        const index = userLikes.indexOf(articleId);
-        if (index > -1) userLikes.splice(index, 1);
-      }
-      localStorage.setItem('userLikes', JSON.stringify(userLikes));
-
-      // Atualizar estado local
-      setArticleStats(prev => ({
-        ...prev,
-        [articleId]: {
-          ...prev[articleId],
-          likes: newLikes,
-          isLiked: newIsLiked
-        }
-      }));
-
-      // Invalidar cache e rastrear evento
-      newsCache.invalidateArticleStats(articleId);
+      const wasAdded = await socialInteractions.toggleArticleReaction(articleId, reactionType, userIdentifier);
       
+      // Recarregar dados do artigo
+      const updatedData = await loadArticleData(articleId);
+      if (updatedData) {
+        setArticleStats(prev => ({
+          ...prev,
+          [articleId]: updatedData
+        }));
+      }
+
+      // Rastrear evento
       const article = articles.find(a => a.id === articleId);
       if (article) {
-        trackArticleLike(articleId, article.title, newIsLiked);
+        trackArticleLike(articleId, article.title, wasAdded, reactionType);
       }
 
     } catch (error) {
-      console.error('Erro ao curtir artigo:', error);
-      trackError(`Erro ao curtir artigo: ${error}`, 'handleLike');
+      console.error('Erro ao alternar reação do artigo:', error);
+      trackError(`Erro ao reagir ao artigo: ${error}`, 'handleArticleReactionToggle');
     }
   };
 
   // Adicionar comentário
-  const handleAddComment = async (articleId: string) => {
+  const handleAddComment = async (articleId: string, parentCommentId?: string) => {
     if (!newComment.trim() || !commentAuthor.trim()) return;
 
     setIsLoading(true);
 
     try {
-      const { data: newCommentData, error } = await supabase
-        .from('comments')
-        .insert({
-          article_id: articleId,
-          author: commentAuthor.trim(),
-          content: newComment.trim()
-        })
-        .select()
-        .single();
+      const newCommentData = await socialInteractions.addComment(
+        articleId,
+        commentAuthor.trim(),
+        newComment.trim(),
+        parentCommentId
+      );
 
-      if (error) {
-        console.error('Erro ao adicionar comentário:', error);
-        trackError(`Erro ao comentar: ${error.message}`, 'handleAddComment');
-        return;
-      }
-
+      // Recarregar comentários organizados
+      const updatedComments = await socialInteractions.getCommentsWithThreads(articleId);
+      
       // Atualizar estado local
       setArticleStats(prev => ({
         ...prev,
         [articleId]: {
           ...prev[articleId],
-          comments: [newCommentData, ...(prev[articleId]?.comments || [])]
+          comments: updatedComments
         }
       }));
 
-      // Invalidar cache e rastrear evento
-      newsCache.invalidateComments(articleId);
+      // Rastrear evento
       trackComment(articleId, newComment.trim());
 
       // Limpar formulário
@@ -531,66 +501,88 @@ export default function NoticiasPage() {
     }
   };
 
-  // Curtir comentário
-  const handleCommentLike = async (commentId: string, articleId: string) => {
+  // Responder a um comentário específico
+  const handleReply = async (parentCommentId: string, content: string, author: string) => {
+    if (!selectedArticle) return;
+    
     try {
-      // Verificar se já curtiu este comentário
-      const userCommentLikes = JSON.parse(localStorage.getItem('userCommentLikes') || '[]');
-      const alreadyLiked = userCommentLikes.includes(commentId);
-
-      if (alreadyLiked) return; // Já curtiu
-
-      // Buscar comentário atual
-      const { data: comment, error: fetchError } = await supabase
-        .from('comments')
-        .select('likes')
-        .eq('id', commentId)
-        .single();
-
-      if (fetchError) {
-        console.error('Erro ao buscar comentário:', fetchError);
-        return;
-      }
-
-      // Atualizar curtidas
-      const { error: updateError } = await supabase
-        .from('comments')
-        .update({ likes: (comment.likes || 0) + 1 })
-        .eq('id', commentId);
-
-      if (updateError) {
-        console.error('Erro ao curtir comentário:', updateError);
-        return;
-      }
-
-      // Registrar curtida do usuário
-      userCommentLikes.push(commentId);
-      localStorage.setItem('userCommentLikes', JSON.stringify(userCommentLikes));
-
-      // Atualizar estado local
+      await socialInteractions.addComment(selectedArticle.id, author, content, parentCommentId);
+      
+      // Recarregar comentários
+      const updatedComments = await socialInteractions.getCommentsWithThreads(selectedArticle.id);
+      
       setArticleStats(prev => ({
         ...prev,
-        [articleId]: {
-          ...prev[articleId],
-          comments: prev[articleId]?.comments.map(comment => 
-            comment.id === commentId 
-              ? { ...comment, likes: (comment.likes || 0) + 1 }
-              : comment
-          ) || []
+        [selectedArticle.id]: {
+          ...prev[selectedArticle.id],
+          comments: updatedComments
         }
       }));
 
-      // Invalidar cache
-      newsCache.invalidateComments(articleId);
+      trackComment(selectedArticle.id, content);
+      
+    } catch (error) {
+      console.error('Erro ao responder comentário:', error);
+      trackError(`Erro ao responder comentário: ${error}`, 'handleReply');
+      throw error;
+    }
+  };
+
+  // Alternar reação do comentário
+  const handleCommentReactionToggle = async (commentId: string, reactionType: string) => {
+    if (!selectedArticle) return;
+    
+    try {
+      await socialInteractions.toggleCommentReaction(commentId, reactionType, userIdentifier);
+      
+      // Recarregar comentários para refletir as mudanças
+      const updatedComments = await socialInteractions.getCommentsWithThreads(selectedArticle.id);
+      
+      // Atualizar reações do usuário para comentários
+      const allCommentIds = getAllCommentIds(updatedComments);
+      const userCommentsReactions = await socialInteractions.getUserCommentReactions(allCommentIds, userIdentifier);
+      setUserCommentReactions(userCommentsReactions);
+      
+      // Atualizar estado local
+      setArticleStats(prev => ({
+        ...prev,
+        [selectedArticle.id]: {
+          ...prev[selectedArticle.id],
+          comments: updatedComments
+        }
+      }));
 
     } catch (error) {
-      console.error('Erro ao curtir comentário:', error);
-      trackError(`Erro ao curtir comentário: ${error}`, 'handleCommentLike');
+      console.error('Erro ao alternar reação do comentário:', error);
+      trackError(`Erro ao reagir ao comentário: ${error}`, 'handleCommentReactionToggle');
     }
   };
 
   const getArticleStats = (articleId: string): ArticleStats => {
-    return articleStats[articleId] || { likes: 0, views: 0, comments: [], isLiked: false };
+    return articleStats[articleId] || { 
+      likes: 0, 
+      views: 0, 
+      comments: [], 
+      reaction_counts: { like: 0, love: 0, clap: 0, wow: 0, sad: 0, angry: 0 },
+      userReactions: []
+    };
+  };
+
+  // Função utilitária para extrair todos os IDs de comentários (incluindo respostas)
+  const getAllCommentIds = (comments: CommentWithThread[]): string[] => {
+    const ids: string[] = [];
+    
+    const extractIds = (commentList: CommentWithThread[]) => {
+      commentList.forEach(comment => {
+        ids.push(comment.id);
+        if (comment.replies && comment.replies.length > 0) {
+          extractIds(comment.replies);
+        }
+      });
+    };
+    
+    extractIds(comments);
+    return ids;
   };
 
   const translateContent = async (content: string, targetLang: string) => {
@@ -1045,22 +1037,15 @@ export default function NoticiasPage() {
               <div className="flex flex-col gap-4 mb-6 pb-4 border-b">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-                    {/* Curtir */}
-                    <button
-                      onClick={() => handleLike(selectedArticle.id)}
-                      className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg transition-all text-sm ${
-                        getArticleStats(selectedArticle.id).isLiked 
-                          ? 'bg-red-50 text-red-600 border border-red-200' 
-                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Heart 
-                        className={`w-4 h-4 sm:w-5 sm:h-5 ${
-                          getArticleStats(selectedArticle.id).isLiked ? 'fill-current' : ''
-                        }`} 
-                      />
-                      <span>{getArticleStats(selectedArticle.id).likes}</span>
-                    </button>
+                    {/* Reações Sociais */}
+                    <SocialReactions
+                      targetId={selectedArticle.id}
+                      targetType="article"
+                      reactions={getArticleStats(selectedArticle.id).reaction_counts}
+                      userReactions={getArticleStats(selectedArticle.id).userReactions}
+                      onReactionToggle={(reactionType) => handleArticleReactionToggle(selectedArticle.id, reactionType)}
+                      size="md"
+                    />
 
                     {/* Comentários */}
                     <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm">
@@ -1150,7 +1135,7 @@ export default function NoticiasPage() {
               </div>
 
               {/* Tags */}
-              <div className="flex flex-wrap gap-2 mb-8">
+              <div className="flex flex-wrap gap-2 mb-6">
                 {selectedArticle.tags.map((tag) => (
                   <span
                     key={tag}
@@ -1161,6 +1146,12 @@ export default function NoticiasPage() {
                   </span>
                 ))}
               </div>
+
+              {/* Estatísticas das Reações */}
+              <ReactionStats 
+                reactions={getArticleStats(selectedArticle.id).reaction_counts}
+                className="mb-8 pb-6 border-b border-gray-100"
+              />
 
               {/* Seção de Comentários */}
               <div className="border-t pt-6 sm:pt-8">
@@ -1209,8 +1200,8 @@ export default function NoticiasPage() {
                   </div>
                 </div>
 
-                {/* Lista de Comentários */}
-                <div className="space-y-3 sm:space-y-4 max-h-64 sm:max-h-80 overflow-y-auto">
+                {/* Lista de Comentários com Threads */}
+                <div className="space-y-4 max-h-96 overflow-y-auto">
                   {isLoadingComments ? (
                     <div className="space-y-4">
                       {[...Array(3)].map((_, i) => (
@@ -1239,36 +1230,14 @@ export default function NoticiasPage() {
                     </div>
                   ) : (
                     getArticleStats(selectedArticle.id).comments.map((comment) => (
-                      <div key={comment.id} className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
-                        <div className="flex items-start sm:items-center justify-between mb-2 gap-2">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-idasam-green-dark/10 rounded-full flex items-center justify-center flex-shrink-0">
-                              <User className="w-3 h-3 sm:w-4 sm:h-4 text-idasam-green-dark" />
-                            </div>
-                            <span className="font-medium text-idasam-text-main text-sm sm:text-base truncate">
-                              {comment.author}
-                            </span>
-                          </div>
-                          <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
-                            <span className="hidden sm:inline">{formatDate(comment.created_at)}</span>
-                            <span className="sm:hidden">
-                              {formatDate(comment.created_at).split(' ').slice(0, 2).join(' ')}
-                            </span>
-                          </span>
-                        </div>
-                        <p className="text-gray-700 leading-relaxed text-sm sm:text-base mb-3">
-                          {comment.content}
-                        </p>
-                        <div className="flex items-center gap-4">
-                          <button 
-                            onClick={() => handleCommentLike(comment.id, selectedArticle.id)}
-                            className="flex items-center gap-1 text-xs sm:text-sm text-gray-500 hover:text-idasam-green-dark transition-colors"
-                          >
-                            <ThumbsUp className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span>{comment.likes || 0}</span>
-                          </button>
-                        </div>
-                      </div>
+                      <CommentThread
+                        key={comment.id}
+                        comment={comment}
+                        articleId={selectedArticle.id}
+                        userReactions={userCommentReactions}
+                        onReply={handleReply}
+                        onReactionToggle={handleCommentReactionToggle}
+                      />
                     ))
                   )}
                 </div>
