@@ -892,6 +892,14 @@ export default function ProjetosPage() {
                     <span className="text-lg">$</span>
                     <span>Doar em Dólar</span>
                   </button>
+                  
+                  <button
+                    onClick={() => window.location.href = '/doacao-eur'}
+                    className="bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="text-lg font-bold">€</span>
+                    <span>Doar em Euro</span>
+                  </button>
                 </div>
                 
                 <button
