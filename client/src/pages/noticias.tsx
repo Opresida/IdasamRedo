@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter, Heart, MessageCircle, Globe, Send, ThumbsUp } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { supabase } from '@/supabaseClient';
 
 // Tipos para as notícias
 interface Article {
@@ -33,7 +34,7 @@ interface Comment {
   id: string;
   author: string;
   content: string;
-  timestamp: string;
+  created_at: string;
   likes: number;
 }
 
@@ -154,6 +155,7 @@ export default function NoticiasPage() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedContent, setTranslatedContent] = useState<string>('');
   const [selectedLanguage, setSelectedLanguage] = useState('pt');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Filtrar artigos baseado na busca e categoria
   const filteredArticles = articles.filter(article => {
@@ -178,55 +180,208 @@ export default function NoticiasPage() {
     });
   };
 
-  const getArticleStats = (articleId: string): ArticleStats => {
-    if (!articleStats[articleId]) {
+  // Buscar comentários e estatísticas do artigo no Supabase
+  const loadArticleData = async (articleId: string) => {
+    try {
+      // Buscar ou criar estatísticas do artigo
+      let { data: articleStatsData, error: statsError } = await supabase
+        .from('article_stats')
+        .select('*')
+        .eq('article_id', articleId)
+        .single();
+
+      if (statsError && statsError.code === 'PGRST116') {
+        // Artigo não existe, criar novo
+        const { data: newStats, error: createError } = await supabase
+          .from('article_stats')
+          .insert({
+            article_id: articleId,
+            likes: Math.floor(Math.random() * 50) + 10,
+            views: Math.floor(Math.random() * 500) + 100
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Erro ao criar estatísticas:', createError);
+          return;
+        }
+        articleStatsData = newStats;
+      }
+
+      // Buscar comentários
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('article_id', articleId)
+        .order('created_at', { ascending: false });
+
+      if (commentsError) {
+        console.error('Erro ao buscar comentários:', commentsError);
+        return;
+      }
+
+      // Verificar se o usuário já curtiu (simulado com localStorage por ora)
+      const userLikes = JSON.parse(localStorage.getItem('userLikes') || '[]');
+      const isLiked = userLikes.includes(articleId);
+
       setArticleStats(prev => ({
         ...prev,
         [articleId]: {
-          likes: Math.floor(Math.random() * 50) + 10,
-          comments: [],
-          isLiked: false
+          likes: articleStatsData?.likes || 0,
+          comments: commentsData || [],
+          isLiked
         }
       }));
-      return { likes: 0, comments: [], isLiked: false };
+
+    } catch (error) {
+      console.error('Erro ao carregar dados do artigo:', error);
     }
-    return articleStats[articleId];
   };
 
-  const handleLike = (articleId: string) => {
-    setArticleStats(prev => ({
-      ...prev,
-      [articleId]: {
-        ...prev[articleId],
-        likes: prev[articleId]?.isLiked 
-          ? (prev[articleId].likes - 1) 
-          : (prev[articleId]?.likes || 0) + 1,
-        isLiked: !prev[articleId]?.isLiked
+  // Curtir/descurtir artigo
+  const handleLike = async (articleId: string) => {
+    const currentStats = articleStats[articleId];
+    if (!currentStats) return;
+
+    const newIsLiked = !currentStats.isLiked;
+    const newLikes = newIsLiked ? currentStats.likes + 1 : currentStats.likes - 1;
+
+    try {
+      // Atualizar no Supabase
+      const { error } = await supabase
+        .from('article_stats')
+        .update({ likes: newLikes })
+        .eq('article_id', articleId);
+
+      if (error) {
+        console.error('Erro ao atualizar curtidas:', error);
+        return;
       }
-    }));
-  };
 
-  const handleAddComment = (articleId: string) => {
-    if (newComment.trim() && commentAuthor.trim()) {
-      const comment: Comment = {
-        id: Date.now().toString(),
-        author: commentAuthor,
-        content: newComment,
-        timestamp: new Date().toISOString(),
-        likes: 0
-      };
+      // Atualizar localStorage para rastrear curtidas do usuário
+      const userLikes = JSON.parse(localStorage.getItem('userLikes') || '[]');
+      if (newIsLiked) {
+        userLikes.push(articleId);
+      } else {
+        const index = userLikes.indexOf(articleId);
+        if (index > -1) userLikes.splice(index, 1);
+      }
+      localStorage.setItem('userLikes', JSON.stringify(userLikes));
 
+      // Atualizar estado local
       setArticleStats(prev => ({
         ...prev,
         [articleId]: {
           ...prev[articleId],
-          comments: [...(prev[articleId]?.comments || []), comment]
+          likes: newLikes,
+          isLiked: newIsLiked
         }
       }));
 
+    } catch (error) {
+      console.error('Erro ao curtir artigo:', error);
+    }
+  };
+
+  // Adicionar comentário
+  const handleAddComment = async (articleId: string) => {
+    if (!newComment.trim() || !commentAuthor.trim()) return;
+
+    setIsLoading(true);
+
+    try {
+      const { data: newCommentData, error } = await supabase
+        .from('comments')
+        .insert({
+          article_id: articleId,
+          author: commentAuthor.trim(),
+          content: newComment.trim()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao adicionar comentário:', error);
+        return;
+      }
+
+      // Atualizar estado local
+      setArticleStats(prev => ({
+        ...prev,
+        [articleId]: {
+          ...prev[articleId],
+          comments: [newCommentData, ...(prev[articleId]?.comments || [])]
+        }
+      }));
+
+      // Limpar formulário
       setNewComment('');
       setCommentAuthor('');
+
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Curtir comentário
+  const handleCommentLike = async (commentId: string, articleId: string) => {
+    try {
+      // Verificar se já curtiu este comentário
+      const userCommentLikes = JSON.parse(localStorage.getItem('userCommentLikes') || '[]');
+      const alreadyLiked = userCommentLikes.includes(commentId);
+
+      if (alreadyLiked) return; // Já curtiu
+
+      // Buscar comentário atual
+      const { data: comment, error: fetchError } = await supabase
+        .from('comments')
+        .select('likes')
+        .eq('id', commentId)
+        .single();
+
+      if (fetchError) {
+        console.error('Erro ao buscar comentário:', fetchError);
+        return;
+      }
+
+      // Atualizar curtidas
+      const { error: updateError } = await supabase
+        .from('comments')
+        .update({ likes: (comment.likes || 0) + 1 })
+        .eq('id', commentId);
+
+      if (updateError) {
+        console.error('Erro ao curtir comentário:', updateError);
+        return;
+      }
+
+      // Registrar curtida do usuário
+      userCommentLikes.push(commentId);
+      localStorage.setItem('userCommentLikes', JSON.stringify(userCommentLikes));
+
+      // Atualizar estado local
+      setArticleStats(prev => ({
+        ...prev,
+        [articleId]: {
+          ...prev[articleId],
+          comments: prev[articleId]?.comments.map(comment => 
+            comment.id === commentId 
+              ? { ...comment, likes: (comment.likes || 0) + 1 }
+              : comment
+          ) || []
+        }
+      }));
+
+    } catch (error) {
+      console.error('Erro ao curtir comentário:', error);
+    }
+  };
+
+  const getArticleStats = (articleId: string): ArticleStats => {
+    return articleStats[articleId] || { likes: 0, comments: [], isLiked: false };
   };
 
   const translateContent = async (content: string, targetLang: string) => {
@@ -279,6 +434,13 @@ export default function NoticiasPage() {
       setIsTranslating(false);
     }, 1500);
   };
+
+  // Carregar dados quando selecionar um artigo
+  useEffect(() => {
+    if (selectedArticle) {
+      loadArticleData(selectedArticle.id);
+    }
+  }, [selectedArticle]);
 
   return (
     <div className="min-h-screen bg-idasam-bg font-inter">
@@ -620,9 +782,13 @@ export default function NoticiasPage() {
                     <Button
                       onClick={() => handleAddComment(selectedArticle.id)}
                       className="bg-idasam-green-dark hover:bg-idasam-green-medium px-4"
-                      disabled={!newComment.trim() || !commentAuthor.trim()}
+                      disabled={!newComment.trim() || !commentAuthor.trim() || isLoading}
                     >
-                      <Send className="w-4 h-4" />
+                      {isLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -646,16 +812,19 @@ export default function NoticiasPage() {
                             </span>
                           </div>
                           <span className="text-sm text-gray-500">
-                            {formatDate(comment.timestamp)}
+                            {formatDate(comment.created_at)}
                           </span>
                         </div>
                         <p className="text-gray-700 leading-relaxed">
                           {comment.content}
                         </p>
                         <div className="flex items-center gap-4 mt-3">
-                          <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-idasam-green-dark transition-colors">
+                          <button 
+                            onClick={() => handleCommentLike(comment.id, selectedArticle.id)}
+                            className="flex items-center gap-1 text-sm text-gray-500 hover:text-idasam-green-dark transition-colors"
+                          >
                             <ThumbsUp className="w-4 h-4" />
-                            <span>{comment.likes}</span>
+                            <span>{comment.likes || 0}</span>
                           </button>
                         </div>
                       </div>
