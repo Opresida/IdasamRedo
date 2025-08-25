@@ -242,3 +242,217 @@ export default function TTSAudioPlayer({ text, title = 'Artigo', className = '' 
     </div>
   );
 }
+import React, { useState } from 'react';
+import { useTextToSpeech } from '@/hooks/use-text-to-speech';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { 
+  Play, 
+  Pause, 
+  Square, 
+  Volume2, 
+  Settings,
+  Headphones
+} from 'lucide-react';
+
+interface TTSAudioPlayerProps {
+  text: string;
+  title?: string;
+  compact?: boolean;
+}
+
+export default function TTSAudioPlayer({ text, title = "Artigo", compact = false }: TTSAudioPlayerProps) {
+  const {
+    isPlaying,
+    isPaused,
+    isSupported,
+    availableVoices,
+    settings,
+    speak,
+    pause,
+    resume,
+    stop,
+    updateSettings
+  } = useTextToSpeech();
+
+  const [showSettings, setShowSettings] = useState(false);
+
+  if (!isSupported) {
+    return (
+      <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg text-yellow-800 text-sm">
+        <Headphones className="w-4 h-4" />
+        <span>Áudio não suportado neste navegador</span>
+      </div>
+    );
+  }
+
+  const handlePlayPause = () => {
+    if (isPlaying && !isPaused) {
+      pause();
+    } else if (isPaused) {
+      resume();
+    } else {
+      speak(text);
+    }
+  };
+
+  const handleStop = () => {
+    stop();
+  };
+
+  const speedOptions = [
+    { value: 0.5, label: '0.5x' },
+    { value: 0.75, label: '0.75x' },
+    { value: 1, label: '1x' },
+    { value: 1.25, label: '1.25x' },
+    { value: 1.5, label: '1.5x' },
+    { value: 2, label: '2x' }
+  ];
+
+  const currentSpeedLabel = speedOptions.find(s => s.value === settings.rate)?.label || '1x';
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handlePlayPause}
+          size="sm"
+          variant="outline"
+          className="flex items-center gap-1"
+        >
+          {isPlaying && !isPaused ? (
+            <Pause className="w-4 h-4" />
+          ) : (
+            <Play className="w-4 h-4" />
+          )}
+          <span className="hidden sm:inline">
+            {isPlaying && !isPaused ? 'Pausar' : 'Ouvir'}
+          </span>
+        </Button>
+        
+        {isPlaying && (
+          <Button onClick={handleStop} size="sm" variant="outline">
+            <Square className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border rounded-lg p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Volume2 className="w-5 h-5 text-blue-600" />
+          <span className="font-medium text-gray-900">Ouvir {title}</span>
+        </div>
+        
+        <Popover open={showSettings} onOpenChange={setShowSettings}>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <Settings className="w-4 h-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Velocidade: {currentSpeedLabel}</label>
+                <div className="flex gap-1 mt-2">
+                  {speedOptions.map((speed) => (
+                    <Button
+                      key={speed.value}
+                      size="sm"
+                      variant={settings.rate === speed.value ? "default" : "outline"}
+                      onClick={() => updateSettings({ rate: speed.value })}
+                      className="text-xs"
+                    >
+                      {speed.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Volume</label>
+                <Slider
+                  value={[settings.volume * 100]}
+                  onValueChange={(value) => updateSettings({ volume: value[0] / 100 })}
+                  max={100}
+                  step={10}
+                  className="mt-2"
+                />
+              </div>
+
+              {availableVoices.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium">Voz</label>
+                  <Select
+                    value={settings.voice?.name || ''}
+                    onValueChange={(voiceName) => {
+                      const voice = availableVoices.find(v => v.name === voiceName);
+                      if (voice) updateSettings({ voice });
+                    }}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Selecione uma voz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableVoices
+                        .filter(voice => voice.lang.startsWith('pt') || voice.lang.startsWith('en'))
+                        .map((voice) => (
+                          <SelectItem key={voice.name} value={voice.name}>
+                            {voice.name} ({voice.lang})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Button
+          onClick={handlePlayPause}
+          className="flex items-center gap-2"
+        >
+          {isPlaying && !isPaused ? (
+            <>
+              <Pause className="w-4 h-4" />
+              Pausar
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4" />
+              {isPaused ? 'Continuar' : 'Reproduzir'}
+            </>
+          )}
+        </Button>
+
+        {isPlaying && (
+          <Button onClick={handleStop} variant="outline">
+            <Square className="w-4 h-4 mr-2" />
+            Parar
+          </Button>
+        )}
+
+        <div className="flex-1 text-center">
+          <span className="text-sm text-gray-600">
+            Velocidade: {currentSpeedLabel}
+          </span>
+        </div>
+
+        {isPlaying && (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            <span className="text-sm text-gray-600">Reproduzindo...</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

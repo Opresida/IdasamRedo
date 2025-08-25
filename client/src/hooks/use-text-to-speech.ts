@@ -270,3 +270,202 @@ export const useTextToSpeech = () => {
     progress: state.duration > 0 ? (state.currentPosition / state.duration) * 100 : 0
   };
 };
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+interface TTSSettings {
+  rate: number;
+  pitch: number;
+  volume: number;
+  voice: SpeechSynthesisVoice | null;
+  language: string;
+}
+
+interface UseTTSReturn {
+  isPlaying: boolean;
+  isPaused: boolean;
+  isSupported: boolean;
+  currentPosition: number;
+  availableVoices: SpeechSynthesisVoice[];
+  settings: TTSSettings;
+  speak: (text: string) => void;
+  pause: () => void;
+  resume: () => void;
+  stop: () => void;
+  updateSettings: (newSettings: Partial<TTSSettings>) => void;
+}
+
+export function useTextToSpeech(): UseTTSReturn {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(0);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [settings, setSettings] = useState<TTSSettings>({
+    rate: 1,
+    pitch: 1,
+    volume: 1,
+    voice: null,
+    language: 'pt-BR'
+  });
+
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const textRef = useRef<string>('');
+  const isSupported = 'speechSynthesis' in window;
+
+  // Load voices and settings from localStorage
+  useEffect(() => {
+    if (!isSupported) return;
+
+    const loadVoices = () => {
+      const voices = speechSynthesis.getVoices();
+      setAvailableVoices(voices);
+      
+      // Try to restore saved settings
+      const savedSettings = localStorage.getItem('tts-settings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        const savedVoice = voices.find(v => v.name === parsed.voiceName);
+        setSettings(prev => ({
+          ...prev,
+          ...parsed,
+          voice: savedVoice || voices.find(v => v.lang.startsWith('pt')) || voices[0]
+        }));
+      } else {
+        // Set default Portuguese voice if available
+        const ptVoice = voices.find(v => v.lang.startsWith('pt'));
+        if (ptVoice) {
+          setSettings(prev => ({ ...prev, voice: ptVoice }));
+        }
+      }
+    };
+
+    loadVoices();
+    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+
+    return () => {
+      speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+    };
+  }, [isSupported]);
+
+  // Save settings to localStorage
+  useEffect(() => {
+    const settingsToSave = {
+      rate: settings.rate,
+      pitch: settings.pitch,
+      volume: settings.volume,
+      voiceName: settings.voice?.name,
+      language: settings.language
+    };
+    localStorage.setItem('tts-settings', JSON.stringify(settingsToSave));
+  }, [settings]);
+
+  const speak = useCallback((text: string) => {
+    if (!isSupported || !text.trim()) return;
+
+    // Stop any current speech
+    speechSynthesis.cancel();
+    
+    textRef.current = text;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utteranceRef.current = utterance;
+
+    // Apply settings
+    utterance.rate = settings.rate;
+    utterance.pitch = settings.pitch;
+    utterance.volume = settings.volume;
+    utterance.lang = settings.language;
+    
+    if (settings.voice) {
+      utterance.voice = settings.voice;
+    }
+
+    // Event handlers
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setIsPaused(false);
+      setCurrentPosition(0);
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setIsPaused(false);
+      setCurrentPosition(0);
+    };
+
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event.error);
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+
+    utterance.onpause = () => {
+      setIsPaused(true);
+    };
+
+    utterance.onresume = () => {
+      setIsPaused(false);
+    };
+
+    utterance.onboundary = (event) => {
+      setCurrentPosition(event.charIndex);
+    };
+
+    speechSynthesis.speak(utterance);
+  }, [isSupported, settings]);
+
+  const pause = useCallback(() => {
+    if (!isSupported || !isPlaying) return;
+    speechSynthesis.pause();
+  }, [isSupported, isPlaying]);
+
+  const resume = useCallback(() => {
+    if (!isSupported || !isPaused) return;
+    speechSynthesis.resume();
+  }, [isSupported, isPaused]);
+
+  const stop = useCallback(() => {
+    if (!isSupported) return;
+    speechSynthesis.cancel();
+    setIsPlaying(false);
+    setIsPaused(false);
+    setCurrentPosition(0);
+  }, [isSupported]);
+
+  const updateSettings = useCallback((newSettings: Partial<TTSSettings>) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
+  }, []);
+
+  // Auto-pause when tab becomes hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isPlaying && !isPaused) {
+        pause();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isPlaying, isPaused, pause]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      speechSynthesis.cancel();
+    };
+  }, []);
+
+  return {
+    isPlaying,
+    isPaused,
+    isSupported,
+    currentPosition,
+    availableVoices,
+    settings,
+    speak,
+    pause,
+    resume,
+    stop,
+    updateSettings
+  };
+}
