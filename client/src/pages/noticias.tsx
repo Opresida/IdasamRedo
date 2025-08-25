@@ -164,7 +164,13 @@ export default function NoticiasPage() {
       <WhatsAppFloat />
 
       {/* Hero Section */}
-      <section className="relative w-full h-[60vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-idasam-green-dark via-idasam-green-medium to-idasam-green-dark">
+      <section 
+        className="relative w-full h-[60vh] flex items-center justify-center overflow-hidden bg-cover bg-center"
+        style={{backgroundImage: "url('https://i.imgur.com/SUSPfjl.jpeg')"}}
+      >
+        {/* Overlay com máscara preta */}
+        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+        
         <div className="max-w-7xl mx-auto px-4 text-center relative z-10 text-white">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 font-montserrat animate-fade-in-up">
             Notícias
