@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter, Heart, MessageCircle, Globe, Send, ThumbsUp } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
+import Logos3 from '@/components/logos3';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -162,9 +162,9 @@ export default function NoticiasPage() {
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          article.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          article.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     const matchesCategory = selectedCategory === 'Todas' || article.category === selectedCategory;
-    
+
     return matchesSearch && matchesCategory;
   });
 
@@ -386,7 +386,7 @@ export default function NoticiasPage() {
 
   const translateContent = async (content: string, targetLang: string) => {
     setIsTranslating(true);
-    
+
     // Simulação de tradução (em um caso real, usaria Google Translate API ou similar)
     const translations: Record<string, Record<string, string>> = {
       'en': {
@@ -454,7 +454,7 @@ export default function NoticiasPage() {
       >
         {/* Overlay com máscara preta */}
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-        
+
         <div className="max-w-7xl mx-auto px-4 text-center relative z-10 text-white">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 font-montserrat animate-fade-in-up">
             Notícias
@@ -481,7 +481,7 @@ export default function NoticiasPage() {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <Filter className="text-gray-600 w-5 h-5" />
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -645,7 +645,7 @@ export default function NoticiasPage() {
                 ✕
               </button>
             </div>
-            
+
             <div className="p-8">
               <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -670,7 +670,7 @@ export default function NoticiasPage() {
                   {selectedArticle.author}
                 </span>
               </div>
-              
+
               <h1 className="text-3xl md:text-4xl font-bold text-idasam-text-main mb-6">
                 {selectedArticle.title}
               </h1>
@@ -720,7 +720,7 @@ export default function NoticiasPage() {
                   </select>
                 </div>
               </div>
-              
+
               {/* Conteúdo do Artigo */}
               <div className="prose prose-lg max-w-none mb-8">
                 {isTranslating ? (
@@ -736,7 +736,7 @@ export default function NoticiasPage() {
                   ))
                 )}
               </div>
-              
+
               {/* Tags */}
               <div className="flex flex-wrap gap-2 mb-8">
                 {selectedArticle.tags.map((tag) => (
@@ -837,6 +837,7 @@ export default function NoticiasPage() {
         </div>
       )}
 
+      <Logos3 />
       <ShadcnblocksComFooter2 />
     </div>
   );
