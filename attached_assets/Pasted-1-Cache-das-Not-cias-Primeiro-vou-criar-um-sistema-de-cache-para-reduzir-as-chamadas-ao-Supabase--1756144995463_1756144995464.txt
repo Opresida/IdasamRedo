@@ -1,0 +1,47 @@
+1. Cache das Notícias
+Primeiro, vou criar um sistema de cache para reduzir as chamadas ao Supabase:
+
+client/src/lib/newsCache.ts
+Create news cache system
+2. Componente de Imagem Otimizada com Lazy Loading
+client/src/components/optimized-image.tsx
+Create optimized image component with lazy loading
+3. Hook para Analytics e SEO
+client/src/hooks/use-analytics.ts
+Create analytics hook for tracking
+4. Atualizar a página de notícias com todas as melhorias
+client/src/pages/noticias.tsx
+Add performance optimizations, caching, analytics and SEO, Add cache functionality to loadArticleData, Add analytics and cache invalidation to handleLike, Add analytics and cache invalidation to handleAddComment, Add analytics to shareArticle function, Add hooks initialization and SEO, Add analytics tracking when selecting article and update SEO, Replace img tags with OptimizedImage component, Replace remaining img tags with OptimizedImage component, Replace modal header image with OptimizedImage
+5. Criar função SQL para incrementar views
+echo "-- SQL function to increment article views CREATE OR REPLACE FUNCTION increment_article_views(article_id TEXT) RETURNS void AS \$\$ BEGIN INSERT INTO article_stats (article_id, likes, views) VALUES (article_id, 0, 1) ON CONFLICT (article_id) DO UPDATE SET views = article_stats.views + 1; END; \$\$ LANGUAGE plpgsql;" > increment_views.sql
+Implementei as seguintes melhorias de performance e técnicas:
+
+🚀 Cache Sistema
+Sistema de cache inteligente com TTL configurável
+Cache automático para dados de artigos (3 min TTL)
+Invalidação automática ao curtir/comentar
+Limpeza automática de cache expirado
+🖼️ Otimização de Imagens
+Componente OptimizedImage com lazy loading
+Otimização automática para URLs do Imgur
+Placeholder enquanto carrega
+Intersection Observer para carregamento eficiente
+Tratamento de erros com fallback visual
+🔍 SEO Dinâmico
+Meta tags automáticas para cada artigo
+Open Graph e Twitter Cards
+URLs canônicas
+Structured data (Schema.org) para artigos
+SEO específico por página
+📊 Analytics Completo
+Tracking de visualizações, curtidas, compartilhamentos
+Sessões de usuário com IDs únicos
+Integração com Supabase para persistência
+Suporte para Google Analytics 4
+Incremento automático de views nos artigos
+🛠️ Melhorias Técnicas
+Redução de chamadas ao Supabase via cache
+Carregamento otimizado de imagens
+SEO automático para melhor indexação
+Analytics detalhado para insights
+Você precisará executar o SQL no Supabase para criar a função increment_article_views e a tabela analytics_events. Quer que eu ajude com mais alguma otimização?
