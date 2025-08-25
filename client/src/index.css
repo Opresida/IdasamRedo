@@ -16,6 +16,34 @@
   animation: scroll-infinite 15s linear infinite;
 }
 
+/* Animações para loading de mais artigos */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Otimizações para modal em mobile */
+@media (max-width: 640px) {
+  .modal-content {
+    max-height: calc(100vh - 2rem);
+  }
+}
+
+/* Smooth scroll para carregamento infinito */
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   --background: hsl(44, 33%, 95%);
   --foreground: hsl(210, 25%, 7.8431%);

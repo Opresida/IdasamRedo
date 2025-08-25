@@ -201,6 +201,11 @@ export default function NoticiasPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  
+  // Estados para paginação
+  const [displayedArticles, setDisplayedArticles] = useState(6);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreArticles, setHasMoreArticles] = useState(true);
 
   // Filtrar artigos baseado na busca e categoria
   const filteredArticles = articles.filter(article => {
@@ -215,6 +220,32 @@ export default function NoticiasPage() {
 
   const featuredArticles = filteredArticles.filter(article => article.featured);
   const regularArticles = filteredArticles.filter(article => !article.featured);
+  const paginatedRegularArticles = regularArticles.slice(0, displayedArticles);
+
+  // Função para carregar mais artigos
+  const loadMoreArticles = () => {
+    if (isLoadingMore || !hasMoreArticles) return;
+    
+    setIsLoadingMore(true);
+    
+    // Simular carregamento
+    setTimeout(() => {
+      const newDisplayedCount = displayedArticles + 6;
+      setDisplayedArticles(newDisplayedCount);
+      
+      if (newDisplayedCount >= regularArticles.length) {
+        setHasMoreArticles(false);
+      }
+      
+      setIsLoadingMore(false);
+    }, 1000);
+  };
+
+  // Reset paginação quando filtros mudarem
+  useEffect(() => {
+    setDisplayedArticles(6);
+    setHasMoreArticles(regularArticles.length > 6);
+  }, [searchTerm, selectedCategory, regularArticles.length]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -498,6 +529,21 @@ export default function NoticiasPage() {
     }
   }, [selectedArticle]);
 
+  // Hook para scroll infinito
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.offsetHeight - 1000 // Carrega quando está a 1000px do final
+      ) {
+        loadMoreArticles();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [displayedArticles, isLoadingMore, hasMoreArticles]);
+
   return (
     <div className="min-h-screen bg-idasam-bg font-inter">
       <FloatingNavbar />
@@ -646,11 +692,11 @@ export default function NoticiasPage() {
                 <NewsCardSkeleton />
                 <NewsCardSkeleton />
               </>
-            ) : regularArticles.length === 0 && filteredArticles.length === 0 ? (
+            ) : paginatedRegularArticles.length === 0 && filteredArticles.length === 0 ? (
               // Estado vazio
               <EmptyNewsState />
             ) : (
-              regularArticles.map((article) => (
+              paginatedRegularArticles.map((article) => (
               <article
                 key={article.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
@@ -699,18 +745,45 @@ export default function NoticiasPage() {
             ))
             )}
           </div>
+
+          {/* Loading de mais artigos e botão carregar mais */}
+          {paginatedRegularArticles.length > 0 && (
+            <div className="flex flex-col items-center mt-12">
+              {isLoadingMore && (
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-idasam-green-dark"></div>
+                  <span className="text-gray-600">Carregando mais artigos...</span>
+                </div>
+              )}
+              
+              {hasMoreArticles && !isLoadingMore && (
+                <Button
+                  onClick={loadMoreArticles}
+                  className="bg-idasam-green-dark hover:bg-idasam-green-medium text-white px-8 py-3 rounded-full transition-colors"
+                >
+                  Carregar Mais Artigos
+                </Button>
+              )}
+              
+              {!hasMoreArticles && paginatedRegularArticles.length > 6 && (
+                <p className="text-gray-500 text-sm">
+                  Você viu todos os {regularArticles.length} artigos disponíveis
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
       {/* Modal do Artigo */}
       {selectedArticle && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl sm:rounded-2xl w-full max-w-5xl min-h-[90vh] sm:max-h-[90vh] sm:overflow-y-auto mt-4 sm:mt-8 mb-4">
             <div className="relative">
               <img
                 src={selectedArticle.image}
                 alt={selectedArticle.title}
-                className="w-full h-64 md:h-80 object-cover"
+                className="w-full h-48 sm:h-64 md:h-80 object-cover rounded-t-xl sm:rounded-t-2xl"
               />
               <button
                 onClick={() => {
@@ -718,15 +791,15 @@ export default function NoticiasPage() {
                   setTranslatedContent('');
                   setSelectedLanguage('pt');
                 }}
-                className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors"
+                className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-8">
-              <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            <div className="p-4 sm:p-6 lg:p-8">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 mb-4">
+                <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
                   selectedArticle.category === 'Bioeconomia' ? 'bg-idasam-green-medium/10 text-idasam-green-dark' :
                   selectedArticle.category === 'Tecnologia' ? 'bg-blue-100 text-blue-700' :
                   selectedArticle.category === 'Capacitação' ? 'bg-purple-100 text-purple-700' :
@@ -736,37 +809,38 @@ export default function NoticiasPage() {
                   {selectedArticle.category}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {formatDate(selectedArticle.publishDate)}
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{formatDate(selectedArticle.publishDate)}</span>
+                  <span className="sm:hidden">{formatDate(selectedArticle.publishDate).split(' ').slice(0, 2).join(' ')}</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                   {selectedArticle.readTime}
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="hidden md:flex items-center gap-1">
                   <User className="w-4 h-4" />
                   {selectedArticle.author}
                 </span>
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-bold text-idasam-text-main mb-6">
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-idasam-text-main mb-4 sm:mb-6 leading-tight">
                 {selectedArticle.title}
               </h1>
 
               {/* Barra de Ações */}
-              <div className="flex items-center justify-between mb-6 pb-4 border-b">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b">
+                <div className="flex items-center gap-2 sm:gap-4">
                   {/* Curtir */}
                   <button
                     onClick={() => handleLike(selectedArticle.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg transition-all text-sm ${
                       getArticleStats(selectedArticle.id).isLiked 
                         ? 'bg-red-50 text-red-600 border border-red-200' 
                         : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     <Heart 
-                      className={`w-5 h-5 ${
+                      className={`w-4 h-4 sm:w-5 sm:h-5 ${
                         getArticleStats(selectedArticle.id).isLiked ? 'fill-current' : ''
                       }`} 
                     />
@@ -774,22 +848,22 @@ export default function NoticiasPage() {
                   </button>
 
                   {/* Comentários */}
-                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg">
-                    <MessageCircle className="w-5 h-5" />
+                  <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm">
+                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>{getArticleStats(selectedArticle.id).comments.length}</span>
                   </div>
                 </div>
 
                 {/* Tradução */}
-                <div className="flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-gray-600" />
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                   <select
                     value={selectedLanguage}
                     onChange={(e) => {
                       setSelectedLanguage(e.target.value);
                       translateContent(selectedArticle.content, e.target.value);
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-idasam-green-dark"
+                    className="px-2 sm:px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-idasam-green-dark text-sm flex-1 sm:flex-initial"
                   >
                     <option value="pt">Português</option>
                     <option value="en">English</option>
@@ -829,50 +903,54 @@ export default function NoticiasPage() {
               </div>
 
               {/* Seção de Comentários */}
-              <div className="border-t pt-8">
-                <h3 className="text-2xl font-bold text-idasam-text-main mb-6 flex items-center gap-2">
-                  <MessageCircle className="w-6 h-6" />
+              <div className="border-t pt-6 sm:pt-8">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-idasam-text-main mb-4 sm:mb-6 flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                   Comentários ({isLoadingComments ? '...' : getArticleStats(selectedArticle.id).comments.length})
                 </h3>
 
                 {/* Formulário de Comentário */}
-                <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div className="bg-gray-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
                     <Input
                       placeholder="Seu nome"
                       value={commentAuthor}
                       onChange={(e) => setCommentAuthor(e.target.value)}
-                      className="border-gray-300"
+                      className="border-gray-300 text-sm sm:text-base"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       placeholder="Escreva seu comentário..."
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      className="flex-1 border-gray-300"
+                      className="flex-1 border-gray-300 text-sm sm:text-base"
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
                           handleAddComment(selectedArticle.id);
                         }
                       }}
                     />
                     <Button
                       onClick={() => handleAddComment(selectedArticle.id)}
-                      className="bg-idasam-green-dark hover:bg-idasam-green-medium px-4"
+                      className="bg-idasam-green-dark hover:bg-idasam-green-medium px-3 sm:px-4 whitespace-nowrap"
                       disabled={!newComment.trim() || !commentAuthor.trim() || isLoading}
                     >
                       {isLoading ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       ) : (
-                        <Send className="w-4 h-4" />
+                        <>
+                          <Send className="w-4 h-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Enviar</span>
+                        </>
                       )}
                     </Button>
                   </div>
                 </div>
 
                 {/* Lista de Comentários */}
-                <div className="space-y-4 max-h-64 overflow-y-auto">
+                <div className="space-y-3 sm:space-y-4 max-h-64 sm:max-h-80 overflow-y-auto">
                   {isLoadingComments ? (
                     <div className="space-y-4">
                       {[...Array(3)].map((_, i) => (
@@ -901,29 +979,32 @@ export default function NoticiasPage() {
                     </div>
                   ) : (
                     getArticleStats(selectedArticle.id).comments.map((comment) => (
-                      <div key={comment.id} className="bg-white p-4 rounded-lg border border-gray-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-idasam-green-dark/10 rounded-full flex items-center justify-center">
-                              <User className="w-4 h-4 text-idasam-green-dark" />
+                      <div key={comment.id} className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-start sm:items-center justify-between mb-2 gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-idasam-green-dark/10 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User className="w-3 h-3 sm:w-4 sm:h-4 text-idasam-green-dark" />
                             </div>
-                            <span className="font-medium text-idasam-text-main">
+                            <span className="font-medium text-idasam-text-main text-sm sm:text-base truncate">
                               {comment.author}
                             </span>
                           </div>
-                          <span className="text-sm text-gray-500">
-                            {formatDate(comment.created_at)}
+                          <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
+                            <span className="hidden sm:inline">{formatDate(comment.created_at)}</span>
+                            <span className="sm:hidden">
+                              {formatDate(comment.created_at).split(' ').slice(0, 2).join(' ')}
+                            </span>
                           </span>
                         </div>
-                        <p className="text-gray-700 leading-relaxed">
+                        <p className="text-gray-700 leading-relaxed text-sm sm:text-base mb-3">
                           {comment.content}
                         </p>
-                        <div className="flex items-center gap-4 mt-3">
+                        <div className="flex items-center gap-4">
                           <button 
                             onClick={() => handleCommentLike(comment.id, selectedArticle.id)}
-                            className="flex items-center gap-1 text-sm text-gray-500 hover:text-idasam-green-dark transition-colors"
+                            className="flex items-center gap-1 text-xs sm:text-sm text-gray-500 hover:text-idasam-green-dark transition-colors"
                           >
-                            <ThumbsUp className="w-4 h-4" />
+                            <ThumbsUp className="w-3 h-3 sm:w-4 sm:h-4" />
                             <span>{comment.likes || 0}</span>
                           </button>
                         </div>
