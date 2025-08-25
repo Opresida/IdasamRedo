@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter, Heart, MessageCircle, Globe, Send, ThumbsUp } from 'lucide-react';
+import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter, Heart, MessageCircle, Globe, Send, ThumbsUp, Share2, Mail } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import Logos3 from '@/components/logos3';
@@ -206,6 +206,11 @@ export default function NoticiasPage() {
   const [displayedArticles, setDisplayedArticles] = useState(6);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreArticles, setHasMoreArticles] = useState(true);
+  
+  // Estados para newsletter
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [subscriptionMessage, setSubscriptionMessage] = useState('');
 
   // Filtrar artigos baseado na busca e categoria
   const filteredArticles = articles.filter(article => {
@@ -509,6 +514,58 @@ export default function NoticiasPage() {
       }
       setIsTranslating(false);
     }, 1500);
+  };
+
+  // Funções de compartilhamento
+  const shareArticle = (platform: string, article: Article) => {
+    const articleUrl = `${window.location.origin}/noticias#${article.id}`;
+    const shareText = `${article.title} - IDASAM`;
+
+    const shareUrls = {
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText + '\n\n' + articleUrl)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleUrl)}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(articleUrl)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(articleUrl)}`
+    };
+
+    const url = shareUrls[platform as keyof typeof shareUrls];
+    if (url) {
+      window.open(url, '_blank', 'width=600,height=400');
+    }
+  };
+
+  // Função para newsletter
+  const handleNewsletterSubscription = async () => {
+    if (!newsletterEmail.trim() || !newsletterEmail.includes('@')) {
+      setSubscriptionMessage('Por favor, insira um email válido.');
+      return;
+    }
+
+    setIsSubscribing(true);
+
+    try {
+      // Em um caso real, aqui você faria uma chamada para sua API ou serviço de newsletter
+      // Por exemplo: Mailchimp, SendGrid, ou sua própria tabela no Supabase
+      
+      // Simulação de inscrição
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Aqui você poderia salvar no Supabase
+      // const { error } = await supabase
+      //   .from('newsletter_subscriptions')
+      //   .insert({ email: newsletterEmail.trim() });
+
+      setSubscriptionMessage('✅ Inscrição realizada com sucesso! Você receberá nossas novidades.');
+      setNewsletterEmail('');
+      
+    } catch (error) {
+      console.error('Erro ao inscrever na newsletter:', error);
+      setSubscriptionMessage('❌ Erro ao realizar inscrição. Tente novamente.');
+    } finally {
+      setIsSubscribing(false);
+      // Limpar mensagem após 5 segundos
+      setTimeout(() => setSubscriptionMessage(''), 5000);
+    }
   };
 
   // Simular carregamento inicial das notícias
@@ -828,48 +885,88 @@ export default function NoticiasPage() {
               </h1>
 
               {/* Barra de Ações */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b">
-                <div className="flex items-center gap-2 sm:gap-4">
-                  {/* Curtir */}
-                  <button
-                    onClick={() => handleLike(selectedArticle.id)}
-                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg transition-all text-sm ${
-                      getArticleStats(selectedArticle.id).isLiked 
-                        ? 'bg-red-50 text-red-600 border border-red-200' 
-                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Heart 
-                      className={`w-4 h-4 sm:w-5 sm:h-5 ${
-                        getArticleStats(selectedArticle.id).isLiked ? 'fill-current' : ''
-                      }`} 
-                    />
-                    <span>{getArticleStats(selectedArticle.id).likes}</span>
-                  </button>
+              <div className="flex flex-col gap-4 mb-6 pb-4 border-b">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+                    {/* Curtir */}
+                    <button
+                      onClick={() => handleLike(selectedArticle.id)}
+                      className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg transition-all text-sm ${
+                        getArticleStats(selectedArticle.id).isLiked 
+                          ? 'bg-red-50 text-red-600 border border-red-200' 
+                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Heart 
+                        className={`w-4 h-4 sm:w-5 sm:h-5 ${
+                          getArticleStats(selectedArticle.id).isLiked ? 'fill-current' : ''
+                        }`} 
+                      />
+                      <span>{getArticleStats(selectedArticle.id).likes}</span>
+                    </button>
 
-                  {/* Comentários */}
-                  <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm">
-                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>{getArticleStats(selectedArticle.id).comments.length}</span>
+                    {/* Comentários */}
+                    <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm">
+                      <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span>{getArticleStats(selectedArticle.id).comments.length}</span>
+                    </div>
+                  </div>
+
+                  {/* Tradução */}
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                    <select
+                      value={selectedLanguage}
+                      onChange={(e) => {
+                        setSelectedLanguage(e.target.value);
+                        translateContent(selectedArticle.content, e.target.value);
+                      }}
+                      className="px-2 sm:px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-idasam-green-dark text-sm flex-1 sm:flex-initial"
+                    >
+                      <option value="pt">Português</option>
+                      <option value="en">English</option>
+                      <option value="es">Español</option>
+                      <option value="fr">Français</option>
+                    </select>
                   </div>
                 </div>
 
-                {/* Tradução */}
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
-                  <select
-                    value={selectedLanguage}
-                    onChange={(e) => {
-                      setSelectedLanguage(e.target.value);
-                      translateContent(selectedArticle.content, e.target.value);
-                    }}
-                    className="px-2 sm:px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-idasam-green-dark text-sm flex-1 sm:flex-initial"
-                  >
-                    <option value="pt">Português</option>
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
-                    <option value="fr">Français</option>
-                  </select>
+                {/* Botões de Compartilhamento */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Share2 className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">Compartilhar:</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => shareArticle('whatsapp', selectedArticle)}
+                      className="flex items-center gap-2 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm"
+                    >
+                      <span className="text-base">📱</span>
+                      <span className="hidden sm:inline">WhatsApp</span>
+                    </button>
+                    <button
+                      onClick={() => shareArticle('facebook', selectedArticle)}
+                      className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                    >
+                      <span className="text-base">📘</span>
+                      <span className="hidden sm:inline">Facebook</span>
+                    </button>
+                    <button
+                      onClick={() => shareArticle('twitter', selectedArticle)}
+                      className="flex items-center gap-2 px-3 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors text-sm"
+                    >
+                      <span className="text-base">🐦</span>
+                      <span className="hidden sm:inline">Twitter</span>
+                    </button>
+                    <button
+                      onClick={() => shareArticle('linkedin', selectedArticle)}
+                      className="flex items-center gap-2 px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg transition-colors text-sm"
+                    >
+                      <span className="text-base">💼</span>
+                      <span className="hidden sm:inline">LinkedIn</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1017,6 +1114,86 @@ export default function NoticiasPage() {
           </div>
         </div>
       )}
+
+      {/* Seção de Newsletter */}
+      <section className="py-16 bg-gradient-to-br from-idasam-green-dark to-idasam-green-medium">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 sm:p-12">
+            <div className="flex items-center justify-center mb-6">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                <Mail className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 font-montserrat">
+              📧 Newsletter IDASAM
+            </h2>
+            
+            <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
+              Mantenha-se atualizado com as últimas novidades, projetos e conquistas do IDASAM. 
+              Receba conteúdo exclusivo diretamente em seu email!
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto mb-6">
+              <Input
+                type="email"
+                placeholder="Digite seu melhor email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                className="flex-1 px-4 py-3 bg-white border-0 focus:ring-2 focus:ring-white/50 placeholder:text-gray-500"
+                disabled={isSubscribing}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleNewsletterSubscription();
+                  }
+                }}
+              />
+              <Button
+                onClick={handleNewsletterSubscription}
+                disabled={isSubscribing || !newsletterEmail.trim()}
+                className="px-6 py-3 bg-white text-idasam-green-dark hover:bg-gray-100 font-medium whitespace-nowrap transition-all disabled:opacity-50"
+              >
+                {isSubscribing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-idasam-green-dark mr-2"></div>
+                    Inscrevendo...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Inscrever-se
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {subscriptionMessage && (
+              <div className={`text-sm px-4 py-2 rounded-lg inline-block ${
+                subscriptionMessage.includes('✅') 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {subscriptionMessage}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-center gap-6 text-white/80 text-sm mt-8">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-white/60 rounded-full"></span>
+                Conteúdo exclusivo
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-white/60 rounded-full"></span>
+                Sem spam
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-white/60 rounded-full"></span>
+                Cancele quando quiser
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <Logos3 />
       <ShadcnblocksComFooter2 />
