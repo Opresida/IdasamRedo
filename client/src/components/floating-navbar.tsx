@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { name: "Home", link: "/" },
   { name: "Quem Somos", link: "#quem-somos" },
   { name: "Projetos", link: "/projetos" },
+  { name: "Notícias", link: "/noticias" },
   { name: "Parcerias", link: "#parcerias" },
   { name: "Legislação", link: "#legislacao" },
   { name: "Contato", link: "#contato" }
