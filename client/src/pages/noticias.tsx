@@ -145,6 +145,49 @@ const articles: Article[] = [
 
 const categories = ['Todas', 'Bioeconomia', 'Tecnologia', 'Capacitação', 'Pesquisa', 'Eventos'];
 
+// Componente de Loading Skeleton para os cards de notícias
+const NewsCardSkeleton = ({ featured = false }: { featured?: boolean }) => (
+  <div className={`bg-white rounded-2xl overflow-hidden shadow-lg ${featured ? 'col-span-1' : ''}`}>
+    <div className={`${featured ? 'aspect-video' : 'aspect-video'} bg-gray-200 animate-pulse`}></div>
+    <div className="p-6">
+      <div className="flex items-center gap-4 mb-3">
+        <div className="px-3 py-1 rounded-full bg-gray-200 animate-pulse w-20 h-6"></div>
+        <div className="bg-gray-200 animate-pulse w-24 h-4 rounded"></div>
+        <div className="bg-gray-200 animate-pulse w-16 h-4 rounded"></div>
+      </div>
+      <div className="space-y-2 mb-3">
+        <div className="bg-gray-200 animate-pulse h-6 rounded w-full"></div>
+        <div className="bg-gray-200 animate-pulse h-6 rounded w-4/5"></div>
+      </div>
+      <div className="space-y-2 mb-4">
+        <div className="bg-gray-200 animate-pulse h-4 rounded w-full"></div>
+        <div className="bg-gray-200 animate-pulse h-4 rounded w-3/4"></div>
+        <div className="bg-gray-200 animate-pulse h-4 rounded w-1/2"></div>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="bg-gray-200 animate-pulse h-4 rounded w-24"></div>
+        <div className="bg-gray-200 animate-pulse h-8 rounded w-20"></div>
+      </div>
+    </div>
+  </div>
+);
+
+// Componente para estado vazio
+const EmptyNewsState = () => (
+  <div className="col-span-full flex flex-col items-center justify-center py-16 px-4">
+    <div className="text-gray-400 mb-4">
+      <Search className="w-16 h-16" />
+    </div>
+    <h3 className="text-2xl font-bold text-gray-600 mb-2">
+      Nenhuma notícia encontrada
+    </h3>
+    <p className="text-gray-500 text-center max-w-md">
+      Não encontramos notícias que correspondam aos seus critérios de busca. 
+      Tente alterar os filtros ou termos de pesquisa.
+    </p>
+  </div>
+);
+
 export default function NoticiasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
@@ -156,6 +199,8 @@ export default function NoticiasPage() {
   const [translatedContent, setTranslatedContent] = useState<string>('');
   const [selectedLanguage, setSelectedLanguage] = useState('pt');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   // Filtrar artigos baseado na busca e categoria
   const filteredArticles = articles.filter(article => {
@@ -435,10 +480,21 @@ export default function NoticiasPage() {
     }, 1500);
   };
 
+  // Simular carregamento inicial das notícias
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoadingNews(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   // Carregar dados quando selecionar um artigo
   useEffect(() => {
     if (selectedArticle) {
+      setIsLoadingComments(true);
       loadArticleData(selectedArticle.id);
+      setTimeout(() => setIsLoadingComments(false), 1000);
     }
   }, [selectedArticle]);
 
@@ -502,14 +558,20 @@ export default function NoticiasPage() {
       </section>
 
       {/* Artigos em Destaque */}
-      {featuredArticles.length > 0 && (
+      {(isLoadingNews || featuredArticles.length > 0) && (
         <section className="py-16 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4">
             <h2 className="text-3xl md:text-4xl font-bold text-idasam-text-main mb-12 text-center">
               Destaques
             </h2>
             <div className="grid md:grid-cols-2 gap-8">
-              {featuredArticles.slice(0, 2).map((article) => (
+              {isLoadingNews ? (
+                <>
+                  <NewsCardSkeleton featured />
+                  <NewsCardSkeleton featured />
+                </>
+              ) : (
+                featuredArticles.slice(0, 2).map((article) => (
                 <article
                   key={article.id}
                   className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
@@ -560,7 +622,8 @@ export default function NoticiasPage() {
                     </div>
                   </div>
                 </article>
-              ))}
+              ))
+              )}
             </div>
           </div>
         </section>
@@ -573,7 +636,21 @@ export default function NoticiasPage() {
             Todas as Notícias
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {regularArticles.map((article) => (
+            {isLoadingNews ? (
+              // Loading skeletons
+              <>
+                <NewsCardSkeleton />
+                <NewsCardSkeleton />
+                <NewsCardSkeleton />
+                <NewsCardSkeleton />
+                <NewsCardSkeleton />
+                <NewsCardSkeleton />
+              </>
+            ) : regularArticles.length === 0 && filteredArticles.length === 0 ? (
+              // Estado vazio
+              <EmptyNewsState />
+            ) : (
+              regularArticles.map((article) => (
               <article
                 key={article.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
@@ -619,7 +696,8 @@ export default function NoticiasPage() {
                   </div>
                 </div>
               </article>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </section>
@@ -754,7 +832,7 @@ export default function NoticiasPage() {
               <div className="border-t pt-8">
                 <h3 className="text-2xl font-bold text-idasam-text-main mb-6 flex items-center gap-2">
                   <MessageCircle className="w-6 h-6" />
-                  Comentários ({getArticleStats(selectedArticle.id).comments.length})
+                  Comentários ({isLoadingComments ? '...' : getArticleStats(selectedArticle.id).comments.length})
                 </h3>
 
                 {/* Formulário de Comentário */}
@@ -795,10 +873,32 @@ export default function NoticiasPage() {
 
                 {/* Lista de Comentários */}
                 <div className="space-y-4 max-h-64 overflow-y-auto">
-                  {getArticleStats(selectedArticle.id).comments.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">
-                      Seja o primeiro a comentar nesta notícia!
-                    </p>
+                  {isLoadingComments ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="bg-white p-4 rounded-lg border border-gray-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                            <div className="bg-gray-200 animate-pulse h-4 rounded w-24"></div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="bg-gray-200 animate-pulse h-4 rounded w-full"></div>
+                            <div className="bg-gray-200 animate-pulse h-4 rounded w-3/4"></div>
+                          </div>
+                          <div className="bg-gray-200 animate-pulse h-6 rounded w-16 mt-3"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : getArticleStats(selectedArticle.id).comments.length === 0 ? (
+                    <div className="text-center py-12">
+                      <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 text-lg font-medium mb-2">
+                        Nenhum comentário ainda
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        Seja o primeiro a comentar nesta notícia!
+                      </p>
+                    </div>
                   ) : (
                     getArticleStats(selectedArticle.id).comments.map((comment) => (
                       <div key={comment.id} className="bg-white p-4 rounded-lg border border-gray-200">
