@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter, Heart, MessageCircle, Globe, Send, ThumbsUp, Share2, Mail } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import Logos3 from '@/components/logos3';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import OptimizedImage, { HeroImage } from '@/components/optimized-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,6 +16,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/supabaseClient';
+import { newsCache, cacheHelpers } from '@/lib/newsCache';
+import { useAnalyticsAndSEO } from '@/hooks/use-analytics';
 
 // Tipos para as notícias
 interface Article {
@@ -40,12 +44,13 @@ interface Comment {
 
 interface ArticleStats {
   likes: number;
+  views: number;
   comments: Comment[];
   isLiked: boolean;
 }
 
-// Dados das notícias (simulando um banco de dados)
-const articles: Article[] = [
+// Dados das notícias (fallback se Supabase não estiver disponível)
+const fallbackArticles: Article[] = [
   {
     id: '1',
     title: 'IDASAM Lança Novo Projeto de Bioeconomia na Amazônia',
@@ -201,6 +206,7 @@ export default function NoticiasPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [articles, setArticles] = useState<Article[]>([]);
   
   // Estados para paginação
   const [displayedArticles, setDisplayedArticles] = useState(6);
@@ -211,6 +217,72 @@ export default function NoticiasPage() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [subscriptionMessage, setSubscriptionMessage] = useState('');
+
+  // Hooks de analytics e SEO
+  const { 
+    trackPageView, 
+    trackArticleView, 
+    trackArticleLike, 
+    trackComment, 
+    trackShare, 
+    trackSearch,
+    trackNewsletterSignup,
+    trackError,
+    updateSEO,
+    updateArticleSEO 
+  } = useAnalyticsAndSEO();
+
+  // Inicializar SEO da página
+  useEffect(() => {
+    updateSEO({
+      title: 'Notícias | IDASAM - Instituto de Desenvolvimento Sustentável da Amazônia',
+      description: 'Acompanhe as últimas novidades e conquistas do IDASAM na transformação sustentável da Amazônia. Notícias sobre bioeconomia, tecnologia, capacitação e pesquisa.',
+      keywords: ['IDASAM', 'Amazônia', 'sustentabilidade', 'notícias', 'bioeconomia', 'tecnologia', 'conservação'],
+      url: `${window.location.origin}/noticias`,
+      type: 'website'
+    });
+
+    trackPageView('/noticias', 'Notícias IDASAM');
+  }, [updateSEO, trackPageView]);
+
+  // Carregar artigos do Supabase ou cache
+  const loadArticles = async (): Promise<Article[]> => {
+    return await cacheHelpers.getOrFetch(
+      'articles',
+      async () => {
+        console.log('🌐 Buscando artigos do Supabase...');
+        
+        try {
+          // Tentar buscar do Supabase primeiro
+          const { data, error } = await supabase
+            .from('articles')
+            .select('*')
+            .order('publishDate', { ascending: false });
+
+          if (error) {
+            console.warn('⚠️ Erro ao buscar artigos do Supabase:', error);
+            console.log('📦 Usando artigos fallback');
+            return fallbackArticles;
+          }
+
+          if (!data || data.length === 0) {
+            console.log('📦 Nenhum artigo encontrado no Supabase, usando fallback');
+            return fallbackArticles;
+          }
+
+          console.log(`✅ ${data.length} artigos carregados do Supabase`);
+          return data;
+          
+        } catch (error) {
+          console.warn('⚠️ Erro de conexão com Supabase:', error);
+          trackError(`Erro ao carregar artigos: ${error}`, 'loadArticles');
+          return fallbackArticles;
+        }
+      },
+      (key) => newsCache.getArticles(),
+      (key, data) => newsCache.setArticles(data)
+    );
+  };
 
   // Filtrar artigos baseado na busca e categoria
   const filteredArticles = articles.filter(article => {
@@ -250,7 +322,12 @@ export default function NoticiasPage() {
   useEffect(() => {
     setDisplayedArticles(6);
     setHasMoreArticles(regularArticles.length > 6);
-  }, [searchTerm, selectedCategory, regularArticles.length]);
+    
+    // Rastrear busca se houver termo
+    if (searchTerm.trim()) {
+      trackSearch(searchTerm, filteredArticles.length);
+    }
+  }, [searchTerm, selectedCategory, regularArticles.length, filteredArticles.length, trackSearch]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -263,61 +340,92 @@ export default function NoticiasPage() {
 
   // Buscar comentários e estatísticas do artigo no Supabase
   const loadArticleData = async (articleId: string) => {
-    try {
-      // Buscar ou criar estatísticas do artigo
-      let { data: articleStatsData, error: statsError } = await supabase
-        .from('article_stats')
-        .select('*')
-        .eq('article_id', articleId)
-        .single();
+    return await cacheHelpers.getOrFetch(
+      `article_stats_${articleId}`,
+      async () => {
+        try {
+          // Incrementar visualizações usando a função SQL
+          const { error: incrementError } = await supabase
+            .rpc('increment_article_views', { p_article_id: articleId });
 
-      if (statsError && statsError.code === 'PGRST116') {
-        // Artigo não existe, criar novo
-        const { data: newStats, error: createError } = await supabase
-          .from('article_stats')
-          .insert({
-            article_id: articleId,
+          if (incrementError) {
+            console.warn('⚠️ Erro ao incrementar visualizações:', incrementError);
+          }
+
+          // Buscar ou criar estatísticas do artigo
+          let { data: articleStatsData, error: statsError } = await supabase
+            .from('article_stats')
+            .select('*')
+            .eq('article_id', articleId)
+            .single();
+
+          if (statsError && statsError.code === 'PGRST116') {
+            // Artigo não existe, criar novo
+            const { data: newStats, error: createError } = await supabase
+              .from('article_stats')
+              .insert({
+                article_id: articleId,
+                likes: Math.floor(Math.random() * 50) + 10,
+                views: Math.floor(Math.random() * 500) + 100
+              })
+              .select()
+              .single();
+
+            if (createError) {
+              console.error('Erro ao criar estatísticas:', createError);
+              trackError(`Erro ao criar estatísticas: ${createError.message}`, 'loadArticleData');
+              return null;
+            }
+            articleStatsData = newStats;
+          }
+
+          // Buscar comentários
+          const { data: commentsData, error: commentsError } = await supabase
+            .from('comments')
+            .select('*')
+            .eq('article_id', articleId)
+            .order('created_at', { ascending: false });
+
+          if (commentsError) {
+            console.error('Erro ao buscar comentários:', commentsError);
+            trackError(`Erro ao buscar comentários: ${commentsError.message}`, 'loadArticleData');
+            return null;
+          }
+
+          // Verificar se o usuário já curtiu (simulado com localStorage por ora)
+          const userLikes = JSON.parse(localStorage.getItem('userLikes') || '[]');
+          const isLiked = userLikes.includes(articleId);
+
+          const result = {
+            likes: articleStatsData?.likes || 0,
+            views: articleStatsData?.views || 0,
+            comments: commentsData || [],
+            isLiked
+          };
+
+          return result;
+
+        } catch (error) {
+          console.error('Erro ao carregar dados do artigo:', error);
+          trackError(`Erro geral ao carregar artigo: ${error}`, 'loadArticleData');
+          
+          // Retornar dados padrão em caso de erro
+          return {
             likes: Math.floor(Math.random() * 50) + 10,
-            views: Math.floor(Math.random() * 500) + 100
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Erro ao criar estatísticas:', createError);
-          return;
+            views: Math.floor(Math.random() * 500) + 100,
+            comments: [],
+            isLiked: false
+          };
         }
-        articleStatsData = newStats;
-      }
-
-      // Buscar comentários
-      const { data: commentsData, error: commentsError } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('article_id', articleId)
-        .order('created_at', { ascending: false });
-
-      if (commentsError) {
-        console.error('Erro ao buscar comentários:', commentsError);
-        return;
-      }
-
-      // Verificar se o usuário já curtiu (simulado com localStorage por ora)
-      const userLikes = JSON.parse(localStorage.getItem('userLikes') || '[]');
-      const isLiked = userLikes.includes(articleId);
-
-      setArticleStats(prev => ({
-        ...prev,
-        [articleId]: {
-          likes: articleStatsData?.likes || 0,
-          comments: commentsData || [],
-          isLiked
+      },
+      (key) => newsCache.getArticleStats(articleId),
+      (key, data) => {
+        if (data) {
+          newsCache.setArticleStats(articleId, data);
+          newsCache.setComments(articleId, data.comments);
         }
-      }));
-
-    } catch (error) {
-      console.error('Erro ao carregar dados do artigo:', error);
-    }
+      }
+    );
   };
 
   // Curtir/descurtir artigo
@@ -337,6 +445,7 @@ export default function NoticiasPage() {
 
       if (error) {
         console.error('Erro ao atualizar curtidas:', error);
+        trackError(`Erro ao curtir: ${error.message}`, 'handleLike');
         return;
       }
 
@@ -360,8 +469,17 @@ export default function NoticiasPage() {
         }
       }));
 
+      // Invalidar cache e rastrear evento
+      newsCache.invalidateArticleStats(articleId);
+      
+      const article = articles.find(a => a.id === articleId);
+      if (article) {
+        trackArticleLike(articleId, article.title, newIsLiked);
+      }
+
     } catch (error) {
       console.error('Erro ao curtir artigo:', error);
+      trackError(`Erro ao curtir artigo: ${error}`, 'handleLike');
     }
   };
 
@@ -384,6 +502,7 @@ export default function NoticiasPage() {
 
       if (error) {
         console.error('Erro ao adicionar comentário:', error);
+        trackError(`Erro ao comentar: ${error.message}`, 'handleAddComment');
         return;
       }
 
@@ -396,12 +515,17 @@ export default function NoticiasPage() {
         }
       }));
 
+      // Invalidar cache e rastrear evento
+      newsCache.invalidateComments(articleId);
+      trackComment(articleId, newComment.trim());
+
       // Limpar formulário
       setNewComment('');
       setCommentAuthor('');
 
     } catch (error) {
       console.error('Erro ao adicionar comentário:', error);
+      trackError(`Erro ao adicionar comentário: ${error}`, 'handleAddComment');
     } finally {
       setIsLoading(false);
     }
@@ -456,13 +580,17 @@ export default function NoticiasPage() {
         }
       }));
 
+      // Invalidar cache
+      newsCache.invalidateComments(articleId);
+
     } catch (error) {
       console.error('Erro ao curtir comentário:', error);
+      trackError(`Erro ao curtir comentário: ${error}`, 'handleCommentLike');
     }
   };
 
   const getArticleStats = (articleId: string): ArticleStats => {
-    return articleStats[articleId] || { likes: 0, comments: [], isLiked: false };
+    return articleStats[articleId] || { likes: 0, views: 0, comments: [], isLiked: false };
   };
 
   const translateContent = async (content: string, targetLang: string) => {
@@ -531,6 +659,7 @@ export default function NoticiasPage() {
     const url = shareUrls[platform as keyof typeof shareUrls];
     if (url) {
       window.open(url, '_blank', 'width=600,height=400');
+      trackShare(article.id, platform, article.title);
     }
   };
 
@@ -555,11 +684,13 @@ export default function NoticiasPage() {
       //   .from('newsletter_subscriptions')
       //   .insert({ email: newsletterEmail.trim() });
 
+      trackNewsletterSignup(newsletterEmail.trim());
       setSubscriptionMessage('✅ Inscrição realizada com sucesso! Você receberá nossas novidades.');
       setNewsletterEmail('');
       
     } catch (error) {
       console.error('Erro ao inscrever na newsletter:', error);
+      trackError(`Erro na newsletter: ${error}`, 'handleNewsletterSubscription');
       setSubscriptionMessage('❌ Erro ao realizar inscrição. Tente novamente.');
     } finally {
       setIsSubscribing(false);
@@ -568,23 +699,48 @@ export default function NoticiasPage() {
     }
   };
 
-  // Simular carregamento inicial das notícias
+  // Carregar artigos inicial
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoadingNews(false);
-    }, 1500);
+    const initializeArticles = async () => {
+      setIsLoadingNews(true);
+      try {
+        const loadedArticles = await loadArticles();
+        setArticles(loadedArticles);
+      } catch (error) {
+        console.error('Erro ao inicializar artigos:', error);
+        trackError(`Erro ao inicializar: ${error}`, 'initializeArticles');
+        setArticles(fallbackArticles);
+      } finally {
+        setIsLoadingNews(false);
+      }
+    };
 
-    return () => clearTimeout(timer);
+    initializeArticles();
   }, []);
 
   // Carregar dados quando selecionar um artigo
   useEffect(() => {
     if (selectedArticle) {
       setIsLoadingComments(true);
-      loadArticleData(selectedArticle.id);
-      setTimeout(() => setIsLoadingComments(false), 1000);
+      
+      // Atualizar SEO do artigo
+      updateArticleSEO(selectedArticle);
+      
+      // Rastrear visualização
+      trackArticleView(selectedArticle.id, selectedArticle.title);
+      
+      // Carregar dados
+      loadArticleData(selectedArticle.id).then((data) => {
+        if (data) {
+          setArticleStats(prev => ({
+            ...prev,
+            [selectedArticle.id]: data
+          }));
+        }
+        setIsLoadingComments(false);
+      });
     }
-  }, [selectedArticle]);
+  }, [selectedArticle, updateArticleSEO, trackArticleView]);
 
   // Hook para scroll infinito
   useEffect(() => {
@@ -681,10 +837,11 @@ export default function NoticiasPage() {
                   onClick={() => setSelectedArticle(article)}
                 >
                   <div className="aspect-video overflow-hidden">
-                    <img
+                    <OptimizedImage
                       src={article.image}
                       alt={article.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      priority={true}
                     />
                   </div>
                   <div className="p-6">
@@ -760,7 +917,7 @@ export default function NoticiasPage() {
                 onClick={() => setSelectedArticle(article)}
               >
                 <div className="aspect-video overflow-hidden">
-                  <img
+                  <OptimizedImage
                     src={article.image}
                     alt={article.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -837,7 +994,7 @@ export default function NoticiasPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
           <div className="bg-white rounded-xl sm:rounded-2xl w-full max-w-5xl min-h-[90vh] sm:max-h-[90vh] sm:overflow-y-auto mt-4 sm:mt-8 mb-4">
             <div className="relative">
-              <img
+              <HeroImage
                 src={selectedArticle.image}
                 alt={selectedArticle.title}
                 className="w-full h-48 sm:h-64 md:h-80 object-cover rounded-t-xl sm:rounded-t-2xl"
@@ -909,6 +1066,12 @@ export default function NoticiasPage() {
                     <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm">
                       <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span>{getArticleStats(selectedArticle.id).comments.length}</span>
+                    </div>
+
+                    {/* Visualizações */}
+                    <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm">
+                      <span>👁️</span>
+                      <span>{getArticleStats(selectedArticle.id).views || 0}</span>
                     </div>
                   </div>
 
