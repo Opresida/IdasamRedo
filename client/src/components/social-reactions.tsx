@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Heart, ThumbsUp, Clap, Zap, Frown, Angry } from 'lucide-react';
+import { Heart, ThumbsUp, HandHeart, Zap, Frown, Angry } from 'lucide-react';
 
 interface Reaction {
   type: 'like' | 'love' | 'clap' | 'wow' | 'sad' | 'angry';
@@ -21,7 +21,7 @@ interface SocialReactionsProps {
 const reactionConfig = {
   like: { emoji: '👍', icon: ThumbsUp, color: 'text-blue-600', bgColor: 'bg-blue-50', label: 'Curtir' },
   love: { emoji: '❤️', icon: Heart, color: 'text-red-600', bgColor: 'bg-red-50', label: 'Amar' },
-  clap: { emoji: '👏', icon: Clap, color: 'text-green-600', bgColor: 'bg-green-50', label: 'Aplaudir' },
+  clap: { emoji: '👏', icon: HandHeart, color: 'text-green-600', bgColor: 'bg-green-50', label: 'Aplaudir' },
   wow: { emoji: '😮', icon: Zap, color: 'text-yellow-600', bgColor: 'bg-yellow-50', label: 'Uau' },
   sad: { emoji: '😢', icon: Frown, color: 'text-purple-600', bgColor: 'bg-purple-50', label: 'Triste' },
   angry: { emoji: '😡', icon: Angry, color: 'text-orange-600', bgColor: 'bg-orange-50', label: 'Raiva' }
