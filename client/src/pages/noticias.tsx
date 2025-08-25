@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter } from 'lucide-react';
+import { Calendar, User, Clock, Tag, ArrowRight, Search, Filter, Heart, MessageCircle, Globe, Send, ThumbsUp } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
@@ -27,6 +27,20 @@ interface Article {
   image: string;
   tags: string[];
   featured: boolean;
+}
+
+interface Comment {
+  id: string;
+  author: string;
+  content: string;
+  timestamp: string;
+  likes: number;
+}
+
+interface ArticleStats {
+  likes: number;
+  comments: Comment[];
+  isLiked: boolean;
 }
 
 // Dados das notícias (simulando um banco de dados)
@@ -134,6 +148,12 @@ export default function NoticiasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
+  const [newComment, setNewComment] = useState('');
+  const [commentAuthor, setCommentAuthor] = useState('');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatedContent, setTranslatedContent] = useState<string>('');
+  const [selectedLanguage, setSelectedLanguage] = useState('pt');
 
   // Filtrar artigos baseado na busca e categoria
   const filteredArticles = articles.filter(article => {
@@ -156,6 +176,108 @@ export default function NoticiasPage() {
       month: 'long',
       year: 'numeric'
     });
+  };
+
+  const getArticleStats = (articleId: string): ArticleStats => {
+    if (!articleStats[articleId]) {
+      setArticleStats(prev => ({
+        ...prev,
+        [articleId]: {
+          likes: Math.floor(Math.random() * 50) + 10,
+          comments: [],
+          isLiked: false
+        }
+      }));
+      return { likes: 0, comments: [], isLiked: false };
+    }
+    return articleStats[articleId];
+  };
+
+  const handleLike = (articleId: string) => {
+    setArticleStats(prev => ({
+      ...prev,
+      [articleId]: {
+        ...prev[articleId],
+        likes: prev[articleId]?.isLiked 
+          ? (prev[articleId].likes - 1) 
+          : (prev[articleId]?.likes || 0) + 1,
+        isLiked: !prev[articleId]?.isLiked
+      }
+    }));
+  };
+
+  const handleAddComment = (articleId: string) => {
+    if (newComment.trim() && commentAuthor.trim()) {
+      const comment: Comment = {
+        id: Date.now().toString(),
+        author: commentAuthor,
+        content: newComment,
+        timestamp: new Date().toISOString(),
+        likes: 0
+      };
+
+      setArticleStats(prev => ({
+        ...prev,
+        [articleId]: {
+          ...prev[articleId],
+          comments: [...(prev[articleId]?.comments || []), comment]
+        }
+      }));
+
+      setNewComment('');
+      setCommentAuthor('');
+    }
+  };
+
+  const translateContent = async (content: string, targetLang: string) => {
+    setIsTranslating(true);
+    
+    // Simulação de tradução (em um caso real, usaria Google Translate API ou similar)
+    const translations: Record<string, Record<string, string>> = {
+      'en': {
+        'Projeto': 'Project',
+        'sustentável': 'sustainable',
+        'Amazônia': 'Amazon',
+        'desenvolvimento': 'development',
+        'comunidades': 'communities',
+        'tecnologia': 'technology',
+        'inovação': 'innovation'
+      },
+      'es': {
+        'Projeto': 'Proyecto',
+        'sustentável': 'sostenible',
+        'Amazônia': 'Amazonas',
+        'desenvolvimento': 'desarrollo',
+        'comunidades': 'comunidades',
+        'tecnologia': 'tecnología',
+        'inovação': 'innovación'
+      },
+      'fr': {
+        'Projeto': 'Projet',
+        'sustentável': 'durable',
+        'Amazônia': 'Amazonie',
+        'desenvolvimento': 'développement',
+        'comunidades': 'communautés',
+        'tecnologia': 'technologie',
+        'inovação': 'innovation'
+      }
+    };
+
+    setTimeout(() => {
+      if (targetLang === 'pt') {
+        setTranslatedContent(content);
+      } else {
+        let translated = content;
+        const langTranslations = translations[targetLang];
+        if (langTranslations) {
+          Object.entries(langTranslations).forEach(([pt, translation]) => {
+            translated = translated.replace(new RegExp(pt, 'gi'), translation);
+          });
+        }
+        setTranslatedContent(translated);
+      }
+      setIsTranslating(false);
+    }, 1500);
   };
 
   return (
@@ -343,7 +465,7 @@ export default function NoticiasPage() {
       {/* Modal do Artigo */}
       {selectedArticle && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
             <div className="relative">
               <img
                 src={selectedArticle.image}
@@ -351,7 +473,11 @@ export default function NoticiasPage() {
                 className="w-full h-64 md:h-80 object-cover"
               />
               <button
-                onClick={() => setSelectedArticle(null)}
+                onClick={() => {
+                  setSelectedArticle(null);
+                  setTranslatedContent('');
+                  setSelectedLanguage('pt');
+                }}
                 className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors"
               >
                 ✕
@@ -386,16 +512,71 @@ export default function NoticiasPage() {
               <h1 className="text-3xl md:text-4xl font-bold text-idasam-text-main mb-6">
                 {selectedArticle.title}
               </h1>
-              
-              <div className="prose prose-lg max-w-none">
-                {selectedArticle.content.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className="text-gray-700 leading-relaxed mb-4">
-                    {paragraph.trim()}
-                  </p>
-                ))}
+
+              {/* Barra de Ações */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b">
+                <div className="flex items-center gap-4">
+                  {/* Curtir */}
+                  <button
+                    onClick={() => handleLike(selectedArticle.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                      getArticleStats(selectedArticle.id).isLiked 
+                        ? 'bg-red-50 text-red-600 border border-red-200' 
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Heart 
+                      className={`w-5 h-5 ${
+                        getArticleStats(selectedArticle.id).isLiked ? 'fill-current' : ''
+                      }`} 
+                    />
+                    <span>{getArticleStats(selectedArticle.id).likes}</span>
+                  </button>
+
+                  {/* Comentários */}
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <MessageCircle className="w-5 h-5" />
+                    <span>{getArticleStats(selectedArticle.id).comments.length}</span>
+                  </div>
+                </div>
+
+                {/* Tradução */}
+                <div className="flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-gray-600" />
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => {
+                      setSelectedLanguage(e.target.value);
+                      translateContent(selectedArticle.content, e.target.value);
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-idasam-green-dark"
+                  >
+                    <option value="pt">Português</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                  </select>
+                </div>
               </div>
               
-              <div className="flex flex-wrap gap-2 mt-8">
+              {/* Conteúdo do Artigo */}
+              <div className="prose prose-lg max-w-none mb-8">
+                {isTranslating ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-idasam-green-dark"></div>
+                    <span className="ml-3 text-gray-600">Traduzindo...</span>
+                  </div>
+                ) : (
+                  (translatedContent || selectedArticle.content).split('\n\n').map((paragraph, index) => (
+                    <p key={index} className="text-gray-700 leading-relaxed mb-4">
+                      {paragraph.trim()}
+                    </p>
+                  ))
+                )}
+              </div>
+              
+              {/* Tags */}
+              <div className="flex flex-wrap gap-2 mb-8">
                 {selectedArticle.tags.map((tag) => (
                   <span
                     key={tag}
@@ -405,6 +586,82 @@ export default function NoticiasPage() {
                     {tag}
                   </span>
                 ))}
+              </div>
+
+              {/* Seção de Comentários */}
+              <div className="border-t pt-8">
+                <h3 className="text-2xl font-bold text-idasam-text-main mb-6 flex items-center gap-2">
+                  <MessageCircle className="w-6 h-6" />
+                  Comentários ({getArticleStats(selectedArticle.id).comments.length})
+                </h3>
+
+                {/* Formulário de Comentário */}
+                <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <Input
+                      placeholder="Seu nome"
+                      value={commentAuthor}
+                      onChange={(e) => setCommentAuthor(e.target.value)}
+                      className="border-gray-300"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Escreva seu comentário..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      className="flex-1 border-gray-300"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddComment(selectedArticle.id);
+                        }
+                      }}
+                    />
+                    <Button
+                      onClick={() => handleAddComment(selectedArticle.id)}
+                      className="bg-idasam-green-dark hover:bg-idasam-green-medium px-4"
+                      disabled={!newComment.trim() || !commentAuthor.trim()}
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Lista de Comentários */}
+                <div className="space-y-4 max-h-64 overflow-y-auto">
+                  {getArticleStats(selectedArticle.id).comments.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">
+                      Seja o primeiro a comentar nesta notícia!
+                    </p>
+                  ) : (
+                    getArticleStats(selectedArticle.id).comments.map((comment) => (
+                      <div key={comment.id} className="bg-white p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-idasam-green-dark/10 rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-idasam-green-dark" />
+                            </div>
+                            <span className="font-medium text-idasam-text-main">
+                              {comment.author}
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {formatDate(comment.timestamp)}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">
+                          {comment.content}
+                        </p>
+                        <div className="flex items-center gap-4 mt-3">
+                          <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-idasam-green-dark transition-colors">
+                            <ThumbsUp className="w-4 h-4" />
+                            <span>{comment.likes}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
