@@ -1,209 +1,184 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-export interface TTSSettings {
-  rate: number;
-  pitch: number;
-  volume: number;
-  voice: SpeechSynthesisVoice | null;
-  language: string;
+interface Voice {
+  name: string;
+  lang: string;
+  default: boolean;
+  localService: boolean;
 }
 
-export interface TTSState {
+interface UseTextToSpeechReturn {
+  isSupported: boolean;
   isPlaying: boolean;
   isPaused: boolean;
-  currentPosition: number;
-  duration: number;
-  isLoading: boolean;
-  error: string | null;
+  voices: Voice[];
+  selectedVoice: Voice | null;
+  rate: number;
+  volume: number;
+  progress: number;
+  speak: (text: string) => void;
+  pause: () => void;
+  resume: () => void;
+  stop: () => void;
+  setVoice: (voice: Voice) => void;
+  setRate: (rate: number) => void;
+  setVolume: (volume: number) => void;
 }
 
-const DEFAULT_SETTINGS: TTSSettings = {
-  rate: 1,
-  pitch: 1,
-  volume: 1,
-  voice: null,
-  language: 'pt-BR'
-};
+export function useTextToSpeech(): UseTextToSpeechReturn {
+  const [isSupported, setIsSupported] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [voices, setVoices] = useState<Voice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
+  const [rate, setRate] = useState(1);
+  const [volume, setVolume] = useState(0.8);
+  const [progress, setProgress] = useState(0);
 
-export const useTextToSpeech = () => {
-  const [state, setState] = useState<TTSState>({
-    isPlaying: false,
-    isPaused: false,
-    currentPosition: 0,
-    duration: 0,
-    isLoading: false,
-    error: null
-  });
-
-  const [settings, setSettings] = useState<TTSSettings>(() => {
-    // Carregar configurações do localStorage
-    const savedSettings = localStorage.getItem('tts-settings');
-    return savedSettings ? { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) } : DEFAULT_SETTINGS;
-  });
-
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const textRef = useRef<string>('');
-  const wordsRef = useRef<string[]>([]);
-  const currentWordIndexRef = useRef<number>(0);
+  const startTimeRef = useRef<number>(0);
+  const pausedTimeRef = useRef<number>(0);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Verificar suporte do browser
-  const isSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
-
-  // Carregar vozes disponíveis
+  // Verificar suporte e carregar vozes
   useEffect(() => {
-    if (!isSupported) return;
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      setIsSupported(true);
 
-    const loadVoices = () => {
-      const voices = speechSynthesis.getVoices();
-      setAvailableVoices(voices);
-      
-      // Se não há voz selecionada, selecionar a primeira voz em português
-      if (!settings.voice && voices.length > 0) {
-        const ptVoice = voices.find(voice => 
-          voice.lang.startsWith('pt') || voice.lang.includes('Portuguese')
-        ) || voices[0];
-        
-        setSettings(prev => ({ ...prev, voice: ptVoice }));
-      }
-    };
+      const loadVoices = () => {
+        const availableVoices = speechSynthesis.getVoices().map(voice => ({
+          name: voice.name,
+          lang: voice.lang,
+          default: voice.default,
+          localService: voice.localService
+        }));
 
-    loadVoices();
-    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+        setVoices(availableVoices);
 
-    return () => {
-      speechSynthesis.removeEventListener('voiceschanged', loadVoices);
-    };
-  }, [isSupported]);
+        // Selecionar voz padrão (preferencialmente em português)
+        if (availableVoices.length > 0 && !selectedVoice) {
+          const portugueseVoice = availableVoices.find(voice => 
+            voice.lang.startsWith('pt') || 
+            voice.name.toLowerCase().includes('portuguese') ||
+            voice.name.toLowerCase().includes('brasil')
+          );
+          
+          setSelectedVoice(portugueseVoice || availableVoices[0]);
+        }
+      };
 
-  // Salvar configurações no localStorage
-  useEffect(() => {
-    localStorage.setItem('tts-settings', JSON.stringify(settings));
-  }, [settings]);
+      // Carregar vozes imediatamente
+      loadVoices();
 
-  // Função para dividir texto em palavras
-  const prepareText = useCallback((text: string) => {
-    const cleanText = text
-      .replace(/<[^>]*>/g, '') // Remover HTML tags
-      .replace(/\s+/g, ' ') // Normalizar espaços
-      .trim();
+      // Alguns navegadores carregam vozes assincronamente
+      speechSynthesis.onvoiceschanged = loadVoices;
+
+      return () => {
+        speechSynthesis.onvoiceschanged = null;
+      };
+    }
+  }, [selectedVoice]);
+
+  // Função para calcular progresso
+  const updateProgress = useCallback(() => {
+    if (!utteranceRef.current || !textRef.current) return;
+
+    const now = Date.now();
+    const elapsed = (now - startTimeRef.current - pausedTimeRef.current) / 1000;
     
-    const words = cleanText.split(' ');
-    wordsRef.current = words;
-    textRef.current = cleanText;
+    // Estimar duração baseada no texto (aproximadamente 150 palavras por minuto)
+    const words = textRef.current.split(' ').length;
+    const estimatedDuration = (words / 150) * 60 / rate; // segundos
     
-    setState(prev => ({
-      ...prev,
-      duration: words.length,
-      currentPosition: 0
-    }));
-    
-    return cleanText;
+    const calculatedProgress = Math.min((elapsed / estimatedDuration) * 100, 100);
+    setProgress(calculatedProgress);
+
+    if (calculatedProgress >= 100) {
+      clearProgressInterval();
+    }
+  }, [rate]);
+
+  const clearProgressInterval = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
   }, []);
 
-  // Função para criar utterance
-  const createUtterance = useCallback((text: string) => {
-    if (!isSupported) return null;
+  const startProgressTracking = useCallback(() => {
+    clearProgressInterval();
+    startTimeRef.current = Date.now();
+    pausedTimeRef.current = 0;
+    
+    progressIntervalRef.current = setInterval(updateProgress, 100);
+  }, [updateProgress, clearProgressInterval]);
+
+  // Função para falar texto
+  const speak = useCallback((text: string) => {
+    if (!isSupported || !text.trim()) return;
+
+    // Parar qualquer fala anterior
+    speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = settings.rate;
-    utterance.pitch = settings.pitch;
-    utterance.volume = settings.volume;
-    utterance.lang = settings.language;
+    textRef.current = text;
     
-    if (settings.voice) {
-      utterance.voice = settings.voice;
+    // Configurar voz se disponível
+    if (selectedVoice) {
+      const voice = speechSynthesis.getVoices().find(v => v.name === selectedVoice.name);
+      if (voice) {
+        utterance.voice = voice;
+      }
     }
+
+    utterance.rate = rate;
+    utterance.volume = volume;
+    utterance.pitch = 1;
 
     // Event listeners
     utterance.onstart = () => {
-      setState(prev => ({
-        ...prev,
-        isPlaying: true,
-        isPaused: false,
-        isLoading: false,
-        error: null
-      }));
+      setIsPlaying(true);
+      setIsPaused(false);
+      setProgress(0);
+      startProgressTracking();
     };
 
     utterance.onend = () => {
-      setState(prev => ({
-        ...prev,
-        isPlaying: false,
-        isPaused: false,
-        currentPosition: 0
-      }));
-      currentWordIndexRef.current = 0;
-    };
-
-    utterance.onpause = () => {
-      setState(prev => ({
-        ...prev,
-        isPaused: true,
-        isPlaying: false
-      }));
-    };
-
-    utterance.onresume = () => {
-      setState(prev => ({
-        ...prev,
-        isPaused: false,
-        isPlaying: true
-      }));
+      setIsPlaying(false);
+      setIsPaused(false);
+      setProgress(100);
+      clearProgressInterval();
     };
 
     utterance.onerror = (event) => {
-      setState(prev => ({
-        ...prev,
-        isPlaying: false,
-        isPaused: false,
-        isLoading: false,
-        error: `Erro na síntese de voz: ${event.error}`
-      }));
+      console.error('Speech synthesis error:', event.error);
+      setIsPlaying(false);
+      setIsPaused(false);
+      setProgress(0);
+      clearProgressInterval();
     };
 
-    // Evento de boundary para tracking de progresso
-    utterance.onboundary = (event) => {
-      if (event.name === 'word') {
-        currentWordIndexRef.current++;
-        setState(prev => ({
-          ...prev,
-          currentPosition: currentWordIndexRef.current
-        }));
-      }
+    utterance.onpause = () => {
+      setIsPaused(true);
+      setIsPlaying(false);
+      clearProgressInterval();
     };
 
-    return utterance;
-  }, [settings, isSupported]);
+    utterance.onresume = () => {
+      setIsPaused(false);
+      setIsPlaying(true);
+      startProgressTracking();
+    };
 
-  // Função para iniciar reprodução
-  const speak = useCallback((text: string) => {
-    if (!isSupported) {
-      setState(prev => ({
-        ...prev,
-        error: 'Text-to-Speech não é suportado neste navegador'
-      }));
-      return;
-    }
-
-    // Parar qualquer reprodução anterior
-    speechSynthesis.cancel();
-    
-    setState(prev => ({ ...prev, isLoading: true }));
-    
-    const cleanText = prepareText(text);
-    const utterance = createUtterance(cleanText);
-    
-    if (utterance) {
-      utteranceRef.current = utterance;
-      speechSynthesis.speak(utterance);
-    }
-  }, [isSupported, prepareText, createUtterance]);
+    utteranceRef.current = utterance;
+    speechSynthesis.speak(utterance);
+  }, [isSupported, selectedVoice, rate, volume, startProgressTracking, clearProgressInterval]);
 
   // Função para pausar
   const pause = useCallback(() => {
-    if (speechSynthesis.speaking) {
+    if (speechSynthesis.speaking && !speechSynthesis.paused) {
       speechSynthesis.pause();
     }
   }, []);
@@ -218,254 +193,40 @@ export const useTextToSpeech = () => {
   // Função para parar
   const stop = useCallback(() => {
     speechSynthesis.cancel();
-    currentWordIndexRef.current = 0;
-    setState(prev => ({
-      ...prev,
-      isPlaying: false,
-      isPaused: false,
-      currentPosition: 0
-    }));
-  }, []);
-
-  // Função para toggle play/pause
-  const toggle = useCallback(() => {
-    if (state.isPlaying) {
-      pause();
-    } else if (state.isPaused) {
-      resume();
-    }
-  }, [state.isPlaying, state.isPaused, pause, resume]);
-
-  // Atualizar configurações
-  const updateSettings = useCallback((newSettings: Partial<TTSSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
-  }, []);
-
-  // Cleanup ao desmontar componente
-  useEffect(() => {
-    return () => {
-      speechSynthesis.cancel();
-    };
-  }, []);
-
-  return {
-    // Estado
-    state,
-    settings,
-    availableVoices,
-    isSupported,
-    
-    // Funções de controle
-    speak,
-    pause,
-    resume,
-    stop,
-    toggle,
-    
-    // Configurações
-    updateSettings,
-    
-    // Utilitários
-    currentWord: wordsRef.current[currentWordIndexRef.current] || '',
-    progress: state.duration > 0 ? (state.currentPosition / state.duration) * 100 : 0
-  };
-};
-import { useState, useEffect, useCallback, useRef } from 'react';
-
-interface TTSSettings {
-  rate: number;
-  pitch: number;
-  volume: number;
-  voice: SpeechSynthesisVoice | null;
-  language: string;
-}
-
-interface UseTTSReturn {
-  isPlaying: boolean;
-  isPaused: boolean;
-  isSupported: boolean;
-  currentPosition: number;
-  availableVoices: SpeechSynthesisVoice[];
-  settings: TTSSettings;
-  speak: (text: string) => void;
-  pause: () => void;
-  resume: () => void;
-  stop: () => void;
-  updateSettings: (newSettings: Partial<TTSSettings>) => void;
-}
-
-export function useTextToSpeech(): UseTTSReturn {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [currentPosition, setCurrentPosition] = useState(0);
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [settings, setSettings] = useState<TTSSettings>({
-    rate: 1,
-    pitch: 1,
-    volume: 1,
-    voice: null,
-    language: 'pt-BR'
-  });
-
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const textRef = useRef<string>('');
-  const isSupported = 'speechSynthesis' in window;
-
-  // Load voices and settings from localStorage
-  useEffect(() => {
-    if (!isSupported) return;
-
-    const loadVoices = () => {
-      const voices = speechSynthesis.getVoices();
-      setAvailableVoices(voices);
-      
-      // Try to restore saved settings
-      const savedSettings = localStorage.getItem('tts-settings');
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        const savedVoice = voices.find(v => v.name === parsed.voiceName);
-        setSettings(prev => ({
-          ...prev,
-          ...parsed,
-          voice: savedVoice || voices.find(v => v.lang.startsWith('pt')) || voices[0]
-        }));
-      } else {
-        // Set default Portuguese voice if available
-        const ptVoice = voices.find(v => v.lang.startsWith('pt'));
-        if (ptVoice) {
-          setSettings(prev => ({ ...prev, voice: ptVoice }));
-        }
-      }
-    };
-
-    loadVoices();
-    speechSynthesis.addEventListener('voiceschanged', loadVoices);
-
-    return () => {
-      speechSynthesis.removeEventListener('voiceschanged', loadVoices);
-    };
-  }, [isSupported]);
-
-  // Save settings to localStorage
-  useEffect(() => {
-    const settingsToSave = {
-      rate: settings.rate,
-      pitch: settings.pitch,
-      volume: settings.volume,
-      voiceName: settings.voice?.name,
-      language: settings.language
-    };
-    localStorage.setItem('tts-settings', JSON.stringify(settingsToSave));
-  }, [settings]);
-
-  const speak = useCallback((text: string) => {
-    if (!isSupported || !text.trim()) return;
-
-    // Stop any current speech
-    speechSynthesis.cancel();
-    
-    textRef.current = text;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utteranceRef.current = utterance;
-
-    // Apply settings
-    utterance.rate = settings.rate;
-    utterance.pitch = settings.pitch;
-    utterance.volume = settings.volume;
-    utterance.lang = settings.language;
-    
-    if (settings.voice) {
-      utterance.voice = settings.voice;
-    }
-
-    // Event handlers
-    utterance.onstart = () => {
-      setIsPlaying(true);
-      setIsPaused(false);
-      setCurrentPosition(0);
-    };
-
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setIsPaused(false);
-      setCurrentPosition(0);
-    };
-
-    utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event.error);
-      setIsPlaying(false);
-      setIsPaused(false);
-    };
-
-    utterance.onpause = () => {
-      setIsPaused(true);
-    };
-
-    utterance.onresume = () => {
-      setIsPaused(false);
-    };
-
-    utterance.onboundary = (event) => {
-      setCurrentPosition(event.charIndex);
-    };
-
-    speechSynthesis.speak(utterance);
-  }, [isSupported, settings]);
-
-  const pause = useCallback(() => {
-    if (!isSupported || !isPlaying) return;
-    speechSynthesis.pause();
-  }, [isSupported, isPlaying]);
-
-  const resume = useCallback(() => {
-    if (!isSupported || !isPaused) return;
-    speechSynthesis.resume();
-  }, [isSupported, isPaused]);
-
-  const stop = useCallback(() => {
-    if (!isSupported) return;
-    speechSynthesis.cancel();
     setIsPlaying(false);
     setIsPaused(false);
-    setCurrentPosition(0);
-  }, [isSupported]);
+    setProgress(0);
+    clearProgressInterval();
+  }, [clearProgressInterval]);
 
-  const updateSettings = useCallback((newSettings: Partial<TTSSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
+  // Função para definir voz
+  const setVoice = useCallback((voice: Voice) => {
+    setSelectedVoice(voice);
   }, []);
 
-  // Auto-pause when tab becomes hidden
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && isPlaying && !isPaused) {
-        pause();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isPlaying, isPaused, pause]);
-
-  // Cleanup on unmount
+  // Limpar interval quando componente for desmontado
   useEffect(() => {
     return () => {
+      clearProgressInterval();
       speechSynthesis.cancel();
     };
-  }, []);
+  }, [clearProgressInterval]);
 
   return {
+    isSupported,
     isPlaying,
     isPaused,
-    isSupported,
-    currentPosition,
-    availableVoices,
-    settings,
+    voices,
+    selectedVoice,
+    rate,
+    volume,
+    progress,
     speak,
     pause,
     resume,
     stop,
-    updateSettings
+    setVoice,
+    setRate,
+    setVolume
   };
 }
