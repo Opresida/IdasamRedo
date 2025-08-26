@@ -13,11 +13,13 @@ export interface ReactionCounts {
 
 export interface CommentWithThread {
   id: string;
-  author: string;  // Campo correto conforme schema
+  author_name: string;
+  author_email?: string;
   content: string;
   created_at: string;
   parent_comment_id?: string;
   thread_level: number;
+  is_approved: boolean;
   reaction_counts: ReactionCounts;
   replies?: CommentWithThread[];
 }
@@ -51,7 +53,8 @@ class SocialInteractionsManager {
     articleId: string, 
     authorName: string, 
     content: string, 
-    parentCommentId?: string
+    parentCommentId?: string,
+    authorEmail?: string
   ): Promise<CommentWithThread> {
     try {
       const articleUUID = this.ensureUUID(articleId);
@@ -61,9 +64,11 @@ class SocialInteractionsManager {
         .from('comments')
         .insert({
           article_id: articleUUID,
-          author: authorName.trim(),
+          author_name: authorName.trim(),
+          author_email: authorEmail?.trim() || null,
           content: content.trim(),
           parent_comment_id: parentUUID,
+          is_approved: false, // Comentários precisam ser aprovados
           reaction_counts: {
             like: 0, love: 0, clap: 0, wow: 0, sad: 0, angry: 0
           }

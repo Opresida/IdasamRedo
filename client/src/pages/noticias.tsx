@@ -32,9 +32,11 @@ interface Article {
   excerpt: string;
   content: string;
   author: string;
+  author_name: string;
   publishDate: string;
   readTime: string;
   category: string;
+  category_name: string;
   image: string;
   tags: string[];
   featured: boolean;
@@ -62,9 +64,11 @@ const fallbackArticles: Article[] = [
 
     As atividades incluem o cultivo de plantas medicinais, produção de óleos essenciais, manejo florestal comunitário e turismo ecológico. Mais de 500 famílias já foram cadastradas para participar da primeira fase do projeto.`,
     author: 'Equipe IDASAM',
+    author_name: 'Equipe IDASAM',
     publishDate: '2024-12-15',
     readTime: '5 min',
     category: 'Bioeconomia',
+    category_name: 'Bioeconomia',
     image: 'https://i.imgur.com/vVksMXp.jpeg',
     tags: ['sustentabilidade', 'bioeconomia', 'comunidades'],
     featured: true
@@ -81,9 +85,11 @@ const fallbackArticles: Article[] = [
 
     O prêmio inclui um financiamento de 500 mil euros para expandir o projeto para outras regiões da Amazônia Legal. A próxima fase prevê a implementação do sistema em parceria com comunidades indígenas e organizações ambientais.`,
     author: 'Maria Silva',
+    author_name: 'Maria Silva',
     publishDate: '2024-12-10',
     readTime: '4 min',
     category: 'Tecnologia',
+    category_name: 'Tecnologia',
     image: 'https://i.imgur.com/R9rQRGL.jpeg',
     tags: ['tecnologia', 'monitoramento', 'inovação'],
     featured: true
@@ -256,7 +262,7 @@ export default function NoticiasPage() {
         console.log('🌐 Buscando artigos do Supabase...');
 
         try {
-          // Tentar buscar do Supabase primeiro usando a view otimizada
+          // Buscar da view articles_full que já inclui todas as informações necessárias
           const { data, error } = await supabase
             .from('articles_full')
             .select('*')
@@ -294,7 +300,7 @@ export default function NoticiasPage() {
                          article.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          article.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesCategory = selectedCategory === 'Todas' || article.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'Todas' || article.category_name === selectedCategory;
 
     return matchesSearch && matchesCategory;
   });
@@ -355,8 +361,9 @@ export default function NoticiasPage() {
       async () => {
         try {
           // Incrementar visualizações usando a função SQL com UUID
+          const articleUUID = socialInteractions['ensureUUID'](articleId);
           const { error: incrementError } = await supabase
-            .rpc('increment_article_views', { p_article_id: this.ensureUUID(articleId) });
+            .rpc('increment_article_views', { p_article_id: articleUUID });
 
           if (incrementError) {
             console.warn('⚠️ Erro ao incrementar visualizações:', incrementError);
@@ -488,7 +495,7 @@ export default function NoticiasPage() {
         commentAuthor.trim(),
         newComment.trim(),
         parentCommentId,
-        commentEmail.trim() // Adiciona o email do visitante
+        commentEmail.trim()
       );
 
       // Recarregar comentários organizados
@@ -866,13 +873,13 @@ export default function NoticiasPage() {
                   <div className="p-6">
                     <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        article.category === 'Bioeconomia' ? 'bg-idasam-green-medium/10 text-idasam-green-dark' :
-                        article.category === 'Tecnologia' ? 'bg-blue-100 text-blue-700' :
-                        article.category === 'Capacitação' ? 'bg-purple-100 text-purple-700' :
-                        article.category === 'Pesquisa' ? 'bg-orange-100 text-orange-700' :
+                        article.category_name === 'Bioeconomia' ? 'bg-idasam-green-medium/10 text-idasam-green-dark' :
+                        article.category_name === 'Tecnologia' ? 'bg-blue-100 text-blue-700' :
+                        article.category_name === 'Capacitação' ? 'bg-purple-100 text-purple-700' :
+                        article.category_name === 'Pesquisa' ? 'bg-orange-100 text-orange-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>
-                        {article.category}
+                        {article.category_name}
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
@@ -945,13 +952,13 @@ export default function NoticiasPage() {
                 <div className="p-6">
                   <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      article.category === 'Bioeconomia' ? 'bg-idasam-green-medium/10 text-idasam-green-dark' :
-                      article.category === 'Tecnologia' ? 'bg-blue-100 text-blue-700' :
-                      article.category === 'Capacitação' ? 'bg-purple-100 text-purple-700' :
-                      article.category === 'Pesquisa' ? 'bg-orange-100 text-orange-700' :
+                      article.category_name === 'Bioeconomia' ? 'bg-idasam-green-medium/10 text-idasam-green-dark' :
+                      article.category_name === 'Tecnologia' ? 'bg-blue-100 text-blue-700' :
+                      article.category_name === 'Capacitação' ? 'bg-purple-100 text-purple-700' :
+                      article.category_name === 'Pesquisa' ? 'bg-orange-100 text-orange-700' :
                       'bg-gray-100 text-gray-700'
                     }`}>
-                      {article.category}
+                      {article.category_name}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
@@ -1033,13 +1040,13 @@ export default function NoticiasPage() {
             <div className="p-4 sm:p-6 lg:p-8">
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 mb-4">
                 <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
-                  selectedArticle.category === 'Bioeconomia' ? 'bg-idasam-green-medium/10 text-idasam-green-dark' :
-                  selectedArticle.category === 'Tecnologia' ? 'bg-blue-100 text-blue-700' :
-                  selectedArticle.category === 'Capacitação' ? 'bg-purple-100 text-purple-700' :
-                  selectedArticle.category === 'Pesquisa' ? 'bg-orange-100 text-orange-700' :
+                  selectedArticle.category_name === 'Bioeconomia' ? 'bg-idasam-green-medium/10 text-idasam-green-dark' :
+                  selectedArticle.category_name === 'Tecnologia' ? 'bg-blue-100 text-blue-700' :
+                  selectedArticle.category_name === 'Capacitação' ? 'bg-purple-100 text-purple-700' :
+                  selectedArticle.category_name === 'Pesquisa' ? 'bg-orange-100 text-orange-700' :
                   'bg-gray-100 text-gray-700'
                 }`}>
-                  {selectedArticle.category}
+                  {selectedArticle.category_name}
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />

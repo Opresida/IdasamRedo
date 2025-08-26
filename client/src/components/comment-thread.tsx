@@ -8,11 +8,13 @@ import { formatDate } from '@/lib/utils';
 
 interface Comment {
   id: string;
-  author: string;
+  author_name: string;
+  author_email?: string;
   content: string;
   created_at: string;
   parent_comment_id?: string;
   thread_level: number;
+  is_approved: boolean;
   reaction_counts: Record<string, number>;
   replies?: Comment[];
 }
@@ -75,13 +77,18 @@ const CommentItem = ({
               <User className="w-4 h-4 text-white" />
             </div>
             <div>
-              <span className="font-medium text-gray-900">{comment.author}</span>
+              <span className="font-medium text-gray-900">{comment.author_name}</span>
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <Clock className="w-3 h-3" />
                 <span>{formatDate(comment.created_at)}</span>
                 {comment.thread_level > 0 && (
                   <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
                     Resposta
+                  </span>
+                )}
+                {!comment.is_approved && (
+                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">
+                    Aguardando aprovação
                   </span>
                 )}
               </div>
@@ -156,7 +163,7 @@ const CommentItem = ({
               />
               <div className="flex gap-2">
                 <Input
-                  placeholder={`Respondendo ${comment.author}...`}
+                  placeholder={`Respondendo ${comment.author_name}...`}
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   className="flex-1 bg-white"
