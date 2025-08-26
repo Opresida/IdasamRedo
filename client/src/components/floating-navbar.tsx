@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import Link from 'next/link'; // Import Link for navigation
+import { Link } from 'wouter'; // Import Link for navigation
 
 interface NavItem {
   name: string;
@@ -146,11 +146,11 @@ export default function FloatingNavbar() {
                   {item.name}
                 </button>
               ))}
-            <Link to="/projetos" className="hover:text-teal transition-colors">
+            <Link href="/projetos" className="hover:text-teal transition-colors">
               Projetos
             </Link>
             {/* Link admin (remover em produção) */}
-            <Link to="/admin" className="hover:text-teal transition-colors text-xs border border-gray-300 px-2 py-1 rounded">
+            <Link href="/admin" className="hover:text-teal transition-colors text-xs border border-gray-300 px-2 py-1 rounded">
               Admin
             </Link>
             </div>
