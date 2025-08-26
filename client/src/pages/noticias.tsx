@@ -255,7 +255,11 @@ export default function NoticiasPage() {
                       <div className="flex items-center gap-2 mb-3">
                         <Badge 
                           variant="outline" 
-                          style={{ backgroundColor: `${article.category_color}15`, borderColor: article.category_color }}
+                          style={{ 
+                            backgroundColor: `${article.category_color}15`, 
+                            borderColor: article.category_color,
+                            color: article.category_color
+                          }}
                         >
                           {article.category_name}
                         </Badge>
@@ -343,7 +347,11 @@ export default function NoticiasPage() {
                 <div className="p-8">
                   <div className="flex items-center gap-4 mb-6">
                     <Badge 
-                      style={{ backgroundColor: `${selectedArticle.category_color}15`, borderColor: selectedArticle.category_color }}
+                      style={{ 
+                        backgroundColor: `${selectedArticle.category_color}15`, 
+                        borderColor: selectedArticle.category_color,
+                        color: selectedArticle.category_color
+                      }}
                     >
                       {selectedArticle.category_name}
                     </Badge>
