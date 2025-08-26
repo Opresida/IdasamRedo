@@ -1,254 +1,320 @@
-
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Edit3, 
-  Trash2, 
-  Save, 
-  Eye, 
-  EyeOff, 
-  Upload, 
-  Calendar, 
-  Tag, 
-  User, 
-  BarChart3,
-  FileText,
-  Settings,
-  Search,
-  Filter,
-  MoreVertical,
-  CheckCircle,
-  XCircle,
-  Clock,
-  TrendingUp,
-  MessageCircle,
-  Heart,
-  LogOut
-} from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  FileText,
+  Eye,
+  Heart,
+  MessageCircle,
+  Edit,
+  Trash2,
+  Plus,
+  Save,
+  X,
+  Settings,
+  Star,
+  Tag,
+  RefreshCw,
+  Globe,
+  User,
+  Shield,
+  CheckCircle
+} from 'lucide-react';
+import { formatDate } from '@/lib/utils';
 import { supabase } from '@/supabaseClient';
-import { newsCache } from '@/lib/newsCache';
-import { useAnalyticsAndSEO } from '@/hooks/use-analytics';
-import { useAuth } from '@/contexts/auth-context';
-import OptimizedImage from '@/components/optimized-image';
+import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 
-// Tipos para o admin
-interface ArticleFormData {
-  id?: string;
+// Interfaces
+interface Article {
+  id: string;
   title: string;
-  excerpt: string;
   content: string;
-  author: string;
-  category: string;
-  image: string;
-  tags: string[];
-  featured: boolean;
+  excerpt: string;
   published: boolean;
+  featured: boolean;
+  category_id: string;
+  tags: string[];
+  image?: string;
+  created_at: string;
+  updated_at: string;
+  author_id: string;
+  author_name?: string;
+  category_name?: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
 }
 
 interface ArticleStats {
   views: number;
-  likes: number;
-  comments: number;
-  shares: number;
+  reaction_counts: Record<string, number>;
 }
 
-const categories = ['Bioeconomia', 'Tecnologia', 'Capacitação', 'Pesquisa', 'Eventos'];
+interface Comment {
+  id: string;
+  article_id: string;
+  author_name: string;
+  author_email: string;
+  content: string;
+  is_approved: boolean;
+  created_at: string;
+  article_title?: string;
+  articles?: { title: string };
+}
 
-const defaultFormData: ArticleFormData = {
-  title: '',
-  excerpt: '',
-  content: '',
-  author: 'Equipe IDASAM',
-  category: 'Bioeconomia',
-  image: '',
-  tags: [],
-  featured: false,
-  published: false
-};
-
-export default function Dashboard() {
-  const [currentTab, setCurrentTab] = useState('dashboard');
-  const [articles, setArticles] = useState<ArticleFormData[]>([]);
-  const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('Todas');
-  const [filterStatus, setFilterStatus] = useState('Todos');
-
-  // Estados para o editor
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<ArticleFormData>(defaultFormData);
-  const [newTag, setNewTag] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-
-  // Estados para preview
-  const [previewArticle, setPreviewArticle] = useState<ArticleFormData | null>(null);
-
-  const { trackPageView, updateSEO } = useAnalyticsAndSEO();
+export default function AdminDashboard() {
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
-  // Inicializar SEO
+  // Estados principais
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Estados do formulário de artigo
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [articleForm, setArticleForm] = useState({
+    title: '',
+    content: '',
+    excerpt: '',
+    published: false,
+    featured: false,
+    category_id: '',
+    tags: '',
+    image: ''
+  });
+
+  // Estados do formulário de categoria
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    slug: '',
+    description: ''
+  });
+
+  // Carregar dados iniciais
   useEffect(() => {
-    updateSEO({
-      title: 'Dashboard Administrativo | IDASAM',
-      description: 'Painel de gerenciamento de notícias e conteúdo do IDASAM',
-      keywords: ['dashboard', 'admin', 'IDASAM', 'gerenciamento'],
-      url: `${window.location.origin}/dashboard`,
-      type: 'website'
-    });
+    loadInitialData();
+  }, []);
 
-    trackPageView('/dashboard', 'Admin Dashboard');
-  }, [updateSEO, trackPageView]);
-
-  // Carregar artigos
-  const loadArticles = async () => {
-    setIsLoading(true);
+  const loadInitialData = async () => {
+    setLoading(true);
     try {
-      // Tentar carregar do Supabase primeiro
+      await Promise.all([
+        loadArticles(),
+        loadCategories(),
+        loadComments(),
+        loadArticleStats()
+      ]);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar dados do dashboard',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadArticles = async () => {
+    try {
       const { data, error } = await supabase
-        .from('articles')
+        .from('articles_full')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.warn('Erro ao carregar artigos do Supabase:', error);
-        // Usar dados fallback se necessário
-        const fallbackArticles = [
-          {
-            id: '1',
-            title: 'IDASAM Lança Novo Projeto de Bioeconomia na Amazônia',
-            excerpt: 'Iniciativa inovadora busca conciliar desenvolvimento econômico com preservação ambiental.',
-            content: 'Conteúdo completo do artigo...',
-            author: 'Equipe IDASAM',
-            category: 'Bioeconomia',
-            image: 'https://i.imgur.com/vVksMXp.jpeg',
-            tags: ['sustentabilidade', 'bioeconomia', 'comunidades'],
-            featured: true,
-            published: true,
-            publishDate: '2024-12-15'
-          }
-        ];
-        setArticles(fallbackArticles);
-      } else {
-        setArticles(data || []);
-      }
-
-      // Carregar estatísticas simuladas
-      const stats: Record<string, ArticleStats> = {};
-      (data || []).forEach((article) => {
-        stats[article.id] = {
-          views: Math.floor(Math.random() * 1000) + 100,
-          likes: Math.floor(Math.random() * 50) + 10,
-          comments: Math.floor(Math.random() * 20) + 2,
-          shares: Math.floor(Math.random() * 30) + 5
-        };
-      });
-      setArticleStats(stats);
-
+      if (error) throw error;
+      setArticles(data || []);
     } catch (error) {
       console.error('Erro ao carregar artigos:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Salvar artigo
-  const saveArticle = async () => {
-    if (!editingArticle.title.trim() || !editingArticle.content.trim()) {
-      alert('Título e conteúdo são obrigatórios!');
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    }
+  };
+
+  const loadComments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          articles!inner(title)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const commentsWithArticleTitle = (data || []).map(comment => ({
+        ...comment,
+        article_title: comment.articles?.title
+      }));
+
+      setComments(commentsWithArticleTitle);
+    } catch (error) {
+      console.error('Erro ao carregar comentários:', error);
+    }
+  };
+
+  const loadArticleStats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('article_stats')
+        .select('*');
+
+      if (error) throw error;
+
+      const statsMap: Record<string, ArticleStats> = {};
+      (data || []).forEach(stat => {
+        statsMap[stat.article_id] = {
+          views: stat.views || 0,
+          reaction_counts: stat.reaction_counts || {},
+        };
+      });
+
+      setArticleStats(statsMap);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+    }
+  };
+
+  // Funções de CRUD para artigos
+  const handleSaveArticle = async () => {
+    if (!user) {
+      toast({ title: 'Erro', description: 'Você precisa estar logado.', variant: 'destructive' });
       return;
     }
 
-    setIsLoading(true);
     try {
+      // 1. Prepara os dados do artigo (sem as tags)
       const articleData = {
-        ...editingArticle,
-        updated_at: new Date().toISOString(),
-        publishDate: editingArticle.published ? new Date().toISOString() : null
+        title: articleForm.title,
+        slug: articleForm.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''),
+        content: articleForm.content,
+        excerpt: articleForm.excerpt,
+        published: articleForm.published,
+        featured: articleForm.featured,
+        category_id: articleForm.category_id,
+        image: articleForm.image,
+        author_id: user.id,
       };
 
-      if (editingArticle.id) {
-        // Atualizar artigo existente
-        const { error } = await supabase
-          .from('articles')
-          .update(articleData)
-          .eq('id', editingArticle.id);
+      let articleId = editingId;
+      let isNewArticle = false;
 
+      if (editingId) {
+        // ATUALIZAR ARTIGO EXISTENTE
+        const { error } = await supabase.from('articles').update(articleData).eq('id', editingId);
         if (error) throw error;
       } else {
-        // Criar novo artigo
-        const { data, error } = await supabase
-          .from('articles')
-          .insert([{
-            ...articleData,
-            id: `article_${Date.now()}`,
-            created_at: new Date().toISOString()
-          }])
-          .select()
-          .single();
-
-        if (error) throw error;
-        setEditingArticle({ ...editingArticle, id: data.id });
+        // CRIAR NOVO ARTIGO E OBTER O ID
+        isNewArticle = true;
+        const { data, error } = await supabase.from('articles').insert(articleData).select('id').single();
+        if (error || !data) throw error || new Error("Não foi possível obter o ID do novo artigo.");
+        articleId = data.id;
       }
 
-      // Invalidar cache
-      newsCache.invalidateArticles();
-      
-      // Recarregar artigos
-      await loadArticles();
-      
-      alert('Artigo salvo com sucesso!');
-      setIsEditorOpen(false);
-      
-    } catch (error) {
+      // 2. Lidar com as Tags
+      if (articleId) {
+        if (!isNewArticle) {
+            await supabase.from('article_tags').delete().eq('article_id', articleId);
+        }
+
+        const tagNames = articleForm.tags ? articleForm.tags.split(',').map(tag => tag.trim().toLowerCase()).filter(Boolean) : [];
+
+        if (tagNames.length > 0) {
+            const { data: existingTags, error: tagsError } = await supabase.from('tags').select('id, name').in('name', tagNames);
+            if(tagsError) throw tagsError;
+
+            const existingTagMap = new Map(existingTags?.map(t => [t.name, t.id]));
+
+            const tagsToInsert = tagNames.map(name => {
+                const tagId = existingTagMap.get(name);
+                if (tagId) {
+                    return { article_id: articleId, tag_id: tagId };
+                }
+                return null;
+            }).filter((t): t is { article_id: string; tag_id: string } => t !== null);
+
+            if (tagsToInsert.length > 0) {
+                const { error: insertTagsError } = await supabase.from('article_tags').insert(tagsToInsert);
+                if (insertTagsError) throw insertTagsError;
+            }
+        }
+      }
+
+      toast({
+        title: 'Sucesso',
+        description: `Artigo ${editingId ? 'atualizado' : 'criado'} com sucesso`,
+      });
+
+      setIsEditing(false);
+      setEditingId(null);
+      resetArticleForm();
+      loadArticles();
+
+    } catch (error: any) {
       console.error('Erro ao salvar artigo:', error);
-      alert('Erro ao salvar artigo. Tente novamente.');
-    } finally {
-      setIsLoading(false);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Não foi possível salvar o artigo.',
+        variant: 'destructive',
+      });
     }
   };
 
-  // Deletar artigo
-  const deleteArticle = async (id: string) => {
-    setIsLoading(true);
+  const handleEditArticle = (article: Article) => {
+    setArticleForm({
+      title: article.title,
+      content: article.content,
+      excerpt: article.excerpt,
+      published: article.published,
+      featured: article.featured,
+      category_id: article.category_id,
+      tags: Array.isArray(article.tags) ? article.tags.join(', ') : '',
+      image: article.image || ''
+    });
+    setEditingId(article.id);
+    setIsEditing(true);
+  };
+
+  const handleDeleteArticle = async (id: string) => {
     try {
       const { error } = await supabase
         .from('articles')
@@ -257,173 +323,184 @@ export default function Dashboard() {
 
       if (error) throw error;
 
-      // Invalidar cache
-      newsCache.invalidateArticles();
-      
-      // Recarregar artigos
-      await loadArticles();
-      
-      alert('Artigo deletado com sucesso!');
-      
-    } catch (error) {
-      console.error('Erro ao deletar artigo:', error);
-      alert('Erro ao deletar artigo. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Alternar status de publicação
-  const togglePublishStatus = async (id: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('articles')
-        .update({ 
-          published: !currentStatus,
-          publishDate: !currentStatus ? new Date().toISOString() : null
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      await loadArticles();
-      newsCache.invalidateArticles();
-      
-    } catch (error) {
-      console.error('Erro ao alterar status de publicação:', error);
-    }
-  };
-
-  // Adicionar tag
-  const addTag = () => {
-    if (newTag.trim() && !editingArticle.tags.includes(newTag.trim())) {
-      setEditingArticle({
-        ...editingArticle,
-        tags: [...editingArticle.tags, newTag.trim()]
+      toast({
+        title: 'Sucesso',
+        description: 'Artigo excluído com sucesso',
       });
-      setNewTag('');
+
+      loadArticles();
+    } catch (error) {
+      console.error('Erro ao excluir artigo:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir artigo',
+        variant: 'destructive',
+      });
     }
   };
 
-  // Remover tag
-  const removeTag = (tagToRemove: string) => {
-    setEditingArticle({
-      ...editingArticle,
-      tags: editingArticle.tags.filter(tag => tag !== tagToRemove)
+  const resetArticleForm = () => {
+    setArticleForm({
+      title: '',
+      content: '',
+      excerpt: '',
+      published: false,
+      featured: false,
+      category_id: '',
+      tags: '',
+      image: ''
     });
   };
 
-  // Simular upload de imagem
-  const handleImageUpload = async () => {
-    setIsUploading(true);
-    
-    // Simulação de upload - em um caso real, você usaria um serviço real
-    setTimeout(() => {
-      const imageUrls = [
-        'https://i.imgur.com/vVksMXp.jpeg',
-        'https://i.imgur.com/R9rQRGL.jpeg',
-        'https://i.imgur.com/5o2gRIQ.jpeg',
-        'https://i.imgur.com/i74pvbH.jpeg'
-      ];
-      
-      const randomImage = imageUrls[Math.floor(Math.random() * imageUrls.length)];
-      setEditingArticle({ ...editingArticle, image: randomImage });
-      setIsUploading(false);
-    }, 2000);
+  const handleSaveCategory = async () => {
+    try {
+      const slug = categoryForm.slug || categoryForm.name.toLowerCase().replace(/\s+/g, '-');
+
+      const { error } = await supabase
+        .from('categories')
+        .insert([{
+          ...categoryForm,
+          slug
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Categoria criada com sucesso',
+      });
+
+      setShowCategoryDialog(false);
+      setCategoryForm({ name: '', slug: '', description: '' });
+      loadCategories();
+    } catch (error) {
+      console.error('Erro ao salvar categoria:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao salvar categoria',
+        variant: 'destructive',
+      });
+    }
   };
 
-  // Filtrar artigos
+  const handleApproveComment = async (commentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .update({ is_approved: true })
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário aprovado',
+      });
+
+      loadComments();
+    } catch (error) {
+      console.error('Erro ao aprovar comentário:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao aprovar comentário',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Comentário excluído',
+      });
+
+      loadComments();
+    } catch (error) {
+      console.error('Erro ao excluir comentário:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir comentário',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const filteredArticles = articles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         article.content.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = filterCategory === 'Todas' || article.category === filterCategory;
-    
-    const matchesStatus = filterStatus === 'Todos' || 
-                         (filterStatus === 'Publicado' && article.published) ||
-                         (filterStatus === 'Rascunho' && !article.published);
-    
-    return matchesSearch && matchesCategory && matchesStatus;
+                          (article.content && article.content.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = selectedCategory === 'all' || article.category_id === selectedCategory;
+    return matchesSearch && matchesCategory;
   });
 
-  // Carregar dados iniciais
-  useEffect(() => {
-    loadArticles();
-  }, []);
+  const handleLogout = () => {
+    logout();
+    setLocation('/');
+  };
 
-  // Estatísticas do dashboard
   const totalArticles = articles.length;
   const publishedArticles = articles.filter(a => a.published).length;
   const draftArticles = articles.filter(a => !a.published).length;
   const featuredArticles = articles.filter(a => a.featured).length;
 
-  const totalViews = Object.values(articleStats).reduce((sum, stats) => sum + stats.views, 0);
-  const totalLikes = Object.values(articleStats).reduce((sum, stats) => sum + stats.likes, 0);
-  const totalComments = Object.values(articleStats).reduce((sum, stats) => sum + stats.comments, 0);
+  const totalViews = Object.values(articleStats).reduce((sum, stats) => sum + (stats.views || 0), 0);
+  const totalLikes = Object.values(articleStats).reduce((sum, stats) => sum + (stats.reaction_counts?.like || 0), 0);
+  const totalComments = comments.length;
+
+  const pendingComments = comments.filter(c => !c.is_approved).length;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-idasam-green-dark"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm">
+      <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-idasam-text-main">
-                Dashboard IDASAM
-              </h1>
-              <Badge variant="secondary" className="bg-idasam-green-dark/10 text-idasam-green-dark">
-                {user?.role === 'admin' ? 'Administrador' : 'Editor'}
-              </Badge>
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-idasam-green-dark rounded-full flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Dashboard Administrativo</h1>
+                <p className="text-sm text-gray-600">Bem-vindo, {user?.name}</p>
+              </div>
             </div>
-            
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                Olá, {user?.name}
-              </span>
-              
-              <Button
-                onClick={() => {
-                  setEditingArticle(defaultFormData);
-                  setIsEditorOpen(true);
-                }}
-                className="bg-idasam-green-dark hover:bg-idasam-green-medium"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nova Notícia
+            <div className="flex items-center space-x-4">
+              <Button variant="outline" onClick={() => setLocation('/')}>
+                <Globe className="w-4 h-4 mr-2" />
+                Ver Site
               </Button>
-
-              <Button
-                variant="outline"
-                onClick={logout}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
+              <Button variant="outline" onClick={handleLogout}>
                 Sair
               </Button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="articles" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Notícias
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Configurações
-            </TabsTrigger>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="articles">Artigos</TabsTrigger>
+            <TabsTrigger value="comments">Comentários</TabsTrigger>
+            <TabsTrigger value="categories">Categorias</TabsTrigger>
+            <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
 
-          {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
@@ -447,80 +524,70 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="text-2xl font-bold">{totalViews.toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">
-                    +12% em relação ao mês passado
+                    Engajamento geral
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Curtidas</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total de "Likes"</CardTitle>
                   <Heart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalLikes}</div>
+                  <div className="text-2xl font-bold">{totalLikes.toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">
-                    +8% em relação ao mês passado
+                    Principal reação
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Comentários</CardTitle>
+                  <CardTitle className="text-sm font-medium">Comentários Pendentes</CardTitle>
                   <MessageCircle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalComments}</div>
+                  <div className="text-2xl font-bold">{pendingComments}</div>
                   <p className="text-xs text-muted-foreground">
-                    +15% em relação ao mês passado
+                    Aguardando moderação
                   </p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Artigos Recentes */}
             <Card>
               <CardHeader>
-                <CardTitle>Notícias Recentes</CardTitle>
+                <CardTitle>Artigos Recentes</CardTitle>
                 <CardDescription>
-                  Últimas notícias publicadas e seus desempenhos
+                  Últimos artigos criados no sistema
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {articles.slice(0, 5).map((article) => (
-                    <div key={article.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        {article.image && (
-                          <OptimizedImage
-                            src={article.image}
-                            alt={article.title}
-                            className="w-12 h-12 rounded-lg object-cover"
-                          />
-                        )}
+                    <div key={article.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center space-x-4">
                         <div>
-                          <h4 className="font-medium">{article.title}</h4>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Badge variant={article.published ? 'default' : 'secondary'}>
-                              {article.published ? 'Publicado' : 'Rascunho'}
-                            </Badge>
-                            <span>{article.category}</span>
-                          </div>
+                          <h3 className="font-medium">{article.title}</h3>
+                          <p className="text-sm text-gray-600">
+                            Por {article.author_name} • {formatDate(article.created_at)}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={article.published ? 'default' : 'secondary'}>
+                          {article.published ? 'Publicado' : 'Rascunho'}
+                        </Badge>
+                        {article.featured && (
+                          <Badge variant="outline">
+                            <Star className="w-3 h-3 mr-1" />
+                            Destaque
+                          </Badge>
+                        )}
+                        <div className="flex items-center space-x-1 text-sm text-gray-600">
                           <Eye className="w-4 h-4" />
-                          {articleStats[article.id]?.views || 0}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Heart className="w-4 h-4" />
-                          {articleStats[article.id]?.likes || 0}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MessageCircle className="w-4 h-4" />
-                          {articleStats[article.id]?.comments || 0}
+                          <span>{articleStats[article.id]?.views || 0}</span>
                         </div>
                       </div>
                     </div>
@@ -530,577 +597,449 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* Articles Tab */}
           <TabsContent value="articles" className="space-y-6">
-            {/* Filtros */}
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                  <div>
-                    <CardTitle>Gerenciar Notícias</CardTitle>
-                    <CardDescription>
-                      Visualize, edite e publique suas notícias
-                    </CardDescription>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        placeholder="Buscar notícias..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 w-full sm:w-64"
-                      />
-                    </div>
-                    <Select value={filterCategory} onValueChange={setFilterCategory}>
-                      <SelectTrigger className="w-full sm:w-40">
-                        <SelectValue placeholder="Categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Todas">Todas</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="w-full sm:w-32">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Todos">Todos</SelectItem>
-                        <SelectItem value="Publicado">Publicado</SelectItem>
-                        <SelectItem value="Rascunho">Rascunho</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {isLoading ? (
-                    // Loading skeletons
-                    [...Array(6)].map((_, i) => (
-                      <div key={i} className="border rounded-lg p-4 space-y-4">
-                        <div className="aspect-video bg-gray-200 rounded animate-pulse"></div>
-                        <div className="space-y-2">
-                          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                          <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
-                        </div>
+            <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex-1">
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                      <div>
+                        <CardTitle>Gerenciar Artigos</CardTitle>
+                        <CardDescription>
+                          Crie, edite e gerencie seus artigos
+                        </CardDescription>
                       </div>
-                    ))
-                  ) : filteredArticles.length === 0 ? (
-                    <div className="col-span-full text-center py-12">
-                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        Nenhuma notícia encontrada
-                      </h3>
-                      <p className="text-gray-500 mb-4">
-                        Não há notícias que correspondam aos filtros selecionados.
-                      </p>
-                      <Button
-                        onClick={() => {
-                          setEditingArticle(defaultFormData);
-                          setIsEditorOpen(true);
-                        }}
-                        className="bg-idasam-green-dark hover:bg-idasam-green-medium"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Criar primeira notícia
-                      </Button>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Buscar artigos..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full sm:w-64"
+                          />
+                          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                            <SelectTrigger className="w-full sm:w-48">
+                              <SelectValue placeholder="Categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todas as categorias</SelectItem>
+                              {categories.map((category) => (
+                                <SelectItem key={category.id} value={category.id}>
+                                  {category.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          onClick={() => {
+                            resetArticleForm();
+                            setEditingId(null);
+                            setIsEditing(true);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Novo Artigo
+                        </Button>
+                      </div>
                     </div>
-                  ) : (
-                    filteredArticles.map((article) => (
-                      <Card key={article.id} className="overflow-hidden">
-                        {article.image && (
-                          <div className="aspect-video overflow-hidden">
-                            <OptimizedImage
-                              src={article.image}
-                              alt={article.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <Badge 
-                                  variant={article.published ? 'default' : 'secondary'}
-                                  className={article.published ? 'bg-green-100 text-green-800' : ''}
-                                >
-                                  {article.published ? (
-                                    <><CheckCircle className="w-3 h-3 mr-1" /> Publicado</>
-                                  ) : (
-                                    <><Clock className="w-3 h-3 mr-1" /> Rascunho</>
-                                  )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {filteredArticles.map((article) => (
+                        <div key={article.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
+                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-medium text-lg">{article.title}</h3>
+                                <Badge variant={article.published ? 'default' : 'secondary'}>
+                                  {article.published ? 'Publicado' : 'Rascunho'}
                                 </Badge>
                                 {article.featured && (
-                                  <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+                                  <Badge variant="outline">
+                                    <Star className="w-3 h-3 mr-1" />
                                     Destaque
                                   </Badge>
                                 )}
                               </div>
-                              <CardTitle className="text-sm line-clamp-2">
-                                {article.title}
-                              </CardTitle>
+                              <p className="text-gray-600 mb-2">{article.excerpt}</p>
+                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <span>Por {article.author_name}</span>
+                                <span>•</span>
+                                <span>{article.category_name}</span>
+                                <span>•</span>
+                                <span>{formatDate(article.created_at)}</span>
+                              </div>
                             </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreVertical className="w-4 h-4" />
+                            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <div className="flex items-center gap-1">
+                                  <Eye className="w-4 h-4" />
+                                  <span>{articleStats[article.id]?.views || 0}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Heart className="w-4 h-4" />
+                                  <span>{articleStats[article.id]?.reaction_counts?.like || 0}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <MessageCircle className="w-4 h-4" />
+                                  <span>{comments.filter(c => c.article_id === article.id).length}</span>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditArticle(article)}
+                                >
+                                  <Edit className="w-4 h-4" />
                                 </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => setPreviewArticle(article)}
-                                >
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  Visualizar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setEditingArticle(article);
-                                    setIsEditorOpen(true);
-                                  }}
-                                >
-                                  <Edit3 className="w-4 h-4 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => togglePublishStatus(article.id!, article.published)}
-                                >
-                                  {article.published ? (
-                                    <>
-                                      <EyeOff className="w-4 h-4 mr-2" />
-                                      Despublicar
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      Publicar
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-red-600">
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <div className="flex items-center w-full">
-                                        <Trash2 className="w-4 h-4 mr-2" />
-                                        Deletar
-                                      </div>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Tem certeza que deseja deletar esta notícia? Esta ação não pode ser desfeita.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={() => deleteArticle(article.id!)}
-                                          className="bg-red-600 hover:bg-red-700"
-                                        >
-                                          Deletar
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                            {article.excerpt}
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>{article.category}</span>
-                            <span>{article.author}</span>
-                          </div>
-                          {articleStats[article.id] && (
-                            <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                              <div className="flex items-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                {articleStats[article.id].views}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Heart className="w-3 h-3" />
-                                {articleStats[article.id].likes}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <MessageCircle className="w-3 h-3" />
-                                {articleStats[article.id].comments}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Tem certeza que deseja excluir o artigo "{article.title}"?
+                                        Esta ação não pode ser desfeita.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeleteArticle(article.id)}>
+                                        Excluir
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {filteredArticles.length === 0 && (
+                        <div className="text-center py-12">
+                          <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            Nenhum artigo encontrado
+                          </h3>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {isEditing && (
+                <div className="w-full lg:w-96">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>
+                          {editingId ? 'Editar Artigo' : 'Novo Artigo'}
+                        </CardTitle>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsEditing(false)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="title">Título</Label>
+                        <Input
+                          id="title"
+                          value={articleForm.title}
+                          onChange={(e) => setArticleForm(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Digite o título do artigo"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="excerpt">Resumo</Label>
+                        <Textarea
+                          id="excerpt"
+                          value={articleForm.excerpt}
+                          onChange={(e) => setArticleForm(prev => ({ ...prev, excerpt: e.target.value }))}
+                          placeholder="Breve descrição do artigo"
+                          rows={3}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="content">Conteúdo</Label>
+                        <Textarea
+                          id="content"
+                          value={articleForm.content}
+                          onChange={(e) => setArticleForm(prev => ({ ...prev, content: e.target.value }))}
+                          placeholder="Conteúdo completo do artigo"
+                          rows={8}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="category">Categoria</Label>
+                        <Select
+                          value={articleForm.category_id}
+                          onValueChange={(value) => setArticleForm(prev => ({ ...prev, category_id: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma categoria" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="tags">Tags (separadas por vírgula)</Label>
+                        <Input
+                          id="tags"
+                          value={articleForm.tags}
+                          onChange={(e) => setArticleForm(prev => ({ ...prev, tags: e.target.value }))}
+                          placeholder="tag1, tag2, tag3"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="image">URL da Imagem</Label>
+                        <Input
+                          id="image"
+                          value={articleForm.image}
+                          onChange={(e) => setArticleForm(prev => ({ ...prev, image: e.target.value }))}
+                          placeholder="https://exemplo.com/imagem.jpg"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="published"
+                            checked={articleForm.published}
+                            onCheckedChange={(checked) => setArticleForm(prev => ({ ...prev, published: checked }))}
+                          />
+                          <Label htmlFor="published">Publicar artigo</Label>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="featured"
+                            checked={articleForm.featured}
+                            onCheckedChange={(checked) => setArticleForm(prev => ({ ...prev, featured: checked }))}
+                          />
+                          <Label htmlFor="featured">Artigo em destaque</Label>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="flex gap-2">
+                        <Button onClick={handleSaveArticle} className="flex-1">
+                          <Save className="w-4 h-4 mr-2" />
+                          {editingId ? 'Atualizar' : 'Criar'} Artigo
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="comments" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gerenciar Comentários</CardTitle>
+                <CardDescription>
+                  Modere e gerencie comentários dos leitores
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="p-4 border border-gray-200 rounded-lg">
+                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <User className="w-4 h-4 text-gray-400" />
+                            <span className="font-medium">{comment.author_name}</span>
+                            <span className="text-gray-400">({comment.author_email})</span>
+                            <Badge variant={comment.is_approved ? 'default' : 'secondary'}>
+                              {comment.is_approved ? 'Aprovado' : 'Pendente'}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-700 mb-2">{comment.content}</p>
+                          <div className="text-sm text-gray-500">
+                            Em: <span className="font-medium">{comment.article_title}</span> • {formatDate(comment.created_at)}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {!comment.is_approved && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveComment(comment.id)}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Aprovar
+                            </Button>
                           )}
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir este comentário?
+                                  Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteComment(comment.id)}>
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Settings Tab */}
+          <TabsContent value="categories" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Gerenciar Categorias</CardTitle>
+                    <CardDescription>
+                      Organize seus artigos em categorias
+                    </CardDescription>
+                  </div>
+                  <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nova Categoria
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Nova Categoria</DialogTitle>
+                        <DialogDescription>
+                          Crie uma nova categoria para organizar seus artigos
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="category-name">Nome</Label>
+                          <Input
+                            id="category-name"
+                            value={categoryForm.name}
+                            onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="Nome da categoria"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="category-slug">Slug</Label>
+                          <Input
+                            id="category-slug"
+                            value={categoryForm.slug}
+                            onChange={(e) => setCategoryForm(prev => ({ ...prev, slug: e.target.value }))}
+                            placeholder="slug-da-categoria (opcional)"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="category-description">Descrição</Label>
+                          <Textarea
+                            id="category-description"
+                            value={categoryForm.description}
+                            onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Descrição da categoria (opcional)"
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>
+                          Cancelar
+                        </Button>
+                        <Button onClick={handleSaveCategory}>
+                          Criar Categoria
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categories.map((category) => (
+                    <div key={category.id} className="p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Tag className="w-4 h-4 text-gray-400" />
+                        <h3 className="font-medium">{category.name}</h3>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{category.description}</p>
+                      <div className="text-xs text-gray-500">
+                        Slug: {category.slug}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="settings" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Configurações Gerais</CardTitle>
+                <CardTitle>Configurações do Sistema</CardTitle>
                 <CardDescription>
-                  Configure as preferências do painel administrativo
+                  Gerencie as configurações do dashboard
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium">Categorias Disponíveis</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {categories.map((category) => (
-                      <Badge key={category} variant="outline">
-                        {category}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium">Configurações de Cache</h4>
+              <CardContent>
+                <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="auto-cache">Cache Automático</Label>
-                      <p className="text-sm text-gray-500">
-                        Invalidar cache automaticamente ao salvar artigos
+                      <h3 className="font-medium">Atualizar Cache</h3>
+                      <p className="text-sm text-gray-600">
+                        Limpa o cache e recarrega todos os dados
                       </p>
                     </div>
-                    <Switch id="auto-cache" defaultChecked />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium">Notificações</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="email-notifications">Notificações por Email</Label>
-                        <p className="text-sm text-gray-500">
-                          Receber notificações de novos comentários
-                        </p>
-                      </div>
-                      <Switch id="email-notifications" defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="publish-notifications">Alertas de Publicação</Label>
-                        <p className="text-sm text-gray-500">
-                          Confirmar antes de publicar artigos
-                        </p>
-                      </div>
-                      <Switch id="publish-notifications" defaultChecked />
-                    </div>
+                    <Button onClick={loadInitialData} disabled={loading}>
+                      <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                      Atualizar
+                    </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
-
-      {/* Editor Modal */}
-      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingArticle.id ? 'Editar Notícia' : 'Nova Notícia'}
-            </DialogTitle>
-            <DialogDescription>
-              Preencha os campos abaixo para {editingArticle.id ? 'atualizar' : 'criar'} a notícia.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Título */}
-            <div className="space-y-2">
-              <Label htmlFor="title">Título *</Label>
-              <Input
-                id="title"
-                value={editingArticle.title}
-                onChange={(e) => setEditingArticle({...editingArticle, title: e.target.value})}
-                placeholder="Digite o título da notícia..."
-              />
-            </div>
-
-            {/* Resumo */}
-            <div className="space-y-2">
-              <Label htmlFor="excerpt">Resumo *</Label>
-              <Textarea
-                id="excerpt"
-                value={editingArticle.excerpt}
-                onChange={(e) => setEditingArticle({...editingArticle, excerpt: e.target.value})}
-                placeholder="Digite um resumo atrativo da notícia..."
-                rows={3}
-              />
-            </div>
-
-            {/* Conteúdo */}
-            <div className="space-y-2">
-              <Label htmlFor="content">Conteúdo *</Label>
-              <Textarea
-                id="content"
-                value={editingArticle.content}
-                onChange={(e) => setEditingArticle({...editingArticle, content: e.target.value})}
-                placeholder="Digite o conteúdo completo da notícia..."
-                rows={12}
-                className="font-mono text-sm"
-              />
-            </div>
-
-            {/* Dados do artigo */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="author">Autor</Label>
-                <Input
-                  id="author"
-                  value={editingArticle.author}
-                  onChange={(e) => setEditingArticle({...editingArticle, author: e.target.value})}
-                  placeholder="Nome do autor"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category">Categoria</Label>
-                <Select 
-                  value={editingArticle.category} 
-                  onValueChange={(value) => setEditingArticle({...editingArticle, category: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Imagem */}
-            <div className="space-y-2">
-              <Label>Imagem Principal</Label>
-              <div className="flex gap-4">
-                <Input
-                  value={editingArticle.image}
-                  onChange={(e) => setEditingArticle({...editingArticle, image: e.target.value})}
-                  placeholder="URL da imagem ou clique em upload"
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleImageUpload}
-                  disabled={isUploading}
-                  variant="outline"
-                >
-                  {isUploading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                      Carregando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload
-                    </>
-                  )}
-                </Button>
-              </div>
-              {editingArticle.image && (
-                <div className="mt-2">
-                  <OptimizedImage
-                    src={editingArticle.image}
-                    alt="Preview"
-                    className="w-32 h-20 object-cover rounded border"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Tags */}
-            <div className="space-y-2">
-              <Label>Tags</Label>
-              <div className="flex gap-2 mb-2">
-                <Input
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="Nova tag..."
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                />
-                <Button onClick={addTag} variant="outline" size="sm">
-                  <Tag className="w-4 h-4 mr-1" />
-                  Adicionar
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {editingArticle.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                    {tag}
-                    <button
-                      onClick={() => removeTag(tag)}
-                      className="ml-1 hover:text-red-600"
-                    >
-                      ×
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Opções */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="featured"
-                  checked={editingArticle.featured}
-                  onCheckedChange={(checked) => setEditingArticle({...editingArticle, featured: checked})}
-                />
-                <Label htmlFor="featured">Artigo em destaque</Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="published"
-                  checked={editingArticle.published}
-                  onCheckedChange={(checked) => setEditingArticle({...editingArticle, published: checked})}
-                />
-                <Label htmlFor="published">Publicar imediatamente</Label>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsEditorOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => setPreviewArticle(editingArticle)}
-              variant="outline"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Preview
-            </Button>
-            <Button
-              onClick={saveArticle}
-              disabled={isLoading}
-              className="bg-idasam-green-dark hover:bg-idasam-green-medium"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Preview Modal */}
-      {previewArticle && (
-        <Dialog open={!!previewArticle} onOpenChange={() => setPreviewArticle(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Preview da Notícia</DialogTitle>
-              <DialogDescription>
-                Visualização de como a notícia aparecerá no site
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="space-y-6">
-              {previewArticle.image && (
-                <OptimizedImage
-                  src={previewArticle.image}
-                  alt={previewArticle.title}
-                  className="w-full h-64 object-cover rounded-lg"
-                />
-              )}
-              
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Badge className={`${
-                    previewArticle.category === 'Bioeconomia' ? 'bg-idasam-green-medium/10 text-idasam-green-dark' :
-                    previewArticle.category === 'Tecnologia' ? 'bg-blue-100 text-blue-700' :
-                    previewArticle.category === 'Capacitação' ? 'bg-purple-100 text-purple-700' :
-                    previewArticle.category === 'Pesquisa' ? 'bg-orange-100 text-orange-700' :
-                    'bg-gray-100 text-gray-700'
-                  }`}>
-                    {previewArticle.category}
-                  </Badge>
-                  <span className="text-sm text-gray-500">{previewArticle.author}</span>
-                </div>
-                
-                <h1 className="text-3xl font-bold text-idasam-text-main">
-                  {previewArticle.title}
-                </h1>
-                
-                <p className="text-lg text-gray-600 italic">
-                  {previewArticle.excerpt}
-                </p>
-                
-                <div className="prose max-w-none">
-                  {previewArticle.content.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="text-gray-700 leading-relaxed mb-4">
-                      {paragraph.trim()}
-                    </p>
-                  ))}
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  {previewArticle.tags.map((tag) => (
-                    <Badge key={tag} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setPreviewArticle(null)}
-              >
-                Fechar Preview
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      </div>
     </div>
   );
 }

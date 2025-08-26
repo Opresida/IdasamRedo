@@ -1,0 +1,48 @@
+Olá, Replit.
+
+Nossa missão agora é a etapa final de verificação e sincronização. O banco de dados foi implementado com sucesso e o componente principal do dashboard (`AdminDashboard.tsx`) foi totalmente corrigido e refinado para refletir a arquitetura final.
+
+Sua tarefa agora é atuar como um revisor de código: compare o resto do projeto com as "fontes da verdade" que estou fornecendo abaixo e aponte quaisquer inconsistências, sugerindo as correções necessárias.
+
+--- FONTES DA VERDADE (O CÓDIGO CORRETO) ---
+
+**1. O Schema do Banco de Dados (A Verdade Absoluta da Estrutura de Dados):**
+Este é o schema que está em produção no Supabase. Qualquer interação com o banco de dados deve respeitar esta estrutura.
+
+-- COLE AQUI O CONTEÚDO COMPLETO DO ÚLTIMO SCRIPT SQL QUE FUNCIONOU (v1.2) --
+
+
+**2. O Componente de Referência do Dashboard (`AdminDashboard.tsx`):**
+Este arquivo é o nosso "padrão ouro" de como o código autenticado deve interagir com o backend. Ele contém os padrões corretos para:
+-   Buscar dados da view `articles_full`.
+-   Lidar com a criação/edição de artigos usando `author_id`.
+-   Salvar as `tags` na tabela de junção `article_tags`.
+-   Lidar com as estatísticas (`reaction_counts`).
+
+-- COLE AQUI O CONTEÚDO COMPLETO DO ÚLTIMO ARQUIVO 'AdminDashboard.tsx' QUE TE ENVIEI --
+
+
+--- TAREFAS DE VERIFICAÇÃO E SINCRONIZAÇÃO ---
+
+Com base nas fontes da verdade acima, por favor, revise os seguintes arquivos e lógicas no meu projeto:
+
+**1. Verifique a Página Pública de Notícias (`noticias.tsx`):**
+* **Busca de Dados:** A função `loadArticles` está usando a `view articles_full`? (Deveria estar).
+* **Tipagem:** A interface `Article` dentro deste arquivo corresponde à estrutura de dados retornada pela `articles_full` (com `author_name`, `category_name`, `image`, etc.)?
+* **Exibição de Dados:** O JSX está exibindo `article.author_name` e `article.category_name` corretamente?
+* **Lógica de Filtro:** A função `filteredArticles` está usando `article.category_name` para filtrar por categoria?
+
+**2. Verifique a Lógica de Interações Sociais (`socialInteractions.ts`):**
+* **Função `addComment`:** A função está corretamente configurada para aceitar `author_name` e `author_email` e inseri-los na tabela `comments`, como já revisamos? (Acredito que sim, mas confirme).
+* **Consistência de Tipos:** A interface `CommentWithThread` neste arquivo está 100% alinhada com a estrutura da tabela `comments` no schema final?
+
+**3. Verifique a API do Backend (Rotas em `/api/...`):**
+* **Criação/Edição de Artigos:** A rota que lida com `POST` ou `PUT`/`PATCH` para artigos está protegida por autenticação? Ela está esperando receber `author_id` da sessão do usuário e não um campo de texto `author`?
+* **Consistência Geral:** Existe alguma outra rota de API que ainda possa estar usando a lógica antiga (ex: tentando inserir um array de texto `tags` na tabela `articles`)?
+
+---
+**COMO PROCEDER:**
+
+Para cada ponto de verificação acima, me informe se o código **"Já está correto"** ou, se encontrar uma inconsistência, me forneça o **bloco de código específico que precisa ser corrigido e a sua sugestão de correção**.
+
+**Vamos começar pela tarefa mais importante: Por favor, revise o arquivo da página pública de notícias (`client/src/pages/noticias.tsx`) e me diga se ele precisa de alguma alteração para ficar 100% alinhado com as nossas fontes da verdade.**

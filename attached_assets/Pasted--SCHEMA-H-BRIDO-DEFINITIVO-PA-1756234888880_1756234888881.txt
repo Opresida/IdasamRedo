@@ -1,0 +1,283 @@
+-- ================================================================
+-- SCHEMA HÍBRIDO DEFINITIVO PARA O SISTEMA DE NOTÍCIAS IDASAM (v1.2 - CORRIGIDO)
+-- Suporta Admins Autenticados e Visitantes Públicos.
+-- ================================================================
+
+-- Passo 1: Limpeza total e garantida do ambiente.
+DROP VIEW IF EXISTS articles_full;
+DROP TABLE IF EXISTS comment_reactions CASCADE;
+DROP TABLE IF EXISTS article_reactions CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS article_tags CASCADE;
+DROP TABLE IF EXISTS article_stats CASCADE;
+DROP TABLE IF EXISTS articles CASCADE;
+DROP TABLE IF EXISTS tags CASCADE;
+DROP TABLE IF EXISTS categories CASCADE;
+DROP TABLE IF EXISTS user_sessions CASCADE;
+DROP TABLE IF EXISTS admin_users CASCADE;
+
+-- ================================================================
+-- 1. TABELA DE USUÁRIOS (PARA O DASHBOARD)
+-- ================================================================
+CREATE TABLE admin_users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'editor')),
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ================================================================
+-- 2. TABELAS DE CLASSIFICAÇÃO
+-- ================================================================
+CREATE TABLE categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) UNIQUE NOT NULL,
+    slug VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    color VARCHAR(7) DEFAULT '#3B82F6',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE tags (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(30) UNIQUE NOT NULL,
+    slug VARCHAR(30) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ================================================================
+-- 3. TABELA DE ARTIGOS (AUTORIA RESTRITA E CORRETA)
+-- ================================================================
+CREATE TABLE articles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    excerpt TEXT,
+    content TEXT NOT NULL,
+    author_id UUID NOT NULL REFERENCES admin_users(id) ON DELETE SET NULL,
+    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    image TEXT,
+    featured BOOLEAN DEFAULT false,
+    published BOOLEAN DEFAULT false,
+    publish_date TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ================================================================
+-- 4. TABELA DE JUNÇÃO ARTIGOS <-> TAGS
+-- ================================================================
+CREATE TABLE article_tags (
+    article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (article_id, tag_id)
+);
+
+-- ================================================================
+-- 5. TABELA DE ESTATÍSTICAS DOS ARTIGOS
+-- ================================================================
+CREATE TABLE article_stats (
+    article_id UUID PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
+    views INTEGER DEFAULT 0,
+    reaction_counts JSONB DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ================================================================
+-- 6. TABELA DE COMENTÁRIOS (AJUSTADA PARA PÚBLICO)
+-- ================================================================
+CREATE TABLE comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    author_name TEXT NOT NULL,
+    author_email TEXT,
+    content TEXT NOT NULL,
+    parent_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+    is_approved BOOLEAN DEFAULT false,
+    reaction_counts JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ================================================================
+-- 7. TABELAS DE REAÇÕES (PARA VISITANTES PÚBLICOS)
+-- ================================================================
+CREATE TABLE article_reactions (
+    article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    user_identifier TEXT NOT NULL,
+    reaction_type TEXT NOT NULL,
+    UNIQUE(article_id, user_identifier)
+);
+
+CREATE TABLE comment_reactions (
+    comment_id UUID NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+    user_identifier TEXT NOT NULL,
+    reaction_type TEXT NOT NULL,
+    UNIQUE(comment_id, user_identifier)
+);
+
+-- ================================================================
+-- 8. TABELA DE SESSÕES DE USUÁRIOS (PARA LOGIN)
+-- ================================================================
+CREATE TABLE user_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    session_token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ================================================================
+-- DADOS INICIAIS
+-- ================================================================
+
+-- Inserir usuários padrão
+INSERT INTO admin_users (email, password_hash, name, role) VALUES
+('admin@idasam.org', '$2b$10$seu_hash_seguro_aqui', 'Admin IDASAM', 'admin'),
+('editor@idasam.org', '$2b$10$seu_hash_seguro_aqui', 'Editor IDASAM', 'editor')
+ON CONFLICT (email) DO NOTHING;
+
+-- Inserir categorias padrão
+INSERT INTO categories (name, slug) VALUES
+('Bioeconomia', 'bioeconomia'),
+('Educação', 'educacao'),
+('Tecnologia', 'tecnologia')
+ON CONFLICT (slug) DO NOTHING;
+
+-- Inserir tags padrão
+INSERT INTO tags (name, slug) VALUES
+('sustentabilidade', 'sustentabilidade'),
+('amazonia', 'amazonia'),
+('inovacao', 'inovacao'),
+('comunidades', 'comunidades')
+ON CONFLICT (slug) DO NOTHING;
+
+-- Inserir artigos de exemplo com referências corretas
+DO $$
+DECLARE
+    editor_user_id UUID;
+    bioeconomia_category_id UUID;
+    educacao_category_id UUID;
+    tag_sustentabilidade_id UUID;
+    tag_amazonia_id UUID;
+    tag_comunidades_id UUID;
+    artigo_1_id UUID := '550e8400-e29b-41d4-a716-446655440001';
+    -- << CORREÇÃO APLICADA AQUI, ADICIONADO O '0' FALTANTE >>
+    artigo_2_id UUID := '550e8400-e29b-41d4-a716-446655440002';
+BEGIN
+    -- Obter IDs necessários para as relações
+    SELECT id INTO editor_user_id FROM admin_users WHERE email = 'editor@idasam.org';
+    SELECT id INTO bioeconomia_category_id FROM categories WHERE slug = 'bioeconomia';
+    SELECT id INTO educacao_category_id FROM categories WHERE slug = 'educacao';
+    SELECT id INTO tag_sustentabilidade_id FROM tags WHERE slug = 'sustentabilidade';
+    SELECT id INTO tag_amazonia_id FROM tags WHERE slug = 'amazonia';
+    SELECT id INTO tag_comunidades_id FROM tags WHERE slug = 'comunidades';
+
+    -- Inserir artigos
+    INSERT INTO articles (id, title, slug, excerpt, content, author_id, category_id, image, featured, published, publish_date)
+    VALUES
+    (artigo_1_id,
+     'IDASAM Lança Novo Projeto de Bioeconomia na Amazônia',
+     'idasam-lanca-novo-projeto-bioeconomia-amazonia',
+     'Iniciativa inovadora busca conciliar desenvolvimento econômico com preservação ambiental.',
+     'Conteúdo completo do artigo sobre o projeto de bioeconomia...',
+     editor_user_id,
+     bioeconomia_category_id,
+     'https://i.imgur.com/vVksMXp.jpeg',
+     true,
+     true,
+     NOW()),
+    (artigo_2_id,
+     'Capacitação em Tecnologias Sustentáveis para Comunidades Ribeirinhas',
+     'capacitacao-tecnologias-sustentaveis-comunidades-ribeirinhas',
+     'Programa de formação técnica beneficia mais de 200 famílias.',
+     'Conteúdo completo sobre o programa de capacitação...',
+     editor_user_id,
+     educacao_category_id,
+     'https://i.imgur.com/example2.jpeg',
+     false,
+     true,
+     NOW() - INTERVAL '1 day')
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Associar tags aos artigos
+    INSERT INTO article_tags (article_id, tag_id)
+    VALUES
+        (artigo_1_id, tag_sustentabilidade_id),
+        (artigo_1_id, tag_amazonia_id),
+        (artigo_2_id, tag_comunidades_id)
+    ON CONFLICT (article_id, tag_id) DO NOTHING;
+END $$;
+
+-- ================================================================
+-- VIEW OTIMIZADA PARA CONSULTAS
+-- ================================================================
+CREATE OR REPLACE VIEW articles_full AS
+SELECT
+    a.id, a.title, a.slug, a.excerpt, a.content,
+    u.name as author_name,
+    u.id as author_id,
+    c.name as category_name,
+    c.slug as category_slug,
+    c.color as category_color,
+    a.image, a.featured, a.published, a.publish_date,
+    a.created_at, a.updated_at,
+    COALESCE(s.views, 0) as views,
+    COALESCE(s.reaction_counts, '{}'::jsonb) as reaction_counts,
+    (SELECT array_agg(t.name) FROM article_tags at JOIN tags t ON at.tag_id = t.id WHERE at.article_id = a.id) as tags
+FROM articles a
+LEFT JOIN admin_users u ON a.author_id = u.id
+LEFT JOIN categories c ON a.category_id = c.id
+LEFT JOIN article_stats s ON a.id = s.article_id;
+
+-- ================================================================
+-- FUNÇÕES, TRIGGERS, ÍNDICES E POLÍTICAS DE SEGURANÇA
+-- ================================================================
+
+-- Função para incrementar visualizações
+CREATE OR REPLACE FUNCTION increment_article_views(p_article_id UUID) 
+RETURNS void AS $$
+BEGIN
+  INSERT INTO article_stats (article_id, views) 
+  VALUES (p_article_id, 1)
+  ON CONFLICT (article_id) 
+  DO UPDATE SET 
+    views = article_stats.views + 1,
+    updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para atualizar `updated_at` automaticamente
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at = NOW();
+   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_articles_updated_at BEFORE UPDATE ON articles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_admin_users_updated_at BEFORE UPDATE ON admin_users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Índices para Performance
+CREATE INDEX IF NOT EXISTS idx_articles_author_id ON articles(author_id);
+CREATE INDEX IF NOT EXISTS idx_articles_category_id ON articles(category_id);
+CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
+CREATE INDEX IF NOT EXISTS idx_comments_article_id ON comments(article_id);
+CREATE INDEX IF NOT EXISTS idx_article_tags_article_id ON article_tags(article_id);
+CREATE INDEX IF NOT EXISTS idx_article_tags_tag_id ON article_tags(tag_id);
+
+-- Políticas de Segurança RLS (Row Level Security)
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins podem gerenciar usuários" ON admin_users FOR ALL
+    USING (auth.jwt() ->> 'role' = 'admin');
+
+CREATE POLICY "Usuários podem ver suas próprias sessões" ON user_sessions FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'sub')::uuid);
