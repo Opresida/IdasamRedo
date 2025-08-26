@@ -197,8 +197,10 @@ export default function NoticiasPage() {
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
+  // Estados para comentários públicos
   const [newComment, setNewComment] = useState('');
   const [commentAuthor, setCommentAuthor] = useState('');
+  const [commentEmail, setCommentEmail] = useState('');
   const [userCommentReactions, setUserCommentReactions] = useState<Record<string, string[]>>({});
   const [userIdentifier] = useState(() => socialInteractions.getUserIdentifier());
   const [isTranslating, setIsTranslating] = useState(false);
@@ -406,7 +408,7 @@ export default function NoticiasPage() {
           // Buscar reações do usuário para comentários (sem atualizar estado aqui)
           const allCommentIds = getAllCommentIds(commentsData);
           const userCommentsReactions = await socialInteractions.getUserCommentReactions(allCommentIds, userIdentifier);
-          
+
           // Armazenar reações de comentários separadamente para evitar re-renders
           setTimeout(() => {
             setUserCommentReactions(prev => ({ ...prev, ...userCommentsReactions }));
@@ -476,7 +478,7 @@ export default function NoticiasPage() {
 
   // Adicionar comentário
   const handleAddComment = async (articleId: string, parentCommentId?: string) => {
-    if (!newComment.trim() || !commentAuthor.trim()) return;
+    if (!newComment.trim() || !commentAuthor.trim() || !commentEmail.trim()) return;
 
     setIsLoading(true);
 
@@ -485,7 +487,8 @@ export default function NoticiasPage() {
         articleId,
         commentAuthor.trim(),
         newComment.trim(),
-        parentCommentId
+        parentCommentId,
+        commentEmail.trim() // Adiciona o email do visitante
       );
 
       // Recarregar comentários organizados
@@ -506,6 +509,7 @@ export default function NoticiasPage() {
       // Limpar formulário
       setNewComment('');
       setCommentAuthor('');
+      setCommentEmail('');
 
     } catch (error) {
       console.error('Erro ao adicionar comentário:', error);
@@ -516,11 +520,11 @@ export default function NoticiasPage() {
   };
 
   // Responder a um comentário específico
-  const handleReply = async (parentCommentId: string, content: string, author: string) => {
+  const handleReply = async (parentCommentId: string, content: string, author: string, email: string) => {
     if (!selectedArticle) return;
 
     try {
-      await socialInteractions.addComment(selectedArticle.id, author, content, parentCommentId);
+      await socialInteractions.addComment(selectedArticle.id, author, content, parentCommentId, email);
 
       // Recarregar comentários
       const updatedComments = await socialInteractions.getCommentsWithThreads(selectedArticle.id);
@@ -1192,6 +1196,13 @@ export default function NoticiasPage() {
                       onChange={(e) => setCommentAuthor(e.target.value)}
                       className="border-gray-300 text-sm sm:text-base"
                     />
+                    <Input
+                      placeholder="Seu email"
+                      type="email"
+                      value={commentEmail}
+                      onChange={(e) => setCommentEmail(e.target.value)}
+                      className="border-gray-300 text-sm sm:text-base"
+                    />
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Input
@@ -1209,7 +1220,7 @@ export default function NoticiasPage() {
                     <Button
                       onClick={() => handleAddComment(selectedArticle.id)}
                       className="bg-idasam-green-dark hover:bg-idasam-green-medium px-3 sm:px-4 whitespace-nowrap"
-                      disabled={!newComment.trim() || !commentAuthor.trim() || isLoading}
+                      disabled={!newComment.trim() || !commentAuthor.trim() || !commentEmail.trim() || isLoading}
                     >
                       {isLoading ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -1258,7 +1269,7 @@ export default function NoticiasPage() {
                         comment={comment}
                         articleId={selectedArticle.id}
                         userReactions={userCommentReactions}
-                        onReply={handleReply}
+                        onReply={(parentCommentId, content, author, email) => handleReply(parentCommentId, content, author, email)}
                         onReactionToggle={handleCommentReactionToggle}
                       />
                     ))
