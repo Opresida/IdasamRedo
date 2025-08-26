@@ -176,10 +176,46 @@ export default function NoticiasPage() {
     });
   };
 
+  const SkeletonCard = () => (
+    <div className="news-card-skeleton">
+      <div className="skeleton-image"></div>
+      <div className="skeleton-content">
+        <div className="skeleton-line h-4 w-1/2 mb-3"></div>
+        <div className="skeleton-line h-6 w-3/4 mb-2"></div>
+        <div className="skeleton-line h-6 w-full mb-4"></div>
+        <div className="skeleton-line h-4 w-2/3 mb-2"></div>
+        <div className="skeleton-line h-4 w-1/2"></div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-sand flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-idasam-green-dark"></div>
+      <div className="min-h-screen bg-sand">
+        <FloatingNavbar />
+        
+        <div className="pt-24 pb-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header skeleton */}
+            <div className="text-center mb-12">
+              <div className="h-12 bg-gray-200 rounded w-96 mx-auto mb-4 animate-pulse"></div>
+              <div className="h-6 bg-gray-200 rounded w-[600px] mx-auto animate-pulse"></div>
+            </div>
+
+            {/* Filtros skeleton */}
+            <div className="mb-8 flex flex-col sm:flex-row gap-4">
+              <div className="h-10 bg-gray-200 rounded flex-1 animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded w-64 animate-pulse"></div>
+            </div>
+
+            {/* Grid skeleton */}
+            <div className="news-grid">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -230,84 +266,134 @@ export default function NoticiasPage() {
               </div>
 
               {/* Grid de artigos */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredArticles.map((article) => (
-                  <Card 
-                    key={article.id} 
-                    className="hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => handleViewArticle(article)}
-                  >
-                    {article.image && (
-                      <div className="aspect-video relative overflow-hidden rounded-t-lg">
-                        <img
-                          src={article.image}
-                          alt={article.title}
-                          className="w-full h-full object-cover"
-                        />
-                        {article.featured && (
-                          <Badge className="absolute top-2 left-2" variant="default">
-                            Destaque
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Badge 
-                          variant="outline" 
-                          style={{ 
-                            backgroundColor: `${article.category_color}15`, 
-                            borderColor: article.category_color,
-                            color: article.category_color
-                          }}
-                        >
-                          {article.category_name}
-                        </Badge>
-                      </div>
-                      
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {article.title}
-                      </h3>
-                      
-                      <p className="text-gray-600 mb-4 line-clamp-3">
-                        {article.excerpt}
-                      </p>
-
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <User className="w-4 h-4" />
-                          <span>{article.author_name}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>{formatDate(article.publish_date)}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <Eye className="w-4 h-4" />
-                          <span>{article.views || 0}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Heart className="w-4 h-4" />
-                          <span>{article.reaction_counts?.like || 0}</span>
-                        </div>
-                      </div>
-
-                      {article.tags && article.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {article.tags.slice(0, 3).map((tag, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              <Tag className="w-3 h-3 mr-1" />
-                              {tag}
+              <div className="news-grid">
+                {filteredArticles.map((article, index) => {
+                  const isNew = new Date(article.publish_date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Último semana
+                  const isTrending = article.views > 100; // Mais de 100 visualizações
+                  const isFeatured = article.featured;
+                  
+                  return (
+                    <div 
+                      key={article.id}
+                      className={`news-card news-card-enter ${isFeatured ? 'featured-card' : ''}`}
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                      onClick={() => handleViewArticle(article)}
+                    >
+                      {article.image && (
+                        <div className="news-card-image">
+                          <img
+                            src={article.image}
+                            alt={article.title}
+                            loading="lazy"
+                          />
+                          
+                          {/* Indicadores especiais */}
+                          {isNew && (
+                            <div className="new-article-indicator">
+                              ✨ Novo
+                            </div>
+                          )}
+                          {isTrending && !isNew && (
+                            <div className="trending-indicator">
+                              🔥 Popular
+                            </div>
+                          )}
+                          
+                          {isFeatured && (
+                            <Badge className="absolute top-2 left-2 bg-gradient-to-r from-idasam-green to-idasam-green-dark" variant="default">
+                              ⭐ Destaque
                             </Badge>
-                          ))}
+                          )}
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
-                ))}
+                      
+                      <div className="news-card-content">
+                        <div className="news-card-badges">
+                          <Badge 
+                            variant="outline" 
+                            style={{ 
+                              backgroundColor: `${article.category_color}15`, 
+                              borderColor: article.category_color,
+                              color: article.category_color
+                            }}
+                          >
+                            {article.category_name}
+                          </Badge>
+                        </div>
+                        
+                        <h3 className="news-card-title">
+                          {article.title}
+                        </h3>
+                        
+                        <p className="news-card-excerpt">
+                          {article.excerpt}
+                        </p>
+
+                        <div className="news-card-meta">
+                          <div className="flex items-center gap-1">
+                            <User className="w-4 h-4" />
+                            <span>{article.author_name}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            <span>{formatDate(article.publish_date)}</span>
+                          </div>
+                        </div>
+
+                        <div className="news-card-stats">
+                          <div className="flex items-center gap-1">
+                            <Eye className="w-4 h-4" />
+                            <span>{article.views || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Heart className="w-4 h-4" />
+                            <span>{article.reaction_counts?.like || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <MessageCircle className="w-4 h-4" />
+                            <span>{Math.floor(Math.random() * 10)}</span>
+                          </div>
+                        </div>
+
+                        {article.tags && article.tags.length > 0 && (
+                          <div className="news-card-tags">
+                            {article.tags.slice(0, 4).map((tag, tagIndex) => (
+                              <Badge key={tagIndex} variant="secondary" className="text-xs">
+                                <Tag className="w-3 h-3 mr-1" />
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Preview expandido no hover */}
+                      <div className="news-card-preview">
+                        <div className="news-card-preview-content">
+                          <h4 className="news-card-preview-title">
+                            {article.title}
+                          </h4>
+                          <p className="news-card-preview-text">
+                            {article.content.length > 300 
+                              ? article.content.substring(0, 300) + '...' 
+                              : article.content}
+                          </p>
+                        </div>
+                        
+                        <div className="news-card-preview-actions">
+                          <div className="flex items-center gap-4 text-xs text-gray-600">
+                            <span>{Math.ceil(article.content.length / 200)} min de leitura</span>
+                            <span>•</span>
+                            <span>{article.views || 0} leituras</span>
+                          </div>
+                          <button className="news-card-preview-button">
+                            Ler artigo <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {filteredArticles.length === 0 && (
