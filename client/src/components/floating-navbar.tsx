@@ -150,7 +150,7 @@ export default function FloatingNavbar() {
               Projetos
             </Link>
             {/* Link admin (remover em produção) */}
-            <Link href="/admin" className="hover:text-teal transition-colors text-xs border border-gray-300 px-2 py-1 rounded">
+            <Link href="/dashboard" className="hover:text-teal transition-colors text-xs border border-gray-300 px-2 py-1 rounded">
               Admin
             </Link>
             </div>

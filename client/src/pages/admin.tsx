@@ -22,7 +22,8 @@ import {
   Clock,
   TrendingUp,
   MessageCircle,
-  Heart
+  Heart,
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +66,7 @@ import {
 import { supabase } from '@/supabaseClient';
 import { newsCache } from '@/lib/newsCache';
 import { useAnalyticsAndSEO } from '@/hooks/use-analytics';
+import { useAuth } from '@/contexts/auth-context';
 import OptimizedImage from '@/components/optimized-image';
 
 // Tipos para o admin
@@ -102,7 +104,7 @@ const defaultFormData: ArticleFormData = {
   published: false
 };
 
-export default function AdminPanel() {
+export default function Dashboard() {
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [articles, setArticles] = useState<ArticleFormData[]>([]);
   const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
@@ -121,18 +123,19 @@ export default function AdminPanel() {
   const [previewArticle, setPreviewArticle] = useState<ArticleFormData | null>(null);
 
   const { trackPageView, updateSEO } = useAnalyticsAndSEO();
+  const { user, logout } = useAuth();
 
   // Inicializar SEO
   useEffect(() => {
     updateSEO({
-      title: 'Painel Administrativo | IDASAM',
+      title: 'Dashboard Administrativo | IDASAM',
       description: 'Painel de gerenciamento de notícias e conteúdo do IDASAM',
-      keywords: ['admin', 'painel', 'IDASAM', 'gerenciamento'],
-      url: `${window.location.origin}/admin`,
+      keywords: ['dashboard', 'admin', 'IDASAM', 'gerenciamento'],
+      url: `${window.location.origin}/dashboard`,
       type: 'website'
     });
 
-    trackPageView('/admin', 'Admin Panel');
+    trackPageView('/dashboard', 'Admin Dashboard');
   }, [updateSEO, trackPageView]);
 
   // Carregar artigos
@@ -366,14 +369,18 @@ export default function AdminPanel() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold text-idasam-text-main">
-                Painel Administrativo
+                Dashboard IDASAM
               </h1>
               <Badge variant="secondary" className="bg-idasam-green-dark/10 text-idasam-green-dark">
-                IDASAM
+                {user?.role === 'admin' ? 'Administrador' : 'Editor'}
               </Badge>
             </div>
             
             <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">
+                Olá, {user?.name}
+              </span>
+              
               <Button
                 onClick={() => {
                   setEditingArticle(defaultFormData);
@@ -383,6 +390,15 @@ export default function AdminPanel() {
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Notícia
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={logout}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
               </Button>
             </div>
           </div>
