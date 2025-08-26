@@ -1,0 +1,26 @@
+--- TAREFAS DE ATUALIZAÇÃO DO CÓDIGO ---
+
+Com base na arquitetura e no schema acima, por favor, execute as seguintes tarefas de atualização no código:
+
+**1. Lógica de Busca e Exibição de Dados (Frontend):**
+* **Priorize a View `articles_full`:** Para buscar listas de artigos ou um artigo individual, o código deve sempre que possível consultar a view `articles_full`.
+* **Atualize os Nomes dos Campos:** Os componentes que exibem os artigos devem usar `author_name` e `category_name`, que são os campos fornecidos pela view `articles_full`.
+* **Corrija o Filtro de Categoria:** A lógica de filtro por categoria deve ser corrigida para usar `article.category_name` em vez de `article.category`.
+
+**2. Lógica de Comentários (Frontend - Área Pública):**
+* **Atualize o Formulário de Comentário:** O componente de formulário para adicionar comentários precisa ser modificado. Ele deve conter campos de input para "Seu Nome" (que corresponderá a `author_name`) e "Seu Email" (`author_email`).
+* **Atualize a Função `addComment`:** A função para adicionar um novo comentário (provavelmente na classe `SocialInteractionsManager`) deve ser alterada para aceitar `author_name` e `author_email` como parâmetros e enviá-los para as colunas corretas na tabela `comments`. Ela não deve mais tentar enviar um `author_id`.
+
+**3. Lógica do Dashboard (Frontend - Área Autenticada):**
+* **Formulário de Criação/Edição de Artigo:** Este formulário não deve ter um campo de texto para o nome do autor. O `author_id` do artigo deve ser o ID do usuário atualmente logado, obtido a partir da sessão de autenticação.
+
+**4. Lógica da API (Backend):**
+* **Proteção de Rotas:** As rotas de API que criam (`POST`), atualizam (`PUT`/`PATCH`) ou deletam (`DELETE`) artigos devem ser protegidas. Elas precisam verificar se existe uma sessão de usuário válida e se o usuário tem a permissão ('admin' ou 'editor').
+* **Salvar Artigos:** O endpoint da API que salva um artigo deve ser modificado para receber o `author_id` a partir dos dados da sessão autenticada e inseri-lo na tabela `articles`.
+
+---
+**PONTO DE PARTIDA:**
+
+Para começar, por favor, foque na parte pública. Gere para mim o código atualizado para os seguintes arquivos:
+1.  O componente React/Next.js que contém o **formulário para um visitante adicionar um novo comentário**.
+2.  A função `addComment` na classe `SocialInteractionsManager` (ou arquivo equivalente) para que ela envie `author_name` e `author_email` para a tabela `comments`.
