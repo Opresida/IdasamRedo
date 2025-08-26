@@ -29,7 +29,8 @@ import {
   Globe,
   User,
   Shield,
-  CheckCircle
+  CheckCircle,
+  Calendar
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { supabase } from '@/supabaseClient';
@@ -113,6 +114,10 @@ export default function AdminDashboard() {
     slug: '',
     description: ''
   });
+
+  // Estados para o modal de preview
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -300,8 +305,8 @@ export default function AdminDashboard() {
   };
 
   const handlePreviewArticle = (article: Article) => {
-    // Abre a página de notícias com o artigo específico em uma nova aba
-    window.open(`/noticias#${article.id}`, '_blank');
+    setPreviewArticle(article);
+    setShowPreviewModal(true);
   };
 
   const handleEditArticle = (article: Article) => {
@@ -1055,6 +1060,123 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal de Preview do Artigo */}
+      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Preview do Artigo
+            </DialogTitle>
+          </DialogHeader>
+          
+          {previewArticle && (
+            <div className="space-y-6">
+              {/* Imagem do artigo */}
+              {previewArticle.image && (
+                <div className="aspect-video relative rounded-lg overflow-hidden">
+                  <img
+                    src={previewArticle.image}
+                    alt={previewArticle.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Metadados do artigo */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <Badge variant={previewArticle.published ? 'default' : 'secondary'}>
+                  {previewArticle.published ? 'Publicado' : 'Rascunho'}
+                </Badge>
+                {previewArticle.featured && (
+                  <Badge variant="outline">
+                    <Star className="w-3 h-3 mr-1" />
+                    Destaque
+                  </Badge>
+                )}
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <User className="w-4 h-4" />
+                  <span>{previewArticle.author_name}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Tag className="w-4 h-4" />
+                  <span>{previewArticle.category_name}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Calendar className="w-4 h-4" />
+                  <span>{formatDate(previewArticle.created_at)}</span>
+                </div>
+              </div>
+
+              {/* Título */}
+              <h1 className="text-3xl font-bold text-gray-900">
+                {previewArticle.title}
+              </h1>
+
+              {/* Resumo */}
+              {previewArticle.excerpt && (
+                <p className="text-xl text-gray-600 font-medium border-l-4 border-idasam-green pl-4">
+                  {previewArticle.excerpt}
+                </p>
+              )}
+
+              {/* Conteúdo */}
+              <div 
+                className="prose prose-lg max-w-none"
+                dangerouslySetInnerHTML={{ 
+                  __html: previewArticle.content?.replace(/\n/g, '<br>') || '' 
+                }}
+              />
+
+              {/* Tags */}
+              {previewArticle.tags && previewArticle.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {previewArticle.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary">
+                      <Tag className="w-3 h-3 mr-1" />
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Estatísticas */}
+              <div className="flex items-center gap-6 pt-4 border-t">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Eye className="w-4 h-4" />
+                  <span>{articleStats[previewArticle.id]?.views || 0} visualizações</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Heart className="w-4 h-4" />
+                  <span>{articleStats[previewArticle.id]?.reaction_counts?.like || 0} likes</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>{comments.filter(c => c.article_id === previewArticle.id).length} comentários</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setShowPreviewModal(false)}>
+              Fechar
+            </Button>
+            <Button 
+              onClick={() => {
+                if (previewArticle) {
+                  window.open(`/noticias#${previewArticle.id}`, '_blank');
+                }
+              }}
+              variant="default"
+            >
+              <Globe className="w-4 h-4 mr-2" />
+              Ver no Site
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
