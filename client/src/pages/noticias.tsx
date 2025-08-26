@@ -341,6 +341,12 @@ export default function NoticiasPage() {
 
   // Buscar comentários e estatísticas do artigo no Supabase
   const loadArticleData = async (articleId: string) => {
+    // Verificar se já existe no estado local primeiro
+    if (articleStats[articleId]) {
+      console.log('📦 Dados já carregados no estado local');
+      return articleStats[articleId];
+    }
+
     return await cacheHelpers.getOrFetch(
       `article_stats_${articleId}`,
       async () => {
@@ -396,10 +402,14 @@ export default function NoticiasPage() {
           // Buscar reações do usuário para o artigo
           const userArticleReactions = await socialInteractions.getUserArticleReactions(articleId, userIdentifier);
 
-          // Buscar reações do usuário para comentários
+          // Buscar reações do usuário para comentários (sem atualizar estado aqui)
           const allCommentIds = getAllCommentIds(commentsData);
           const userCommentsReactions = await socialInteractions.getUserCommentReactions(allCommentIds, userIdentifier);
-          setUserCommentReactions(prev => ({ ...prev, ...userCommentsReactions }));
+          
+          // Armazenar reações de comentários separadamente para evitar re-renders
+          setTimeout(() => {
+            setUserCommentReactions(prev => ({ ...prev, ...userCommentsReactions }));
+          }, 0);
 
           const result = {
             likes: articleStatsData?.likes || 0,
@@ -716,26 +726,35 @@ export default function NoticiasPage() {
   // Carregar dados quando selecionar um artigo
   useEffect(() => {
     if (selectedArticle) {
-      setIsLoadingComments(true);
+      // Verificar se já temos dados em cache primeiro
+      const cachedStats = articleStats[selectedArticle.id];
+      if (cachedStats) {
+        // Se já temos dados, não mostrar loading
+        setIsLoadingComments(false);
+      } else {
+        setIsLoadingComments(true);
+      }
 
-      // Atualizar SEO do artigo
+      // Atualizar SEO do artigo apenas uma vez
       updateArticleSEO(selectedArticle);
 
-      // Rastrear visualização
+      // Rastrear visualização apenas uma vez
       trackArticleView(selectedArticle.id, selectedArticle.title);
 
-      // Carregar dados
-      loadArticleData(selectedArticle.id).then((data) => {
-        if (data) {
-          setArticleStats(prev => ({
-            ...prev,
-            [selectedArticle.id]: data
-          }));
-        }
-        setIsLoadingComments(false);
-      });
+      // Carregar dados apenas se não estiverem em cache
+      if (!cachedStats) {
+        loadArticleData(selectedArticle.id).then((data) => {
+          if (data) {
+            setArticleStats(prev => ({
+              ...prev,
+              [selectedArticle.id]: data
+            }));
+          }
+          setIsLoadingComments(false);
+        });
+      }
     }
-  }, [selectedArticle, updateArticleSEO, trackArticleView]);
+  }, [selectedArticle]);
 
   // Hook para scroll infinito
   useEffect(() => {
@@ -1160,7 +1179,7 @@ export default function NoticiasPage() {
               <div className="border-t pt-6 sm:pt-8">
                 <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-idasam-text-main mb-4 sm:mb-6 flex items-center gap-2">
                   <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-                  Comentários ({isLoadingComments ? '...' : getArticleStats(selectedArticle.id).comments.length})
+                  Comentários ({getArticleStats(selectedArticle.id).comments.length})
                 </h3>
 
                 {/* Formulário de Comentário */}

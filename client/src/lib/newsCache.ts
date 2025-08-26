@@ -18,9 +18,9 @@ class NewsCacheManager {
     comments: {}
   };
 
-  private readonly DEFAULT_TTL = 3 * 60 * 1000; // 3 minutos
-  private readonly STATS_TTL = 1 * 60 * 1000; // 1 minuto
-  private readonly COMMENTS_TTL = 2 * 60 * 1000; // 2 minutos
+  private readonly DEFAULT_TTL = 10 * 60 * 1000; // 10 minutos
+  private readonly STATS_TTL = 5 * 60 * 1000; // 5 minutos
+  private readonly COMMENTS_TTL = 5 * 60 * 1000; // 5 minutos
 
   // Verificar se item do cache está expirado
   private isExpired<T>(item: CacheItem<T>): boolean {
