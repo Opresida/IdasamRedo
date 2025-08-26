@@ -128,30 +128,25 @@ export function AnimatedGlobe({ className }: { className?: string }) {
           document.head.appendChild(script);
         });
 
-        // Carrega OrbitControls como módulo ES6
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.innerHTML = `
-          import { OrbitControls } from 'https://unpkg.com/three@0.128.0/examples/jsm/controls/OrbitControls.js';
-          window.OrbitControls = OrbitControls;
-          window.dispatchEvent(new Event('orbitControlsLoaded'));
-        `;
-        document.head.appendChild(script);
-
-        // Aguarda o carregamento do OrbitControls
-        await new Promise((resolve) => {
-          if ((window as any).OrbitControls) {
-            resolve(true);
-          } else {
-            window.addEventListener('orbitControlsLoaded', resolve, { once: true });
-          }
+        // Carrega OrbitControls do CDN
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
         });
 
         initializeGlobe();
       } catch (error) {
         console.error('Erro ao carregar Three.js:', error);
-        // Fallback: mostra sem controles de órbita
-        initializeGlobeWithoutControls();
+        // Fallback: inicializa sem controles
+        try {
+          initializeGlobeWithoutControls();
+        } catch (fallbackError) {
+          console.error('Erro no fallback:', fallbackError);
+          setIsLoaded(false);
+        }
       }
     };
 
@@ -207,16 +202,20 @@ export function AnimatedGlobe({ className }: { className?: string }) {
 
       // Controles com verificação
       let controls = null;
-      if ((window as any).OrbitControls) {
-        const OrbitControls = (window as any).OrbitControls;
-        controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.screenSpacePanning = false;
-        controls.minDistance = 4;
-        controls.maxDistance = 12;
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.5;
+      try {
+        const OrbitControls = (window as any).THREE.OrbitControls;
+        if (OrbitControls) {
+          controls = new OrbitControls(camera, renderer.domElement);
+          controls.enableDamping = true;
+          controls.dampingFactor = 0.05;
+          controls.screenSpacePanning = false;
+          controls.minDistance = 4;
+          controls.maxDistance = 12;
+          controls.autoRotate = true;
+          controls.autoRotateSpeed = 0.5;
+        }
+      } catch (error) {
+        console.log('OrbitControls não disponível, usando rotação simples');
       }
 
       // Animação
