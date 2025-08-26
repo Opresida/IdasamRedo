@@ -254,11 +254,12 @@ export default function NoticiasPage() {
         console.log('🌐 Buscando artigos do Supabase...');
 
         try {
-          // Tentar buscar do Supabase primeiro
+          // Tentar buscar do Supabase primeiro usando a view otimizada
           const { data, error } = await supabase
-            .from('articles')
+            .from('articles_full')
             .select('*')
-            .order('publishDate', { ascending: false });
+            .eq('published', true)
+            .order('publish_date', { ascending: false });
 
           if (error) {
             console.warn('⚠️ Erro ao buscar artigos do Supabase:', error);
@@ -351,9 +352,9 @@ export default function NoticiasPage() {
       `article_stats_${articleId}`,
       async () => {
         try {
-          // Incrementar visualizações usando a função SQL
+          // Incrementar visualizações usando a função SQL com UUID
           const { error: incrementError } = await supabase
-            .rpc('increment_article_views', { p_article_id: articleId });
+            .rpc('increment_article_views', { p_article_id: this.ensureUUID(articleId) });
 
           if (incrementError) {
             console.warn('⚠️ Erro ao incrementar visualizações:', incrementError);
