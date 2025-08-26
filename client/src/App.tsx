@@ -8,6 +8,7 @@ import PageLoader from '@/components/page-loader';
 import Home from '@/pages/home';
 import Projetos from '@/pages/projetos';
 import NoticiasPage from '@/pages/noticias';
+import AdminPanel from '@/pages/admin';
 import NotFound from '@/pages/not-found';
 import PaginaDeDoacao from '@/PaginaDeDoacao';
 import PaginaDeDoacaoEUR from '@/PaginaDeDoacaoEUR';
@@ -31,6 +32,7 @@ function AppContent() {
         <Route path="/" component={Home} />
         <Route path="/projetos" component={Projetos} />
         <Route path="/noticias" component={NoticiasPage} />
+        <Route path="/admin" component={AdminPanel} />
         <Route path="/doacao-usd" component={PaginaDeDoacao} />
         <Route path="/doacao-eur" component={PaginaDeDoacaoEUR} />
         <Route component={NotFound} />

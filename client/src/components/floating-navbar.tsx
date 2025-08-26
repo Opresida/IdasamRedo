@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import Link from 'next/link'; // Import Link for navigation
 
 interface NavItem {
   name: string;
@@ -145,6 +146,13 @@ export default function FloatingNavbar() {
                   {item.name}
                 </button>
               ))}
+            <Link to="/projetos" className="hover:text-teal transition-colors">
+              Projetos
+            </Link>
+            {/* Link admin (remover em produção) */}
+            <Link to="/admin" className="hover:text-teal transition-colors text-xs border border-gray-300 px-2 py-1 rounded">
+              Admin
+            </Link>
             </div>
             <Dialog open={showDonationModal} onOpenChange={setShowDonationModal}>
               <DialogTrigger asChild>
@@ -187,7 +195,7 @@ export default function FloatingNavbar() {
                       <DollarSign className="w-6 h-6 text-blue-600" />
                       <div className="text-left">
                         <div className="font-semibold text-blue-700">Dólar (USD)</div>
-                        <div className="text-sm text-blue-600">Stripe, Cartão Internacional</div>
+                        <div className="text-sm text-blue-600">PayPal, Cartão Internacional</div>
                       </div>
                     </button>
 
@@ -280,7 +288,7 @@ export default function FloatingNavbar() {
                             <DollarSign className="w-6 h-6 text-blue-600" />
                             <div className="text-left">
                               <div className="font-semibold text-blue-700">Dólar (USD)</div>
-                              <div className="text-sm text-blue-600">PayPal, Cartão Internacional</div>
+                              <div className="text-sm text-blue-600">Stripe, Cartão Internacional</div>
                             </div>
                           </button>
 

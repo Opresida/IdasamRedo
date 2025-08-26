@@ -121,6 +121,19 @@ class NewsCacheManager {
     this.cache.articles = null;
   }
 
+  // Invalidar tudo relacionado a um artigo específico
+  invalidateArticle(articleId: string): void {
+    this.invalidateArticleStats(articleId);
+    this.invalidateComments(articleId);
+    this.invalidateArticles(); // Recarrega lista completa
+  }
+
+  // Método para admin: forçar limpeza completa
+  forceCleanAll(): void {
+    this.clearAll();
+    console.log('🧹 Cache completamente limpo pelo admin');
+  }
+
   // Limpar todo o cache
   clearAll(): void {
     this.cache = {
