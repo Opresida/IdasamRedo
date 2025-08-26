@@ -1,0 +1,877 @@
+estou com as seguintes tabelas criadas no SUPABASE:
+
+
+
+Blog Plataform:
+
+
+
+
+
+-- Tabela de usuários para autenticação
+
+CREATE TABLE IF NOT EXISTS users (
+
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  email VARCHAR(255) UNIQUE NOT NULL,
+
+  password_hash TEXT NOT NULL,
+
+  name VARCHAR(100) NOT NULL,
+
+  role VARCHAR(20) DEFAULT 'editor' CHECK (role IN ('admin', 'editor')),
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  is_active BOOLEAN DEFAULT true
+
+);
+
+
+
+-- Tabela de categorias
+
+CREATE TABLE IF NOT EXISTS categories (
+
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  name VARCHAR(50) UNIQUE NOT NULL,
+
+  slug VARCHAR(50) UNIQUE NOT NULL,
+
+  description TEXT,
+
+  color VARCHAR(7) DEFAULT '#3B82F6', -- cor hex
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+-- Tabela de tags
+
+CREATE TABLE IF NOT EXISTS tags (
+
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  name VARCHAR(30) UNIQUE NOT NULL,
+
+  slug VARCHAR(30) UNIQUE NOT NULL,
+
+  usage_count INTEGER DEFAULT 0,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+-- Tabela de relação artigos-tags (many-to-many)
+
+CREATE TABLE IF NOT EXISTS article_tags (
+
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  article_id VARCHAR(50) NOT NULL,
+
+  tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  UNIQUE(article_id, tag_id)
+
+);
+
+
+
+-- Tabela de sessões de usuários
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+  session_token TEXT UNIQUE NOT NULL,
+
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+-- Adicionar foreign key na tabela articles (se ainda não existe)
+
+ALTER TABLE articles
+
+ADD COLUMN IF NOT EXISTS author_id UUID REFERENCES users(id),
+
+ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES categories(id);
+
+
+
+-- Inserir usuários de demonstração (senhas hasheadas)
+
+INSERT INTO users (email, password_hash, name, role) VALUES
+
+('admin@idasam.org', '$2b$10$rQZ9QJ2ZQJ2ZQJ2ZQJ2ZQeF8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8', 'Admin IDASAM', 'admin'),
+
+('editor@idasam.org', '$2b$10$rQZ9QJ2ZQJ2ZQJ2ZQJ2ZQeF8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8', 'Editor IDASAM', 'editor')
+
+ON CONFLICT (email) DO NOTHING;
+
+
+
+-- Inserir categorias padrão
+
+INSERT INTO categories (name, slug, description, color) VALUES
+
+('Bioeconomia', 'bioeconomia', 'Notícias sobre desenvolvimento sustentável', '#10B981'),
+
+('Tecnologia', 'tecnologia', 'Inovações e soluções tecnológicas', '#3B82F6'),
+
+('Capacitação', 'capacitacao', 'Programas de formação e treinamento', '#8B5CF6'),
+
+('Pesquisa', 'pesquisa', 'Estudos e descobertas científicas', '#F59E0B'),
+
+('Comunidades', 'comunidades', 'Projetos comunitários', '#EF4444')
+
+ON CONFLICT (slug) DO NOTHING;
+
+
+
+-- Inserir tags populares
+
+INSERT INTO tags (name, slug) VALUES
+
+('sustentabilidade', 'sustentabilidade'),
+
+('amazonia', 'amazonia'),
+
+('inovacao', 'inovacao'),
+
+('meio-ambiente', 'meio-ambiente'),
+
+('comunidades-locais', 'comunidades-locais'),
+
+('tecnologia-verde', 'tecnologia-verde'),
+
+('conservacao', 'conservacao'),
+
+('educacao', 'educacao')
+
+ON CONFLICT (slug) DO NOTHING;
+
+
+
+-- Índices para performance
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+CREATE INDEX IF NOT EXISTS idx_articles_author ON articles(author_id);
+
+CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id);
+
+CREATE INDEX IF NOT EXISTS idx_article_tags_article ON article_tags(article_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at);
+
+
+
+Article Engagement Tracking System:
+
+
+
+
+
+-- Schema completo para o sistema de notícias do IDASAM
+
+
+
+-- 1. Tabela de artigos (principal)
+
+CREATE TABLE IF NOT EXISTS articles (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  title TEXT NOT NULL,
+
+  slug TEXT UNIQUE,
+
+  excerpt TEXT,
+
+  content TEXT NOT NULL,
+
+  author TEXT NOT NULL,
+
+  category TEXT,
+
+  tags TEXT[],
+
+  image TEXT,
+
+  featured BOOLEAN DEFAULT false,
+
+  published BOOLEAN DEFAULT false,
+
+  publish_date TIMESTAMP WITH TIME ZONE,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+-- 2. Tabela de estatísticas dos artigos
+
+CREATE TABLE IF NOT EXISTS article_stats (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  article_id TEXT UNIQUE NOT NULL,
+
+  likes INTEGER DEFAULT 0,
+
+  views INTEGER DEFAULT 0,
+
+  reaction_counts JSONB DEFAULT '{"like": 0, "love": 0, "clap": 0, "wow": 0, "sad": 0, "angry": 0}',
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+-- 3. Tabela de comentários
+
+CREATE TABLE IF NOT EXISTS comments (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  article_id TEXT NOT NULL,
+
+  author TEXT NOT NULL,
+
+  content TEXT NOT NULL,
+
+  parent_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+
+  thread_level INTEGER DEFAULT 0,
+
+  reaction_counts JSONB DEFAULT '{"like": 0, "love": 0, "clap": 0, "wow": 0, "sad": 0, "angry": 0}',
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+-- 4. Tabela de reações dos artigos
+
+CREATE TABLE IF NOT EXISTS article_reactions (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  article_id TEXT NOT NULL,
+
+  user_identifier TEXT NOT NULL,
+
+  reaction_type TEXT NOT NULL,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  UNIQUE(article_id, user_identifier, reaction_type)
+
+);
+
+
+
+-- 5. Tabela de reações dos comentários
+
+CREATE TABLE IF NOT EXISTS comment_reactions (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+
+  user_identifier TEXT NOT NULL,
+
+  reaction_type TEXT NOT NULL,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  UNIQUE(comment_id, user_identifier, reaction_type)
+
+);
+
+
+
+-- 6. Tabela de usuários administrativos
+
+CREATE TABLE IF NOT EXISTS admin_users (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  email TEXT UNIQUE NOT NULL,
+
+  password_hash TEXT NOT NULL,
+
+  name TEXT NOT NULL,
+
+  role TEXT NOT NULL CHECK (role IN ('admin', 'editor')),
+
+  active BOOLEAN DEFAULT true,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+-- Inserir usuários administrativos padrão
+
+INSERT INTO admin_users (email, password_hash, name, role) VALUES
+
+('admin@idasam.org', '$2b$10$hash_simulado_admin', 'Administrador IDASAM', 'admin'),
+
+('editor@idasam.org', '$2b$10$hash_simulado_editor', 'Editor IDASAM', 'editor')
+
+ON CONFLICT (email) DO NOTHING;
+
+
+
+-- Função para incrementar visualizações dos artigos
+
+CREATE OR REPLACE FUNCTION increment_article_views(p_article_id TEXT)
+
+RETURNS void AS $$
+
+BEGIN
+
+  INSERT INTO article_stats (article_id, likes, views)
+
+  VALUES (p_article_id, 0, 1)
+
+  ON CONFLICT (article_id)
+
+  DO UPDATE SET
+
+    views = article_stats.views + 1,
+
+    updated_at = NOW();
+
+END;
+
+$$ LANGUAGE plpgsql;
+
+
+
+-- Função para adicionar reação ao artigo
+
+CREATE OR REPLACE FUNCTION add_article_reaction(
+
+  p_article_id TEXT,
+
+  p_user_identifier TEXT,
+
+  p_reaction_type TEXT
+
+) RETURNS void AS $$
+
+BEGIN
+
+  -- Inserir a reação
+
+  INSERT INTO article_reactions (article_id, user_identifier, reaction_type)
+
+  VALUES (p_article_id, p_user_identifier, p_reaction_type)
+
+  ON CONFLICT (article_id, user_identifier, reaction_type) DO NOTHING;
+
+ 
+
+  -- Atualizar contadores
+
+  INSERT INTO article_stats (article_id, reaction_counts)
+
+  VALUES (p_article_id, ('{"' || p_reaction_type || '": 1}')::jsonb)
+
+  ON CONFLICT (article_id)
+
+  DO UPDATE SET
+
+    reaction_counts = article_stats.reaction_counts || ('{"' || p_reaction_type || '": ' ||
+
+      (COALESCE((article_stats.reaction_counts->>p_reaction_type)::int, 0) + 1) || '}')::jsonb,
+
+    updated_at = NOW();
+
+END;
+
+$$ LANGUAGE plpgsql;
+
+
+
+-- Função para remover reação do artigo
+
+CREATE OR REPLACE FUNCTION remove_article_reaction(
+
+  p_article_id TEXT,
+
+  p_user_identifier TEXT,
+
+  p_reaction_type TEXT
+
+) RETURNS void AS $$
+
+BEGIN
+
+  -- Remover a reação
+
+  DELETE FROM article_reactions
+
+  WHERE article_id = p_article_id
+
+    AND user_identifier = p_user_identifier
+
+    AND reaction_type = p_reaction_type;
+
+ 
+
+  -- Atualizar contadores
+
+  UPDATE article_stats
+
+  SET
+
+    reaction_counts = article_stats.reaction_counts || ('{"' || p_reaction_type || '": ' ||
+
+      GREATEST((COALESCE((article_stats.reaction_counts->>p_reaction_type)::int, 0) - 1), 0) || '}')::jsonb,
+
+    updated_at = NOW()
+
+  WHERE article_id = p_article_id;
+
+END;
+
+$$ LANGUAGE plpgsql;
+
+
+
+-- Índices para melhor performance
+
+CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published, publish_date);
+
+CREATE INDEX IF NOT EXISTS idx_articles_featured ON articles(featured);
+
+CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category);
+
+CREATE INDEX IF NOT EXISTS idx_comments_article_id ON comments(article_id);
+
+CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_comment_id);
+
+CREATE INDEX IF NOT EXISTS idx_article_stats_article_id ON article_stats(article_id);
+
+CREATE INDEX IF NOT EXISTS idx_article_reactions_article ON article_reactions(article_id);
+
+CREATE INDEX IF NOT EXISTS idx_comment_reactions_comment ON comment_reactions(comment_id);
+
+
+
+-- Inserir alguns artigos de exemplo
+
+INSERT INTO articles (id, title, excerpt, content, author, category, image, tags, featured, published, publish_date) VALUES
+
+('550e8400-e29b-41d4-a716-446655440001',
+
+ 'IDASAM Lança Novo Projeto de Bioeconomia na Amazônia',
+
+ 'Iniciativa inovadora busca conciliar desenvolvimento econômico com preservação ambiental.',
+
+ 'Conteúdo completo do artigo sobre o projeto de bioeconomia...',
+
+ 'Equipe IDASAM',
+
+ 'Bioeconomia',
+
+ 'https://i.imgur.com/vVksMXp.jpeg',
+
+ ARRAY['sustentabilidade', 'bioeconomia', 'comunidades'],
+
+ true,
+
+ true,
+
+ NOW()
+
+),
+
+('550e8400-e29b-41d4-a716-446655440002',
+
+ 'Capacitação em Tecnologias Sustentáveis para Comunidades Ribeirinhas',
+
+ 'Programa de formação técnica beneficia mais de 200 famílias na região amazônica.',
+
+ 'Conteúdo completo sobre o programa de capacitação...',
+
+ 'Maria Silva',
+
+ 'Educação',
+
+ 'https://i.imgur.com/example2.jpeg',
+
+ ARRAY['educação', 'tecnologia', 'comunidades'],
+
+ false,
+
+ true,
+
+ NOW() - INTERVAL '1 day'
+
+)
+
+ON CONFLICT (id) DO NOTHING;
+
+
+
+Article and Comment Reaction System
+
+
+
+
+
+-- Tabela para diferentes tipos de reações nos artigos
+
+CREATE TABLE IF NOT EXISTS article_reactions (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  article_id TEXT NOT NULL,
+
+  user_identifier TEXT NOT NULL,
+
+  reaction_type TEXT NOT NULL CHECK (reaction_type IN ('like', 'love', 'clap', 'wow', 'sad', 'angry')),
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  UNIQUE(article_id, user_identifier, reaction_type)
+
+);
+
+
+
+-- Tabela para reações em comentários
+
+CREATE TABLE IF NOT EXISTS comment_reactions (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+
+  user_identifier TEXT NOT NULL,
+
+  reaction_type TEXT NOT NULL CHECK (reaction_type IN ('like', 'love', 'clap', 'wow', 'sad', 'angry')),
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  UNIQUE(comment_id, user_identifier, reaction_type)
+
+);
+
+
+
+-- Adicionar coluna para thread de comentários (resposta a outro comentário)
+
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS parent_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE;
+
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS thread_level INTEGER DEFAULT 0;
+
+
+
+-- Atualizar tabela de comentários para incluir contadores de reações
+
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS reaction_counts JSONB DEFAULT '{"like": 0, "love": 0, "clap": 0, "wow": 0, "sad": 0, "angry": 0}';
+
+
+
+-- Atualizar tabela article_stats para incluir contadores de reações
+
+ALTER TABLE article_stats ADD COLUMN IF NOT EXISTS reaction_counts JSONB DEFAULT '{"like": 0, "love": 0, "clap": 0, "wow": 0, "sad": 0, "angry": 0}';
+
+
+
+-- Função para adicionar reação a artigo
+
+CREATE OR REPLACE FUNCTION add_article_reaction(
+
+  p_article_id TEXT,
+
+  p_user_identifier TEXT,
+
+  p_reaction_type TEXT
+
+) RETURNS void AS $$
+
+BEGIN
+
+  -- Inserir ou atualizar reação
+
+  INSERT INTO article_reactions (article_id, user_identifier, reaction_type)
+
+  VALUES (p_article_id, p_user_identifier, p_reaction_type)
+
+  ON CONFLICT (article_id, user_identifier, reaction_type) DO NOTHING;
+
+ 
+
+  -- Atualizar contadores na tabela article_stats
+
+  INSERT INTO article_stats (article_id, likes, views, reaction_counts)
+
+  VALUES (p_article_id, 0, 0, jsonb_build_object(p_reaction_type, 1))
+
+  ON CONFLICT (article_id)
+
+  DO UPDATE SET
+
+    reaction_counts = COALESCE(article_stats.reaction_counts, '{}'::jsonb) ||
+
+                     jsonb_build_object(p_reaction_type,
+
+                       COALESCE((article_stats.reaction_counts->>p_reaction_type)::int, 0) + 1);
+
+END;
+
+$$ LANGUAGE plpgsql;
+
+
+
+-- Função para remover reação de artigo
+
+CREATE OR REPLACE FUNCTION remove_article_reaction(
+
+  p_article_id TEXT,
+
+  p_user_identifier TEXT,
+
+  p_reaction_type TEXT
+
+) RETURNS void AS $$
+
+BEGIN
+
+  -- Remover reação
+
+  DELETE FROM article_reactions
+
+  WHERE article_id = p_article_id
+
+    AND user_identifier = p_user_identifier
+
+    AND reaction_type = p_reaction_type;
+
+ 
+
+  -- Atualizar contadores na tabela article_stats
+
+  UPDATE article_stats
+
+  SET reaction_counts = COALESCE(reaction_counts, '{}'::jsonb) ||
+
+                       jsonb_build_object(p_reaction_type,
+
+                         GREATEST(COALESCE((reaction_counts->>p_reaction_type)::int, 0) - 1, 0))
+
+  WHERE article_id = p_article_id;
+
+END;
+
+$$ LANGUAGE plpgsql;
+
+
+
+-- Função para adicionar reação a comentário
+
+CREATE OR REPLACE FUNCTION add_comment_reaction(
+
+  p_comment_id UUID,
+
+  p_user_identifier TEXT,
+
+  p_reaction_type TEXT
+
+) RETURNS void AS $$
+
+BEGIN
+
+  -- Inserir ou atualizar reação
+
+  INSERT INTO comment_reactions (comment_id, user_identifier, reaction_type)
+
+  VALUES (p_comment_id, p_user_identifier, p_reaction_type)
+
+  ON CONFLICT (comment_id, user_identifier, reaction_type) DO NOTHING;
+
+ 
+
+  -- Atualizar contadores no comentário
+
+  UPDATE comments
+
+  SET reaction_counts = COALESCE(reaction_counts, '{}'::jsonb) ||
+
+                       jsonb_build_object(p_reaction_type,
+
+                         COALESCE((reaction_counts->>p_reaction_type)::int, 0) + 1)
+
+  WHERE id = p_comment_id;
+
+END;
+
+$$ LANGUAGE plpgsql;
+
+
+
+-- Índices para performance
+
+CREATE INDEX IF NOT EXISTS idx_article_reactions_article_id ON article_reactions(article_id);
+
+CREATE INDEX IF NOT EXISTS idx_comment_reactions_comment_id ON comment_reactions(comment_id);
+
+CREATE INDEX IF NOT EXISTS idx_comments_parent_comment_id ON comments(parent_comment_id);
+
+CREATE INDEX IF NOT EXISTS idx_comments_thread_level ON comments(thread_level);
+
+
+
+
+
+-- Função para atualizar contador de reação de comentário
+
+CREATE OR REPLACE FUNCTION update_comment_reaction_count(
+
+  p_comment_id UUID,
+
+  p_reaction_type TEXT,
+
+  p_increment BOOLEAN
+
+) RETURNS void AS $$
+
+BEGIN
+
+  IF p_increment THEN
+
+    -- Incrementar contador
+
+    UPDATE comments
+
+    SET reaction_counts = COALESCE(reaction_counts, '{}'::jsonb) ||
+
+                         jsonb_build_object(p_reaction_type,
+
+                           COALESCE((reaction_counts->>p_reaction_type)::int, 0) + 1)
+
+    WHERE id = p_comment_id;
+
+  ELSE
+
+    -- Decrementar contador
+
+    UPDATE comments
+
+    SET reaction_counts = COALESCE(reaction_counts, '{}'::jsonb) ||
+
+                         jsonb_build_object(p_reaction_type,
+
+                           GREATEST(COALESCE((reaction_counts->>p_reaction_type)::int, 0) - 1, 0))
+
+    WHERE id = p_comment_id;
+
+  END IF;
+
+END;
+
+$$ LANGUAGE plpgsql;
+
+
+
+News Engagement Schema:
+
+
+
+-- Tabela para comentários das notícias
+
+CREATE TABLE IF NOT EXISTS comments (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  article_id TEXT NOT NULL,
+
+  author TEXT NOT NULL,
+
+  content TEXT NOT NULL,
+
+  likes INTEGER DEFAULT 0,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+-- Tabela para curtidas dos comentários (para evitar duplicatas)
+
+CREATE TABLE IF NOT EXISTS comment_likes (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+
+  user_identifier TEXT NOT NULL, -- pode ser IP, session ID, etc.
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  UNIQUE(comment_id, user_identifier)
+
+);
+
+
+
+-- Tabela para estatísticas das notícias
+
+CREATE TABLE IF NOT EXISTS article_stats (
+
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  article_id TEXT UNIQUE NOT NULL,
+
+  likes INTEGER DEFAULT 0,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+
+);
+
+
+
+Quero saber se há duplicações e se isso pode atrapalhar o site de funcionar corretamente por favor
