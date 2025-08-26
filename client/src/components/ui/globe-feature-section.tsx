@@ -128,19 +128,30 @@ export function AnimatedGlobe({ className }: { className?: string }) {
           document.head.appendChild(script);
         });
 
-        // Carrega OrbitControls
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
+        // Carrega OrbitControls como módulo ES6
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.innerHTML = `
+          import { OrbitControls } from 'https://unpkg.com/three@0.128.0/examples/jsm/controls/OrbitControls.js';
+          window.OrbitControls = OrbitControls;
+          window.dispatchEvent(new Event('orbitControlsLoaded'));
+        `;
+        document.head.appendChild(script);
+
+        // Aguarda o carregamento do OrbitControls
+        await new Promise((resolve) => {
+          if ((window as any).OrbitControls) {
+            resolve(true);
+          } else {
+            window.addEventListener('orbitControlsLoaded', resolve, { once: true });
+          }
         });
 
         initializeGlobe();
       } catch (error) {
         console.error('Erro ao carregar Three.js:', error);
-        setIsLoaded(false);
+        // Fallback: mostra sem controles de órbita
+        initializeGlobeWithoutControls();
       }
     };
 
@@ -194,21 +205,29 @@ export function AnimatedGlobe({ className }: { className?: string }) {
       directionalLight.position.set(5, 3, 5);
       scene.add(directionalLight);
 
-      // Controles
-      const OrbitControls = (window as any).THREE.OrbitControls;
-      const controls = new OrbitControls(camera, renderer.domElement);
+      // Controles com verificação
+      let controls = null;
+      if ((window as any).OrbitControls) {
+        const OrbitControls = (window as any).OrbitControls;
+        controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.screenSpacePanning = false;
-      controls.minDistance = 4;
-      controls.maxDistance = 12;
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.5;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 4;
+        controls.maxDistance = 12;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+      }
 
       // Animação
       const animate = () => {
         animationRef.current = requestAnimationFrame(animate);
-        controls.update();
+        if (controls) {
+          controls.update();
+        } else {
+          // Rotação simples sem controles
+          earth.rotation.y += 0.005;
+        }
         renderer.render(scene, camera);
       };
       animate();
@@ -228,6 +247,65 @@ export function AnimatedGlobe({ className }: { className?: string }) {
       // Cleanup function
       return () => {
         window.removeEventListener('resize', handleResize);
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+        if (container && renderer.domElement) {
+          container.removeChild(renderer.domElement);
+        }
+        renderer.dispose();
+      };
+    };
+
+    // Função fallback sem controles OrbitControls
+    const initializeGlobeWithoutControls = () => {
+      if (!mountRef.current || !(window as any).THREE) return;
+
+      const THREE = (window as any).THREE;
+      const container = mountRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+
+      // Scene
+      const scene = new THREE.Scene();
+      sceneRef.current = scene;
+
+      // Camera
+      const camera = new THREE.PerspectiveCamera(75, containerWidth / containerHeight, 0.1, 1000);
+      camera.position.z = 6;
+
+      // Renderer
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(containerWidth, containerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      rendererRef.current = renderer;
+      container.appendChild(renderer.domElement);
+
+      // Terra
+      const sphereGeometry = new THREE.SphereGeometry(2.8, 64, 64);
+      const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0x4a90e2 });
+      const earth = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      scene.add(earth);
+
+      // Luzes
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(5, 3, 5);
+      scene.add(directionalLight);
+
+      setIsLoaded(true);
+
+      // Animação simples
+      const animate = () => {
+        animationRef.current = requestAnimationFrame(animate);
+        earth.rotation.y += 0.005;
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      // Cleanup
+      return () => {
         if (animationRef.current) {
           cancelAnimationFrame(animationRef.current);
         }
