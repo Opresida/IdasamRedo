@@ -1,0 +1,20 @@
+--- TAREFAS DE ATUALIZAÇÃO DO CÓDIGO ---
+
+Com base na arquitetura e no schema acima, por favor, execute as seguintes tarefas:
+
+**1. ATUALIZAR A LÓGICA DE COMENTÁRIOS (Área Pública):**
+* **Componente do Formulário de Comentário:** Modifique o formulário para que ele não exija login. Ele deve ter dois campos de texto: "Seu Nome" (para `author_name`) e "Seu Email" (para `author_email`).
+* **Lógica de Submissão (`SocialInteractionsManager` ou similar):** A função `addComment` deve ser alterada. Ela agora precisa aceitar `articleId`, `content`, `author_name` e `author_email` como parâmetros e enviar esses dados para a tabela `comments` do Supabase. A antiga lógica de usar `author_id` para comentários está incorreta.
+
+**2. ATUALIZAR A LÓGICA DE ARTIGOS (Dashboard Autenticado):**
+* **API de Criação/Edição de Artigos (`/api/articles`):** As rotas `POST` e `PATCH`/`PUT` devem ser protegidas e só funcionar para usuários autenticados. Ao criar ou salvar um artigo, o `author_id` deve ser extraído da sessão do usuário logado, e não de um campo de formulário.
+* **Componente do Formulário de Artigo (`/dashboard`):** Remova qualquer campo de texto para "Autor". O autor é o próprio usuário que está logado.
+
+**3. ATUALIZAR A BUSCA E EXIBIÇÃO DE DADOS:**
+* **Use a View `articles_full`:** Para buscar listas de artigos ou um artigo individual, sempre que possível, utilize a view `articles_full`. Ela já fornece `author_name` e `category_name` de forma otimizada.
+* **Corrija o Bug do Filtro:** No código da página que lista as notícias, encontre a lógica de filtro por categoria e mude a verificação de `article.category` para `article.category_name`, pois é assim que a coluna se chama na view `articles_full`.
+
+**4. MANTER A LÓGICA DE REAÇÕES:**
+* A lógica atual que usa um `user_identifier` do `localStorage` para registrar reações está **CORRETA** para o nosso objetivo de permitir reações de visitantes anônimos. Não altere essa parte.
+
+**Para começar, por favor, me mostre o código atualizado para a classe `SocialInteractionsManager` (ou arquivo equivalente), especificamente a função `addComment`, para que ela funcione para comentários públicos.**
