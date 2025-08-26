@@ -13,15 +13,13 @@ export interface ReactionCounts {
 
 export interface CommentWithThread {
   id: string;
-  author_name: string;  // Mudou de 'author' para 'author_name'
-  author_email?: string; // Novo campo opcional
+  author: string;  // Campo correto conforme schema
   content: string;
   created_at: string;
   parent_comment_id?: string;
   thread_level: number;
   reaction_counts: ReactionCounts;
   replies?: CommentWithThread[];
-  is_approved: boolean; // Novo campo para moderação
 }
 
 export interface ArticleStats {
@@ -53,7 +51,6 @@ class SocialInteractionsManager {
     articleId: string, 
     authorName: string, 
     content: string, 
-    authorEmail?: string, 
     parentCommentId?: string
   ): Promise<CommentWithThread> {
     try {
@@ -64,11 +61,9 @@ class SocialInteractionsManager {
         .from('comments')
         .insert({
           article_id: articleUUID,
-          author_name: authorName.trim(),
-          author_email: authorEmail?.trim() || null,
+          author: authorName.trim(),
           content: content.trim(),
           parent_comment_id: parentUUID,
-          is_approved: true, // Auto-aprovar por enquanto
           reaction_counts: {
             like: 0, love: 0, clap: 0, wow: 0, sad: 0, angry: 0
           }
@@ -103,7 +98,6 @@ class SocialInteractionsManager {
         .from('comments')
         .select('*')
         .eq('article_id', articleUUID)
-        .eq('is_approved', true) // Apenas comentários aprovados
         .order('created_at', { ascending: true });
 
       if (error) throw error;
