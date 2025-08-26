@@ -1,259 +1,366 @@
 
-import React, { useState } from 'react';
-import { MessageCircle, Reply, MoreHorizontal, User, Clock, ChevronDown, ChevronRight } from 'lucide-react';
-import SocialReactions from './social-reactions';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { 
+  MessageCircle, 
+  User, 
+  Calendar, 
+  Reply, 
+  Heart, 
+  ThumbsUp, 
+  Send,
+  AlertCircle 
+} from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-
-interface Comment {
-  id: string;
-  author_name: string;
-  author_email?: string;
-  content: string;
-  created_at: string;
-  parent_comment_id?: string;
-  thread_level: number;
-  is_approved: boolean;
-  reaction_counts: Record<string, number>;
-  replies?: Comment[];
-}
+import { 
+  getComments, 
+  addComment, 
+  toggleCommentReaction, 
+  CommentWithThread 
+} from '@/lib/socialInteractions';
 
 interface CommentThreadProps {
-  comment: Comment;
   articleId: string;
-  userReactions: Record<string, string[]>;
-  maxDepth?: number;
-  onReply: (parentId: string, content: string, author: string) => void;
-  onReactionToggle: (commentId: string, reactionType: string) => void;
-  className?: string;
 }
 
-const CommentItem = ({ 
-  comment, 
-  articleId, 
-  userReactions, 
-  onReply, 
-  onReactionToggle, 
-  canReply = true,
-  depth = 0 
-}: CommentThreadProps & { canReply?: boolean; depth?: number }) => {
-  const [showReplyForm, setShowReplyForm] = useState(false);
-  const [replyContent, setReplyContent] = useState('');
-  const [replyAuthor, setReplyAuthor] = useState('');
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export default function CommentThread({ articleId }: CommentThreadProps) {
+  const [comments, setComments] = useState<CommentWithThread[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [showAddComment, setShowAddComment] = useState(false);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
 
-  const handleReply = async () => {
-    if (!replyContent.trim() || !replyAuthor.trim()) return;
+  // Estados do formulário
+  const [authorName, setAuthorName] = useState('');
+  const [authorEmail, setAuthorEmail] = useState('');
+  const [commentContent, setCommentContent] = useState('');
+  const [formError, setFormError] = useState('');
 
-    setIsSubmitting(true);
+  // Carregar comentários
+  const loadComments = async () => {
+    setLoading(true);
     try {
-      await onReply(comment.id, replyContent.trim(), replyAuthor.trim());
-      setReplyContent('');
-      setReplyAuthor('');
-      setShowReplyForm(false);
+      const fetchedComments = await getComments(articleId);
+      setComments(fetchedComments);
     } catch (error) {
-      console.error('Erro ao responder comentário:', error);
+      console.error('Erro ao carregar comentários:', error);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleReactionToggle = async (reactionType: string) => {
-    await onReactionToggle(comment.id, reactionType);
+  useEffect(() => {
+    loadComments();
+  }, [articleId]);
+
+  // Validar formulário
+  const validateForm = (): boolean => {
+    if (!authorName.trim()) {
+      setFormError('Nome é obrigatório');
+      return false;
+    }
+    if (!authorEmail.trim()) {
+      setFormError('Email é obrigatório');
+      return false;
+    }
+    if (!commentContent.trim()) {
+      setFormError('Comentário é obrigatório');
+      return false;
+    }
+    
+    // Validação básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(authorEmail)) {
+      setFormError('Email inválido');
+      return false;
+    }
+
+    setFormError('');
+    return true;
   };
 
-  const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 12)} pl-4 border-l-2 border-gray-100` : '';
-  const hasReplies = comment.replies && comment.replies.length > 0;
+  // Submeter comentário
+  const handleSubmitComment = async () => {
+    if (!validateForm()) return;
 
-  return (
-    <div className={`${indentClass} ${depth > 0 ? 'mt-3' : 'mt-4'}`}>
-      <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow">
-        {/* Cabeçalho do Comentário */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-white" />
+    setSubmitting(true);
+    try {
+      const newComment = await addComment(
+        articleId,
+        commentContent,
+        authorName,
+        authorEmail,
+        replyTo || undefined
+      );
+
+      if (newComment) {
+        // Limpar formulário
+        setCommentContent('');
+        setAuthorName('');
+        setAuthorEmail('');
+        setReplyTo(null);
+        setShowAddComment(false);
+        
+        // Recarregar comentários
+        await loadComments();
+      }
+    } catch (error) {
+      console.error('Erro ao enviar comentário:', error);
+      setFormError('Erro ao enviar comentário. Tente novamente.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Reagir a um comentário
+  const handleCommentReaction = async (commentId: string, reactionType: string) => {
+    try {
+      await toggleCommentReaction(commentId, reactionType);
+      // Recarregar comentários para atualizar contadores
+      await loadComments();
+    } catch (error) {
+      console.error('Erro ao reagir ao comentário:', error);
+    }
+  };
+
+  // Renderizar um comentário
+  const renderComment = (comment: CommentWithThread, level: number = 0) => (
+    <div key={comment.id} className={`${level > 0 ? 'ml-8 mt-4' : 'mb-6'}`}>
+      <Card className="bg-gray-50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <User className="w-4 h-4 text-gray-500" />
+            <span className="font-medium text-gray-900">{comment.author_name}</span>
+            <span className="text-gray-500">•</span>
+            <div className="flex items-center gap-1 text-gray-500 text-sm">
+              <Calendar className="w-3 h-3" />
+              <span>{formatDate(comment.created_at)}</span>
             </div>
-            <div>
-              <span className="font-medium text-gray-900">{comment.author_name}</span>
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <Clock className="w-3 h-3" />
-                <span>{formatDate(comment.created_at)}</span>
-                {comment.thread_level > 0 && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                    Resposta
-                  </span>
-                )}
-                {!comment.is_approved && (
-                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">
-                    Aguardando aprovação
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Botão de Colapsar (se tem respostas) */}
-          {hasReplies && (
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1 hover:bg-gray-100 rounded transition-colors"
-              title={isCollapsed ? 'Expandir respostas' : 'Recolher respostas'}
-            >
-              {isCollapsed ? (
-                <ChevronRight className="w-4 h-4 text-gray-500" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
-              )}
-            </button>
-          )}
-        </div>
-
-        {/* Conteúdo do Comentário */}
-        <p className="text-gray-700 leading-relaxed mb-4">
-          {comment.content}
-        </p>
-
-        {/* Ações do Comentário */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Reações */}
-            <SocialReactions
-              targetId={comment.id}
-              targetType="comment"
-              reactions={comment.reaction_counts || {}}
-              userReactions={userReactions[comment.id] || []}
-              onReactionToggle={handleReactionToggle}
-              size="sm"
-            />
-
-            {/* Botão Responder */}
-            {canReply && depth < 2 && (
-              <button
-                onClick={() => setShowReplyForm(!showReplyForm)}
-                className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition-colors"
-              >
-                <Reply className="w-4 h-4" />
-                Responder
-              </button>
+            {!comment.is_approved && (
+              <Badge variant="secondary" className="text-xs">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Aguardando aprovação
+              </Badge>
             )}
           </div>
 
-          {/* Contador de Respostas */}
-          {hasReplies && (
-            <span className="text-sm text-gray-500 flex items-center gap-1">
-              <MessageCircle className="w-4 h-4" />
-              {comment.replies!.length} {comment.replies!.length === 1 ? 'resposta' : 'respostas'}
-            </span>
-          )}
-        </div>
+          <p className="text-gray-700 mb-3">{comment.content}</p>
 
-        {/* Formulário de Resposta */}
-        {showReplyForm && (
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg border-l-4 border-blue-400">
-            <div className="space-y-3">
-              <Input
-                placeholder="Seu nome"
-                value={replyAuthor}
-                onChange={(e) => setReplyAuthor(e.target.value)}
-                className="bg-white"
-                disabled={isSubmitting}
-              />
-              <div className="flex gap-2">
-                <Input
-                  placeholder={`Respondendo ${comment.author_name}...`}
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                  className="flex-1 bg-white"
-                  disabled={isSubmitting}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleReply();
-                    }
-                  }}
+          <div className="flex items-center gap-4 text-sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCommentReaction(comment.id, 'like')}
+              className="h-8 px-2"
+            >
+              <ThumbsUp className="w-3 h-3 mr-1" />
+              {comment.reaction_counts?.like || 0}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCommentReaction(comment.id, 'love')}
+              className="h-8 px-2"
+            >
+              <Heart className="w-3 h-3 mr-1" />
+              {comment.reaction_counts?.love || 0}
+            </Button>
+
+            {level < 2 && ( // Limitar níveis de resposta
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyTo(comment.id)}
+                className="h-8 px-2"
+              >
+                <Reply className="w-3 h-3 mr-1" />
+                Responder
+              </Button>
+            )}
+          </div>
+
+          {/* Formulário de resposta inline */}
+          {replyTo === comment.id && (
+            <div className="mt-4 p-4 bg-white rounded border">
+              <h4 className="font-medium mb-3">Responder a {comment.author_name}</h4>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <Label htmlFor={`reply-name-${comment.id}`}>Seu nome</Label>
+                  <Input
+                    id={`reply-name-${comment.id}`}
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    placeholder="Digite seu nome"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`reply-email-${comment.id}`}>Seu email</Label>
+                  <Input
+                    id={`reply-email-${comment.id}`}
+                    type="email"
+                    value={authorEmail}
+                    onChange={(e) => setAuthorEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <Label htmlFor={`reply-content-${comment.id}`}>Sua resposta</Label>
+                <Textarea
+                  id={`reply-content-${comment.id}`}
+                  value={commentContent}
+                  onChange={(e) => setCommentContent(e.target.value)}
+                  placeholder="Escreva sua resposta..."
+                  rows={3}
                 />
-                <Button
-                  onClick={handleReply}
-                  disabled={!replyContent.trim() || !replyAuthor.trim() || isSubmitting}
+              </div>
+
+              {formError && (
+                <p className="text-red-500 text-sm mb-3">{formError}</p>
+              )}
+
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleSubmitComment}
+                  disabled={submitting}
                   size="sm"
                 >
-                  {isSubmitting ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  ) : (
-                    'Responder'
-                  )}
+                  <Send className="w-4 h-4 mr-1" />
+                  {submitting ? 'Enviando...' : 'Enviar Resposta'}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowReplyForm(false)}
+                <Button 
+                  variant="outline" 
+                  onClick={() => setReplyTo(null)}
                   size="sm"
-                  disabled={isSubmitting}
                 >
                   Cancelar
                 </Button>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Respostas (Recursivo) */}
-      {hasReplies && !isCollapsed && (
+      {/* Renderizar respostas */}
+      {comment.replies && comment.replies.length > 0 && (
         <div className="mt-2">
-          {comment.replies!.map((reply) => (
-            <CommentItem
-              key={reply.id}
-              comment={reply}
-              articleId={articleId}
-              userReactions={userReactions}
-              onReply={onReply}
-              onReactionToggle={onReactionToggle}
-              canReply={depth < 1} // Máximo 2 níveis
-              depth={depth + 1}
-            />
-          ))}
+          {comment.replies.map(reply => renderComment(reply, level + 1))}
         </div>
       )}
     </div>
   );
-};
 
-export default function CommentThread(props: CommentThreadProps) {
-  return <CommentItem {...props} />;
-}
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-idasam-green-dark mx-auto"></div>
+        <p className="text-gray-500 mt-2">Carregando comentários...</p>
+      </div>
+    );
+  }
 
-// Função utilitária para organizar comentários em threads
-export function organizeCommentsIntoThreads(comments: Comment[]): Comment[] {
-  const commentMap = new Map<string, Comment>();
-  const rootComments: Comment[] = [];
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <MessageCircle className="w-5 h-5" />
+          Comentários ({comments.length})
+        </h3>
+        
+        <Button
+          onClick={() => setShowAddComment(!showAddComment)}
+          variant="outline"
+        >
+          Adicionar Comentário
+        </Button>
+      </div>
 
-  // Primeiro, criar um mapa de todos os comentários
-  comments.forEach(comment => {
-    commentMap.set(comment.id, { ...comment, replies: [] });
-  });
+      {/* Formulário para novo comentário */}
+      {showAddComment && (
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <h4 className="font-medium mb-4">Deixe seu comentário</h4>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label htmlFor="author-name">Seu nome *</Label>
+                <Input
+                  id="author-name"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  placeholder="Digite seu nome"
+                />
+              </div>
+              <div>
+                <Label htmlFor="author-email">Seu email *</Label>
+                <Input
+                  id="author-email"
+                  type="email"
+                  value={authorEmail}
+                  onChange={(e) => setAuthorEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                />
+              </div>
+            </div>
 
-  // Organizar em hierarquia
-  comments.forEach(comment => {
-    const commentWithReplies = commentMap.get(comment.id)!;
-    
-    if (comment.parent_comment_id) {
-      // É uma resposta
-      const parent = commentMap.get(comment.parent_comment_id);
-      if (parent) {
-        parent.replies = parent.replies || [];
-        parent.replies.push(commentWithReplies);
-        // Ordenar respostas por data
-        parent.replies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      }
-    } else {
-      // É um comentário raiz
-      rootComments.push(commentWithReplies);
-    }
-  });
+            <div className="mb-4">
+              <Label htmlFor="comment-content">Comentário *</Label>
+              <Textarea
+                id="comment-content"
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                placeholder="Escreva seu comentário..."
+                rows={4}
+              />
+            </div>
 
-  // Ordenar comentários raiz por data (mais recentes primeiro)
-  return rootComments.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            <p className="text-sm text-gray-500 mb-4">
+              Seu comentário será revisado antes de ser publicado.
+            </p>
+
+            {formError && (
+              <p className="text-red-500 text-sm mb-4">{formError}</p>
+            )}
+
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleSubmitComment}
+                disabled={submitting}
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {submitting ? 'Enviando...' : 'Enviar Comentário'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowAddComment(false)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lista de comentários */}
+      {comments.length > 0 ? (
+        <div>
+          {comments.map(comment => renderComment(comment))}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 mb-2">Ainda não há comentários</p>
+          <p className="text-gray-400 text-sm">Seja o primeiro a comentar!</p>
+        </div>
+      )}
+    </div>
+  );
 }
