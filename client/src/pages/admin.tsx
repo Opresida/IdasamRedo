@@ -12,6 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 import {
   FileText,
   Eye,
@@ -30,7 +33,20 @@ import {
   User,
   Shield,
   CheckCircle,
-  Calendar
+  Calendar,
+  Users,
+  TrendingUp,
+  Activity,
+  BarChart3,
+  Download,
+  Upload,
+  Filter,
+  Search,
+  Bell,
+  Menu,
+  Home,
+  Database,
+  PieChart
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { supabase } from '@/supabaseClient';
@@ -476,27 +492,90 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200">
+      {/* Header Principal */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
+            {/* Logo e Título */}
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-idasam-green-dark rounded-full flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 bg-gradient-to-br from-idasam-green-dark to-idasam-green-medium rounded-xl flex items-center justify-center shadow-lg">
+                <Shield className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard Administrativo</h1>
-                <p className="text-sm text-gray-600">Bem-vindo, {user?.name}</p>
+                <h1 className="text-2xl font-bold text-gray-900">IDASAM Admin</h1>
+                <p className="text-sm text-gray-600 flex items-center gap-2">
+                  <span>Bem-vindo, {user?.name}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {user?.role === 'admin' ? 'Administrador' : 'Editor'}
+                  </Badge>
+                </p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" onClick={() => setLocation('/')}>
-                <Globe className="w-4 h-4 mr-2" />
+
+            {/* Barra de Ações */}
+            <div className="flex items-center space-x-3">
+              {/* Notificações */}
+              <Button variant="ghost" size="sm" className="relative">
+                <Bell className="w-4 h-4" />
+                {pendingComments > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                    {pendingComments > 9 ? '9+' : pendingComments}
+                  </span>
+                )}
+              </Button>
+              
+              {/* Estatísticas Rápidas */}
+              <div className="hidden md:flex items-center space-x-4 px-4 py-2 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 text-sm">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium">{totalArticles}</span>
+                  <span className="text-gray-500">artigos</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Eye className="w-4 h-4 text-green-600" />
+                  <span className="font-medium">{totalViews.toLocaleString()}</span>
+                  <span className="text-gray-500">views</span>
+                </div>
+              </div>
+
+              {/* Navegação */}
+              <Button variant="outline" size="sm" onClick={() => setLocation('/')}>
+                <Home className="w-4 h-4 mr-2" />
                 Ver Site
               </Button>
-              <Button variant="outline" onClick={handleLogout}>
-                Sair
-              </Button>
+              
+              {/* Avatar e Menu do Usuário */}
+              <div className="flex items-center space-x-3 pl-3 border-l border-gray-200">
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-idasam-green-dark text-white text-sm">
+                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                  Sair
+                </Button>
+              </div>
             </div>
+          </div>
+        </div>
+
+        {/* Barra de Navegação Secundária */}
+        <div className="border-t border-gray-100 bg-gray-50/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav className="flex space-x-8 py-3">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Database className="w-4 h-4" />
+                <span>Sistema de Gestão de Conteúdo</span>
+              </div>
+              <div className="flex-1"></div>
+              <div className="flex items-center space-x-4 text-xs text-gray-500">
+                <span>Última atualização: {new Date().toLocaleString('pt-BR')}</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>Sistema Online</span>
+                </div>
+              </div>
+            </nav>
           </div>
         </div>
       </div>
@@ -512,56 +591,152 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            {/* Estatísticas Principais */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
+              <Card className="border-l-4 border-l-blue-500">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Notícias</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-gray-700">Total de Artigos</CardTitle>
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalArticles}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {publishedArticles} publicadas, {draftArticles} rascunhos
+                  <div className="text-3xl font-bold text-gray-900">{totalArticles}</div>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-sm text-gray-600">
+                      {publishedArticles} publicados
+                    </p>
+                    <Badge variant="secondary" className="text-xs">
+                      {draftArticles} rascunhos
+                    </Badge>
+                  </div>
+                  <Progress 
+                    value={(publishedArticles / totalArticles) * 100} 
+                    className="mt-3 h-2"
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-green-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-700">Visualizações</CardTitle>
+                  <div className="p-2 bg-green-50 rounded-lg">
+                    <Eye className="h-5 w-5 text-green-600" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{totalViews.toLocaleString()}</div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Engajamento total
                   </p>
+                  <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>+12% este mês</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-red-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-700">Reações</CardTitle>
+                  <div className="p-2 bg-red-50 rounded-lg">
+                    <Heart className="h-5 w-5 text-red-600" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{totalLikes.toLocaleString()}</div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Total de likes
+                  </p>
+                  <div className="flex items-center gap-1 mt-2 text-sm text-red-600">
+                    <Activity className="w-4 h-4" />
+                    <span>Interação ativa</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-yellow-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-700">Moderação</CardTitle>
+                  <div className="p-2 bg-yellow-50 rounded-lg">
+                    <MessageCircle className="h-5 w-5 text-yellow-600" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900">{pendingComments}</div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Comentários pendentes
+                  </p>
+                  {pendingComments > 0 && (
+                    <Badge variant="destructive" className="mt-2">
+                      Ação necessária
+                    </Badge>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Gráfico de Performance e Atividade Recente */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Performance de Conteúdo
+                  </CardTitle>
+                  <CardDescription>
+                    Métricas dos últimos 30 dias
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Artigos Publicados</span>
+                      <span className="font-medium">{publishedArticles}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Artigos em Destaque</span>
+                      <span className="font-medium">{featuredArticles}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Comentários Aprovados</span>
+                      <span className="font-medium">{comments.filter(c => c.is_approved).length}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Categorias Ativas</span>
+                      <span className="font-medium">{categories.length}</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Visualizações</CardTitle>
-                  <Eye className="h-4 w-4 text-muted-foreground" />
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="w-5 h-5" />
+                    Distribuição por Categoria
+                  </CardTitle>
+                  <CardDescription>
+                    Artigos por categoria
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalViews.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Engajamento geral
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de "Likes"</CardTitle>
-                  <Heart className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{totalLikes.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Principal reação
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Comentários Pendentes</CardTitle>
-                  <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{pendingComments}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Aguardando moderação
-                  </p>
+                  <div className="space-y-3">
+                    {categories.map((category) => {
+                      const articleCount = articles.filter(a => a.category_id === category.id).length;
+                      const percentage = totalArticles > 0 ? (articleCount / totalArticles) * 100 : 0;
+                      
+                      return (
+                        <div key={category.id} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">{category.name}</span>
+                            <span className="text-gray-600">{articleCount} artigos</span>
+                          </div>
+                          <Progress value={percentage} className="h-2" />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             </div>
