@@ -149,10 +149,6 @@ export default function FloatingNavbar() {
             <Link href="/projetos" className="hover:text-teal transition-colors">
               Projetos
             </Link>
-            {/* Link admin (remover em produção) */}
-            <Link href="/dashboard" className="hover:text-teal transition-colors text-xs border border-gray-300 px-2 py-1 rounded">
-              Admin
-            </Link>
             </div>
             <Dialog open={showDonationModal} onOpenChange={setShowDonationModal}>
               <DialogTrigger asChild>
