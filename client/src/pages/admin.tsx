@@ -299,14 +299,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const handlePreviewArticle = (article: Article) => {
+    // Abre a página de notícias com o artigo específico em uma nova aba
+    window.open(`/noticias#${article.id}`, '_blank');
+  };
+
   const handleEditArticle = (article: Article) => {
     setArticleForm({
       title: article.title,
       content: article.content,
-      excerpt: article.excerpt,
+      excerpt: article.excerpt || '',
       published: article.published,
       featured: article.featured,
-      category_id: article.category_id,
+      category_id: article.category_id || '',
       tags: Array.isArray(article.tags) ? article.tags.join(', ') : '',
       image: article.image || ''
     });
@@ -690,14 +695,24 @@ export default function AdminDashboard() {
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  onClick={() => handlePreviewArticle(article)}
+                                >
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  Preview
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={() => handleEditArticle(article)}
                                 >
-                                  <Edit className="w-4 h-4" />
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Editar
                                 </Button>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="outline">
-                                      <Trash2 className="w-4 h-4" />
+                                    <Button size="sm" variant="destructive">
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Excluir
                                     </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
