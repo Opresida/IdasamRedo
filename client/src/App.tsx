@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Router, Route, Switch, useLocation } from 'wouter';
 import { Toaster } from '@/components/ui/toaster';
@@ -12,7 +11,13 @@ import Home from '@/pages/home';
 import Projetos from '@/pages/projetos';
 import NoticiasPage from '@/pages/noticias';
 import LoginPage from '@/pages/login';
-import Dashboard from '@/pages/admin';
+import AdminDashboard from './pages/admin';
+import AdminLayout from './components/admin-layout';
+import DashboardPage from './pages/dashboard';
+import ImprensaPage from './pages/imprensa';
+import FinanceiroPage from './pages/financeiro';
+import AgendaPage from './pages/agenda';
+import ProjetosAdminPage from './pages/projetos-admin';
 import NotFound from '@/pages/not-found';
 import PaginaDeDoacao from '@/PaginaDeDoacao';
 import PaginaDeDoacaoEUR from '@/PaginaDeDoacaoEUR';
@@ -37,11 +42,42 @@ function AppContent() {
         <Route path="/projetos" component={Projetos} />
         <Route path="/noticias" component={NoticiasPage} />
         <Route path="/admin" component={LoginPage} />
-        <Route path="/dashboard">
+        <Route path="/dashboard" component={() => (
           <ProtectedRoute>
-            <Dashboard />
+            <AdminLayout>
+              <DashboardPage />
+            </AdminLayout>
           </ProtectedRoute>
-        </Route>
+        )} />
+        <Route path="/imprensa" component={() => (
+          <ProtectedRoute>
+            <AdminLayout>
+              <ImprensaPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        )} />
+        <Route path="/financeiro" component={() => (
+          <ProtectedRoute>
+            <AdminLayout>
+              <FinanceiroPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        )} />
+        <Route path="/agenda" component={() => (
+          <ProtectedRoute>
+            <AdminLayout>
+              <AgendaPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        )} />
+        <Route path="/projetos-admin" component={() => (
+          <ProtectedRoute>
+            <AdminLayout>
+              <ProjetosAdminPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        )} />
+        <Route path="/admin-old" component={() => <ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
         <Route path="/doacao-usd" component={PaginaDeDoacao} />
         <Route path="/doacao-eur" component={PaginaDeDoacaoEUR} />
         <Route component={NotFound} />
