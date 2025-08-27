@@ -312,8 +312,8 @@ export default function NoticiasPage() {
     return matchesSearch && matchesCategory;
   });
 
-  // Encontrar o artigo em destaque
-  const featuredArticle = filteredArticles.find(article => article.featured);
+  // Encontrar TODOS os artigos em destaque
+  const featuredArticles = filteredArticles.filter(article => article.featured);
   // Outros artigos (não em destaque)
   const otherArticles = filteredArticles.filter(article => !article.featured);
 
@@ -424,98 +424,117 @@ export default function NoticiasPage() {
 
               <div className="pt-16 pb-16">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="grid gap-8 md:gap-12">
-                    {/* Artigo em destaque */}
-                    {featuredArticle && (
-                      <Card className="overflow-hidden shadow-xl bg-gradient-to-r from-forest/5 to-forest/10 border-forest/20 hover:shadow-2xl transition-all duration-500 group relative">
-                        {/* Indicador de artigo novo */}
-                        {isNewArticle(featuredArticle.publish_date) && (
-                          <div className="absolute top-4 right-4 z-10">
-                            <Badge className="bg-red-500 text-white border-0 animate-pulse">
-                              <Star className="w-3 h-3 mr-1" />
-                              {t.newArticle}
-                            </Badge>
-                          </div>
-                        )}
+                  {/* Slider de Artigos em Destaque */}
+                  {featuredArticles.length > 0 && (
+                    <div className="mb-16">
+                      <div className="text-center mb-8">
+                        <h2 className="text-3xl font-bold text-forest mb-2">🌟 Artigos em Destaque</h2>
+                        <p className="text-gray-600">As principais notícias e conquistas do IDASAM</p>
+                      </div>
+                      
+                      <div className="relative overflow-hidden">
+                        <div className="flex gap-8 animate-scroll-infinite hover:animation-play-state-paused">
+                          {/* Duplicar os artigos para criar loop infinito */}
+                          {[...featuredArticles, ...featuredArticles].map((featuredArticle, index) => (
+                            <Card key={`${featuredArticle.id}-${index}`} className="flex-shrink-0 w-full max-w-4xl overflow-hidden shadow-xl bg-gradient-to-r from-forest/5 to-forest/10 border-forest/20 hover:shadow-2xl transition-all duration-500 group relative">
+                              {/* Indicador de artigo novo */}
+                              {isNewArticle(featuredArticle.publish_date) && (
+                                <div className="absolute top-4 right-4 z-10">
+                                  <Badge className="bg-red-500 text-white border-0 animate-pulse">
+                                    <Star className="w-3 h-3 mr-1" />
+                                    {t.newArticle}
+                                  </Badge>
+                                </div>
+                              )}
 
-                        <div className="md:flex">
-                          <div className="md:w-1/2">
-                            <div className="aspect-video md:aspect-auto md:h-full bg-gray-200 overflow-hidden">
-                              <img
-                                src={featuredArticle.image}
-                                alt={featuredArticle.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                loading="lazy"
-                              />
-                            </div>
-                          </div>
-                          <div className="md:w-1/2 p-8">
-                            <div className="flex items-center gap-2 mb-4">
-                              <Badge 
-                                variant="outline" 
-                                className="bg-forest/10 text-forest border-forest font-semibold"
-                              >
-                                🌟 {t.featuredArticle}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <Badge 
-                                variant="outline" 
-                                style={{ 
-                                  backgroundColor: `${featuredArticle.category_color}15`, 
-                                  borderColor: featuredArticle.category_color,
-                                  color: featuredArticle.category_color
-                                }}
-                              >
-                                {featuredArticle.category_name}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs text-gray-500">
-                                {calculateReadingTime(featuredArticle.content)} {t.readingTime}
-                              </Badge>
-                            </div>
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 group-hover:text-forest transition-colors duration-300">
-                              {featuredArticle.title}
-                            </h2>
-                            <p className="text-gray-600 mb-6 leading-relaxed">
-                              {featuredArticle.excerpt}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <div className="flex items-center gap-1">
-                                  <User className="w-4 h-4" />
-                                  <span>{featuredArticle.author_name}</span>
+                              <div className="md:flex">
+                                <div className="md:w-1/2">
+                                  <div className="aspect-video md:aspect-auto md:h-full bg-gray-200 overflow-hidden">
+                                    <img
+                                      src={featuredArticle.image}
+                                      alt={featuredArticle.title}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                      loading="lazy"
+                                    />
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>{formatDate(featuredArticle.created_at)}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Eye className="w-4 h-4" />
-                                  <span>{featuredArticle.views || 0} {t.views}</span>
+                                <div className="md:w-1/2 p-8">
+                                  <div className="flex items-center gap-2 mb-4">
+                                    <Badge 
+                                      variant="outline" 
+                                      className="bg-forest/10 text-forest border-forest font-semibold"
+                                    >
+                                      🌟 {t.featuredArticle}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Badge 
+                                      variant="outline" 
+                                      style={{ 
+                                        backgroundColor: `${featuredArticle.category_color}15`, 
+                                        borderColor: featuredArticle.category_color,
+                                        color: featuredArticle.category_color
+                                      }}
+                                    >
+                                      {featuredArticle.category_name}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs text-gray-500">
+                                      {calculateReadingTime(featuredArticle.content)} {t.readingTime}
+                                    </Badge>
+                                  </div>
+                                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 group-hover:text-forest transition-colors duration-300">
+                                    {featuredArticle.title}
+                                  </h2>
+                                  <p className="text-gray-600 mb-6 leading-relaxed">
+                                    {featuredArticle.excerpt}
+                                  </p>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                                      <div className="flex items-center gap-1">
+                                        <User className="w-4 h-4" />
+                                        <span>{featuredArticle.author_name}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Calendar className="w-4 h-4" />
+                                        <span>{formatDate(featuredArticle.created_at)}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Eye className="w-4 h-4" />
+                                        <span>{featuredArticle.views || 0} {t.views}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button 
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleShare(featuredArticle)}
+                                        className="hover:bg-gray-50"
+                                      >
+                                        <Share2 className="w-4 h-4" />
+                                      </Button>
+                                      <Button 
+                                        onClick={() => openArticle(featuredArticle)}
+                                        className="bg-forest hover:bg-forest/90"
+                                      >
+                                        {t.readMore}
+                                      </Button>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
-                                <Button 
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleShare(featuredArticle)}
-                                  className="hover:bg-gray-50"
-                                >
-                                  <Share2 className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  onClick={() => openArticle(featuredArticle)}
-                                  className="bg-forest hover:bg-forest/90"
-                                >
-                                  {t.readMore}
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
+                            </Card>
+                          ))}
                         </div>
-                      </Card>
-                    )}
-                  </div>
+                      </div>
+
+                      {/* Indicadores de quantidade */}
+                      <div className="text-center mt-6">
+                        <p className="text-sm text-gray-500">
+                          {featuredArticles.length} artigo{featuredArticles.length !== 1 ? 's' : ''} em destaque
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Separador visual */}
                   <div className="my-16">

@@ -154,15 +154,33 @@ html {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-100%);
+    transform: translateX(-50%);
   }
 }
 
 .animate-scroll-infinite {
-  animation: scroll-left 30s linear infinite;
+  animation: scroll-left 40s linear infinite;
 }
 
 .animate-scroll-infinite:hover {
+  animation-play-state: paused;
+}
+
+/* Animação específica para slider de destaques */
+@keyframes featured-slide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.featured-slider {
+  animation: featured-slide 60s linear infinite;
+}
+
+.featured-slider:hover {
   animation-play-state: paused;
 }
 
