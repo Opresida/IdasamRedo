@@ -18,6 +18,7 @@ import SocialReactions from '@/components/social-reactions';
 import TTSAudioPlayer from '@/components/tts-audio-player';
 import FloatingNavbar from '@/components/floating-navbar';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import Logos3 from '@/components/logos3';
 
 // Interface baseada na view articles_full
 interface Article {
@@ -641,6 +642,9 @@ export default function NoticiasPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Seção de Parceiros Estratégicos */}
+                <Logos3 />
               </div>
             </>
           ) : (
