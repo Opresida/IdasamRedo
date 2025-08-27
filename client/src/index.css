@@ -158,6 +158,23 @@ html {
   animation-play-state: paused;
 }
 
+/* Melhorias de responsividade para mobile */
+@media (max-width: 640px) {
+  .featured-slider {
+    animation-duration: 20s; /* Mais lento no mobile para melhor leitura */
+  }
+  
+  .news-card-title {
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+  
+  .news-card-excerpt {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+}
+
 /* Smooth transitions for hero text animation */
 .hero-text-transition {
   transition: opacity 0.3s ease-in-out;

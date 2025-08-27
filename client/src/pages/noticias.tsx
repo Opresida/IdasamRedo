@@ -386,17 +386,17 @@ export default function NoticiasPage() {
             <>
               {/* Header */}
               <div className="bg-white/80 backdrop-blur-sm border-b border-green-100 sticky top-0 z-40">
-                <div className="container mx-auto px-4 py-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                      <h1 className="text-3xl font-bold text-forest mb-2">📰 {t.news} IDASAM</h1>
-                      <p className="text-gray-600">Acompanhe as últimas novidades e conquistas do Instituto</p>
+                <div className="container mx-auto px-4 py-4 sm:py-6">
+                  <div className="flex flex-col gap-4">
+                    <div className="text-center sm:text-left">
+                      <h1 className="text-2xl sm:text-3xl font-bold text-forest mb-2">📰 {t.news} IDASAM</h1>
+                      <p className="text-sm sm:text-base text-gray-600">Acompanhe as últimas novidades e conquistas do Instituto</p>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                       {/* Seletor de idioma */}
                       <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                        <SelectTrigger className="w-32">
+                        <SelectTrigger className="w-full sm:w-40">
                           <Globe className="w-4 h-4 mr-2" />
                           <SelectValue />
                         </SelectTrigger>
@@ -408,13 +408,13 @@ export default function NoticiasPage() {
                         </SelectContent>
                       </Select>
 
-                      <div className="relative">
+                      <div className="relative flex-1">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input
                           placeholder={t.search}
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 w-80"
+                          className="pl-10 w-full"
                         />
                       </div>
                     </div>
@@ -426,17 +426,17 @@ export default function NoticiasPage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                   {/* Slider de Artigos em Destaque */}
                   {featuredArticles.length > 0 && (
-                    <div className="mb-16">
-                      <div className="text-center mb-8">
-                        <h2 className="text-3xl font-bold text-forest mb-2">🌟 Artigos em Destaque</h2>
-                        <p className="text-gray-600">As principais notícias e conquistas do IDASAM</p>
+                    <div className="mb-12 sm:mb-16">
+                      <div className="text-center mb-6 sm:mb-8 px-4">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-forest mb-2">🌟 Artigos em Destaque</h2>
+                        <p className="text-sm sm:text-base text-gray-600">As principais notícias e conquistas do IDASAM</p>
                       </div>
                       
                       <div className="relative overflow-hidden">
-                        <div className="flex gap-8 featured-slider">
+                        <div className="flex gap-4 sm:gap-8 featured-slider">
                           {/* Duplicar os artigos para criar loop infinito suave */}
                           {[...featuredArticles, ...featuredArticles].map((featuredArticle, index) => (
-                            <Card key={`${featuredArticle.id}-${index}`} className="flex-shrink-0 w-full max-w-4xl overflow-hidden shadow-xl bg-gradient-to-r from-forest/5 to-forest/10 border-forest/20 hover:shadow-2xl transition-all duration-500 group relative" style={{ minWidth: '1000px' }}>
+                            <Card key={`${featuredArticle.id}-${index}`} className="flex-shrink-0 w-full max-w-4xl overflow-hidden shadow-xl bg-gradient-to-r from-forest/5 to-forest/10 border-forest/20 hover:shadow-2xl transition-all duration-500 group relative" style={{ minWidth: '320px', maxWidth: '1000px' }}>
                               {/* Indicador de artigo novo */}
                               {isNewArticle(featuredArticle.publish_date) && (
                                 <div className="absolute top-4 right-4 z-10">
@@ -447,9 +447,9 @@ export default function NoticiasPage() {
                                 </div>
                               )}
 
-                              <div className="md:flex">
-                                <div className="md:w-1/2">
-                                  <div className="aspect-video md:aspect-auto md:h-full bg-gray-200 overflow-hidden">
+                              <div className="flex flex-col sm:flex-row">
+                                <div className="sm:w-1/2">
+                                  <div className="aspect-video sm:aspect-auto sm:h-full bg-gray-200 overflow-hidden">
                                     <img
                                       src={featuredArticle.image}
                                       alt={featuredArticle.title}
@@ -458,7 +458,7 @@ export default function NoticiasPage() {
                                     />
                                   </div>
                                 </div>
-                                <div className="md:w-1/2 p-8">
+                                <div className="sm:w-1/2 p-4 sm:p-6 lg:p-8">
                                   <div className="flex items-center gap-2 mb-4">
                                     <Badge 
                                       variant="outline" 
@@ -482,14 +482,14 @@ export default function NoticiasPage() {
                                       {calculateReadingTime(featuredArticle.content)} {t.readingTime}
                                     </Badge>
                                   </div>
-                                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 group-hover:text-forest transition-colors duration-300">
+                                  <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900 mb-3 sm:mb-4 group-hover:text-forest transition-colors duration-300 line-clamp-2">
                                     {featuredArticle.title}
                                   </h2>
-                                  <p className="text-gray-600 mb-6 leading-relaxed">
+                                  <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed line-clamp-3 sm:line-clamp-none">
                                     {featuredArticle.excerpt}
                                   </p>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                                    <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 flex-wrap">
                                       <div className="flex items-center gap-1">
                                         <User className="w-4 h-4" />
                                         <span>{featuredArticle.author_name}</span>
@@ -503,18 +503,20 @@ export default function NoticiasPage() {
                                         <span>{featuredArticle.views || 0} {t.views}</span>
                                       </div>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 flex-shrink-0">
                                       <Button 
                                         variant="outline"
                                         size="sm"
                                         onClick={() => handleShare(featuredArticle)}
-                                        className="hover:bg-gray-50"
+                                        className="hover:bg-gray-50 p-2 sm:px-3"
                                       >
                                         <Share2 className="w-4 h-4" />
+                                        <span className="sr-only sm:not-sr-only sm:ml-2">{t.share}</span>
                                       </Button>
                                       <Button 
                                         onClick={() => openArticle(featuredArticle)}
-                                        className="bg-forest hover:bg-forest/90"
+                                        className="bg-forest hover:bg-forest/90 text-xs sm:text-sm"
+                                        size="sm"
                                       >
                                         {t.readMore}
                                       </Button>
@@ -542,11 +544,11 @@ export default function NoticiasPage() {
                   </div>
 
                   {/* Filtros */}
-                  <div className="news-filters-section mb-12">
-                    <div className="flex items-center gap-4 w-full">
-                      <h3 className="text-lg font-semibold text-forest hidden sm:block">🔍 Filtrar por:</h3>
+                  <div className="news-filters-section mb-8 sm:mb-12 mx-4 sm:mx-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full">
+                      <h3 className="text-base sm:text-lg font-semibold text-forest text-center sm:text-left">🔍 Filtrar por:</h3>
                       <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <SelectTrigger className="w-full sm:w-80 h-12 border-2 border-gray-200 hover:border-forest transition-colors">
+                        <SelectTrigger className="w-full sm:w-80 h-11 sm:h-12 border-2 border-gray-200 hover:border-forest transition-colors">
                           <Filter className="w-4 h-4 mr-2 text-forest" />
                           <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
@@ -571,7 +573,7 @@ export default function NoticiasPage() {
                   )}
 
                   {/* Grid de outros artigos */}
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8 mb-20">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mt-6 sm:mt-8 mb-16 sm:mb-20 px-4 sm:px-0">
                     {otherArticles.map((article) => (
                       <Card key={article.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer bg-white/70 backdrop-blur-sm border-0 shadow-md hover:shadow-2xl hover:-translate-y-1 relative">
                         {/* Indicadores de status */}
@@ -613,7 +615,7 @@ export default function NoticiasPage() {
                             loading="lazy"
                           />
                         </div>
-                        <CardContent className="p-6">
+                        <CardContent className="p-4 sm:p-6">
                           <div className="flex items-center gap-2 mb-3 flex-wrap">
                             <Badge 
                               variant="outline" 
@@ -622,6 +624,7 @@ export default function NoticiasPage() {
                                 borderColor: article.category_color,
                                 color: article.category_color
                               }}
+                              className="text-xs"
                             >
                               {article.category_name}
                             </Badge>
@@ -629,20 +632,20 @@ export default function NoticiasPage() {
                               {calculateReadingTime(article.content)} {t.readingTime}
                             </Badge>
                           </div>
-                          <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-forest transition-colors duration-300">
+                          <h3 className="font-semibold text-base sm:text-lg mb-2 line-clamp-2 group-hover:text-forest transition-colors duration-300">
                             {article.title}
                           </h3>
                           <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                             {article.excerpt}
                           </p>
-                          <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 text-xs text-gray-500 mb-4">
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-1">
                                 <User className="w-3 h-3" />
-                                <span>{article.author_name}</span>
+                                <span className="truncate">{article.author_name}</span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
                               <div className="flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
                                 <span>{formatDate(article.created_at)}</span>
@@ -655,7 +658,7 @@ export default function NoticiasPage() {
                           </div>
                           <Button 
                             onClick={() => openArticle(article)}
-                            className="w-full bg-forest hover:bg-forest/90"
+                            className="w-full bg-forest hover:bg-forest/90 text-sm"
                             size="sm"
                           >
                             {t.readMore}
