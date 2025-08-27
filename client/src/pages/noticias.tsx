@@ -552,7 +552,7 @@ export default function NoticiasPage() {
                   )}
 
                   {/* Grid de outros artigos */}
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8 mb-20">
                     {otherArticles.map((article) => (
                       <Card key={article.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer bg-white/70 backdrop-blur-sm border-0 shadow-md hover:shadow-2xl hover:-translate-y-1 relative">
                         {/* Indicadores de status */}
@@ -660,7 +660,9 @@ export default function NoticiasPage() {
                 </div>
 
                 {/* Seção de Parceiros Estratégicos */}
-                <Logos3 />
+                <div className="mt-24">
+                  <Logos3 />
+                </div>
               </div>
             </>
           ) : (
