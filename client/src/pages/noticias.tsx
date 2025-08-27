@@ -282,7 +282,7 @@ export default function NoticiasPage() {
   };
 
   const t = translations[selectedLanguage as keyof typeof translations];
-  
+
   const openArticle = (article: Article) => {
     incrementArticleViews(article.id);
     setSelectedArticle(article);
@@ -391,7 +391,7 @@ export default function NoticiasPage() {
         >
           <div className="absolute inset-0 bg-black/50"></div>
         </div>
-        
+
         <div className="relative z-10 text-center text-white px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 drop-shadow-lg">
             Notícias
@@ -453,7 +453,7 @@ export default function NoticiasPage() {
                         <h2 className="text-2xl sm:text-3xl font-bold text-forest mb-2">🌟 Artigos em Destaque</h2>
                         <p className="text-sm sm:text-base text-gray-600">As principais notícias e conquistas do IDASAM</p>
                       </div>
-                      
+
                       <div className="relative overflow-hidden">
                         <div className="flex gap-4 sm:gap-8 featured-slider">
                           {/* Duplicar os artigos para criar loop infinito suave */}

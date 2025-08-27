@@ -27,7 +27,7 @@ export default function NewsletterSection() {
   };
 
   return (
-    <section className="py-20 bg-gradient-to-br from-forest to-forest/90">
+    <section className="py-20 bg-forest">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-8 sm:p-12 text-center">
           {/* Ícone */}
