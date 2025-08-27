@@ -1,28 +1,21 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Calendar, 
-  Eye, 
-  Heart, 
-  MessageCircle, 
-  Search, 
-  Filter,
-  User,
-  Tag,
-  ChevronRight
-} from 'lucide-react';
+import { Search, Calendar, User, MessageSquare, Eye, ThumbsUp, Share2, X, Send, AlertCircle, Globe, Facebook, Twitter, Linkedin, Copy, Star, TrendingUp } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { supabase } from '@/supabaseClient';
 import { useAnalyticsAndSEO } from '@/hooks/use-analytics';
-import SocialReactions from '@/components/social-reactions';
+import { supabase } from '@/supabaseClient';
 import CommentThread from '@/components/comment-thread';
-import FloatingNavbar from '@/components/floating-navbar';
-import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import SocialReactions from '@/components/social-reactions';
+import TTSAudioPlayer from '@/components/tts-audio-player';
 
 // Interface baseada na view articles_full
 interface Article {
@@ -56,13 +49,16 @@ interface Category {
 
 export default function NoticiasPage() {
   const [articles, setArticles] = useState<Article[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
-  const [showComments, setShowComments] = useState(false);
-  
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedLanguage, setSelectedLanguage] = useState('pt');
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareArticle, setShareArticle] = useState<Article | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+
   const { trackPageView, updateSEO } = useAnalyticsAndSEO();
 
   // Configurar SEO
@@ -114,44 +110,194 @@ export default function NoticiasPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
+      setIsLoading(true);
       await Promise.all([loadArticles(), loadCategories()]);
-      setLoading(false);
+      setIsLoading(false);
     };
 
     loadData();
   }, []);
 
   // Incrementar visualizações quando um artigo é visualizado
-  const handleViewArticle = async (article: Article) => {
+  const incrementArticleViews = async (articleId: string) => {
     try {
-      // Chamar função do Supabase para incrementar views
       const { error } = await supabase.rpc('increment_article_views', {
-        p_article_id: article.id
+        p_article_id: articleId
       });
 
-      if (error) console.error('Erro ao incrementar views:', error);
+      if (error) {
+        console.error('Erro ao incrementar views:', error);
+        return;
+      }
 
-      // Atualizar SEO para o artigo específico
-      updateSEO({
-        title: `${article.title} | IDASAM Notícias`,
-        description: article.excerpt,
-        keywords: ['IDASAM', 'Amazônia', 'sustentabilidade', ...(article.tags || [])],
-        image: article.image,
-        url: `${window.location.origin}/noticias#${article.id}`,
-        type: 'article'
-      });
-
-      // Track analytics
-      trackPageView(`/noticias/${article.slug}`, `Article: ${article.title}`, {
-        articleId: article.id,
-        title: article.title
-      });
-
-      setSelectedArticle(article);
+      // Atualizar views no estado local
+      setArticles(prev => prev.map(article => 
+        article.id === articleId 
+          ? { ...article, views: (article.views || 0) + 1 }
+          : article
+      ));
     } catch (error) {
-      console.error('Erro ao visualizar artigo:', error);
+      console.error('Erro ao incrementar views:', error);
     }
+  };
+
+  // Função para abrir dialog de compartilhamento
+  const handleShare = (article: Article) => {
+    setShareArticle(article);
+    setShareDialogOpen(true);
+  };
+
+  // Função para compartilhar no WhatsApp
+  const shareOnWhatsApp = (article: Article) => {
+    const url = `${window.location.origin}/noticias#${article.id}`;
+    const text = `${article.title} - ${article.excerpt}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n\n${url}`)}`);
+  };
+
+  // Função para compartilhar no Facebook
+  const shareOnFacebook = (article: Article) => {
+    const url = `${window.location.origin}/noticias#${article.id}`;
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
+  };
+
+  // Função para compartilhar no Twitter
+  const shareOnTwitter = (article: Article) => {
+    const url = `${window.location.origin}/noticias#${article.id}`;
+    const text = `${article.title} - ${article.excerpt}`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
+  };
+
+  // Função para compartilhar no LinkedIn
+  const shareOnLinkedIn = (article: Article) => {
+    const url = `${window.location.origin}/noticias#${article.id}`;
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`);
+  };
+
+  // Função para copiar link
+  const copyToClipboard = async (article: Article) => {
+    try {
+      const url = `${window.location.origin}/noticias#${article.id}`;
+      await navigator.clipboard.writeText(url);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      console.error('Erro ao copiar link:', error);
+    }
+  };
+
+  // Função para calcular tempo de leitura
+  const calculateReadingTime = (content: string) => {
+    const wordsPerMinute = 200;
+    const words = content.split(' ').length;
+    return Math.ceil(words / wordsPerMinute);
+  };
+
+  // Função para verificar se é artigo novo (últimas 48h)
+  const isNewArticle = (publishDate: string) => {
+    const now = new Date();
+    const articleDate = new Date(publishDate);
+    const diffInHours = (now.getTime() - articleDate.getTime()) / (1000 * 3600);
+    return diffInHours <= 48;
+  };
+
+  // Traduções
+  const translations = {
+    pt: {
+      news: 'Notícias',
+      search: 'Buscar artigos...',
+      featuredArticle: 'Artigo em Destaque',
+      readMore: 'Ler mais',
+      close: 'Fechar',
+      share: 'Compartilhar',
+      shareOn: 'Compartilhar em',
+      copyLink: 'Copiar link',
+      linkCopied: 'Link copiado!',
+      views: 'visualizações',
+      newArticle: 'Novo',
+      trending: 'Trending',
+      readingTime: 'min de leitura',
+      publishedBy: 'Publicado por',
+      on: 'em',
+      category: 'Categoria'
+    },
+    en: {
+      news: 'News',
+      search: 'Search articles...',
+      featuredArticle: 'Featured Article',
+      readMore: 'Read more',
+      close: 'Close',
+      share: 'Share',
+      shareOn: 'Share on',
+      copyLink: 'Copy link',
+      linkCopied: 'Link copied!',
+      views: 'views',
+      newArticle: 'New',
+      trending: 'Trending',
+      readingTime: 'min read',
+      publishedBy: 'Published by',
+      on: 'on',
+      category: 'Category'
+    },
+    es: {
+      news: 'Noticias',
+      search: 'Buscar artículos...',
+      featuredArticle: 'Artículo Destacado',
+      readMore: 'Leer más',
+      close: 'Cerrar',
+      share: 'Compartir',
+      shareOn: 'Compartir en',
+      copyLink: 'Copiar enlace',
+      linkCopied: '¡Enlace copiado!',
+      views: 'visualizaciones',
+      newArticle: 'Nuevo',
+      trending: 'Tendencia',
+      readingTime: 'min de lectura',
+      publishedBy: 'Publicado por',
+      on: 'en',
+      category: 'Categoría'
+    },
+    fr: {
+      news: 'Actualités',
+      search: 'Rechercher des articles...',
+      featuredArticle: 'Article en Vedette',
+      readMore: 'Lire la suite',
+      close: 'Fermer',
+      share: 'Partager',
+      shareOn: 'Partager sur',
+      copyLink: 'Copier le lien',
+      linkCopied: 'Lien copié!',
+      views: 'vues',
+      newArticle: 'Nouveau',
+      trending: 'Tendance',
+      readingTime: 'min de lecture',
+      publishedBy: 'Publié par',
+      on: 'le',
+      category: 'Catégorie'
+    }
+  };
+
+  const t = translations[selectedLanguage as keyof typeof translations];
+  
+  const openArticle = (article: Article) => {
+    incrementArticleViews(article.id);
+    setSelectedArticle(article);
+    setIsDialogOpen(true);
+
+    // Atualizar SEO para o artigo específico
+    updateSEO({
+      title: `${article.title} | IDASAM Notícias`,
+      description: article.excerpt,
+      keywords: ['IDASAM', 'Amazônia', 'sustentabilidade', ...(article.tags || [])],
+      image: article.image,
+      url: `${window.location.origin}/noticias#${article.id}`,
+      type: 'article'
+    });
+
+    // Track analytics
+    trackPageView(`/noticias/${article.slug}`, `Article: ${article.title}`, {
+      articleId: article.id,
+      title: article.title
+    });
   };
 
   // Filtrar artigos usando category_name
@@ -162,10 +308,16 @@ export default function NoticiasPage() {
     return matchesSearch && matchesCategory;
   });
 
+  // Encontrar o artigo em destaque
+  const featuredArticle = filteredArticles.find(article => article.featured);
+  // Outros artigos (não em destaque)
+  const otherArticles = filteredArticles.filter(article => !article.featured);
+
+
   const handleBackToList = () => {
     setSelectedArticle(null);
-    setShowComments(false);
-    
+    setIsDialogOpen(false);
+
     // Restaurar SEO da página principal
     updateSEO({
       title: 'Notícias | IDASAM - Instituto de Desenvolvimento Sustentável da Amazônia',
@@ -189,11 +341,11 @@ export default function NoticiasPage() {
     </div>
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-sand">
         <FloatingNavbar />
-        
+
         <div className="pt-24 pb-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Header skeleton */}
@@ -223,299 +375,460 @@ export default function NoticiasPage() {
   return (
     <div className="min-h-screen bg-sand">
       <FloatingNavbar />
-      
+
       <div className="pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {!selectedArticle ? (
+          {!isDialogOpen ? (
             <>
               {/* Header */}
-              <div className="text-center mb-12">
-                <h1 className="text-4xl md:text-5xl font-bold text-idasam-green-dark mb-4">
-                  Notícias IDASAM
-                </h1>
-                <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                  Acompanhe as últimas novidades e conquistas do IDASAM na transformação sustentável da Amazônia
-                </p>
-              </div>
+              <div className="bg-white/80 backdrop-blur-sm border-b border-green-100 sticky top-0 z-40">
+                <div className="container mx-auto px-4 py-6">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <h1 className="text-3xl font-bold text-forest mb-2">📰 {t.news} IDASAM</h1>
+                      <p className="text-gray-600">Acompanhe as últimas novidades e conquistas do Instituto</p>
+                    </div>
 
-              {/* Filtros */}
-              <div className="mb-8 flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar notícias..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+                    <div className="flex items-center gap-4">
+                      {/* Seletor de idioma */}
+                      <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                        <SelectTrigger className="w-32">
+                          <Globe className="w-4 h-4 mr-2" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pt">🇧🇷 Português</SelectItem>
+                          <SelectItem value="en">🇺🇸 English</SelectItem>
+                          <SelectItem value="es">🇪🇸 Español</SelectItem>
+                          <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder={t.search}
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 w-80"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full sm:w-64">
-                    <Filter className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder="Categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as categorias</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.name}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
-              {/* Grid de artigos */}
-              <div className="news-grid">
-                {filteredArticles.map((article, index) => {
-                  const isNew = new Date(article.publish_date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Último semana
-                  const isTrending = article.views > 100; // Mais de 100 visualizações
-                  const isFeatured = article.featured;
-                  
-                  return (
-                    <div 
-                      key={article.id}
-                      className={`news-card news-card-enter ${isFeatured ? 'featured-card' : ''}`}
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                      onClick={() => handleViewArticle(article)}
-                    >
-                      {article.image && (
-                        <div className="news-card-image">
-                          <img
-                            src={article.image}
-                            alt={article.title}
-                            loading="lazy"
-                          />
-                          
-                          {/* Indicadores especiais */}
-                          {isNew && (
-                            <div className="new-article-indicator">
-                              ✨ Novo
+              <div className="pt-16 pb-16">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="grid gap-8 md:gap-12">
+                    {/* Artigo em destaque */}
+                    {featuredArticle && (
+                      <Card className="overflow-hidden shadow-xl bg-gradient-to-r from-forest/5 to-forest/10 border-forest/20 hover:shadow-2xl transition-all duration-500 group relative">
+                        {/* Indicador de artigo novo */}
+                        {isNewArticle(featuredArticle.publish_date) && (
+                          <div className="absolute top-4 right-4 z-10">
+                            <Badge className="bg-red-500 text-white border-0 animate-pulse">
+                              <Star className="w-3 h-3 mr-1" />
+                              {t.newArticle}
+                            </Badge>
+                          </div>
+                        )}
+
+                        <div className="md:flex">
+                          <div className="md:w-1/2">
+                            <div className="aspect-video md:aspect-auto md:h-full bg-gray-200 overflow-hidden">
+                              <img
+                                src={featuredArticle.image}
+                                alt={featuredArticle.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                loading="lazy"
+                              />
                             </div>
-                          )}
-                          {isTrending && !isNew && (
-                            <div className="trending-indicator">
-                              🔥 Popular
+                          </div>
+                          <div className="md:w-1/2 p-8">
+                            <div className="flex items-center gap-2 mb-4">
+                              <Badge 
+                                variant="outline" 
+                                className="bg-forest/10 text-forest border-forest font-semibold"
+                              >
+                                🌟 {t.featuredArticle}
+                              </Badge>
                             </div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Badge 
+                                variant="outline" 
+                                style={{ 
+                                  backgroundColor: `${featuredArticle.category_color}15`, 
+                                  borderColor: featuredArticle.category_color,
+                                  color: featuredArticle.category_color
+                                }}
+                              >
+                                {featuredArticle.category_name}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs text-gray-500">
+                                {calculateReadingTime(featuredArticle.content)} {t.readingTime}
+                              </Badge>
+                            </div>
+                            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 group-hover:text-forest transition-colors duration-300">
+                              {featuredArticle.title}
+                            </h2>
+                            <p className="text-gray-600 mb-6 leading-relaxed">
+                              {featuredArticle.excerpt}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <div className="flex items-center gap-1">
+                                  <User className="w-4 h-4" />
+                                  <span>{featuredArticle.author_name}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>{formatDate(featuredArticle.created_at)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Eye className="w-4 h-4" />
+                                  <span>{featuredArticle.views || 0} {t.views}</span>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleShare(featuredArticle)}
+                                  className="hover:bg-gray-50"
+                                >
+                                  <Share2 className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  onClick={() => openArticle(featuredArticle)}
+                                  className="bg-forest hover:bg-forest/90"
+                                >
+                                  {t.readMore}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+
+                  {/* Filtros */}
+                  <div className="mb-8 flex flex-col sm:flex-row gap-4">
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-full sm:w-64">
+                        <Filter className="w-4 h-4 mr-2" />
+                        <SelectValue placeholder="Categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as categorias</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.name}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Grid de outros artigos */}
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {otherArticles.map((article) => (
+                      <Card key={article.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer bg-white/70 backdrop-blur-sm border-0 shadow-md hover:shadow-2xl hover:-translate-y-1 relative">
+                        {/* Indicadores de status */}
+                        <div className="absolute top-3 left-3 z-10 flex gap-2">
+                          {isNewArticle(article.publish_date) && (
+                            <Badge className="bg-red-500 text-white border-0 text-xs animate-pulse">
+                              <Star className="w-3 h-3 mr-1" />
+                              {t.newArticle}
+                            </Badge>
                           )}
-                          
-                          {isFeatured && (
-                            <Badge className="absolute top-2 left-2 bg-gradient-to-r from-idasam-green to-idasam-green-dark" variant="default">
-                              ⭐ Destaque
+                          {article.views && article.views > 100 && (
+                            <Badge className="bg-orange-500 text-white border-0 text-xs">
+                              <TrendingUp className="w-3 h-3 mr-1" />
+                              {t.trending}
                             </Badge>
                           )}
                         </div>
-                      )}
-                      
-                      <div className="news-card-content">
-                        <div className="news-card-badges">
-                          <Badge 
-                            variant="outline" 
-                            style={{ 
-                              backgroundColor: `${article.category_color}15`, 
-                              borderColor: article.category_color,
-                              color: article.category_color
+
+                        {/* Botão de compartilhar flutuante */}
+                        <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-8 w-8 p-0 bg-white/90 hover:bg-white shadow-md"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShare(article);
                             }}
                           >
-                            {article.category_name}
-                          </Badge>
-                        </div>
-                        
-                        <h3 className="news-card-title">
-                          {article.title}
-                        </h3>
-                        
-                        <p className="news-card-excerpt">
-                          {article.excerpt}
-                        </p>
-
-                        <div className="news-card-meta">
-                          <div className="flex items-center gap-1">
-                            <User className="w-4 h-4" />
-                            <span>{article.author_name}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            <span>{formatDate(article.publish_date)}</span>
-                          </div>
+                            <Share2 className="w-4 h-4" />
+                          </Button>
                         </div>
 
-                        <div className="news-card-stats">
-                          <div className="flex items-center gap-1">
-                            <Eye className="w-4 h-4" />
-                            <span>{article.views || 0}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Heart className="w-4 h-4" />
-                            <span>{article.reaction_counts?.like || 0}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <MessageCircle className="w-4 h-4" />
-                            <span>{Math.floor(Math.random() * 10)}</span>
-                          </div>
+                        <div className="aspect-video bg-gray-200 overflow-hidden">
+                          <img
+                            src={article.image}
+                            alt={article.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
                         </div>
-
-                        {article.tags && article.tags.length > 0 && (
-                          <div className="news-card-tags">
-                            {article.tags.slice(0, 4).map((tag, tagIndex) => (
-                              <Badge key={tagIndex} variant="secondary" className="text-xs">
-                                <Tag className="w-3 h-3 mr-1" />
-                                {tag}
-                              </Badge>
-                            ))}
+                        <CardContent className="p-6">
+                          <div className="flex items-center gap-2 mb-3 flex-wrap">
+                            <Badge 
+                              variant="outline" 
+                              style={{ 
+                                backgroundColor: `${article.category_color}15`, 
+                                borderColor: article.category_color,
+                                color: article.category_color
+                              }}
+                            >
+                              {article.category_name}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs text-gray-500">
+                              {calculateReadingTime(article.content)} {t.readingTime}
+                            </Badge>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Preview expandido no hover */}
-                      <div className="news-card-preview">
-                        <div className="news-card-preview-content">
-                          <h4 className="news-card-preview-title">
+                          <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-forest transition-colors duration-300">
                             {article.title}
-                          </h4>
-                          <p className="news-card-preview-text">
-                            {article.content.length > 300 
-                              ? article.content.substring(0, 300) + '...' 
-                              : article.content}
+                          </h3>
+                          <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                            {article.excerpt}
                           </p>
-                        </div>
-                        
-                        <div className="news-card-preview-actions">
-                          <div className="flex items-center gap-4 text-xs text-gray-600">
-                            <span>{Math.ceil(article.content.length / 200)} min de leitura</span>
-                            <span>•</span>
-                            <span>{article.views || 0} leituras</span>
+                          <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                <span>{article.author_name}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                <span>{formatDate(article.created_at)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Eye className="w-3 h-3" />
+                                <span>{article.views || 0}</span>
+                              </div>
+                            </div>
                           </div>
-                          <button className="news-card-preview-button">
-                            Ler artigo <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                          <Button 
+                            onClick={() => openArticle(article)}
+                            className="w-full bg-forest hover:bg-forest/90"
+                            size="sm"
+                          >
+                            {t.readMore}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
 
-              {filteredArticles.length === 0 && (
-                <div className="text-center py-12">
-                  <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Nenhuma notícia encontrada
-                  </h3>
-                  <p className="text-gray-600">
-                    Tente ajustar os filtros ou buscar por outros termos
-                  </p>
+                  {filteredArticles.length === 0 && (
+                    <div className="text-center py-12">
+                      <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Nenhuma notícia encontrada
+                      </h3>
+                      <p className="text-gray-600">
+                        Tente ajustar os filtros ou buscar por outros termos
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </>
           ) : (
             /* Visualização individual do artigo */
             <div className="max-w-4xl mx-auto">
-              <Button 
-                variant="ghost" 
-                onClick={handleBackToList}
-                className="mb-6"
-              >
-                ← Voltar para notícias
-              </Button>
+              <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+                if (!isOpen) handleBackToList();
+              }}>
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <div className="flex items-center justify-between w-full">
+                      <DialogTitle className="flex items-center gap-2">
+                        <Tag className="w-5 h-5 text-idasam-green" />
+                        {selectedArticle?.category_name}
+                      </DialogTitle>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleShare(selectedArticle)}
+                        >
+                          <Share2 className="w-4 h-4 mr-2" />
+                          {t.share}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsDialogOpen(false)}
+                        >
+                          <X className="w-4 h-4" />
+                          {t.close}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogHeader>
 
-              <article className="bg-white rounded-lg shadow-lg overflow-hidden">
-                {selectedArticle.image && (
-                  <div className="aspect-video relative">
-                    <img
-                      src={selectedArticle.image}
-                      alt={selectedArticle.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
+                  <div className="p-8">
+                    <div className="flex items-center gap-4 mb-6">
+                      {selectedArticle.featured && (
+                        <Badge variant="default">Destaque</Badge>
+                      )}
+                      <Badge 
+                        style={{ 
+                          backgroundColor: `${selectedArticle.category_color}15`, 
+                          borderColor: selectedArticle.category_color,
+                          color: selectedArticle.category_color
+                        }}
+                      >
+                        {selectedArticle.category_name}
+                      </Badge>
+                    </div>
 
-                <div className="p-8">
-                  <div className="flex items-center gap-4 mb-6">
-                    <Badge 
-                      style={{ 
-                        backgroundColor: `${selectedArticle.category_color}15`, 
-                        borderColor: selectedArticle.category_color,
-                        color: selectedArticle.category_color
-                      }}
-                    >
-                      {selectedArticle.category_name}
-                    </Badge>
-                    {selectedArticle.featured && (
-                      <Badge variant="default">Destaque</Badge>
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+                      {selectedArticle.title}
+                    </h1>
+
+                    <div className="flex items-center gap-6 mb-8 text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <User className="w-5 h-5" />
+                        <span>{selectedArticle.author_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        <span>{formatDate(selectedArticle.publish_date)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-5 h-5" />
+                        <span>{selectedArticle.views || 0} visualizações</span>
+                      </div>
+                    </div>
+
+                    {selectedArticle.excerpt && (
+                      <p className="text-xl text-gray-600 mb-8 font-medium border-l-4 border-idasam-green pl-4">
+                        {selectedArticle.excerpt}
+                      </p>
                     )}
-                  </div>
 
-                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                    {selectedArticle.title}
-                  </h1>
-
-                  <div className="flex items-center gap-6 mb-8 text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <User className="w-5 h-5" />
-                      <span>{selectedArticle.author_name}</span>
+                    <div className="flex items-center gap-4 mb-8">
+                      {selectedArticle.image && (
+                        <div className="aspect-video md:aspect-auto md:h-64 bg-gray-200 overflow-hidden rounded-lg flex-shrink-0">
+                          <img
+                            src={selectedArticle.image}
+                            alt={selectedArticle.title}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-2">
+                        <TTSAudioPlayer text={selectedArticle.content} />
+                        <SocialReactions 
+                          articleId={selectedArticle.id} 
+                          initialCounts={selectedArticle.reaction_counts} 
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      <span>{formatDate(selectedArticle.publish_date)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Eye className="w-5 h-5" />
-                      <span>{selectedArticle.views || 0} visualizações</span>
-                    </div>
-                  </div>
 
-                  {selectedArticle.excerpt && (
-                    <p className="text-xl text-gray-600 mb-8 font-medium border-l-4 border-idasam-green pl-4">
-                      {selectedArticle.excerpt}
-                    </p>
-                  )}
-
-                  <div 
-                    className="prose prose-lg max-w-none mb-8"
-                    dangerouslySetInnerHTML={{ __html: selectedArticle.content.replace(/\n/g, '<br>') }}
-                  />
-
-                  {selectedArticle.tags && selectedArticle.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-8">
-                      {selectedArticle.tags.map((tag, index) => (
-                        <Badge key={index} variant="secondary">
-                          <Tag className="w-3 h-3 mr-1" />
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="border-t pt-8">
-                    <SocialReactions 
-                      articleId={selectedArticle.id} 
-                      initialCounts={selectedArticle.reaction_counts} 
+                    <div 
+                      className="prose prose-lg max-w-none mb-8"
+                      dangerouslySetInnerHTML={{ __html: selectedArticle.content.replace(/\n/g, '<br>') }}
                     />
-                  </div>
 
-                  <div className="mt-8">
-                    <Button
-                      onClick={() => setShowComments(!showComments)}
-                      variant="outline"
-                      className="mb-6"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      {showComments ? 'Ocultar' : 'Mostrar'} comentários
-                    </Button>
+                    {selectedArticle.tags && selectedArticle.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-8">
+                        {selectedArticle.tags.map((tag, index) => (
+                          <Badge key={index} variant="secondary">
+                            <Tag className="w-3 h-3 mr-1" />
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
 
-                    {showComments && (
+                    <div className="border-t pt-8">
                       <CommentThread articleId={selectedArticle.id} />
-                    )}
+                    </div>
                   </div>
-                </div>
-              </article>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </div>
       </div>
 
       <ShadcnblocksComFooter2 />
+
+      {/* Dialog de Compartilhamento */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="w-5 h-5" />
+              {t.share}
+            </DialogTitle>
+          </DialogHeader>
+
+          {shareArticle && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-sm mb-1">{shareArticle.title}</h4>
+                <p className="text-xs text-gray-600 line-clamp-2">{shareArticle.excerpt}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={() => shareOnWhatsApp(shareArticle)}
+                  className="flex items-center gap-2 bg-green-500 hover:bg-green-600"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  WhatsApp
+                </Button>
+
+                <Button
+                  onClick={() => shareOnFacebook(shareArticle)}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Facebook className="w-4 h-4" />
+                  Facebook
+                </Button>
+
+                <Button
+                  onClick={() => shareOnTwitter(shareArticle)}
+                  className="flex items-center gap-2 bg-blue-400 hover:bg-blue-500"
+                >
+                  <Twitter className="w-4 h-4" />
+                  Twitter
+                </Button>
+
+                <Button
+                  onClick={() => shareOnLinkedIn(shareArticle)}
+                  className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800"
+                >
+                  <Linkedin className="w-4 h-4" />
+                  LinkedIn
+                </Button>
+              </div>
+
+              <Separator />
+
+              <Button
+                onClick={() => copyToClipboard(shareArticle)}
+                variant="outline"
+                className="w-full"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                {copySuccess ? t.linkCopied : t.copyLink}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
+};
