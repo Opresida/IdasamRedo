@@ -433,10 +433,10 @@ export default function NoticiasPage() {
                       </div>
                       
                       <div className="relative overflow-hidden">
-                        <div className="flex gap-8 animate-scroll-infinite hover:animation-play-state-paused">
-                          {/* Duplicar os artigos para criar loop infinito */}
-                          {[...featuredArticles, ...featuredArticles].map((featuredArticle, index) => (
-                            <Card key={`${featuredArticle.id}-${index}`} className="flex-shrink-0 w-full max-w-4xl overflow-hidden shadow-xl bg-gradient-to-r from-forest/5 to-forest/10 border-forest/20 hover:shadow-2xl transition-all duration-500 group relative">
+                        <div className="flex gap-8 featured-slider" style={{ width: `${featuredArticles.length * 200}%` }}>
+                          {/* Duplicar os artigos múltiplas vezes para criar loop infinito suave */}
+                          {[...featuredArticles, ...featuredArticles, ...featuredArticles].map((featuredArticle, index) => (
+                            <Card key={`${featuredArticle.id}-${index}`} className="flex-shrink-0 w-full max-w-4xl overflow-hidden shadow-xl bg-gradient-to-r from-forest/5 to-forest/10 border-forest/20 hover:shadow-2xl transition-all duration-500 group relative" style={{ minWidth: '800px' }}>
                               {/* Indicador de artigo novo */}
                               {isNewArticle(featuredArticle.publish_date) && (
                                 <div className="absolute top-4 right-4 z-10">

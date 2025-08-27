@@ -13,7 +13,7 @@
 }
 
 .animate-scroll-infinite {
-  animation: scroll-infinite 8s linear infinite;
+  animation: scroll-infinite 6s linear infinite;
 }
 
 /* Animações para loading de mais artigos */
@@ -149,35 +149,9 @@ html {
   }
 }
 
-@keyframes scroll-left {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-scroll-infinite {
-  animation: scroll-left 40s linear infinite;
-}
-
-.animate-scroll-infinite:hover {
-  animation-play-state: paused;
-}
-
-/* Animação específica para slider de destaques */
-@keyframes featured-slide {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
+/* Animação para slider de destaques - mais rápida */
 .featured-slider {
-  animation: featured-slide 60s linear infinite;
+  animation: scroll-infinite 6s linear infinite;
 }
 
 .featured-slider:hover {
