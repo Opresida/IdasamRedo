@@ -13,7 +13,7 @@
 }
 
 .animate-scroll-infinite {
-  animation: scroll-infinite 6s linear infinite;
+  animation: scroll-infinite 10s linear infinite;
 }
 
 /* Animações para loading de mais artigos */
@@ -149,9 +149,9 @@ html {
   }
 }
 
-/* Animação para slider de destaques - mais rápida */
+/* Animação para slider de destaques - velocidade adequada */
 .featured-slider {
-  animation: scroll-infinite 6s linear infinite;
+  animation: scroll-infinite 10s linear infinite;
 }
 
 .featured-slider:hover {
