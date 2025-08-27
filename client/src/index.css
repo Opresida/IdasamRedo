@@ -13,7 +13,7 @@
 }
 
 .animate-scroll-infinite {
-  animation: scroll-infinite 15s linear infinite;
+  animation: scroll-infinite 8s linear infinite;
 }
 
 /* Animações para loading de mais artigos */
