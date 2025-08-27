@@ -19,6 +19,7 @@ import TTSAudioPlayer from '@/components/tts-audio-player';
 import FloatingNavbar from '@/components/floating-navbar';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 import Logos3 from '@/components/logos3';
+import NewsletterSection from '@/components/newsletter-section';
 
 // Interface baseada na view articles_full
 interface Article {
@@ -702,8 +703,13 @@ export default function NoticiasPage() {
                   )}
                 </div>
 
-                {/* Seção de Parceiros Estratégicos */}
+                {/* Seção Newsletter */}
                 <div className="mt-24">
+                  <NewsletterSection />
+                </div>
+
+                {/* Seção de Parceiros Estratégicos */}
+                <div className="mt-16">
                   <Logos3 />
                 </div>
               </div>
