@@ -523,7 +523,7 @@ export default function AdminDashboard() {
                   </span>
                 )}
               </Button>
-              
+
               {/* Estatísticas Rápidas */}
               <div className="hidden md:flex items-center space-x-4 px-4 py-2 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-2 text-sm">
@@ -543,7 +543,7 @@ export default function AdminDashboard() {
                 <Home className="w-4 h-4 mr-2" />
                 Ver Site
               </Button>
-              
+
               {/* Avatar e Menu do Usuário */}
               <div className="flex items-center space-x-3 pl-3 border-l border-gray-200">
                 <Avatar className="w-8 h-8">
@@ -610,8 +610,8 @@ export default function AdminDashboard() {
                       {draftArticles} rascunhos
                     </Badge>
                   </div>
-                  <Progress 
-                    value={(publishedArticles / totalArticles) * 100} 
+                  <Progress
+                    value={(publishedArticles / totalArticles) * 100}
                     className="mt-3 h-2"
                   />
                 </CardContent>
@@ -725,7 +725,7 @@ export default function AdminDashboard() {
                     {categories.map((category) => {
                       const articleCount = articles.filter(a => a.category_id === category.id).length;
                       const percentage = totalArticles > 0 ? (articleCount / totalArticles) * 100 : 0;
-                      
+
                       return (
                         <div key={category.id} className="space-y-2">
                           <div className="flex justify-between text-sm">
@@ -1245,7 +1245,7 @@ export default function AdminDashboard() {
               Preview do Artigo
             </DialogTitle>
           </DialogHeader>
-          
+
           {previewArticle && (
             <div className="space-y-6">
               {/* Imagem do artigo */}
@@ -1297,10 +1297,10 @@ export default function AdminDashboard() {
               )}
 
               {/* Conteúdo */}
-              <div 
+              <div
                 className="prose prose-lg max-w-none"
-                dangerouslySetInnerHTML={{ 
-                  __html: previewArticle.content?.replace(/\n/g, '<br>') || '' 
+                dangerouslySetInnerHTML={{
+                  __html: previewArticle.content?.replace(/\n/g, '<br>') || ''
                 }}
               />
 
@@ -1333,12 +1333,12 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setShowPreviewModal(false)}>
               Fechar
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 if (previewArticle) {
                   window.open(`/noticias#${previewArticle.id}`, '_blank');
