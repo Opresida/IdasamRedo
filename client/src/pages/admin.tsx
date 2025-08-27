@@ -267,12 +267,35 @@ export default function AdminDashboard() {
         .replace(/[^\w\s-]/g, '') // Remove caracteres especiais
         .replace(/\s+/g, '-') // Substitui espaços por hífens
         .replace(/-+/g, '-') // Remove hífens duplos
-        .trim('-'); // Remove hífens das bordas
+        .replace(/^-+|-+$/g, ''); // Remove hífens das bordas
 
-      // 1. Prepara os dados do artigo
+      // Verificar se o slug já existe (para novos artigos)
+      let finalSlug = baseSlug;
+      if (!editingId) {
+        const { data: existingSlugs } = await supabase
+          .from('articles')
+          .select('slug')
+          .like('slug', `${baseSlug}%`);
+
+        if (existingSlugs && existingSlugs.length > 0) {
+          const slugNumbers = existingSlugs
+            .map(item => {
+              const match = item.slug.match(new RegExp(`^${baseSlug}(?:-(\\d+))?$`));
+              return match ? (match[1] ? parseInt(match[1]) : 0) : -1;
+            })
+            .filter(num => num >= 0);
+
+          if (slugNumbers.length > 0) {
+            const maxNumber = Math.max(...slugNumbers);
+            finalSlug = `${baseSlug}-${maxNumber + 1}`;
+          }
+        }
+      }
+
+      // Preparar dados do artigo
       const articleData = {
         title: articleForm.title.trim(),
-        slug: baseSlug,
+        slug: finalSlug,
         content: articleForm.content.trim(),
         excerpt: articleForm.excerpt.trim() || null,
         published: articleForm.published,
@@ -280,38 +303,52 @@ export default function AdminDashboard() {
         category_id: articleForm.category_id,
         image: articleForm.image.trim() || null,
         author_id: user.id,
+        updated_at: new Date().toISOString()
       };
 
       let articleId = editingId;
-      let isNewArticle = false;
+      let isNewArticle = !editingId;
 
       if (editingId) {
         // ATUALIZAR ARTIGO EXISTENTE
-        console.log('Atualizando artigo:', editingId, articleData);
+        console.log('Atualizando artigo:', editingId);
+        
+        // Remover campos que não devem ser atualizados
+        const updateData = { ...articleData };
+        delete updateData.author_id; // Não alterar o autor original
+
         const { error } = await supabase
           .from('articles')
-          .update(articleData)
+          .update(updateData)
           .eq('id', editingId);
+        
         if (error) {
           console.error('Erro ao atualizar artigo:', error);
-          throw error;
+          throw new Error(`Erro ao atualizar artigo: ${error.message}`);
         }
       } else {
-        // CRIAR NOVO ARTIGO E OBTER O ID
-        isNewArticle = true;
-        console.log('Criando novo artigo:', articleData);
+        // CRIAR NOVO ARTIGO
+        console.log('Criando novo artigo');
+        
+        // Adicionar data de criação para novos artigos
+        const createData = {
+          ...articleData,
+          created_at: new Date().toISOString(),
+          publish_date: articleForm.published ? new Date().toISOString() : null
+        };
+
         const { data, error } = await supabase
           .from('articles')
-          .insert(articleData)
+          .insert(createData)
           .select('id')
           .single();
         
         if (error) {
           console.error('Erro ao criar artigo:', error);
-          throw error;
+          throw new Error(`Erro ao criar artigo: ${error.message}`);
         }
         
-        if (!data) {
+        if (!data?.id) {
           throw new Error("Não foi possível obter o ID do novo artigo.");
         }
         
@@ -319,85 +356,67 @@ export default function AdminDashboard() {
         console.log('Artigo criado com ID:', articleId);
       }
 
-      // 2. Lidar com as Tags
+      // Processar Tags
       if (articleId && articleForm.tags.trim()) {
         console.log('Processando tags para artigo:', articleId);
         
-        // Remove tags existentes se estiver editando
-        if (!isNewArticle) {
-          const { error: deleteError } = await supabase
+        // Remover tags existentes se estiver editando
+        if (editingId) {
+          await supabase
             .from('article_tags')
             .delete()
             .eq('article_id', articleId);
-          if (deleteError) {
-            console.error('Erro ao remover tags antigas:', deleteError);
-          }
         }
 
         const tagNames = articleForm.tags
           .split(',')
           .map(tag => tag.trim().toLowerCase())
-          .filter(tag => tag.length > 0);
+          .filter(tag => tag.length > 0 && tag.length <= 50); // Validar tamanho
 
         if (tagNames.length > 0) {
           console.log('Tags a processar:', tagNames);
           
-          // Buscar tags existentes
-          const { data: existingTags, error: tagsError } = await supabase
+          // Buscar ou criar tags
+          const { data: existingTags } = await supabase
             .from('tags')
             .select('id, name')
             .in('name', tagNames);
-          
-          if (tagsError) {
-            console.error('Erro ao buscar tags:', tagsError);
-            throw tagsError;
-          }
 
-          console.log('Tags encontradas no banco:', existingTags);
-
-          // Criar mapa de tags existentes
-          const existingTagMap = new Map(existingTags?.map(t => [t.name, t.id]) || []);
-          
-          // Identificar tags que precisam ser criadas
+          const existingTagMap = new Map((existingTags || []).map(t => [t.name, t.id]));
           const tagsToCreate = tagNames.filter(name => !existingTagMap.has(name));
           
-          // Criar novas tags se necessário
+          // Criar novas tags
           if (tagsToCreate.length > 0) {
-            console.log('Criando novas tags:', tagsToCreate);
             const { data: newTags, error: createTagsError } = await supabase
               .from('tags')
-              .insert(tagsToCreate.map(name => ({ name, slug: name.replace(/\s+/g, '-') })))
+              .insert(tagsToCreate.map(name => ({
+                name,
+                slug: name.replace(/\s+/g, '-').toLowerCase()
+              })))
               .select('id, name');
             
             if (createTagsError) {
-              console.error('Erro ao criar novas tags:', createTagsError);
-              throw createTagsError;
+              console.warn('Erro ao criar tags:', createTagsError);
+            } else {
+              newTags?.forEach(tag => existingTagMap.set(tag.name, tag.id));
             }
-            
-            // Adicionar novas tags ao mapa
-            newTags?.forEach(tag => existingTagMap.set(tag.name, tag.id));
           }
 
           // Criar relacionamentos article_tags
           const tagsToInsert = tagNames
             .map(name => {
               const tagId = existingTagMap.get(name);
-              if (tagId) {
-                return { article_id: articleId, tag_id: tagId };
-              }
-              return null;
+              return tagId ? { article_id: articleId, tag_id: tagId } : null;
             })
-            .filter((t): t is { article_id: string; tag_id: string } => t !== null);
+            .filter(Boolean);
 
           if (tagsToInsert.length > 0) {
-            console.log('Inserindo relacionamentos article_tags:', tagsToInsert);
             const { error: insertTagsError } = await supabase
               .from('article_tags')
               .insert(tagsToInsert);
             
             if (insertTagsError) {
-              console.error('Erro ao inserir article_tags:', insertTagsError);
-              throw insertTagsError;
+              console.warn('Erro ao inserir article_tags:', insertTagsError);
             }
           }
         }
@@ -405,9 +424,10 @@ export default function AdminDashboard() {
 
       toast({
         title: 'Sucesso',
-        description: `Artigo ${editingId ? 'atualizado' : 'criado'} com sucesso`,
+        description: `Artigo ${editingId ? 'atualizado' : 'criado'} com sucesso!`,
       });
 
+      // Resetar formulário e recarregar lista
       setIsEditing(false);
       setEditingId(null);
       resetArticleForm();
