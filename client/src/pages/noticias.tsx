@@ -9,13 +9,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Calendar, User, MessageSquare, Eye, ThumbsUp, Share2, X, Send, AlertCircle, Globe, Facebook, Twitter, Linkedin, Copy, Star, TrendingUp } from 'lucide-react';
+import { Search, Calendar, User, MessageSquare, Eye, ThumbsUp, Share2, X, Send, AlertCircle, Globe, Facebook, Twitter, Linkedin, Copy, Star, TrendingUp, Filter, Tag } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useAnalyticsAndSEO } from '@/hooks/use-analytics';
 import { supabase } from '@/supabaseClient';
 import CommentThread from '@/components/comment-thread';
 import SocialReactions from '@/components/social-reactions';
 import TTSAudioPlayer from '@/components/tts-audio-player';
+import FloatingNavbar from '@/components/floating-navbar';
+import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 
 // Interface baseada na view articles_full
 interface Article {
@@ -49,7 +51,6 @@ interface Category {
 
 export default function NoticiasPage() {
   const [articles, setArticles] = useState<Article[]>([]);
-  const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,6 +59,8 @@ export default function NoticiasPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareArticle, setShareArticle] = useState<Article | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const { trackPageView, updateSEO } = useAnalyticsAndSEO();
 
