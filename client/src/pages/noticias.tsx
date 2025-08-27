@@ -380,7 +380,28 @@ export default function NoticiasPage() {
     <div className="min-h-screen bg-sand">
       <FloatingNavbar />
 
-      <div className="pt-24 pb-16">
+      {/* Hero Section com Imagem */}
+      <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: "url('https://i.imgur.com/SUSPfjl.jpeg')"
+          }}
+        >
+          <div className="absolute inset-0 bg-black/50"></div>
+        </div>
+        
+        <div className="relative z-10 text-center text-white px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 drop-shadow-lg">
+            Notícias
+          </h1>
+          <p className="text-lg sm:text-xl lg:text-2xl opacity-90 leading-relaxed">
+            Acompanhe as últimas novidades e conquistas do IDASAM na transformação sustentável da Amazônia.
+          </p>
+        </div>
+      </section>
+
+      <div className="pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {!isDialogOpen ? (
             <>
