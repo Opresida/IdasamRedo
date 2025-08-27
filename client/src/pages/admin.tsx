@@ -676,7 +676,7 @@ export default function AdminDashboard() {
                     {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <Button variant="outline" size="sm" onClick={() => setLocation('/admin')}>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
                   Sair
                 </Button>
               </div>
