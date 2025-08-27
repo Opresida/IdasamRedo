@@ -17,13 +17,13 @@ const logos: Logo[] = [
 
 export default function Logos3() {
   return (
-    <section id="parcerias" className="py-20 px-4 bg-white" data-testid="partners-section">
+    <section id="parcerias" className="py-20 px-4 bg-gradient-to-br from-gray-50 via-white to-gray-100 border-t border-gray-200 shadow-inner" data-testid="partners-section">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6" data-testid="partners-title">
+          <h2 className="text-4xl md:text-5xl font-bold text-forest mb-6 drop-shadow-sm" data-testid="partners-title">
             Nossos Parceiros Estratégicos
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto" data-testid="partners-description">
+          <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed" data-testid="partners-description">
             Trabalhamos em colaboração com organizações líderes para amplificar nosso impacto na região amazônica.
           </p>
         </div>
@@ -34,13 +34,13 @@ export default function Logos3() {
             {logos.map((logo) => (
               <div 
                 key={`first-${logo.id}`}
-                className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mx-6"
+                className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl hover:border-forest/20 transition-all duration-300 mx-6 backdrop-blur-sm"
                 data-testid={`partner-logo-${logo.id}`}
               >
                 <img 
                   src={logo.image} 
                   alt={logo.description} 
-                  className="max-w-full max-h-full object-contain p-4"
+                  className="max-w-full max-h-full object-contain p-4 transition-transform duration-300 hover:scale-105"
                 />
               </div>
             ))}
@@ -49,12 +49,12 @@ export default function Logos3() {
             {logos.map((logo) => (
               <div 
                 key={`second-${logo.id}`}
-                className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mx-6"
+                className="flex-shrink-0 w-48 h-32 flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl hover:border-forest/20 transition-all duration-300 mx-6 backdrop-blur-sm"
               >
                 <img 
                   src={logo.image} 
                   alt={logo.description} 
-                  className="max-w-full max-h-full object-contain p-4"
+                  className="max-w-full max-h-full object-contain p-4 transition-transform duration-300 hover:scale-105"
                 />
               </div>
             ))}
