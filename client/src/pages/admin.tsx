@@ -847,20 +847,45 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {categories.map((category) => {
-                      const articleCount = articles.filter(a => a.category_id === category.id).length;
+                    {categories.length > 0 ? categories.map((category) => {
+                      // Contar artigos desta categoria (considerando tanto category_id quanto category_name)
+                      const articleCount = articles.filter(a => 
+                        a.category_id === category.id || 
+                        (a.category_name && a.category_name.toLowerCase() === category.name.toLowerCase())
+                      ).length;
                       const percentage = totalArticles > 0 ? (articleCount / totalArticles) * 100 : 0;
 
                       return (
                         <div key={category.id} className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="font-medium">{category.name}</span>
-                            <span className="text-gray-600">{articleCount} artigos</span>
+                            <span className="text-gray-600">{articleCount} {articleCount === 1 ? 'artigo' : 'artigos'}</span>
                           </div>
                           <Progress value={percentage} className="h-2" />
                         </div>
                       );
-                    })}
+                    }) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <p>Nenhuma categoria cadastrada</p>
+                        <p className="text-sm">Crie categorias na aba "Categorias" para organizar seus artigos</p>
+                      </div>
+                    )}
+                    
+                    {/* Mostrar artigos sem categoria se houver */}
+                    {(() => {
+                      const uncategorizedCount = articles.filter(a => !a.category_id && !a.category_name).length;
+                      const percentage = totalArticles > 0 ? (uncategorizedCount / totalArticles) * 100 : 0;
+                      
+                      return uncategorizedCount > 0 ? (
+                        <div className="space-y-2 pt-2 border-t border-gray-200">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium text-gray-600">Sem categoria</span>
+                            <span className="text-gray-500">{uncategorizedCount} {uncategorizedCount === 1 ? 'artigo' : 'artigos'}</span>
+                          </div>
+                          <Progress value={percentage} className="h-2 bg-gray-100" />
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </CardContent>
               </Card>
