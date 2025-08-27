@@ -215,6 +215,16 @@ html {
     animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
+/* Espaçamento melhorado para página de notícias */
+.news-page-section {
+  @apply mb-16 last:mb-0;
+}
+
+.news-filters-section {
+  @apply py-8 px-6 bg-white/50 backdrop-blur-sm rounded-2xl border border-gray-100;
+  @apply shadow-sm hover:shadow-md transition-all duration-300;
+}
+
 /* Card de Notícias Avançado */
 .news-card {
   @apply transition-all duration-500 ease-out transform hover:scale-[1.02] hover:shadow-2xl hover:-translate-y-1;

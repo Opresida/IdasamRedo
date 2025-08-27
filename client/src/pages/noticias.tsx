@@ -517,26 +517,42 @@ export default function NoticiasPage() {
                     )}
                   </div>
 
-                  {/* Filtros */}
-                  <div className="mb-8 flex flex-col sm:flex-row gap-4">
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-full sm:w-64">
-                        <Filter className="w-4 h-4 mr-2" />
-                        <SelectValue placeholder="Categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas as categorias</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.name}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {/* Separador visual */}
+                  <div className="my-16">
+                    <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
                   </div>
 
+                  {/* Filtros */}
+                  <div className="news-filters-section mb-12">
+                    <div className="flex items-center gap-4 w-full">
+                      <h3 className="text-lg font-semibold text-forest hidden sm:block">🔍 Filtrar por:</h3>
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="w-full sm:w-80 h-12 border-2 border-gray-200 hover:border-forest transition-colors">
+                          <Filter className="w-4 h-4 mr-2 text-forest" />
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">📰 Todas as categorias</SelectItem>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                              🏷️ {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Título da seção de outros artigos */}
+                  {otherArticles.length > 0 && (
+                    <div className="mb-8">
+                      <h2 className="text-2xl font-bold text-forest mb-2">📚 Outras Notícias</h2>
+                      <p className="text-gray-600">Descubra mais conteúdos sobre nossos projetos e iniciativas</p>
+                    </div>
+                  )}
+
                   {/* Grid de outros artigos */}
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
                     {otherArticles.map((article) => (
                       <Card key={article.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer bg-white/70 backdrop-blur-sm border-0 shadow-md hover:shadow-2xl hover:-translate-y-1 relative">
                         {/* Indicadores de status */}
