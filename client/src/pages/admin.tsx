@@ -242,17 +242,43 @@ export default function AdminDashboard() {
       return;
     }
 
+    // Validações básicas
+    if (!articleForm.title.trim()) {
+      toast({ title: 'Erro', description: 'O título é obrigatório.', variant: 'destructive' });
+      return;
+    }
+
+    if (!articleForm.content.trim()) {
+      toast({ title: 'Erro', description: 'O conteúdo é obrigatório.', variant: 'destructive' });
+      return;
+    }
+
+    if (!articleForm.category_id) {
+      toast({ title: 'Erro', description: 'Selecione uma categoria.', variant: 'destructive' });
+      return;
+    }
+
     try {
-      // 1. Prepara os dados do artigo (sem as tags)
+      // Gerar slug único
+      const baseSlug = articleForm.title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+        .replace(/[^\w\s-]/g, '') // Remove caracteres especiais
+        .replace(/\s+/g, '-') // Substitui espaços por hífens
+        .replace(/-+/g, '-') // Remove hífens duplos
+        .trim('-'); // Remove hífens das bordas
+
+      // 1. Prepara os dados do artigo
       const articleData = {
-        title: articleForm.title,
-        slug: articleForm.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''),
-        content: articleForm.content,
-        excerpt: articleForm.excerpt,
+        title: articleForm.title.trim(),
+        slug: baseSlug,
+        content: articleForm.content.trim(),
+        excerpt: articleForm.excerpt.trim() || null,
         published: articleForm.published,
         featured: articleForm.featured,
         category_id: articleForm.category_id,
-        image: articleForm.image,
+        image: articleForm.image.trim() || null,
         author_id: user.id,
       };
 
@@ -261,42 +287,119 @@ export default function AdminDashboard() {
 
       if (editingId) {
         // ATUALIZAR ARTIGO EXISTENTE
-        const { error } = await supabase.from('articles').update(articleData).eq('id', editingId);
-        if (error) throw error;
+        console.log('Atualizando artigo:', editingId, articleData);
+        const { error } = await supabase
+          .from('articles')
+          .update(articleData)
+          .eq('id', editingId);
+        if (error) {
+          console.error('Erro ao atualizar artigo:', error);
+          throw error;
+        }
       } else {
         // CRIAR NOVO ARTIGO E OBTER O ID
         isNewArticle = true;
-        const { data, error } = await supabase.from('articles').insert(articleData).select('id').single();
-        if (error || !data) throw error || new Error("Não foi possível obter o ID do novo artigo.");
+        console.log('Criando novo artigo:', articleData);
+        const { data, error } = await supabase
+          .from('articles')
+          .insert(articleData)
+          .select('id')
+          .single();
+        
+        if (error) {
+          console.error('Erro ao criar artigo:', error);
+          throw error;
+        }
+        
+        if (!data) {
+          throw new Error("Não foi possível obter o ID do novo artigo.");
+        }
+        
         articleId = data.id;
+        console.log('Artigo criado com ID:', articleId);
       }
 
       // 2. Lidar com as Tags
-      if (articleId) {
+      if (articleId && articleForm.tags.trim()) {
+        console.log('Processando tags para artigo:', articleId);
+        
+        // Remove tags existentes se estiver editando
         if (!isNewArticle) {
-            await supabase.from('article_tags').delete().eq('article_id', articleId);
+          const { error: deleteError } = await supabase
+            .from('article_tags')
+            .delete()
+            .eq('article_id', articleId);
+          if (deleteError) {
+            console.error('Erro ao remover tags antigas:', deleteError);
+          }
         }
 
-        const tagNames = articleForm.tags ? articleForm.tags.split(',').map(tag => tag.trim().toLowerCase()).filter(Boolean) : [];
+        const tagNames = articleForm.tags
+          .split(',')
+          .map(tag => tag.trim().toLowerCase())
+          .filter(tag => tag.length > 0);
 
         if (tagNames.length > 0) {
-            const { data: existingTags, error: tagsError } = await supabase.from('tags').select('id, name').in('name', tagNames);
-            if(tagsError) throw tagsError;
+          console.log('Tags a processar:', tagNames);
+          
+          // Buscar tags existentes
+          const { data: existingTags, error: tagsError } = await supabase
+            .from('tags')
+            .select('id, name')
+            .in('name', tagNames);
+          
+          if (tagsError) {
+            console.error('Erro ao buscar tags:', tagsError);
+            throw tagsError;
+          }
 
-            const existingTagMap = new Map(existingTags?.map(t => [t.name, t.id]));
+          console.log('Tags encontradas no banco:', existingTags);
 
-            const tagsToInsert = tagNames.map(name => {
-                const tagId = existingTagMap.get(name);
-                if (tagId) {
-                    return { article_id: articleId, tag_id: tagId };
-                }
-                return null;
-            }).filter((t): t is { article_id: string; tag_id: string } => t !== null);
-
-            if (tagsToInsert.length > 0) {
-                const { error: insertTagsError } = await supabase.from('article_tags').insert(tagsToInsert);
-                if (insertTagsError) throw insertTagsError;
+          // Criar mapa de tags existentes
+          const existingTagMap = new Map(existingTags?.map(t => [t.name, t.id]) || []);
+          
+          // Identificar tags que precisam ser criadas
+          const tagsToCreate = tagNames.filter(name => !existingTagMap.has(name));
+          
+          // Criar novas tags se necessário
+          if (tagsToCreate.length > 0) {
+            console.log('Criando novas tags:', tagsToCreate);
+            const { data: newTags, error: createTagsError } = await supabase
+              .from('tags')
+              .insert(tagsToCreate.map(name => ({ name, slug: name.replace(/\s+/g, '-') })))
+              .select('id, name');
+            
+            if (createTagsError) {
+              console.error('Erro ao criar novas tags:', createTagsError);
+              throw createTagsError;
             }
+            
+            // Adicionar novas tags ao mapa
+            newTags?.forEach(tag => existingTagMap.set(tag.name, tag.id));
+          }
+
+          // Criar relacionamentos article_tags
+          const tagsToInsert = tagNames
+            .map(name => {
+              const tagId = existingTagMap.get(name);
+              if (tagId) {
+                return { article_id: articleId, tag_id: tagId };
+              }
+              return null;
+            })
+            .filter((t): t is { article_id: string; tag_id: string } => t !== null);
+
+          if (tagsToInsert.length > 0) {
+            console.log('Inserindo relacionamentos article_tags:', tagsToInsert);
+            const { error: insertTagsError } = await supabase
+              .from('article_tags')
+              .insert(tagsToInsert);
+            
+            if (insertTagsError) {
+              console.error('Erro ao inserir article_tags:', insertTagsError);
+              throw insertTagsError;
+            }
+          }
         }
       }
 
@@ -308,7 +411,7 @@ export default function AdminDashboard() {
       setIsEditing(false);
       setEditingId(null);
       resetArticleForm();
-      loadArticles();
+      await loadArticles();
 
     } catch (error: any) {
       console.error('Erro ao salvar artigo:', error);
@@ -376,6 +479,8 @@ export default function AdminDashboard() {
       tags: '',
       image: ''
     });
+    setIsEditing(false);
+    setEditingId(null);
   };
 
   const handleSaveCategory = async () => {
