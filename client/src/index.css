@@ -8,12 +8,12 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateX(-100%);
   }
 }
 
 .animate-scroll-infinite {
-  animation: scroll-infinite 10s linear infinite;
+  animation: scroll-infinite 15s linear infinite;
 }
 
 /* Animações para loading de mais artigos */
@@ -151,7 +151,7 @@ html {
 
 /* Animação para slider de destaques - velocidade adequada */
 .featured-slider {
-  animation: scroll-infinite 10s linear infinite;
+  animation: scroll-infinite 15s linear infinite;
 }
 
 .featured-slider:hover {
