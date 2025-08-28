@@ -157,7 +157,7 @@ function FinanceiroPage() {
       ...newTransaction,
       id: newId,
       status: newTransaction.isPublic ? 'public' : 'private',
-      project: newTransaction.project || null, // Ensure null for no project
+      project: newTransaction.project === 'none' || !newTransaction.project ? null : newTransaction.project,
     };
     setTransactions([...transactions, newTransactionWithId]);
     setShowTransactionForm(false);
@@ -629,7 +629,7 @@ function FinanceiroPage() {
                     <SelectValue placeholder="Selecione um projeto" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Não vincular</SelectItem>
+                    <SelectItem value="none">Não vincular</SelectItem>
                     <SelectItem value="projeto-1">Sistema de Monitoramento</SelectItem>
                     <SelectItem value="projeto-2">Capacitação Digital</SelectItem>
                     <SelectItem value="projeto-3">Infraestrutura Comunitária</SelectItem>
