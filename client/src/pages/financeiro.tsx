@@ -345,7 +345,7 @@ export default function FinanceiroPage() {
           </div>
 
           {/* Tabela de Lançamentos - Visão Geral */}
-          <Card>
+          <Card className="mt-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Receipt className="w-5 h-5" />
@@ -593,7 +593,7 @@ export default function FinanceiroPage() {
                   </div>
 
                   {/* Tabela de Transações da Conta Específica */}
-                  <Card>
+                  <Card className="mt-8">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Receipt className="w-5 h-5" />
