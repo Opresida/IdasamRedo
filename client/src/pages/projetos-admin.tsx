@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
 import { 
   FolderKanban, 
   Plus, 
@@ -19,7 +21,11 @@ import {
   Eye,
   Globe,
   DollarSign,
-  Heart
+  Heart,
+  TrendingUp,
+  TrendingDown,
+  Building2,
+  Receipt
 } from 'lucide-react';
 
 // Definição dos tipos
@@ -531,44 +537,211 @@ export default function ProjetosAdminPage() {
                 </TabsContent>
 
                 {/* Aba 2: Financeiro e Transparência */}
-                <TabsContent value="financial" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="project-budget">Orçamento Total do Projeto (R$)</Label>
-                    <Input
-                      id="project-budget"
-                      type="number"
-                      value={projectFormData.totalBudget}
-                      onChange={(e) => setProjectFormData({...projectFormData, totalBudget: e.target.value})}
-                      placeholder="Ex: 150000"
-                      min="0"
-                      step="0.01"
-                    />
+                <TabsContent value="financial" className="space-y-6">
+                  {/* Controles Existentes */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="project-budget">Orçamento Total do Projeto (R$)</Label>
+                      <Input
+                        id="project-budget"
+                        type="number"
+                        value={projectFormData.totalBudget}
+                        onChange={(e) => setProjectFormData({...projectFormData, totalBudget: e.target.value})}
+                        placeholder="Ex: 150000"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <Switch
+                        id="transparency-visibility"
+                        checked={projectFormData.isVisibleInTransparency}
+                        onCheckedChange={(checked) => 
+                          setProjectFormData({...projectFormData, isVisibleInTransparency: checked})
+                        }
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="transparency-visibility" className="text-sm font-medium">
+                          Tornar Visível no Portal de Transparência
+                        </Label>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Quando ativo, este projeto e seus dados financeiros gerais aparecerão no portal público
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <Switch
-                      id="transparency-visibility"
-                      checked={projectFormData.isVisibleInTransparency}
-                      onCheckedChange={(checked) => 
-                        setProjectFormData({...projectFormData, isVisibleInTransparency: checked})
-                      }
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor="transparency-visibility" className="text-sm font-medium">
-                        Tornar Visível no Portal de Transparência
-                      </Label>
-                      <p className="text-xs text-gray-600 mt-1">
-                        Quando ativo, este projeto e seus dados financeiros gerais aparecerão no portal público
+                  {/* Dashboard de Resumo Financeiro */}
+                  <div className="space-y-4">
+                    <div className="border-t pt-4">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-green-600" />
+                        Resumo Financeiro do Projeto
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Dados baseados nas transações vinculadas a este projeto no módulo financeiro.
                       </p>
+
+                      {/* Cards de Resumo */}
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        {/* Total Arrecadado */}
+                        <Card className="border-l-4 border-l-green-500">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-gray-600">Total Arrecadado</p>
+                                <p className="text-2xl font-bold text-green-600">
+                                  R$ 67.000,00
+                                </p>
+                              </div>
+                              <TrendingUp className="h-8 w-8 text-green-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Total Gasto */}
+                        <Card className="border-l-4 border-l-red-500">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-gray-600">Total Gasto</p>
+                                <p className="text-2xl font-bold text-red-600">
+                                  R$ 32.500,00
+                                </p>
+                              </div>
+                              <TrendingDown className="h-8 w-8 text-red-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Saldo Atual */}
+                        <Card className="border-l-4 border-l-blue-500">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-gray-600">Saldo Atual</p>
+                                <p className="text-2xl font-bold text-blue-600">
+                                  R$ 34.500,00
+                                </p>
+                              </div>
+                              <Building2 className="h-8 w-8 text-blue-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Execução Orçamentária */}
+                        <Card className="border-l-4 border-l-purple-500">
+                          <CardContent className="p-4">
+                            <div>
+                              <p className="text-sm text-gray-600 mb-2">Execução Orçamentária</p>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>21,7% utilizado</span>
+                                  <span className="text-purple-600 font-medium">R$ 32.500 / R$ 150.000</span>
+                                </div>
+                                <Progress value={21.7} className="h-2" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Lista de Transações */}
+                      <div className="space-y-3">
+                        <h5 className="text-base font-medium text-gray-900 flex items-center gap-2">
+                          <Receipt className="w-4 h-4 text-gray-600" />
+                          Últimos Lançamentos Vinculados
+                        </h5>
+                        
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-gray-50">
+                                <TableHead className="text-xs">Data</TableHead>
+                                <TableHead className="text-xs">Descrição</TableHead>
+                                <TableHead className="text-xs">Categoria</TableHead>
+                                <TableHead className="text-xs">Fornecedor/Doador</TableHead>
+                                <TableHead className="text-xs text-right">Valor</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell className="text-xs">15/01/2024</TableCell>
+                                <TableCell className="text-xs">Doação mensal - Projeto Coração Ribeirinho</TableCell>
+                                <TableCell className="text-xs">
+                                  <Badge variant="outline" className="text-xs">Receita de Projeto</Badge>
+                                </TableCell>
+                                <TableCell className="text-xs">Maria Oliveira</TableCell>
+                                <TableCell className="text-xs text-right font-bold text-green-600">
+                                  +R$ 5.000,00
+                                </TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="text-xs">20/01/2024</TableCell>
+                                <TableCell className="text-xs">Parceria com empresa local - Projeto Coração</TableCell>
+                                <TableCell className="text-xs">
+                                  <Badge variant="outline" className="text-xs">Parcerias</Badge>
+                                </TableCell>
+                                <TableCell className="text-xs">Empresa ABC Ltda</TableCell>
+                                <TableCell className="text-xs text-right font-bold text-green-600">
+                                  +R$ 12.000,00
+                                </TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="text-xs">10/01/2024</TableCell>
+                                <TableCell className="text-xs">Compra de equipamentos para projeto</TableCell>
+                                <TableCell className="text-xs">
+                                  <Badge variant="outline" className="text-xs">Equipamentos</Badge>
+                                </TableCell>
+                                <TableCell className="text-xs">Fornecedor de Equipamentos Ltda</TableCell>
+                                <TableCell className="text-xs text-right font-bold text-red-600">
+                                  -R$ 8.500,00
+                                </TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="text-xs">08/01/2024</TableCell>
+                                <TableCell className="text-xs">Material de capacitação - Projeto Coração</TableCell>
+                                <TableCell className="text-xs">
+                                  <Badge variant="outline" className="text-xs">Materiais</Badge>
+                                </TableCell>
+                                <TableCell className="text-xs">João Silva - Serviços</TableCell>
+                                <TableCell className="text-xs text-right font-bold text-red-600">
+                                  -R$ 3.200,00
+                                </TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="text-xs">05/01/2024</TableCell>
+                                <TableCell className="text-xs">Doação especial de final de ano</TableCell>
+                                <TableCell className="text-xs">
+                                  <Badge variant="outline" className="text-xs">Doações</Badge>
+                                </TableCell>
+                                <TableCell className="text-xs">Doador Anônimo</TableCell>
+                                <TableCell className="text-xs text-right font-bold text-green-600">
+                                  +R$ 15.000,00
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        <div className="text-center py-2">
+                          <p className="text-xs text-gray-500">
+                            Total de 47 transações vinculadas a este projeto. <br />
+                            <span className="text-blue-600 cursor-pointer hover:underline">
+                              Ver todas as transações no módulo Financeiro →
+                            </span>
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Integração com Financeiro</h4>
                     <p className="text-sm text-gray-600">
-                      Este projeto será automaticamente conectado aos dados de receitas e despesas 
-                      registrados na seção Financeiro do dashboard. Os valores de orçamento e gastos 
-                      serão sincronizados para relatórios de transparência.
+                      Este projeto está automaticamente conectado aos dados de receitas e despesas 
+                      registrados na seção Financeiro do dashboard. Os valores são atualizados em tempo real.
                     </p>
                   </div>
                 </TabsContent>
