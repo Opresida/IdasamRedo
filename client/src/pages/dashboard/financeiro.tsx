@@ -61,6 +61,7 @@ const mockSuppliers: Supplier[] = [
     contact_person: 'João Silva',
     email: 'contato@techsolutions.com',
     phone: '(11) 99999-9999',
+    pix_key: 'contato@techsolutions.com',
     created_at: '2024-01-15'
   },
   {
@@ -70,6 +71,7 @@ const mockSuppliers: Supplier[] = [
     contact_person: 'Maria Santos',
     email: 'maria@consultoria.com',
     phone: '(11) 88888-8888',
+    pix_key: '123.456.789-00',
     created_at: '2024-02-20'
   },
   {
@@ -79,6 +81,7 @@ const mockSuppliers: Supplier[] = [
     contact_person: 'Carlos Oliveira',
     email: 'vendas@equipamentosnorte.com',
     phone: '(92) 77777-7777',
+    pix_key: '98.765.432/0001-11',
     created_at: '2024-03-10'
   }
 ];
@@ -91,6 +94,7 @@ const mockDonors: Donor[] = [
     contact_person: 'Ana Costa',
     email: 'ana@amazoniaverde.org',
     phone: '(11) 66666-6666',
+    pix_key: 'ana@amazoniaverde.org',
     created_at: '2024-01-05'
   },
   {
@@ -100,6 +104,7 @@ const mockDonors: Donor[] = [
     contact_person: 'Roberto Lima',
     email: 'roberto@ids.org.br',
     phone: '(21) 55555-5555',
+    pix_key: '44.555.666/0001-77',
     created_at: '2024-02-14'
   }
 ];
@@ -125,6 +130,7 @@ interface Supplier {
   contact_person: string;
   email: string;
   phone: string;
+  pix_key: string;
   created_at: string;
 }
 
@@ -135,6 +141,7 @@ interface Donor {
   contact_person: string;
   email: string;
   phone: string;
+  pix_key: string;
   created_at: string;
 }
 
@@ -176,6 +183,7 @@ function DashboardFinanceiroPage() {
     contact_person: '',
     email: '',
     phone: '',
+    pix_key: '',
   });
   const [newDonor, setNewDonor] = useState<Omit<Donor, 'id' | 'created_at'>>({
     name: '',
@@ -183,6 +191,7 @@ function DashboardFinanceiroPage() {
     contact_person: '',
     email: '',
     phone: '',
+    pix_key: '',
   });
 
   const totalReceitas = useMemo(() =>
@@ -292,6 +301,7 @@ function DashboardFinanceiroPage() {
       contact_person: '',
       email: '',
       phone: '',
+      pix_key: '',
     });
   };
 
@@ -311,6 +321,7 @@ function DashboardFinanceiroPage() {
       contact_person: '',
       email: '',
       phone: '',
+      pix_key: '',
     });
   };
 
@@ -322,6 +333,7 @@ function DashboardFinanceiroPage() {
       contact_person: supplier.contact_person,
       email: supplier.email,
       phone: supplier.phone,
+      pix_key: supplier.pix_key,
     });
     setShowSupplierForm(true);
   };
@@ -334,6 +346,7 @@ function DashboardFinanceiroPage() {
       contact_person: donor.contact_person,
       email: donor.email,
       phone: donor.phone,
+      pix_key: donor.pix_key,
     });
     setShowDonorForm(true);
   };
@@ -614,6 +627,7 @@ function DashboardFinanceiroPage() {
                         contact_person: '',
                         email: '',
                         phone: '',
+                        pix_key: '',
                       });
                     }}>
                       <Plus className="w-4 h-4 mr-2" />
@@ -668,6 +682,14 @@ function DashboardFinanceiroPage() {
                           placeholder="(00) 00000-0000"
                         />
                       </div>
+                      <div>
+                        <Label>Chave PIX</Label>
+                        <Input
+                          value={newSupplier.pix_key}
+                          onChange={(e) => setNewSupplier({...newSupplier, pix_key: e.target.value})}
+                          placeholder="Email, CPF/CNPJ, telefone ou chave aleatória"
+                        />
+                      </div>
                       <div className="flex space-x-2 pt-4">
                         <Button onClick={handleCreateSupplier} className="flex-1">
                           {editingSupplier ? 'Atualizar' : 'Criar'} Fornecedor
@@ -675,6 +697,14 @@ function DashboardFinanceiroPage() {
                         <Button variant="outline" onClick={() => {
                           setShowSupplierForm(false);
                           setEditingSupplier(null);
+                          setNewSupplier({
+                            name: '',
+                            cnpj_cpf: '',
+                            contact_person: '',
+                            email: '',
+                            phone: '',
+                            pix_key: '',
+                          });
                         }}>
                           Cancelar
                         </Button>
@@ -693,6 +723,7 @@ function DashboardFinanceiroPage() {
                       <TableHead>Contato</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Telefone</TableHead>
+                      <TableHead>Chave PIX</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -704,6 +735,7 @@ function DashboardFinanceiroPage() {
                         <TableCell>{supplier.contact_person}</TableCell>
                         <TableCell>{supplier.email}</TableCell>
                         <TableCell>{supplier.phone}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{supplier.pix_key || 'Não cadastrada'}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Button
@@ -744,6 +776,7 @@ function DashboardFinanceiroPage() {
                         contact_person: '',
                         email: '',
                         phone: '',
+                        pix_key: '',
                       });
                     }}>
                       <Plus className="w-4 h-4 mr-2" />
@@ -798,6 +831,14 @@ function DashboardFinanceiroPage() {
                           placeholder="(00) 00000-0000"
                         />
                       </div>
+                      <div>
+                        <Label>Chave PIX</Label>
+                        <Input
+                          value={newDonor.pix_key}
+                          onChange={(e) => setNewDonor({...newDonor, pix_key: e.target.value})}
+                          placeholder="Email, CPF/CNPJ, telefone ou chave aleatória"
+                        />
+                      </div>
                       <div className="flex space-x-2 pt-4">
                         <Button onClick={handleCreateDonor} className="flex-1">
                           {editingDonor ? 'Atualizar' : 'Criar'} Doador
@@ -805,6 +846,14 @@ function DashboardFinanceiroPage() {
                         <Button variant="outline" onClick={() => {
                           setShowDonorForm(false);
                           setEditingDonor(null);
+                          setNewDonor({
+                            name: '',
+                            cnpj_cpf: '',
+                            contact_person: '',
+                            email: '',
+                            phone: '',
+                            pix_key: '',
+                          });
                         }}>
                           Cancelar
                         </Button>
@@ -823,6 +872,7 @@ function DashboardFinanceiroPage() {
                       <TableHead>Contato</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Telefone</TableHead>
+                      <TableHead>Chave PIX</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -834,6 +884,7 @@ function DashboardFinanceiroPage() {
                         <TableCell>{donor.contact_person}</TableCell>
                         <TableCell>{donor.email}</TableCell>
                         <TableCell>{donor.phone}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{donor.pix_key || 'Não cadastrada'}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Button
