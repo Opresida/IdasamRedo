@@ -125,10 +125,11 @@ export default function AdminDashboard() {
 
   // Estados do formulário de categoria
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     slug: '',
-    description: ''
+    description: '',
   });
 
   // Estados para o modal de preview
@@ -312,7 +313,7 @@ export default function AdminDashboard() {
       if (editingId) {
         // ATUALIZAR ARTIGO EXISTENTE
         console.log('Atualizando artigo:', editingId);
-        
+
         // Remover campos que não devem ser atualizados
         const updateData = { ...articleData };
         delete updateData.author_id; // Não alterar o autor original
@@ -321,7 +322,7 @@ export default function AdminDashboard() {
           .from('articles')
           .update(updateData)
           .eq('id', editingId);
-        
+
         if (error) {
           console.error('Erro ao atualizar artigo:', error);
           throw new Error(`Erro ao atualizar artigo: ${error.message}`);
@@ -329,7 +330,7 @@ export default function AdminDashboard() {
       } else {
         // CRIAR NOVO ARTIGO
         console.log('Criando novo artigo');
-        
+
         // Adicionar data de criação para novos artigos
         const createData = {
           ...articleData,
@@ -342,16 +343,16 @@ export default function AdminDashboard() {
           .insert(createData)
           .select('id')
           .single();
-        
+
         if (error) {
           console.error('Erro ao criar artigo:', error);
           throw new Error(`Erro ao criar artigo: ${error.message}`);
         }
-        
+
         if (!data?.id) {
           throw new Error("Não foi possível obter o ID do novo artigo.");
         }
-        
+
         articleId = data.id;
         console.log('Artigo criado com ID:', articleId);
       }
@@ -359,7 +360,7 @@ export default function AdminDashboard() {
       // Processar Tags
       if (articleId && articleForm.tags.trim()) {
         console.log('Processando tags para artigo:', articleId);
-        
+
         // Remover tags existentes se estiver editando
         if (editingId) {
           await supabase
@@ -375,7 +376,7 @@ export default function AdminDashboard() {
 
         if (tagNames.length > 0) {
           console.log('Tags a processar:', tagNames);
-          
+
           // Buscar ou criar tags
           const { data: existingTags } = await supabase
             .from('tags')
@@ -384,7 +385,7 @@ export default function AdminDashboard() {
 
           const existingTagMap = new Map((existingTags || []).map(t => [t.name, t.id]));
           const tagsToCreate = tagNames.filter(name => !existingTagMap.has(name));
-          
+
           // Criar novas tags
           if (tagsToCreate.length > 0) {
             const { data: newTags, error: createTagsError } = await supabase
@@ -394,7 +395,7 @@ export default function AdminDashboard() {
                 slug: name.replace(/\s+/g, '-').toLowerCase()
               })))
               .select('id, name');
-            
+
             if (createTagsError) {
               console.warn('Erro ao criar tags:', createTagsError);
             } else {
@@ -414,7 +415,7 @@ export default function AdminDashboard() {
             const { error: insertTagsError } = await supabase
               .from('article_tags')
               .insert(tagsToInsert);
-            
+
             if (insertTagsError) {
               console.warn('Erro ao inserir article_tags:', insertTagsError);
             }
@@ -504,31 +505,198 @@ export default function AdminDashboard() {
   };
 
   const handleSaveCategory = async () => {
-    try {
-      const slug = categoryForm.slug || categoryForm.name.toLowerCase().replace(/\s+/g, '-');
+    if (!categoryForm.name.trim()) {
+      toast({
+        title: 'Erro',
+        description: 'Nome da categoria é obrigatório',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-      const { error } = await supabase
+    try {
+      const slug = categoryForm.slug || categoryForm.name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .trim('-');
+
+      // Verificar se já existe uma categoria com o mesmo slug
+      const { data: existingCategory, error: checkError } = await supabase
         .from('categories')
-        .insert([{
-          ...categoryForm,
-          slug
-        }]);
+        .select('id')
+        .eq('slug', slug)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existingCategory) {
+        toast({
+          title: 'Erro',
+          description: 'Já existe uma categoria com este nome/slug',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          name: categoryForm.name.trim(),
+          slug: slug,
+          description: categoryForm.description?.trim() || null,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast({
         title: 'Sucesso',
-        description: 'Categoria criada com sucesso',
+        description: 'Categoria criada com sucesso!',
       });
 
-      setShowCategoryDialog(false);
+      setCategories(prev => [...prev, data]);
       setCategoryForm({ name: '', slug: '', description: '' });
-      loadCategories();
+      setShowCategoryDialog(false);
     } catch (error) {
-      console.error('Erro ao salvar categoria:', error);
+      console.error('Erro ao criar categoria:', error);
       toast({
         title: 'Erro',
-        description: 'Erro ao salvar categoria',
+        description: 'Erro ao criar categoria. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      // Verificar se existem artigos usando esta categoria
+      const { data: articlesWithCategory, error: checkError } = await supabase
+        .from('articles')
+        .select('id')
+        .eq('category_id', categoryId);
+
+      if (checkError) throw checkError;
+
+      if (articlesWithCategory && articlesWithCategory.length > 0) {
+        toast({
+          title: 'Erro',
+          description: `Não é possível excluir a categoria. Existem ${articlesWithCategory.length} artigo(s) usando esta categoria.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Categoria excluída com sucesso!',
+      });
+
+      setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    } catch (error) {
+      console.error('Erro ao excluir categoria:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir categoria. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditCategory = (category: any) => {
+    setCategoryForm({
+      name: category.name,
+      slug: category.slug,
+      description: category.description || '',
+    });
+    setEditingCategoryId(category.id);
+    setShowCategoryDialog(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      toast({
+        title: 'Erro',
+        description: 'Nome da categoria é obrigatório',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const slug = categoryForm.slug || categoryForm.name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .trim('-');
+
+      // Verificar se já existe uma categoria com o mesmo slug (excluindo a atual)
+      const { data: existingCategory, error: checkError } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('slug', slug)
+        .neq('id', editingCategoryId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existingCategory) {
+        toast({
+          title: 'Erro',
+          description: 'Já existe uma categoria com este nome/slug',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('categories')
+        .update({
+          name: categoryForm.name.trim(),
+          slug: slug,
+          description: categoryForm.description?.trim() || null,
+        })
+        .eq('id', editingCategoryId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Categoria atualizada com sucesso!',
+      });
+
+      setCategories(prev => prev.map(cat => 
+        cat.id === editingCategoryId ? data : cat
+      ));
+      setCategoryForm({ name: '', slug: '', description: '' });
+      setEditingCategoryId(null);
+      setShowCategoryDialog(false);
+    } catch (error) {
+      console.error('Erro ao atualizar categoria:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao atualizar categoria. Tente novamente.',
         variant: 'destructive',
       });
     }
@@ -736,7 +904,7 @@ export default function AdminDashboard() {
                     </Badge>
                   </div>
                   <Progress
-                    value={(publishedArticles / totalArticles) * 100}
+                    value={(totalArticles > 0 ? (publishedArticles / totalArticles) * 100 : 0)}
                     className="mt-3 h-2"
                   />
                 </CardContent>
@@ -870,12 +1038,12 @@ export default function AdminDashboard() {
                         <p className="text-sm">Crie categorias na aba "Categorias" para organizar seus artigos</p>
                       </div>
                     )}
-                    
+
                     {/* Mostrar artigos sem categoria se houver */}
                     {(() => {
                       const uncategorizedCount = articles.filter(a => !a.category_id && !a.category_name).length;
                       const percentage = totalArticles > 0 ? (uncategorizedCount / totalArticles) * 100 : 0;
-                      
+
                       return uncategorizedCount > 0 ? (
                         <div className="space-y-2 pt-2 border-t border-gray-200">
                           <div className="flex justify-between text-sm">
@@ -1282,28 +1450,43 @@ export default function AdminDashboard() {
                       Organize seus artigos em categorias
                     </CardDescription>
                   </div>
-                  <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+                  <Dialog open={showCategoryDialog} onOpenChange={(open) => {
+                    setShowCategoryDialog(open);
+                    if (!open) {
+                      setCategoryForm({ name: '', slug: '', description: '' });
+                      setEditingCategoryId(null);
+                    }
+                  }}>
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button onClick={() => {
+                        setCategoryForm({ name: '', slug: '', description: '' });
+                        setEditingCategoryId(null);
+                      }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Nova Categoria
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Nova Categoria</DialogTitle>
+                        <DialogTitle>
+                          {editingCategoryId ? 'Editar Categoria' : 'Nova Categoria'}
+                        </DialogTitle>
                         <DialogDescription>
-                          Crie uma nova categoria para organizar seus artigos
+                          {editingCategoryId 
+                            ? 'Atualize as informações da categoria' 
+                            : 'Crie uma nova categoria para organizar seus artigos'
+                          }
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="category-name">Nome</Label>
+                          <Label htmlFor="category-name">Nome *</Label>
                           <Input
                             id="category-name"
                             value={categoryForm.name}
                             onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
                             placeholder="Nome da categoria"
+                            required
                           />
                         </div>
                         <div>
@@ -1312,8 +1495,11 @@ export default function AdminDashboard() {
                             id="category-slug"
                             value={categoryForm.slug}
                             onChange={(e) => setCategoryForm(prev => ({ ...prev, slug: e.target.value }))}
-                            placeholder="slug-da-categoria (opcional)"
+                            placeholder="slug-da-categoria (gerado automaticamente se vazio)"
                           />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Se deixado em branco, será gerado automaticamente baseado no nome
+                          </p>
                         </div>
                         <div>
                           <Label htmlFor="category-description">Descrição</Label>
@@ -1327,11 +1513,20 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowCategoryDialog(false);
+                            setCategoryForm({ name: '', slug: '', description: '' });
+                            setEditingCategoryId(null);
+                          }}
+                        >
                           Cancelar
                         </Button>
-                        <Button onClick={handleSaveCategory}>
-                          Criar Categoria
+                        <Button 
+                          onClick={editingCategoryId ? handleUpdateCategory : handleSaveCategory}
+                        >
+                          {editingCategoryId ? 'Atualizar Categoria' : 'Criar Categoria'}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -1341,18 +1536,50 @@ export default function AdminDashboard() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {categories.map((category) => (
-                    <div key={category.id} className="p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Tag className="w-4 h-4 text-gray-400" />
-                        <h3 className="font-medium">{category.name}</h3>
+                    <div key={category.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-4 h-4 text-gray-400" />
+                          <h3 className="font-medium">{category.name}</h3>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditCategory(category)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (window.confirm('Tem certeza que deseja excluir esta categoria?')) {
+                                handleDeleteCategory(category.id);
+                              }
+                            }}
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{category.description}</p>
+                      <p className="text-sm text-gray-600 mb-2">{category.description || 'Sem descrição'}</p>
                       <div className="text-xs text-gray-500">
                         Slug: {category.slug}
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {categories.length === 0 && (
+                  <div className="text-center py-12 text-gray-500">
+                    <Tag className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg mb-2">Nenhuma categoria encontrada</p>
+                    <p className="text-sm">Crie sua primeira categoria para organizar os artigos</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
