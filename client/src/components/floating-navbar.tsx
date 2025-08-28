@@ -23,6 +23,7 @@ const navItems: NavItem[] = [
   { name: "Quem Somos", link: "#quem-somos" },
   { name: "Projetos", link: "/projetos" },
   { name: "Notícias", link: "/noticias" },
+  { name: "Transparência", link: "/transparencia" },
   { name: "Parcerias", link: "#parcerias" },
   { name: "Legislação", link: "#legislacao" },
   { name: "Contato", link: "#contato" }
