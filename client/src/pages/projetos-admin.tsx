@@ -5,13 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   FolderKanban, 
   Plus, 
   Edit, 
   Trash2, 
   ExternalLink,
-  Eye
+  Eye,
+  Globe,
+  DollarSign,
+  Heart
 } from 'lucide-react';
 
 // Definição dos tipos
@@ -225,6 +233,29 @@ const projects: Project[] = [
 
 export default function ProjetosAdminPage() {
   const [projectList, setProjectList] = useState<Project[]>(projects);
+  const [showProjectDialog, setShowProjectDialog] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  
+  // Estado do formulário de projeto
+  const [projectFormData, setProjectFormData] = useState({
+    // Aba 1: Conteúdo do Site
+    name: '',
+    slug: '',
+    shortDescription: '',
+    fullDescription: '',
+    imageUrl: '',
+    status: 'planejamento' as 'planejamento' | 'em-andamento' | 'concluido',
+    category: 'Bioeconomia',
+    
+    // Aba 2: Financeiro e Transparência
+    totalBudget: '',
+    isVisibleInTransparency: true,
+    
+    // Aba 3: Gestão de Doações
+    pixKey: '',
+    stripeUsdLink: '',
+    stripeEurLink: ''
+  });
 
   // Função para obter cor da categoria
   const getCategoryColor = (category: string) => {
@@ -253,10 +284,28 @@ export default function ProjetosAdminPage() {
     );
   };
 
-  // Função para editar projeto (placeholder)
+  // Função para editar projeto
   const handleEditProject = (projectId: string) => {
-    console.log('Editar projeto:', projectId);
-    // TODO: Implementar modal de edição
+    const project = projectList.find(p => p.id === projectId);
+    if (project) {
+      setEditingProject(project);
+      // Preencher o formulário com os dados do projeto
+      setProjectFormData({
+        name: project.title,
+        slug: project.id,
+        shortDescription: project.shortDescription,
+        fullDescription: project.fullDescription,
+        imageUrl: '',
+        status: 'em-andamento',
+        category: project.category,
+        totalBudget: '150000',
+        isVisibleInTransparency: project.isVisibleInTransparency,
+        pixKey: 'projeto@idasam.org.br',
+        stripeUsdLink: 'https://stripe.com/usd/donate',
+        stripeEurLink: 'https://stripe.com/eur/donate'
+      });
+      setShowProjectDialog(true);
+    }
   };
 
   // Função para excluir projeto (placeholder)
@@ -265,10 +314,59 @@ export default function ProjetosAdminPage() {
     // TODO: Implementar confirmação e exclusão
   };
 
-  // Função para criar novo projeto (placeholder)
+  // Função para resetar o formulário
+  const resetProjectForm = () => {
+    setProjectFormData({
+      name: '',
+      slug: '',
+      shortDescription: '',
+      fullDescription: '',
+      imageUrl: '',
+      status: 'planejamento',
+      category: 'Bioeconomia',
+      totalBudget: '',
+      isVisibleInTransparency: true,
+      pixKey: '',
+      stripeUsdLink: '',
+      stripeEurLink: ''
+    });
+  };
+
+  // Função para criar novo projeto
   const handleNewProject = () => {
-    console.log('Criar novo projeto');
-    // TODO: Implementar modal de criação
+    setEditingProject(null);
+    resetProjectForm();
+    setShowProjectDialog(true);
+  };
+
+  // Função para submeter o formulário
+  const handleProjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Dados do projeto:', projectFormData);
+    
+    if (editingProject) {
+      // Atualizar projeto existente
+      console.log('Atualizando projeto:', editingProject.id);
+    } else {
+      // Criar novo projeto
+      console.log('Criando novo projeto');
+    }
+    
+    // Fechar modal
+    setShowProjectDialog(false);
+    resetProjectForm();
+  };
+
+  // Função para gerar slug automático baseado no nome
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
+      .replace(/\s+/g, '-') // Substitui espaços por hífens
+      .replace(/-+/g, '-') // Remove hífens duplicados
+      .trim('-'); // Remove hífens no início/fim
   };
 
   return (
@@ -284,14 +382,282 @@ export default function ProjetosAdminPage() {
             Administre todos os projetos do IDASAM e suas configurações de visibilidade
           </p>
         </div>
-        <Button 
-          onClick={handleNewProject}
-          size="lg"
-          className="bg-green-600 hover:bg-green-700"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Novo Projeto
-        </Button>
+        <Dialog open={showProjectDialog} onOpenChange={setShowProjectDialog}>
+          <DialogTrigger asChild>
+            <Button 
+              onClick={handleNewProject}
+              size="lg"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Novo Projeto
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl flex items-center gap-3">
+                <FolderKanban className="w-6 h-6 text-green-600" />
+                {editingProject ? 'Editar Projeto' : 'Novo Projeto'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingProject 
+                  ? 'Atualize as informações do projeto existente' 
+                  : 'Crie um novo projeto para o IDASAM'
+                }
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleProjectSubmit} className="space-y-6">
+              <Tabs defaultValue="content" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="content" className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Conteúdo do Site
+                  </TabsTrigger>
+                  <TabsTrigger value="financial" className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Financeiro e Transparência
+                  </TabsTrigger>
+                  <TabsTrigger value="donations" className="flex items-center gap-2">
+                    <Heart className="w-4 h-4" />
+                    Gestão de Doações
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Aba 1: Conteúdo do Site */}
+                <TabsContent value="content" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="project-name">Nome do Projeto *</Label>
+                      <Input
+                        id="project-name"
+                        value={projectFormData.name}
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          setProjectFormData({
+                            ...projectFormData,
+                            name,
+                            slug: generateSlug(name)
+                          });
+                        }}
+                        placeholder="Ex: Projeto Curupira"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="project-slug">URL Amigável (Slug) *</Label>
+                      <Input
+                        id="project-slug"
+                        value={projectFormData.slug}
+                        onChange={(e) => setProjectFormData({...projectFormData, slug: e.target.value})}
+                        placeholder="Ex: projeto-curupira"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="project-summary">Resumo do Projeto *</Label>
+                    <Textarea
+                      id="project-summary"
+                      value={projectFormData.shortDescription}
+                      onChange={(e) => setProjectFormData({...projectFormData, shortDescription: e.target.value})}
+                      placeholder="Breve descrição que aparecerá nos cards de projeto..."
+                      className="min-h-[100px]"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="project-content">Conteúdo Completo *</Label>
+                    <Textarea
+                      id="project-content"
+                      value={projectFormData.fullDescription}
+                      onChange={(e) => setProjectFormData({...projectFormData, fullDescription: e.target.value})}
+                      placeholder="Descrição detalhada do projeto para a página individual..."
+                      className="min-h-[200px]"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="project-image">URL da Imagem de Capa</Label>
+                      <Input
+                        id="project-image"
+                        type="url"
+                        value={projectFormData.imageUrl}
+                        onChange={(e) => setProjectFormData({...projectFormData, imageUrl: e.target.value})}
+                        placeholder="https://exemplo.com/imagem.jpg"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="project-status">Status do Projeto *</Label>
+                      <Select 
+                        value={projectFormData.status} 
+                        onValueChange={(value: 'planejamento' | 'em-andamento' | 'concluido') => 
+                          setProjectFormData({...projectFormData, status: value})
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="planejamento">Planejamento</SelectItem>
+                          <SelectItem value="em-andamento">Em Andamento</SelectItem>
+                          <SelectItem value="concluido">Concluído</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="project-category">Categoria *</Label>
+                    <Select 
+                      value={projectFormData.category} 
+                      onValueChange={(value) => setProjectFormData({...projectFormData, category: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Bioeconomia">Bioeconomia</SelectItem>
+                        <SelectItem value="Sustentabilidade">Sustentabilidade</SelectItem>
+                        <SelectItem value="Saúde e Social">Saúde e Social</SelectItem>
+                        <SelectItem value="Capacitação">Capacitação</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TabsContent>
+
+                {/* Aba 2: Financeiro e Transparência */}
+                <TabsContent value="financial" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="project-budget">Orçamento Total do Projeto (R$)</Label>
+                    <Input
+                      id="project-budget"
+                      type="number"
+                      value={projectFormData.totalBudget}
+                      onChange={(e) => setProjectFormData({...projectFormData, totalBudget: e.target.value})}
+                      placeholder="Ex: 150000"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <Switch
+                      id="transparency-visibility"
+                      checked={projectFormData.isVisibleInTransparency}
+                      onCheckedChange={(checked) => 
+                        setProjectFormData({...projectFormData, isVisibleInTransparency: checked})
+                      }
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor="transparency-visibility" className="text-sm font-medium">
+                        Tornar Visível no Portal de Transparência
+                      </Label>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Quando ativo, este projeto e seus dados financeiros gerais aparecerão no portal público
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-2">Integração com Financeiro</h4>
+                    <p className="text-sm text-gray-600">
+                      Este projeto será automaticamente conectado aos dados de receitas e despesas 
+                      registrados na seção Financeiro do dashboard. Os valores de orçamento e gastos 
+                      serão sincronizados para relatórios de transparência.
+                    </p>
+                  </div>
+                </TabsContent>
+
+                {/* Aba 3: Gestão de Doações */}
+                <TabsContent value="donations" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pix-key">Chave PIX</Label>
+                    <Input
+                      id="pix-key"
+                      value={projectFormData.pixKey}
+                      onChange={(e) => setProjectFormData({...projectFormData, pixKey: e.target.value})}
+                      placeholder="Ex: projeto@idasam.org.br ou CPF/CNPJ"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stripe-usd">Link de Doação (Stripe - Dólar)</Label>
+                    <Input
+                      id="stripe-usd"
+                      type="url"
+                      value={projectFormData.stripeUsdLink}
+                      onChange={(e) => setProjectFormData({...projectFormData, stripeUsdLink: e.target.value})}
+                      placeholder="https://checkout.stripe.com/pay/..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stripe-eur">Link de Doação (Stripe - Euro)</Label>
+                    <Input
+                      id="stripe-eur"
+                      type="url"
+                      value={projectFormData.stripeEurLink}
+                      onChange={(e) => setProjectFormData({...projectFormData, stripeEurLink: e.target.value})}
+                      placeholder="https://checkout.stripe.com/pay/..."
+                    />
+                  </div>
+
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h4 className="font-medium text-yellow-800 mb-2">📊 Resumo das Doações</h4>
+                    <p className="text-sm text-yellow-700">
+                      Futuramente, aqui será exibido um resumo das doações recebidas através destes links.
+                      Incluirá dados como: valor total arrecadado, número de doadores, média por doação,
+                      e gráficos de evolução temporal das contribuições.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card className="p-3">
+                      <div className="text-center">
+                        <p className="text-xs text-gray-600">Total PIX</p>
+                        <p className="text-lg font-bold text-green-600">R$ 0,00</p>
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="text-center">
+                        <p className="text-xs text-gray-600">Total USD</p>
+                        <p className="text-lg font-bold text-blue-600">$ 0.00</p>
+                      </div>
+                    </Card>
+                    <Card className="p-3">
+                      <div className="text-center">
+                        <p className="text-xs text-gray-600">Total EUR</p>
+                        <p className="text-lg font-bold text-purple-600">€ 0,00</p>
+                      </div>
+                    </Card>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {/* Botões do Modal */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowProjectDialog(false);
+                    resetProjectForm();
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                  {editingProject ? 'Atualizar Projeto' : 'Criar Projeto'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Estatísticas */}
