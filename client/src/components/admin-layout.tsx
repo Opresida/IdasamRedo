@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     {
       label: 'Financeiro',
       icon: PiggyBank,
-      path: '/financeiro',
+      path: '/dashboard/financeiro',
       description: 'Controle financeiro'
     },
     {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   DollarSign,
@@ -66,7 +67,7 @@ interface Filters {
   project: string;
 }
 
-function FinanceiroPage() {
+function DashboardFinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [filters, setFilters] = useState<Filters>({
     type: 'all',
@@ -670,4 +671,4 @@ function FinanceiroPage() {
   );
 }
 
-export default FinanceiroPage;
+export default DashboardFinanceiroPage;

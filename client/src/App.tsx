@@ -17,7 +17,7 @@ import PaginaDeDoacaoEUR from '@/PaginaDeDoacaoEUR';
 import AdminLayout from '@/components/admin-layout';
 import DashboardPage from '@/pages/dashboard';
 import ImprensaPage from '@/pages/imprensa';
-import FinanceiroPage from '@/pages/financeiro';
+import DashboardFinanceiroPage from '@/pages/dashboard/financeiro';
 import AgendaPage from '@/pages/agenda';
 import ProjetosAdminPage from '@/pages/projetos-admin';
 import TransparenciaPage from './pages/transparencia';
@@ -56,10 +56,10 @@ function AppContent() {
             </AdminLayout>
           </ProtectedRoute>
         </Route>
-        <Route path="/financeiro">
+        <Route path="/dashboard/financeiro">
           <ProtectedRoute>
             <AdminLayout>
-              <FinanceiroPage />
+              <DashboardFinanceiroPage />
             </AdminLayout>
           </ProtectedRoute>
         </Route>
