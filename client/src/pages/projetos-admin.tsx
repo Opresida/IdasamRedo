@@ -37,6 +37,29 @@ interface Project {
   category: string;
   icon: React.ReactNode;
   isVisibleInTransparency: boolean;
+  // Campos financeiros integrados
+  totalBudget: number;
+  usedBudget: number;
+  publicRevenue: number;
+  publicExpenses: number;
+  // Controles de transparência financeira
+  showBudgetInTransparency: boolean;
+  showTransactionsInTransparency: boolean;
+  transparencyLevel: 'basic' | 'detailed' | 'complete';
+}
+
+// Interface para transações vinculadas ao projeto
+interface ProjectTransaction {
+  id: string;
+  projectId: string;
+  date: string;
+  description: string;
+  value: number;
+  type: 'entrada' | 'saida';
+  category: string;
+  isPublic: boolean;
+  supplier?: string;
+  attachment?: string;
 }
 
 // Ícones SVG personalizados para cada projeto
@@ -152,7 +175,14 @@ const projects: Project[] = [
     fullDescription: 'Implantar uma fecularia de mandioca em municípios remotos do Amazonas para promover a agricultura familiar e a sustentabilidade.',
     category: 'Bioeconomia',
     icon: ProjectIcons.mandioca,
-    isVisibleInTransparency: true
+    isVisibleInTransparency: true,
+    totalBudget: 150000,
+    usedBudget: 45000,
+    publicRevenue: 67000,
+    publicExpenses: 32500,
+    showBudgetInTransparency: true,
+    showTransactionsInTransparency: true,
+    transparencyLevel: 'complete'
   },
   {
     id: 'goma-sustentavel',
@@ -161,7 +191,14 @@ const projects: Project[] = [
     fullDescription: 'Promover a produção sustentável de goma de tapioca em Roraima, capacitando agricultores e comunidades em práticas de cultivo.',
     category: 'Bioeconomia',
     icon: ProjectIcons.tapioca,
-    isVisibleInTransparency: false
+    isVisibleInTransparency: false,
+    totalBudget: 120000,
+    usedBudget: 28000,
+    publicRevenue: 15000,
+    publicExpenses: 8000,
+    showBudgetInTransparency: false,
+    showTransactionsInTransparency: false,
+    transparencyLevel: 'basic'
   },
   {
     id: 'biofertilizantes',
@@ -170,7 +207,14 @@ const projects: Project[] = [
     fullDescription: 'Produzir biofertilizantes e insumos agropecuários a partir de resíduos sólidos orgânicos.',
     category: 'Bioeconomia',
     icon: ProjectIcons.biofertilizante,
-    isVisibleInTransparency: true
+    isVisibleInTransparency: true,
+    totalBudget: 200000,
+    usedBudget: 78000,
+    publicRevenue: 85000,
+    publicExpenses: 45000,
+    showBudgetInTransparency: true,
+    showTransactionsInTransparency: true,
+    transparencyLevel: 'detailed'
   },
   {
     id: 'camarao-quitosana',
@@ -179,7 +223,14 @@ const projects: Project[] = [
     fullDescription: 'Criar um módulo sustentável para a produção de camarão amazônico e extração de quitosana.',
     category: 'Bioeconomia',
     icon: ProjectIcons.camarao,
-    isVisibleInTransparency: false
+    isVisibleInTransparency: false,
+    totalBudget: 180000,
+    usedBudget: 52000,
+    publicRevenue: 25000,
+    publicExpenses: 18000,
+    showBudgetInTransparency: false,
+    showTransactionsInTransparency: false,
+    transparencyLevel: 'basic'
   },
   {
     id: 'cogumelos-amazonicos',
@@ -188,7 +239,14 @@ const projects: Project[] = [
     fullDescription: 'Promover a produção sustentável de cogumelos comestíveis na região amazônica.',
     category: 'Bioeconomia',
     icon: ProjectIcons.cogumelos,
-    isVisibleInTransparency: true
+    isVisibleInTransparency: true,
+    totalBudget: 95000,
+    usedBudget: 35000,
+    publicRevenue: 42000,
+    publicExpenses: 28000,
+    showBudgetInTransparency: true,
+    showTransactionsInTransparency: true,
+    transparencyLevel: 'complete'
   },
   {
     id: 'chas-medicinais',
@@ -197,7 +255,14 @@ const projects: Project[] = [
     fullDescription: 'Desenvolver um modelo de produção sustentável e geração de renda a partir de chás medicinais.',
     category: 'Bioeconomia',
     icon: ProjectIcons.cha,
-    isVisibleInTransparency: false
+    isVisibleInTransparency: false,
+    totalBudget: 75000,
+    usedBudget: 22000,
+    publicRevenue: 12000,
+    publicExpenses: 8000,
+    showBudgetInTransparency: false,
+    showTransactionsInTransparency: false,
+    transparencyLevel: 'basic'
   },
   {
     id: 'cesta-verde',
@@ -206,7 +271,14 @@ const projects: Project[] = [
     fullDescription: 'Reduzir o desperdício de alimentos na região amazônica através da coleta e reaproveitamento.',
     category: 'Bioeconomia',
     icon: ProjectIcons.cesta,
-    isVisibleInTransparency: true
+    isVisibleInTransparency: true,
+    totalBudget: 65000,
+    usedBudget: 38000,
+    publicRevenue: 45000,
+    publicExpenses: 25000,
+    showBudgetInTransparency: true,
+    showTransactionsInTransparency: true,
+    transparencyLevel: 'detailed'
   },
   {
     id: 'ceiba',
@@ -215,7 +287,14 @@ const projects: Project[] = [
     fullDescription: 'Criar uma infraestrutura de ponta para promover a formação de profissionais qualificados.',
     category: 'Bioeconomia',
     icon: ProjectIcons.ceiba,
-    isVisibleInTransparency: true
+    isVisibleInTransparency: true,
+    totalBudget: 500000,
+    usedBudget: 180000,
+    publicRevenue: 320000,
+    publicExpenses: 150000,
+    showBudgetInTransparency: true,
+    showTransactionsInTransparency: true,
+    transparencyLevel: 'complete'
   },
   {
     id: 'plantio-sustentavel',
@@ -224,7 +303,14 @@ const projects: Project[] = [
     fullDescription: 'Capacitar pequenos agricultores, comunidades indígenas e assentamentos rurais em Roraima.',
     category: 'Sustentabilidade',
     icon: ProjectIcons.drone,
-    isVisibleInTransparency: false
+    isVisibleInTransparency: false,
+    totalBudget: 85000,
+    usedBudget: 25000,
+    publicRevenue: 15000,
+    publicExpenses: 12000,
+    showBudgetInTransparency: false,
+    showTransactionsInTransparency: false,
+    transparencyLevel: 'basic'
   },
   {
     id: 'residuos-solidos',
@@ -233,7 +319,14 @@ const projects: Project[] = [
     fullDescription: 'Implementar soluções para o tratamento de resíduos sólidos nos municípios da Amazônia.',
     category: 'Sustentabilidade',
     icon: ProjectIcons.reciclagem,
-    isVisibleInTransparency: true
+    isVisibleInTransparency: true,
+    totalBudget: 250000,
+    usedBudget: 95000,
+    publicRevenue: 180000,
+    publicExpenses: 85000,
+    showBudgetInTransparency: true,
+    showTransactionsInTransparency: true,
+    transparencyLevel: 'complete'
   }
 ];
 
@@ -241,6 +334,84 @@ export default function ProjetosAdminPage() {
   const [projectList, setProjectList] = useState<Project[]>(projects);
   const [showProjectDialog, setShowProjectDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [projectTransactions, setProjectTransactions] = useState<ProjectTransaction[]>([]);
+
+  // Carregar transações vinculadas aos projetos
+  useEffect(() => {
+    const mockProjectTransactions: ProjectTransaction[] = [
+      // Projeto Curupira
+      {
+        id: '1',
+        projectId: 'curupira',
+        date: '2024-01-15',
+        description: 'Doação para implementação da fecularia',
+        value: 25000,
+        type: 'entrada',
+        category: 'Doações',
+        isPublic: true,
+        supplier: 'Doador Anônimo'
+      },
+      {
+        id: '2',
+        projectId: 'curupira',
+        date: '2024-01-10',
+        description: 'Aquisição de equipamentos para fecularia',
+        value: 18000,
+        type: 'saida',
+        category: 'Equipamentos',
+        isPublic: true,
+        supplier: 'Equipamentos Industriais Ltda'
+      },
+      // CEIBA
+      {
+        id: '3',
+        projectId: 'ceiba',
+        date: '2024-01-20',
+        description: 'Financiamento governamental para infraestrutura',
+        value: 150000,
+        type: 'entrada',
+        category: 'Financiamentos',
+        isPublic: true,
+        supplier: 'Governo Federal'
+      },
+      {
+        id: '4',
+        projectId: 'ceiba',
+        date: '2024-01-18',
+        description: 'Construção do laboratório de biotecnologia',
+        value: 85000,
+        type: 'saida',
+        category: 'Infraestrutura',
+        isPublic: true,
+        supplier: 'Construtora Amazônia Ltda'
+      },
+      // Biofertilizantes
+      {
+        id: '5',
+        projectId: 'biofertilizantes',
+        date: '2024-01-12',
+        description: 'Parceria com cooperativa de agricultores',
+        value: 35000,
+        type: 'entrada',
+        category: 'Parcerias',
+        isPublic: true,
+        supplier: 'Cooperativa Rural Verde'
+      },
+      {
+        id: '6',
+        projectId: 'biofertilizantes',
+        date: '2024-01-08',
+        description: 'Equipamentos para produção de biofertilizantes',
+        value: 22000,
+        type: 'saida',
+        category: 'Equipamentos',
+        isPublic: true,
+        supplier: 'BioTech Equipamentos'
+      }
+    ];
+
+    setProjectTransactions(mockProjectTransactions);
+  }, []);
   
   // Estado do formulário de projeto
   const [projectFormData, setProjectFormData] = useState({
@@ -256,12 +427,43 @@ export default function ProjetosAdminPage() {
     // Aba 2: Financeiro e Transparência
     totalBudget: '',
     isVisibleInTransparency: true,
+    showBudgetInTransparency: true,
+    showTransactionsInTransparency: true,
+    transparencyLevel: 'detailed' as 'basic' | 'detailed' | 'complete',
     
     // Aba 3: Gestão de Doações
     pixKey: '',
     stripeUsdLink: '',
     stripeEurLink: ''
   });
+
+  // Função para calcular dados financeiros de um projeto
+  const getProjectFinancials = (projectId: string) => {
+    const transactions = projectTransactions.filter(t => t.projectId === projectId);
+    const revenues = transactions.filter(t => t.type === 'entrada');
+    const expenses = transactions.filter(t => t.type === 'saida');
+    
+    const totalRevenue = revenues.reduce((sum, t) => sum + t.value, 0);
+    const totalExpenses = expenses.reduce((sum, t) => sum + t.value, 0);
+    const publicRevenue = revenues.filter(t => t.isPublic).reduce((sum, t) => sum + t.value, 0);
+    const publicExpenses = expenses.filter(t => t.isPublic).reduce((sum, t) => sum + t.value, 0);
+    
+    return {
+      totalRevenue,
+      totalExpenses,
+      publicRevenue,
+      publicExpenses,
+      balance: totalRevenue - totalExpenses,
+      publicBalance: publicRevenue - publicExpenses,
+      transactionCount: transactions.length,
+      publicTransactionCount: transactions.filter(t => t.isPublic).length
+    };
+  };
+
+  // Função para obter transações de um projeto específico
+  const getProjectTransactions = (projectId: string) => {
+    return projectTransactions.filter(t => t.projectId === projectId);
+  };
 
   // Função para obter cor da categoria
   const getCategoryColor = (category: string) => {
@@ -304,8 +506,11 @@ export default function ProjetosAdminPage() {
         imageUrl: '',
         status: 'em-andamento',
         category: project.category,
-        totalBudget: '150000',
+        totalBudget: project.totalBudget.toString(),
         isVisibleInTransparency: project.isVisibleInTransparency,
+        showBudgetInTransparency: project.showBudgetInTransparency,
+        showTransactionsInTransparency: project.showTransactionsInTransparency,
+        transparencyLevel: project.transparencyLevel,
         pixKey: 'projeto@idasam.org.br',
         stripeUsdLink: 'https://stripe.com/usd/donate',
         stripeEurLink: 'https://stripe.com/eur/donate'
@@ -373,6 +578,19 @@ export default function ProjetosAdminPage() {
       .replace(/\s+/g, '-') // Substitui espaços por hífens
       .replace(/-+/g, '-') // Remove hífens duplicados
       .trim('-'); // Remove hífens no início/fim
+  };
+
+  // Função para formatar moeda
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  // Função para formatar data
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
   return (
@@ -538,7 +756,7 @@ export default function ProjetosAdminPage() {
 
                 {/* Aba 2: Financeiro e Transparência */}
                 <TabsContent value="financial" className="space-y-6">
-                  {/* Controles Existentes */}
+                  {/* Controles Básicos */}
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="project-budget">Orçamento Total do Projeto (R$)</Label>
@@ -553,22 +771,98 @@ export default function ProjetosAdminPage() {
                       />
                     </div>
 
-                    <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <Switch
-                        id="transparency-visibility"
-                        checked={projectFormData.isVisibleInTransparency}
-                        onCheckedChange={(checked) => 
-                          setProjectFormData({...projectFormData, isVisibleInTransparency: checked})
-                        }
-                      />
-                      <div className="flex-1">
-                        <Label htmlFor="transparency-visibility" className="text-sm font-medium">
-                          Tornar Visível no Portal de Transparência
-                        </Label>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Quando ativo, este projeto e seus dados financeiros gerais aparecerão no portal público
-                        </p>
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Visibilidade Geral */}
+                      <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <Switch
+                          id="transparency-visibility"
+                          checked={projectFormData.isVisibleInTransparency}
+                          onCheckedChange={(checked) => 
+                            setProjectFormData({...projectFormData, isVisibleInTransparency: checked})
+                          }
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor="transparency-visibility" className="text-sm font-medium">
+                            Tornar Projeto Visível no Portal de Transparência
+                          </Label>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Controla se o projeto aparece no portal público
+                          </p>
+                        </div>
                       </div>
+
+                      {/* Visibilidade do Orçamento */}
+                      <div className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <Switch
+                          id="budget-transparency"
+                          checked={projectFormData.showBudgetInTransparency}
+                          onCheckedChange={(checked) => 
+                            setProjectFormData({...projectFormData, showBudgetInTransparency: checked})
+                          }
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor="budget-transparency" className="text-sm font-medium">
+                            Mostrar Informações de Orçamento
+                          </Label>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Exibe valores de orçamento total e percentual usado no portal
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Visibilidade das Transações */}
+                      <div className="flex items-center space-x-3 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <Switch
+                          id="transactions-transparency"
+                          checked={projectFormData.showTransactionsInTransparency}
+                          onCheckedChange={(checked) => 
+                            setProjectFormData({...projectFormData, showTransactionsInTransparency: checked})
+                          }
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor="transactions-transparency" className="text-sm font-medium">
+                            Mostrar Transações Individuais
+                          </Label>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Permite que transações marcadas como públicas apareçam no portal
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nível de Transparência */}
+                    <div className="space-y-2">
+                      <Label htmlFor="transparency-level">Nível de Transparência</Label>
+                      <Select 
+                        value={projectFormData.transparencyLevel} 
+                        onValueChange={(value: 'basic' | 'detailed' | 'complete') => 
+                          setProjectFormData({...projectFormData, transparencyLevel: value})
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o nível" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="basic">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                              <span>Básico - Apenas informações gerais</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="detailed">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                              <span>Detalhado - Inclui categorias e resumos</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="complete">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full" />
+                              <span>Completo - Todas as informações públicas</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -583,68 +877,103 @@ export default function ProjetosAdminPage() {
                         Dados baseados nas transações vinculadas a este projeto no módulo financeiro.
                       </p>
 
-                      {/* Cards de Resumo */}
+                      {/* Cards de Resumo - Dados Dinâmicos */}
                       <div className="grid grid-cols-2 gap-4 mb-6">
-                        {/* Total Arrecadado */}
-                        <Card className="border-l-4 border-l-green-500">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm text-gray-600">Total Arrecadado</p>
-                                <p className="text-2xl font-bold text-green-600">
-                                  R$ 67.000,00
-                                </p>
-                              </div>
-                              <TrendingUp className="h-8 w-8 text-green-600" />
-                            </div>
-                          </CardContent>
-                        </Card>
+                        {(() => {
+                          // Obter dados financeiros do projeto sendo editado
+                          const projectData = editingProject ? getProjectFinancials(editingProject.id) : {
+                            totalRevenue: 67000,
+                            totalExpenses: 32500,
+                            publicRevenue: 45000,
+                            publicExpenses: 28000,
+                            balance: 34500,
+                            publicBalance: 17000,
+                            transactionCount: 12,
+                            publicTransactionCount: 8
+                          };
+                          const budgetValue = parseFloat(projectFormData.totalBudget) || 150000;
+                          const executionPercentage = ((projectData.totalExpenses / budgetValue) * 100).toFixed(1);
 
-                        {/* Total Gasto */}
-                        <Card className="border-l-4 border-l-red-500">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm text-gray-600">Total Gasto</p>
-                                <p className="text-2xl font-bold text-red-600">
-                                  R$ 32.500,00
-                                </p>
-                              </div>
-                              <TrendingDown className="h-8 w-8 text-red-600" />
-                            </div>
-                          </CardContent>
-                        </Card>
+                          return (
+                            <>
+                              {/* Total Arrecadado */}
+                              <Card className="border-l-4 border-l-green-500">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm text-gray-600">Total Arrecadado</p>
+                                      <p className="text-2xl font-bold text-green-600">
+                                        {formatCurrency(projectData.totalRevenue)}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Público: {formatCurrency(projectData.publicRevenue)}
+                                      </p>
+                                    </div>
+                                    <TrendingUp className="h-8 w-8 text-green-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
 
-                        {/* Saldo Atual */}
-                        <Card className="border-l-4 border-l-blue-500">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm text-gray-600">Saldo Atual</p>
-                                <p className="text-2xl font-bold text-blue-600">
-                                  R$ 34.500,00
-                                </p>
-                              </div>
-                              <Building2 className="h-8 w-8 text-blue-600" />
-                            </div>
-                          </CardContent>
-                        </Card>
+                              {/* Total Gasto */}
+                              <Card className="border-l-4 border-l-red-500">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm text-gray-600">Total Investido</p>
+                                      <p className="text-2xl font-bold text-red-600">
+                                        {formatCurrency(projectData.totalExpenses)}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Público: {formatCurrency(projectData.publicExpenses)}
+                                      </p>
+                                    </div>
+                                    <TrendingDown className="h-8 w-8 text-red-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
 
-                        {/* Execução Orçamentária */}
-                        <Card className="border-l-4 border-l-purple-500">
-                          <CardContent className="p-4">
-                            <div>
-                              <p className="text-sm text-gray-600 mb-2">Execução Orçamentária</p>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span>21,7% utilizado</span>
-                                  <span className="text-purple-600 font-medium">R$ 32.500 / R$ 150.000</span>
-                                </div>
-                                <Progress value={21.7} className="h-2" />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                              {/* Saldo Atual */}
+                              <Card className="border-l-4 border-l-blue-500">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm text-gray-600">Saldo Atual</p>
+                                      <p className={`text-2xl font-bold ${projectData.balance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                        {formatCurrency(projectData.balance)}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Público: {formatCurrency(projectData.publicBalance)}
+                                      </p>
+                                    </div>
+                                    <Building2 className="h-8 w-8 text-blue-600" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              {/* Execução Orçamentária */}
+                              <Card className="border-l-4 border-l-purple-500">
+                                <CardContent className="p-4">
+                                  <div>
+                                    <p className="text-sm text-gray-600 mb-2">Execução Orçamentária</p>
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between text-sm">
+                                        <span>{executionPercentage}% utilizado</span>
+                                        <span className="text-purple-600 font-medium">
+                                          {formatCurrency(projectData.totalExpenses)} / {formatCurrency(budgetValue)}
+                                        </span>
+                                      </div>
+                                      <Progress value={parseFloat(executionPercentage)} className="h-2" />
+                                      <div className="text-xs text-gray-500 flex justify-between">
+                                        <span>{projectData.transactionCount} transações</span>
+                                        <span>{projectData.publicTransactionCount} públicas</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Lista de Transações */}
@@ -663,75 +992,65 @@ export default function ProjetosAdminPage() {
                                 <TableHead className="text-xs">Categoria</TableHead>
                                 <TableHead className="text-xs">Fornecedor/Doador</TableHead>
                                 <TableHead className="text-xs text-right">Valor</TableHead>
+                                <TableHead className="text-xs text-center">Status</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              <TableRow>
-                                <TableCell className="text-xs">15/01/2024</TableCell>
-                                <TableCell className="text-xs">Doação mensal - Projeto Coração Ribeirinho</TableCell>
-                                <TableCell className="text-xs">
-                                  <Badge variant="outline" className="text-xs">Receita de Projeto</Badge>
-                                </TableCell>
-                                <TableCell className="text-xs">Maria Oliveira</TableCell>
-                                <TableCell className="text-xs text-right font-bold text-green-600">
-                                  +R$ 5.000,00
-                                </TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="text-xs">20/01/2024</TableCell>
-                                <TableCell className="text-xs">Parceria com empresa local - Projeto Coração</TableCell>
-                                <TableCell className="text-xs">
-                                  <Badge variant="outline" className="text-xs">Parcerias</Badge>
-                                </TableCell>
-                                <TableCell className="text-xs">Empresa ABC Ltda</TableCell>
-                                <TableCell className="text-xs text-right font-bold text-green-600">
-                                  +R$ 12.000,00
-                                </TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="text-xs">10/01/2024</TableCell>
-                                <TableCell className="text-xs">Compra de equipamentos para projeto</TableCell>
-                                <TableCell className="text-xs">
-                                  <Badge variant="outline" className="text-xs">Equipamentos</Badge>
-                                </TableCell>
-                                <TableCell className="text-xs">Fornecedor de Equipamentos Ltda</TableCell>
-                                <TableCell className="text-xs text-right font-bold text-red-600">
-                                  -R$ 8.500,00
-                                </TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="text-xs">08/01/2024</TableCell>
-                                <TableCell className="text-xs">Material de capacitação - Projeto Coração</TableCell>
-                                <TableCell className="text-xs">
-                                  <Badge variant="outline" className="text-xs">Materiais</Badge>
-                                </TableCell>
-                                <TableCell className="text-xs">João Silva - Serviços</TableCell>
-                                <TableCell className="text-xs text-right font-bold text-red-600">
-                                  -R$ 3.200,00
-                                </TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="text-xs">05/01/2024</TableCell>
-                                <TableCell className="text-xs">Doação especial de final de ano</TableCell>
-                                <TableCell className="text-xs">
-                                  <Badge variant="outline" className="text-xs">Doações</Badge>
-                                </TableCell>
-                                <TableCell className="text-xs">Doador Anônimo</TableCell>
-                                <TableCell className="text-xs text-right font-bold text-green-600">
-                                  +R$ 15.000,00
-                                </TableCell>
-                              </TableRow>
+                              {(() => {
+                                const transactions = editingProject ? getProjectTransactions(editingProject.id) : [];
+                                
+                                if (transactions.length === 0) {
+                                  return (
+                                    <TableRow>
+                                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                        Nenhuma transação vinculada a este projeto ainda.
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                }
+
+                                return transactions.slice(0, 5).map((transaction) => (
+                                  <TableRow key={transaction.id}>
+                                    <TableCell className="text-xs">{formatDate(transaction.date)}</TableCell>
+                                    <TableCell className="text-xs">{transaction.description}</TableCell>
+                                    <TableCell className="text-xs">
+                                      <Badge variant="outline" className="text-xs">{transaction.category}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs">{transaction.supplier || 'Não informado'}</TableCell>
+                                    <TableCell className={`text-xs text-right font-bold ${
+                                      transaction.type === 'entrada' ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                      {transaction.type === 'entrada' ? '+' : '-'}{formatCurrency(transaction.value)}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-center">
+                                      <Badge 
+                                        variant={transaction.isPublic ? "default" : "outline"}
+                                        className={transaction.isPublic ? "bg-green-100 text-green-800 text-xs" : "text-gray-600 text-xs"}
+                                      >
+                                        {transaction.isPublic ? "Público" : "Privado"}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ));
+                              })()}
                             </TableBody>
                           </Table>
                         </div>
 
                         <div className="text-center py-2">
-                          <p className="text-xs text-gray-500">
-                            Total de 47 transações vinculadas a este projeto. <br />
-                            <span className="text-blue-600 cursor-pointer hover:underline">
-                              Ver todas as transações no módulo Financeiro →
-                            </span>
-                          </p>
+                          {(() => {
+                            const transactions = editingProject ? getProjectTransactions(editingProject.id) : [];
+                            const publicCount = transactions.filter(t => t.isPublic).length;
+                            
+                            return (
+                              <p className="text-xs text-gray-500">
+                                Total de {transactions.length} transações vinculadas ({publicCount} públicas). <br />
+                                <span className="text-blue-600 cursor-pointer hover:underline">
+                                  Ver todas as transações no módulo Financeiro →
+                                </span>
+                              </p>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -927,6 +1246,44 @@ export default function ProjetosAdminPage() {
                 {project.shortDescription}
               </p>
 
+              {/* Resumo Financeiro */}
+              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                <h5 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Resumo Financeiro
+                </h5>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-600">Orçamento:</span>
+                    <div className="font-semibold">{formatCurrency(project.totalBudget)}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Utilizado:</span>
+                    <div className="font-semibold">{formatCurrency(project.usedBudget)}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Receitas Públicas:</span>
+                    <div className="font-semibold text-green-600">{formatCurrency(project.publicRevenue)}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Gastos Públicos:</span>
+                    <div className="font-semibold text-blue-600">{formatCurrency(project.publicExpenses)}</div>
+                  </div>
+                </div>
+                <div className="pt-1 border-t">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Execução:</span>
+                    <span className="text-xs font-semibold">
+                      {((project.usedBudget / project.totalBudget) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(project.usedBudget / project.totalBudget) * 100} 
+                    className="h-1 mt-1" 
+                  />
+                </div>
+              </div>
+
               {/* Separador */}
               <div className="border-t border-gray-100 pt-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -936,6 +1293,7 @@ export default function ProjetosAdminPage() {
 
                 {/* Controles de Visibilidade */}
                 <div className="space-y-3">
+                  {/* Visibilidade Geral */}
                   <div className="flex items-center justify-between">
                     <Label htmlFor={`transparency-${project.id}`} className="text-sm">
                       Visível na Transparência
@@ -948,6 +1306,38 @@ export default function ProjetosAdminPage() {
                       }
                     />
                   </div>
+
+                  {/* Controles Adicionais quando visível */}
+                  {project.isVisibleInTransparency && (
+                    <div className="pl-4 border-l-2 border-gray-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600">Mostrar Orçamento</span>
+                        <Badge variant={project.showBudgetInTransparency ? "default" : "outline"} className="text-xs">
+                          {project.showBudgetInTransparency ? "Sim" : "Não"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600">Mostrar Transações</span>
+                        <Badge variant={project.showTransactionsInTransparency ? "default" : "outline"} className="text-xs">
+                          {project.showTransactionsInTransparency ? "Sim" : "Não"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600">Nível</span>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${
+                            project.transparencyLevel === 'complete' ? 'bg-green-50 text-green-700' :
+                            project.transparencyLevel === 'detailed' ? 'bg-blue-50 text-blue-700' :
+                            'bg-gray-50 text-gray-700'
+                          }`}
+                        >
+                          {project.transparencyLevel === 'complete' ? 'Completo' :
+                           project.transparencyLevel === 'detailed' ? 'Detalhado' : 'Básico'}
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Botões de Ação */}
                   <div className="flex gap-2">
