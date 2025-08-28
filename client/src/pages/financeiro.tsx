@@ -30,7 +30,8 @@ import {
   Users,
   Heart,
   Edit,
-  Trash2
+  Trash2,
+  FileBarChart
 } from 'lucide-react';
 
 interface BankAccount {
@@ -542,6 +543,106 @@ export default function FinanceiroPage() {
     return account?.name || 'Conta não encontrada';
   };
 
+  // Funções para geração de relatórios
+  const generateCashFlowReport = (period: 'mensal' | 'anual') => {
+    const now = new Date();
+    const startDate = period === 'mensal' 
+      ? new Date(now.getFullYear(), now.getMonth(), 1)
+      : new Date(now.getFullYear(), 0, 1);
+    
+    const filteredTransactions = transactions.filter(t => 
+      new Date(t.date) >= startDate
+    );
+
+    const monthlyData = period === 'mensal' ? [
+      {
+        month: now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+        entradas: filteredTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.value, 0),
+        saidas: filteredTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.value, 0)
+      }
+    ] : Array.from({length: 12}, (_, i) => {
+      const monthStart = new Date(now.getFullYear(), i, 1);
+      const monthEnd = new Date(now.getFullYear(), i + 1, 0);
+      const monthTransactions = transactions.filter(t => {
+        const tDate = new Date(t.date);
+        return tDate >= monthStart && tDate <= monthEnd;
+      });
+      
+      return {
+        month: monthStart.toLocaleDateString('pt-BR', { month: 'long' }),
+        entradas: monthTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.value, 0),
+        saidas: monthTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.value, 0)
+      };
+    });
+
+    return monthlyData;
+  };
+
+  const generateExpensesByCategory = () => {
+    const expenses = transactions.filter(t => t.type === 'saida');
+    const categoryTotals = expenses.reduce((acc, transaction) => {
+      acc[transaction.category] = (acc[transaction.category] || 0) + transaction.value;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(categoryTotals).map(([category, total]) => ({
+      category,
+      total,
+      percentage: ((total / expenses.reduce((sum, t) => sum + t.value, 0)) * 100).toFixed(1)
+    }));
+  };
+
+  const generateProjectReport = () => {
+    // Simulando dados de projetos - na implementação real, isso viria do banco de dados
+    const projects = [
+      { id: '1', name: 'Projeto Coração Ribeirinho', category: 'Social' },
+      { id: '2', name: 'Laboratório de Inovação', category: 'Pesquisa' },
+      { id: '3', name: 'Bioeconomia Amazônica', category: 'Sustentabilidade' }
+    ];
+
+    return projects.map(project => {
+      // Filtrar transações relacionadas ao projeto (por descrição ou categoria)
+      const projectTransactions = transactions.filter(t => 
+        t.description.toLowerCase().includes(project.name.toLowerCase()) ||
+        t.description.toLowerCase().includes('projeto')
+      );
+
+      const entradas = projectTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.value, 0);
+      const saidas = projectTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.value, 0);
+
+      return {
+        project: project.name,
+        category: project.category,
+        entradas,
+        saidas,
+        saldo: entradas - saidas,
+        transactionCount: projectTransactions.length
+      };
+    });
+  };
+
+  const exportToCSV = (data: any[], filename: string, headers: string[]) => {
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(header => {
+        const key = header.toLowerCase().replace(/\s+/g, '');
+        const value = row[key] || '';
+        return typeof value === 'number' ? value.toString() : `"${value}"`;
+      }).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const exportToPDF = (reportType: string, data: any[]) => {
+    // Simulação de exportação para PDF - na implementação real, usar bibliotecas como jsPDF
+    alert(`Exportação para PDF do ${reportType} será implementada em breve!`);
+  };
+
   const summary = calculateSummary(selectedAccountId);
 
   return (
@@ -564,6 +665,7 @@ export default function FinanceiroPage() {
           <TabsTrigger value="new-transaction">Nova Transação</TabsTrigger>
           <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
           <TabsTrigger value="donors">Doadores</TabsTrigger>
+          <TabsTrigger value="reports">Relatórios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -1653,6 +1755,242 @@ export default function FinanceiroPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileBarChart className="w-5 h-5" />
+                  Relatórios Automatizados
+                </CardTitle>
+                <CardDescription>
+                  Gere relatórios profissionais com um clique e exporte em PDF ou CSV
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {/* Fluxo de Caixa */}
+                  <Card className="border-l-4 border-l-blue-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-blue-600" />
+                        Fluxo de Caixa
+                      </CardTitle>
+                      <CardDescription>
+                        Relatório de entradas e saídas
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const data = generateCashFlowReport('mensal');
+                            exportToCSV(data, 'fluxo_caixa_mensal', ['Month', 'Entradas', 'Saidas']);
+                          }}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          CSV Mensal
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const data = generateCashFlowReport('anual');
+                            exportToCSV(data, 'fluxo_caixa_anual', ['Month', 'Entradas', 'Saidas']);
+                          }}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          CSV Anual
+                        </Button>
+                      </div>
+                      <Button
+                        className="w-full"
+                        onClick={() => exportToPDF('Fluxo de Caixa', generateCashFlowReport('anual'))}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Gerar PDF
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Despesas por Categoria */}
+                  <Card className="border-l-4 border-l-red-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Receipt className="w-5 h-5 text-red-600" />
+                        Despesas por Categoria
+                      </CardTitle>
+                      <CardDescription>
+                        Análise detalhada dos gastos
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          const data = generateExpensesByCategory();
+                          exportToCSV(data, 'despesas_categoria', ['Category', 'Total', 'Percentage']);
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Exportar CSV
+                      </Button>
+                      <Button
+                        className="w-full"
+                        onClick={() => exportToPDF('Despesas por Categoria', generateExpensesByCategory())}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Gerar PDF
+                      </Button>
+                      
+                      {/* Preview das categorias */}
+                      <div className="mt-4 text-sm">
+                        <p className="font-medium text-gray-700 mb-2">Principais categorias:</p>
+                        {generateExpensesByCategory().slice(0, 3).map((item, index) => (
+                          <div key={index} className="flex justify-between text-gray-600">
+                            <span>{item.category}</span>
+                            <span>{formatCurrency(item.total)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Relatório por Projeto */}
+                  <Card className="border-l-4 border-l-green-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-green-600" />
+                        Financeiro por Projeto
+                      </CardTitle>
+                      <CardDescription>
+                        Análise financeira de cada projeto
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          const data = generateProjectReport();
+                          exportToCSV(data, 'relatorio_projetos', ['Project', 'Category', 'Entradas', 'Saidas', 'Saldo']);
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Exportar CSV
+                      </Button>
+                      <Button
+                        className="w-full"
+                        onClick={() => exportToPDF('Relatório por Projeto', generateProjectReport())}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Gerar PDF
+                      </Button>
+
+                      {/* Preview dos projetos */}
+                      <div className="mt-4 text-sm">
+                        <p className="font-medium text-gray-700 mb-2">Projetos ativos:</p>
+                        {generateProjectReport().slice(0, 2).map((item, index) => (
+                          <div key={index} className="text-gray-600">
+                            <div className="font-medium">{item.project}</div>
+                            <div className="flex justify-between text-xs">
+                              <span>Saldo:</span>
+                              <span className={item.saldo >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                {formatCurrency(item.saldo)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tabela de Resumo dos Relatórios */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumo Executivo</CardTitle>
+                <CardDescription>
+                  Visão geral dos principais indicadores financeiros
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Resumo do Fluxo de Caixa */}
+                  <div>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-blue-600" />
+                      Fluxo de Caixa (Mês Atual)
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      {generateCashFlowReport('mensal').map((item, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded">
+                          <div className="font-medium">{item.month}</div>
+                          <div className="grid grid-cols-2 gap-4 mt-1">
+                            <div>
+                              <span className="text-green-600">Entradas: </span>
+                              <span className="font-medium">{formatCurrency(item.entradas)}</span>
+                            </div>
+                            <div>
+                              <span className="text-red-600">Saídas: </span>
+                              <span className="font-medium">{formatCurrency(item.saidas)}</span>
+                            </div>
+                          </div>
+                          <div className="mt-1 pt-1 border-t">
+                            <span className="text-gray-700">Saldo: </span>
+                            <span className={`font-bold ${(item.entradas - item.saidas) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatCurrency(item.entradas - item.saidas)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Resumo por Projeto */}
+                  <div>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-green-600" />
+                      Situação dos Projetos
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      {generateProjectReport().map((project, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded">
+                          <div className="font-medium">{project.project}</div>
+                          <div className="text-xs text-gray-600 mb-1">{project.category}</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <span className="text-green-600">Receitas: </span>
+                              <span>{formatCurrency(project.entradas)}</span>
+                            </div>
+                            <div>
+                              <span className="text-red-600">Gastos: </span>
+                              <span>{formatCurrency(project.saidas)}</span>
+                            </div>
+                          </div>
+                          <div className="mt-1 pt-1 border-t">
+                            <span className="text-gray-700">Resultado: </span>
+                            <span className={`font-bold ${project.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatCurrency(project.saldo)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
