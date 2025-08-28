@@ -593,6 +593,56 @@ export default function ProjetosAdminPage() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  // Função para adicionar nova transação
+  const handleAddTransaction = (transactionData: {
+    projectId: string;
+    type: 'entrada' | 'saida';
+    date: string;
+    description: string;
+    value: number;
+    category: string;
+    supplier?: string;
+    isPublic: boolean;
+    notes?: string;
+  }) => {
+    const newTransaction: ProjectTransaction = {
+      id: `temp-${Date.now()}`,
+      ...transactionData
+    };
+
+    setProjectTransactions(prev => [newTransaction, ...prev]);
+    
+    // Atualizar dados financeiros do projeto
+    setProjectList(prev => 
+      prev.map(project => {
+        if (project.id === transactionData.projectId) {
+          const newUsedBudget = transactionData.type === 'saida' 
+            ? project.usedBudget + transactionData.value 
+            : project.usedBudget;
+          
+          const newPublicRevenue = transactionData.type === 'entrada' && transactionData.isPublic
+            ? project.publicRevenue + transactionData.value
+            : project.publicRevenue;
+            
+          const newPublicExpenses = transactionData.type === 'saida' && transactionData.isPublic
+            ? project.publicExpenses + transactionData.value
+            : project.publicExpenses;
+
+          return {
+            ...project,
+            usedBudget: newUsedBudget,
+            publicRevenue: newPublicRevenue,
+            publicExpenses: newPublicExpenses
+          };
+        }
+        return project;
+      })
+    );
+
+    console.log('Nova transação adicionada:', newTransaction);
+    // TODO: Integrar com Supabase para salvar no banco de dados
+  };
+
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
@@ -758,17 +808,169 @@ export default function ProjetosAdminPage() {
                 <TabsContent value="financial" className="space-y-6">
                   {/* Controles Básicos */}
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="project-budget">Orçamento Total do Projeto (R$)</Label>
-                      <Input
-                        id="project-budget"
-                        type="number"
-                        value={projectFormData.totalBudget}
-                        onChange={(e) => setProjectFormData({...projectFormData, totalBudget: e.target.value})}
-                        placeholder="Ex: 150000"
-                        min="0"
-                        step="0.01"
-                      />
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="project-budget">Orçamento Total do Projeto (R$)</Label>
+                        <Input
+                          id="project-budget"
+                          type="number"
+                          value={projectFormData.totalBudget}
+                          onChange={(e) => setProjectFormData({...projectFormData, totalBudget: e.target.value})}
+                          placeholder="Ex: 150000"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+                          <Building2 className="w-4 h-4" />
+                          Gestão de Lançamentos
+                        </h4>
+                        <p className="text-sm text-blue-700 mb-3">
+                          Use os controles abaixo para registrar receitas e despesas deste projeto.
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex items-center gap-1 text-green-600 border-green-300 hover:bg-green-50"
+                              >
+                                <TrendingUp className="w-4 h-4" />
+                                Adicionar Receita
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-lg">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2 text-green-600">
+                                  <TrendingUp className="w-5 h-5" />
+                                  Nova Receita
+                                </DialogTitle>
+                                <DialogDescription>
+                                  Registrar entrada de recursos para este projeto
+                                </DialogDescription>
+                              </DialogHeader>
+                              <form className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-2">
+                                    <Label>Data da Receita</Label>
+                                    <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Valor (R$)</Label>
+                                    <Input type="number" placeholder="0,00" step="0.01" min="0" />
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Descrição</Label>
+                                  <Input placeholder="Ex: Doação mensal de apoiador" />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Categoria</Label>
+                                  <Select>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="doacoes">Doações</SelectItem>
+                                      <SelectItem value="financiamentos">Financiamentos</SelectItem>
+                                      <SelectItem value="parcerias">Parcerias</SelectItem>
+                                      <SelectItem value="patrocinios">Patrocínios</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Doador/Fonte (Opcional)</Label>
+                                  <Input placeholder="Nome do doador ou instituição" />
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                  <Switch id="revenue-public" defaultChecked />
+                                  <Label htmlFor="revenue-public" className="text-sm">Visível na transparência</Label>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-4 border-t">
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline">Cancelar</Button>
+                                  </DialogTrigger>
+                                  <Button className="bg-green-600 hover:bg-green-700">Salvar Receita</Button>
+                                </div>
+                              </form>
+                            </DialogContent>
+                          </Dialog>
+
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex items-center gap-1 text-red-600 border-red-300 hover:bg-red-50"
+                              >
+                                <TrendingDown className="w-4 h-4" />
+                                Adicionar Despesa
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-lg">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2 text-red-600">
+                                  <TrendingDown className="w-5 h-5" />
+                                  Nova Despesa
+                                </DialogTitle>
+                                <DialogDescription>
+                                  Registrar gasto ou investimento deste projeto
+                                </DialogDescription>
+                              </DialogHeader>
+                              <form className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-2">
+                                    <Label>Data da Despesa</Label>
+                                    <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Valor (R$)</Label>
+                                    <Input type="number" placeholder="0,00" step="0.01" min="0" />
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Descrição</Label>
+                                  <Input placeholder="Ex: Compra de equipamentos de laboratório" />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Categoria</Label>
+                                  <Select>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="equipamentos">Equipamentos</SelectItem>
+                                      <SelectItem value="infraestrutura">Infraestrutura</SelectItem>
+                                      <SelectItem value="materiais">Materiais</SelectItem>
+                                      <SelectItem value="servicos">Serviços</SelectItem>
+                                      <SelectItem value="pessoal">Pessoal</SelectItem>
+                                      <SelectItem value="administrativo">Administrativo</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Fornecedor (Opcional)</Label>
+                                  <Input placeholder="Nome da empresa ou prestador" />
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                  <Switch id="expense-public" defaultChecked />
+                                  <Label htmlFor="expense-public" className="text-sm">Visível na transparência</Label>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-4 border-t">
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline">Cancelar</Button>
+                                  </DialogTrigger>
+                                  <Button className="bg-red-600 hover:bg-red-700">Salvar Despesa</Button>
+                                </div>
+                              </form>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
@@ -978,10 +1180,150 @@ export default function ProjetosAdminPage() {
 
                       {/* Lista de Transações */}
                       <div className="space-y-3">
-                        <h5 className="text-base font-medium text-gray-900 flex items-center gap-2">
-                          <Receipt className="w-4 h-4 text-gray-600" />
-                          Últimos Lançamentos Vinculados
-                        </h5>
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-base font-medium text-gray-900 flex items-center gap-2">
+                            <Receipt className="w-4 h-4 text-gray-600" />
+                            Últimos Lançamentos Vinculados
+                          </h5>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex items-center gap-1 text-green-600 border-green-300 hover:bg-green-50"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Nova Transação
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-lg">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                  <DollarSign className="w-5 h-5 text-green-600" />
+                                  Nova Transação Financeira
+                                </DialogTitle>
+                                <DialogDescription>
+                                  Adicionar receita ou despesa para este projeto
+                                </DialogDescription>
+                              </DialogHeader>
+
+                              <form className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="transaction-type">Tipo de Transação</Label>
+                                    <Select>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Selecione" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="entrada">
+                                          <div className="flex items-center gap-2">
+                                            <TrendingUp className="w-4 h-4 text-green-600" />
+                                            Receita/Entrada
+                                          </div>
+                                        </SelectItem>
+                                        <SelectItem value="saida">
+                                          <div className="flex items-center gap-2">
+                                            <TrendingDown className="w-4 h-4 text-red-600" />
+                                            Despesa/Saída
+                                          </div>
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="transaction-date">Data</Label>
+                                    <Input
+                                      id="transaction-date"
+                                      type="date"
+                                      defaultValue={new Date().toISOString().split('T')[0]}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="transaction-description">Descrição</Label>
+                                  <Input
+                                    id="transaction-description"
+                                    placeholder="Ex: Doação para equipamentos de laboratório"
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="transaction-value">Valor (R$)</Label>
+                                    <Input
+                                      id="transaction-value"
+                                      type="number"
+                                      placeholder="0,00"
+                                      step="0.01"
+                                      min="0"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="transaction-category">Categoria</Label>
+                                    <Select>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Selecione" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="doacoes">Doações</SelectItem>
+                                        <SelectItem value="financiamentos">Financiamentos</SelectItem>
+                                        <SelectItem value="parcerias">Parcerias</SelectItem>
+                                        <SelectItem value="equipamentos">Equipamentos</SelectItem>
+                                        <SelectItem value="infraestrutura">Infraestrutura</SelectItem>
+                                        <SelectItem value="materiais">Materiais</SelectItem>
+                                        <SelectItem value="servicos">Serviços</SelectItem>
+                                        <SelectItem value="outros">Outros</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="transaction-supplier">Fornecedor/Doador (Opcional)</Label>
+                                  <Input
+                                    id="transaction-supplier"
+                                    placeholder="Nome da empresa ou pessoa"
+                                  />
+                                </div>
+
+                                <div className="flex items-center space-x-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                  <Switch id="transaction-public" defaultChecked />
+                                  <div className="flex-1">
+                                    <Label htmlFor="transaction-public" className="text-sm font-medium">
+                                      Transação Pública
+                                    </Label>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      Será visível no Portal de Transparência
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="transaction-notes">Observações (Opcional)</Label>
+                                  <Textarea
+                                    id="transaction-notes"
+                                    placeholder="Informações adicionais sobre esta transação..."
+                                    className="min-h-[80px]"
+                                  />
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-4 border-t">
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline">Cancelar</Button>
+                                  </DialogTrigger>
+                                  <Button 
+                                    type="submit" 
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    Salvar Transação
+                                  </Button>
+                                </div>
+                              </form>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                         
                         <div className="border rounded-lg overflow-hidden">
                           <Table>
