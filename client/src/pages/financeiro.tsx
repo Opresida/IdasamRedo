@@ -36,7 +36,9 @@ import {
   FileBarChart,
   EyeOff,
   CheckSquare,
-  Square
+  Square,
+  Tag,
+  RefreshCw
 } from 'lucide-react';
 
 interface BankAccount {
@@ -117,6 +119,15 @@ interface TransparencyTransaction {
   category: string;
 }
 
+interface FinancialCategory {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  type: 'entrada' | 'saida' | 'ambos';
+  createdAt: string;
+}
+
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -177,6 +188,17 @@ export default function FinanceiroPage() {
   const [transparencyTransactions, setTransparencyTransactions] = useState<TransparencyTransaction[]>([]);
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>('2024-01');
+
+  // Estados para Categorias Financeiras
+  const [financialCategories, setFinancialCategories] = useState<FinancialCategory[]>([]);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<FinancialCategory | null>(null);
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
+    description: '',
+    color: '#3B82F6',
+    type: 'ambos' as 'entrada' | 'saida' | 'ambos'
+  });
 
   // Dados simulados para demonstração
   useEffect(() => {
@@ -438,6 +460,68 @@ export default function FinanceiroPage() {
 
     setProjects(mockProjects);
     setTransparencyTransactions(mockTransparencyTransactions);
+
+    // Dados mockados para categorias financeiras
+    const mockFinancialCategories: FinancialCategory[] = [
+      {
+        id: '1',
+        name: 'Receita de Projeto',
+        description: 'Receitas específicas de projetos',
+        color: '#10B981',
+        type: 'entrada',
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '2',
+        name: 'Receita Institucional',
+        description: 'Receitas institucionais gerais',
+        color: '#059669',
+        type: 'entrada',
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '3',
+        name: 'Doações',
+        description: 'Doações recebidas',
+        color: '#34D399',
+        type: 'entrada',
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '4',
+        name: 'Custo Fixo',
+        description: 'Despesas fixas mensais',
+        color: '#EF4444',
+        type: 'saida',
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '5',
+        name: 'Custo Variável',
+        description: 'Despesas variáveis',
+        color: '#F87171',
+        type: 'saida',
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '6',
+        name: 'Investimento',
+        description: 'Investimentos em projetos',
+        color: '#DC2626',
+        type: 'saida',
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '7',
+        name: 'Equipamentos',
+        description: 'Aquisição de equipamentos',
+        color: '#B91C1C',
+        type: 'saida',
+        createdAt: '2024-01-01T00:00:00'
+      }
+    ];
+
+    setFinancialCategories(mockFinancialCategories);
   }, []);
 
   // Filtrar transações por conta
@@ -820,6 +904,67 @@ export default function FinanceiroPage() {
     return [...new Set(monthYears)].sort().reverse();
   };
 
+  // Funções para gestão de categorias
+  const handleSaveCategory = () => {
+    if (!categoryFormData.name.trim()) {
+      alert('Nome da categoria é obrigatório');
+      return;
+    }
+
+    if (editingCategory) {
+      // Atualizar categoria existente
+      const updatedCategory: FinancialCategory = {
+        ...editingCategory,
+        ...categoryFormData,
+        name: categoryFormData.name.trim(),
+        description: categoryFormData.description.trim() || undefined
+      };
+      setFinancialCategories(financialCategories.map(c => 
+        c.id === editingCategory.id ? updatedCategory : c
+      ));
+      alert('Categoria atualizada com sucesso!');
+    } else {
+      // Criar nova categoria
+      const newCategory: FinancialCategory = {
+        id: Date.now().toString(),
+        ...categoryFormData,
+        name: categoryFormData.name.trim(),
+        description: categoryFormData.description.trim() || undefined,
+        createdAt: new Date().toISOString()
+      };
+      setFinancialCategories([...financialCategories, newCategory]);
+      alert('Categoria criada com sucesso!');
+    }
+
+    // Resetar formulário
+    setCategoryFormData({
+      name: '',
+      description: '',
+      color: '#3B82F6',
+      type: 'ambos'
+    });
+    setEditingCategory(null);
+    setShowCategoryDialog(false);
+  };
+
+  const handleEditCategory = (category: FinancialCategory) => {
+    setCategoryFormData({
+      name: category.name,
+      description: category.description || '',
+      color: category.color,
+      type: category.type
+    });
+    setEditingCategory(category);
+    setShowCategoryDialog(true);
+  };
+
+  const handleDeleteCategory = (categoryId: string) => {
+    if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+      setFinancialCategories(financialCategories.filter(c => c.id !== categoryId));
+      alert('Categoria excluída com sucesso!');
+    }
+  };
+
   const summary = calculateSummary(selectedAccountId);
 
   return (
@@ -840,6 +985,7 @@ export default function FinanceiroPage() {
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="accounts">Contas Bancárias</TabsTrigger>
           <TabsTrigger value="new-transaction">Nova Transação</TabsTrigger>
+          <TabsTrigger value="categories">Categorias</TabsTrigger>
           <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
           <TabsTrigger value="donors">Doadores</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
@@ -1419,6 +1565,214 @@ export default function FinanceiroPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Tag className="w-5 h-5" />
+                    Gerenciar Categorias Financeiras
+                  </CardTitle>
+                  <CardDescription>
+                    Organize suas transações criando e gerenciando categorias personalizadas
+                  </CardDescription>
+                </div>
+                <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => {
+                      setEditingCategory(null);
+                      setCategoryFormData({
+                        name: '',
+                        description: '',
+                        color: '#3B82F6',
+                        type: 'ambos'
+                      });
+                    }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Categoria
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingCategory ? 'Atualize as informações da categoria' : 'Crie uma nova categoria para organizar suas transações financeiras'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="category-name">Nome *</Label>
+                        <Input
+                          id="category-name"
+                          value={categoryFormData.name}
+                          onChange={(e) => setCategoryFormData({...categoryFormData, name: e.target.value})}
+                          placeholder="Nome da categoria"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="category-description">Descrição</Label>
+                        <Textarea
+                          id="category-description"
+                          value={categoryFormData.description}
+                          onChange={(e) => setCategoryFormData({...categoryFormData, description: e.target.value})}
+                          placeholder="Descrição da categoria (opcional)"
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="category-color">Cor</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id="category-color"
+                              type="color"
+                              value={categoryFormData.color}
+                              onChange={(e) => setCategoryFormData({...categoryFormData, color: e.target.value})}
+                              className="w-16 h-10 p-1 rounded cursor-pointer"
+                            />
+                            <Input
+                              value={categoryFormData.color}
+                              onChange={(e) => setCategoryFormData({...categoryFormData, color: e.target.value})}
+                              placeholder="#000000"
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="category-type">Tipo</Label>
+                          <Select value={categoryFormData.type} onValueChange={(value: 'entrada' | 'saida' | 'ambos') => setCategoryFormData({...categoryFormData, type: value})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="entrada">
+                                <div className="flex items-center gap-2">
+                                  <TrendingUp className="w-4 h-4 text-green-600" />
+                                  Receitas
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="saida">
+                                <div className="flex items-center gap-2">
+                                  <TrendingDown className="w-4 h-4 text-red-600" />
+                                  Despesas
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="ambos">
+                                <div className="flex items-center gap-2">
+                                  <RefreshCw className="w-4 h-4 text-blue-600" />
+                                  Ambos
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowCategoryDialog(false);
+                          setCategoryFormData({
+                            name: '',
+                            description: '',
+                            color: '#3B82F6',
+                            type: 'ambos'
+                          });
+                          setEditingCategory(null);
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleSaveCategory}>
+                        {editingCategory ? 'Atualizar' : 'Criar'} Categoria
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {financialCategories.map((category) => (
+                  <div key={category.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
+                          style={{ backgroundColor: category.color }}
+                        />
+                        <h3 className="font-medium text-gray-900">{category.name}</h3>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditCategory(category)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCategory(category.id)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-gray-600 mb-3">
+                      {category.description || 'Sem descrição'}
+                    </p>
+
+                    <div className="flex items-center justify-between">
+                      <Badge 
+                        variant="outline"
+                        className={
+                          category.type === 'entrada' ? 'bg-green-50 text-green-700 border-green-200' :
+                          category.type === 'saida' ? 'bg-red-50 text-red-700 border-red-200' :
+                          'bg-blue-50 text-blue-700 border-blue-200'
+                        }
+                      >
+                        {category.type === 'entrada' ? (
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                        ) : category.type === 'saida' ? (
+                          <TrendingDown className="w-3 h-3 mr-1" />
+                        ) : (
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                        )}
+                        {category.type === 'entrada' ? 'Receitas' : 
+                         category.type === 'saida' ? 'Despesas' : 'Ambos'}
+                      </Badge>
+
+                      <div className="text-xs text-gray-500">
+                        {formatDate(category.createdAt)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {financialCategories.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <Tag className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg mb-2">Nenhuma categoria encontrada</p>
+                  <p className="text-sm">Crie sua primeira categoria para organizar as transações financeiras</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
