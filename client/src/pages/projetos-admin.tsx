@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,11 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
-import { 
-  FolderKanban, 
-  Plus, 
-  Edit, 
-  Trash2, 
+import {
+  FolderKanban,
+  Plus,
+  Edit,
+  Trash2,
   ExternalLink,
   Eye,
   Globe,
@@ -412,7 +411,7 @@ export default function ProjetosAdminPage() {
 
     setProjectTransactions(mockProjectTransactions);
   }, []);
-  
+
   // Estado do formulário de projeto
   const [projectFormData, setProjectFormData] = useState({
     // Aba 1: Conteúdo do Site
@@ -423,14 +422,14 @@ export default function ProjetosAdminPage() {
     imageUrl: '',
     status: 'planejamento' as 'planejamento' | 'em-andamento' | 'concluido',
     category: 'Bioeconomia',
-    
+
     // Aba 2: Financeiro e Transparência
     totalBudget: '',
     isVisibleInTransparency: true,
     showBudgetInTransparency: true,
     showTransactionsInTransparency: true,
     transparencyLevel: 'detailed' as 'basic' | 'detailed' | 'complete',
-    
+
     // Aba 3: Gestão de Doações
     pixKey: '',
     stripeUsdLink: '',
@@ -442,12 +441,12 @@ export default function ProjetosAdminPage() {
     const transactions = projectTransactions.filter(t => t.projectId === projectId);
     const revenues = transactions.filter(t => t.type === 'entrada');
     const expenses = transactions.filter(t => t.type === 'saida');
-    
+
     const totalRevenue = revenues.reduce((sum, t) => sum + t.value, 0);
     const totalExpenses = expenses.reduce((sum, t) => sum + t.value, 0);
     const publicRevenue = revenues.filter(t => t.isPublic).reduce((sum, t) => sum + t.value, 0);
     const publicExpenses = expenses.filter(t => t.isPublic).reduce((sum, t) => sum + t.value, 0);
-    
+
     return {
       totalRevenue,
       totalExpenses,
@@ -483,9 +482,9 @@ export default function ProjetosAdminPage() {
 
   // Função para alterar visibilidade na transparência
   const handleTransparencyVisibilityChange = (projectId: string, isVisible: boolean) => {
-    setProjectList(prev => 
-      prev.map(project => 
-        project.id === projectId 
+    setProjectList(prev =>
+      prev.map(project =>
+        project.id === projectId
           ? { ...project, isVisibleInTransparency: isVisible }
           : project
       )
@@ -554,7 +553,7 @@ export default function ProjetosAdminPage() {
   const handleProjectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Dados do projeto:', projectFormData);
-    
+
     if (editingProject) {
       // Atualizar projeto existente
       console.log('Atualizando projeto:', editingProject.id);
@@ -562,7 +561,7 @@ export default function ProjetosAdminPage() {
       // Criar novo projeto
       console.log('Criando novo projeto');
     }
-    
+
     // Fechar modal
     setShowProjectDialog(false);
     resetProjectForm();
@@ -611,19 +610,19 @@ export default function ProjetosAdminPage() {
     };
 
     setProjectTransactions(prev => [newTransaction, ...prev]);
-    
+
     // Atualizar dados financeiros do projeto
-    setProjectList(prev => 
+    setProjectList(prev =>
       prev.map(project => {
         if (project.id === transactionData.projectId) {
-          const newUsedBudget = transactionData.type === 'saida' 
-            ? project.usedBudget + transactionData.value 
+          const newUsedBudget = transactionData.type === 'saida'
+            ? project.usedBudget + transactionData.value
             : project.usedBudget;
-          
+
           const newPublicRevenue = transactionData.type === 'entrada' && transactionData.isPublic
             ? project.publicRevenue + transactionData.value
             : project.publicRevenue;
-            
+
           const newPublicExpenses = transactionData.type === 'saida' && transactionData.isPublic
             ? project.publicExpenses + transactionData.value
             : project.publicExpenses;
@@ -638,9 +637,48 @@ export default function ProjetosAdminPage() {
         return project;
       })
     );
+  };
 
-    console.log('Nova transação adicionada:', newTransaction);
-    // TODO: Integrar com Supabase para salvar no banco de dados
+  // Função para excluir transação
+  const handleDeleteTransaction = (transactionId: string) => {
+    const transactionToDelete = projectTransactions.find(t => t.id === transactionId);
+
+    if (!transactionToDelete) return;
+
+    // Confirmar exclusão
+    if (!confirm(`Tem certeza que deseja excluir a transação "${transactionToDelete.description}"?`)) {
+      return;
+    }
+
+    // Remover da lista de transações
+    setProjectTransactions(prev => prev.filter(t => t.id !== transactionId));
+
+    // Atualizar dados financeiros do projeto (reverter valores)
+    setProjectList(prev =>
+      prev.map(project => {
+        if (project.id === transactionToDelete.projectId) {
+          const newUsedBudget = transactionToDelete.type === 'saida'
+            ? Math.max(0, project.usedBudget - transactionToDelete.value)
+            : project.usedBudget;
+
+          const newPublicRevenue = transactionToDelete.type === 'entrada' && transactionToDelete.isPublic
+            ? Math.max(0, project.publicRevenue - transactionToDelete.value)
+            : project.publicRevenue;
+
+          const newPublicExpenses = transactionToDelete.type === 'saida' && transactionToDelete.isPublic
+            ? Math.max(0, project.publicExpenses - transactionToDelete.value)
+            : project.publicExpenses;
+
+          return {
+            ...project,
+            usedBudget: newUsedBudget,
+            publicRevenue: newPublicRevenue,
+            publicExpenses: newPublicExpenses
+          };
+        }
+        return project;
+      })
+    );
   };
 
   return (
@@ -658,7 +696,7 @@ export default function ProjetosAdminPage() {
         </div>
         <Dialog open={showProjectDialog} onOpenChange={setShowProjectDialog}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               onClick={handleNewProject}
               size="lg"
               className="bg-green-600 hover:bg-green-700"
@@ -674,8 +712,8 @@ export default function ProjetosAdminPage() {
                 {editingProject ? 'Editar Projeto' : 'Novo Projeto'}
               </DialogTitle>
               <DialogDescription>
-                {editingProject 
-                  ? 'Atualize as informações do projeto existente' 
+                {editingProject
+                  ? 'Atualize as informações do projeto existente'
                   : 'Crie um novo projeto para o IDASAM'
                 }
               </DialogDescription>
@@ -767,9 +805,9 @@ export default function ProjetosAdminPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="project-status">Status do Projeto *</Label>
-                      <Select 
-                        value={projectFormData.status} 
-                        onValueChange={(value: 'planejamento' | 'em-andamento' | 'concluido') => 
+                      <Select
+                        value={projectFormData.status}
+                        onValueChange={(value: 'planejamento' | 'em-andamento' | 'concluido') =>
                           setProjectFormData({...projectFormData, status: value})
                         }
                       >
@@ -787,8 +825,8 @@ export default function ProjetosAdminPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="project-category">Categoria *</Label>
-                    <Select 
-                      value={projectFormData.category} 
+                    <Select
+                      value={projectFormData.category}
                       onValueChange={(value) => setProjectFormData({...projectFormData, category: value})}
                     >
                       <SelectTrigger>
@@ -830,7 +868,7 @@ export default function ProjetosAdminPage() {
                         <p className="text-sm text-blue-700 mb-3">
                           Use os controles abaixo para registrar receitas e despesas deste projeto.
                         </p>
-                        
+
                         <div className="grid grid-cols-2 gap-2">
                           <Dialog>
                             <DialogTrigger asChild>
@@ -979,7 +1017,7 @@ export default function ProjetosAdminPage() {
                         <Switch
                           id="transparency-visibility"
                           checked={projectFormData.isVisibleInTransparency}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             setProjectFormData({...projectFormData, isVisibleInTransparency: checked})
                           }
                         />
@@ -998,7 +1036,7 @@ export default function ProjetosAdminPage() {
                         <Switch
                           id="budget-transparency"
                           checked={projectFormData.showBudgetInTransparency}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             setProjectFormData({...projectFormData, showBudgetInTransparency: checked})
                           }
                         />
@@ -1017,7 +1055,7 @@ export default function ProjetosAdminPage() {
                         <Switch
                           id="transactions-transparency"
                           checked={projectFormData.showTransactionsInTransparency}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             setProjectFormData({...projectFormData, showTransactionsInTransparency: checked})
                           }
                         />
@@ -1035,9 +1073,9 @@ export default function ProjetosAdminPage() {
                     {/* Nível de Transparência */}
                     <div className="space-y-2">
                       <Label htmlFor="transparency-level">Nível de Transparência</Label>
-                      <Select 
-                        value={projectFormData.transparencyLevel} 
-                        onValueChange={(value: 'basic' | 'detailed' | 'complete') => 
+                      <Select
+                        value={projectFormData.transparencyLevel}
+                        onValueChange={(value: 'basic' | 'detailed' | 'complete') =>
                           setProjectFormData({...projectFormData, transparencyLevel: value})
                         }
                       >
@@ -1313,8 +1351,8 @@ export default function ProjetosAdminPage() {
                                   <DialogTrigger asChild>
                                     <Button variant="outline">Cancelar</Button>
                                   </DialogTrigger>
-                                  <Button 
-                                    type="submit" 
+                                  <Button
+                                    type="submit"
                                     className="bg-green-600 hover:bg-green-700"
                                   >
                                     Salvar Transação
@@ -1324,7 +1362,7 @@ export default function ProjetosAdminPage() {
                             </DialogContent>
                           </Dialog>
                         </div>
-                        
+
                         <div className="border rounded-lg overflow-hidden">
                           <Table>
                             <TableHeader>
@@ -1335,16 +1373,17 @@ export default function ProjetosAdminPage() {
                                 <TableHead className="text-xs">Fornecedor/Doador</TableHead>
                                 <TableHead className="text-xs text-right">Valor</TableHead>
                                 <TableHead className="text-xs text-center">Status</TableHead>
+                                <TableHead className="text-xs">Ações</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {(() => {
                                 const transactions = editingProject ? getProjectTransactions(editingProject.id) : [];
-                                
+
                                 if (transactions.length === 0) {
                                   return (
                                     <TableRow>
-                                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                                         Nenhuma transação vinculada a este projeto ainda.
                                       </TableCell>
                                     </TableRow>
@@ -1365,12 +1404,23 @@ export default function ProjetosAdminPage() {
                                       {transaction.type === 'entrada' ? '+' : '-'}{formatCurrency(transaction.value)}
                                     </TableCell>
                                     <TableCell className="text-xs text-center">
-                                      <Badge 
+                                      <Badge
                                         variant={transaction.isPublic ? "default" : "outline"}
                                         className={transaction.isPublic ? "bg-green-100 text-green-800 text-xs" : "text-gray-600 text-xs"}
                                       >
                                         {transaction.isPublic ? "Público" : "Privado"}
                                       </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteTransaction(transaction.id)}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        title="Excluir transação"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
                                     </TableCell>
                                   </TableRow>
                                 ));
@@ -1383,7 +1433,7 @@ export default function ProjetosAdminPage() {
                           {(() => {
                             const transactions = editingProject ? getProjectTransactions(editingProject.id) : [];
                             const publicCount = transactions.filter(t => t.isPublic).length;
-                            
+
                             return (
                               <p className="text-xs text-gray-500">
                                 Total de {transactions.length} transações vinculadas ({publicCount} públicas). <br />
@@ -1401,7 +1451,7 @@ export default function ProjetosAdminPage() {
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Integração com Financeiro</h4>
                     <p className="text-sm text-gray-600">
-                      Este projeto está automaticamente conectado aos dados de receitas e despesas 
+                      Este projeto está automaticamente conectado aos dados de receitas e despesas
                       registrados na seção Financeiro do dashboard. Os valores são atualizados em tempo real.
                     </p>
                   </div>
@@ -1475,9 +1525,9 @@ export default function ProjetosAdminPage() {
 
               {/* Botões do Modal */}
               <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setShowProjectDialog(false);
                     resetProjectForm();
@@ -1619,9 +1669,9 @@ export default function ProjetosAdminPage() {
                       {((project.usedBudget / project.totalBudget) * 100).toFixed(1)}%
                     </span>
                   </div>
-                  <Progress 
-                    value={(project.usedBudget / project.totalBudget) * 100} 
-                    className="h-1 mt-1" 
+                  <Progress
+                    value={(project.usedBudget / project.totalBudget) * 100}
+                    className="h-1 mt-1"
                   />
                 </div>
               </div>
@@ -1643,7 +1693,7 @@ export default function ProjetosAdminPage() {
                     <Switch
                       id={`transparency-${project.id}`}
                       checked={project.isVisibleInTransparency}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         handleTransparencyVisibilityChange(project.id, checked)
                       }
                     />
@@ -1666,8 +1716,8 @@ export default function ProjetosAdminPage() {
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-600">Nível</span>
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className={`text-xs ${
                             project.transparencyLevel === 'complete' ? 'bg-green-50 text-green-700' :
                             project.transparencyLevel === 'detailed' ? 'bg-blue-50 text-blue-700' :
