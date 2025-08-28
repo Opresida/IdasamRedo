@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   PiggyBank, 
   TrendingUp, 
@@ -31,7 +33,10 @@ import {
   Heart,
   Edit,
   Trash2,
-  FileBarChart
+  FileBarChart,
+  EyeOff,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 
 interface BankAccount {
@@ -89,6 +94,29 @@ interface Donor {
   createdAt: string;
 }
 
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  isPublic: boolean;
+  totalBudget: number;
+  usedBudget: number;
+  createdAt: string;
+}
+
+interface TransparencyTransaction {
+  id: string;
+  date: string;
+  description: string;
+  projectId: string;
+  projectName: string;
+  value: number;
+  type: 'entrada' | 'saida';
+  isPublic: boolean;
+  category: string;
+}
+
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -143,6 +171,12 @@ export default function FinanceiroPage() {
     donationType: 'mensal' as 'mensal' | 'pontual' | 'anual',
     notes: ''
   });
+
+  // Estados para Portal da Transparência
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [transparencyTransactions, setTransparencyTransactions] = useState<TransparencyTransaction[]>([]);
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
+  const [selectedMonthYear, setSelectedMonthYear] = useState<string>('2024-01');
 
   // Dados simulados para demonstração
   useEffect(() => {
@@ -287,6 +321,123 @@ export default function FinanceiroPage() {
 
     setSuppliers(mockSuppliers);
     setDonors(mockDonors);
+
+    // Dados mockados para projetos
+    const mockProjects: Project[] = [
+      {
+        id: '1',
+        name: 'Projeto Coração Ribeirinho',
+        description: 'Programa de apoio às comunidades ribeirinhas da Amazônia',
+        category: 'Social',
+        isPublic: true,
+        totalBudget: 150000,
+        usedBudget: 45000,
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '2',
+        name: 'Laboratório de Inovação',
+        description: 'Desenvolvimento de tecnologias sustentáveis',
+        category: 'Pesquisa',
+        isPublic: false,
+        totalBudget: 200000,
+        usedBudget: 78000,
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '3',
+        name: 'Bioeconomia Amazônica',
+        description: 'Iniciativas de desenvolvimento sustentável na região',
+        category: 'Sustentabilidade',
+        isPublic: true,
+        totalBudget: 300000,
+        usedBudget: 120000,
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '4',
+        name: 'Educação Digital Rural',
+        description: 'Levar tecnologia educacional para comunidades rurais',
+        category: 'Educação',
+        isPublic: false,
+        totalBudget: 180000,
+        usedBudget: 65000,
+        createdAt: '2024-01-01T00:00:00'
+      }
+    ];
+
+    // Dados mockados para transações de transparência
+    const mockTransparencyTransactions: TransparencyTransaction[] = [
+      {
+        id: '1',
+        date: '2024-01-15',
+        description: 'Doação mensal - Projeto Coração Ribeirinho',
+        projectId: '1',
+        projectName: 'Projeto Coração Ribeirinho',
+        value: 5000,
+        type: 'entrada',
+        isPublic: true,
+        category: 'Receita de Projeto'
+      },
+      {
+        id: '2',
+        date: '2024-01-10',
+        description: 'Compra de equipamentos de laboratório',
+        projectId: '2',
+        projectName: 'Laboratório de Inovação',
+        value: 25000,
+        type: 'saida',
+        isPublic: false,
+        category: 'Equipamentos'
+      },
+      {
+        id: '3',
+        date: '2024-01-08',
+        description: 'Financiamento para pesquisa em bioeconomia',
+        projectId: '3',
+        projectName: 'Bioeconomia Amazônica',
+        value: 35000,
+        type: 'entrada',
+        isPublic: true,
+        category: 'Receita de Projeto'
+      },
+      {
+        id: '4',
+        date: '2024-01-05',
+        description: 'Aquisição de tablets para escolas rurais',
+        projectId: '4',
+        projectName: 'Educação Digital Rural',
+        value: 15000,
+        type: 'saida',
+        isPublic: false,
+        category: 'Equipamentos'
+      },
+      {
+        id: '5',
+        date: '2024-01-20',
+        description: 'Parceria com empresa local - Projeto Coração',
+        projectId: '1',
+        projectName: 'Projeto Coração Ribeirinho',
+        value: 12000,
+        type: 'entrada',
+        isPublic: true,
+        category: 'Parcerias'
+      },
+      {
+        id: '6',
+        date: '2024-01-18',
+        description: 'Material de pesquisa - Bioeconomia',
+        projectId: '3',
+        projectName: 'Bioeconomia Amazônica',
+        value: 8500,
+        type: 'saida',
+        isPublic: false,
+        category: 'Materiais'
+      }
+    ];
+
+    setProjects(mockProjects);
+    setTransparencyTransactions(mockTransparencyTransactions);
   }, []);
 
   // Filtrar transações por conta
@@ -643,6 +794,32 @@ export default function FinanceiroPage() {
     alert(`Exportação para PDF do ${reportType} será implementada em breve!`);
   };
 
+  // Funções para Portal da Transparência
+  const handleProjectVisibilityChange = (projectId: string, isPublic: boolean) => {
+    setProjects(projects.map(project => 
+      project.id === projectId ? { ...project, isPublic } : project
+    ));
+  };
+
+  const handleTransactionVisibilityChange = (transactionId: string, isPublic: boolean) => {
+    setTransparencyTransactions(transparencyTransactions.map(transaction => 
+      transaction.id === transactionId ? { ...transaction, isPublic } : transaction
+    ));
+  };
+
+  const getFilteredTransparencyTransactions = () => {
+    return transparencyTransactions.filter(transaction => {
+      const projectMatch = selectedProjectFilter === 'all' || transaction.projectId === selectedProjectFilter;
+      const dateMatch = transaction.date.startsWith(selectedMonthYear);
+      return projectMatch && dateMatch;
+    });
+  };
+
+  const getUniqueMonthYears = () => {
+    const monthYears = transparencyTransactions.map(t => t.date.substring(0, 7));
+    return [...new Set(monthYears)].sort().reverse();
+  };
+
   const summary = calculateSummary(selectedAccountId);
 
   return (
@@ -666,6 +843,7 @@ export default function FinanceiroPage() {
           <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
           <TabsTrigger value="donors">Doadores</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
+          <TabsTrigger value="transparency">Portal da Transparência</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -1987,6 +2165,261 @@ export default function FinanceiroPage() {
                       ))}
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="transparency">
+          <div className="space-y-6">
+            {/* Seção de Visibilidade dos Projetos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Eye className="w-5 h-5" />
+                  Gerenciar Visibilidade de Projetos
+                </CardTitle>
+                <CardDescription>
+                  Controle quais projetos e seus dados financeiros gerais aparecerão no portal público
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {projects.map((project) => (
+                    <div
+                      key={project.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-medium text-gray-900">{project.name}</h3>
+                          <Badge variant="outline" className="text-xs">
+                            {project.category}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">{project.description}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          <span>Orçamento: {formatCurrency(project.totalBudget)}</span>
+                          <span>Utilizado: {formatCurrency(project.usedBudget)}</span>
+                          <Badge 
+                            variant="outline" 
+                            className={project.usedBudget / project.totalBudget < 0.8 ? "text-green-600" : "text-amber-600"}
+                          >
+                            {((project.usedBudget / project.totalBudget) * 100).toFixed(1)}% usado
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={project.isPublic}
+                            onCheckedChange={(checked) => handleProjectVisibilityChange(project.id, checked)}
+                            id={`project-${project.id}`}
+                          />
+                          <Label htmlFor={`project-${project.id}`} className="text-sm">
+                            Tornar Público
+                          </Label>
+                        </div>
+                        {project.isPublic ? (
+                          <Badge variant="default" className="bg-green-100 text-green-800">
+                            <Eye className="w-3 h-3 mr-1" />
+                            Público
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-gray-600">
+                            <EyeOff className="w-3 h-3 mr-1" />
+                            Privado
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Seção de Visibilidade das Transações */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  Publicar Transações Específicas
+                </CardTitle>
+                <CardDescription>
+                  Selecione manualmente quais transações individuais devem ser visíveis publicamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Filtros */}
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="project-filter">Filtrar por Projeto</Label>
+                    <Select value={selectedProjectFilter} onValueChange={setSelectedProjectFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um projeto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os projetos</SelectItem>
+                        {projects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="month-filter">Filtrar por Mês/Ano</Label>
+                    <Select value={selectedMonthYear} onValueChange={setSelectedMonthYear}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione mês/ano" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getUniqueMonthYears().map((monthYear) => (
+                          <SelectItem key={monthYear} value={monthYear}>
+                            {new Date(monthYear + '-01').toLocaleDateString('pt-BR', { 
+                              month: 'long', 
+                              year: 'numeric' 
+                            })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Tabela de Transações */}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Projeto</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead className="text-center">Publicar</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getFilteredTransparencyTransactions().length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                            Nenhuma transação encontrada com os filtros selecionados
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        getFilteredTransparencyTransactions().map((transaction) => (
+                          <TableRow key={transaction.id}>
+                            <TableCell className="font-medium">
+                              {formatDate(transaction.date)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="max-w-xs">
+                                <p className="font-medium">{transaction.description}</p>
+                                <Badge variant="outline" className="text-xs mt-1">
+                                  {transaction.category}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                <Building2 className="w-3 h-3 mr-1" />
+                                {transaction.projectName}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={transaction.type === 'entrada' ? 'default' : 'destructive'}
+                                className={transaction.type === 'entrada' ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}
+                              >
+                                {transaction.type === 'entrada' ? (
+                                  <TrendingUp className="w-3 h-3 mr-1" />
+                                ) : (
+                                  <TrendingDown className="w-3 h-3 mr-1" />
+                                )}
+                                {transaction.type === 'entrada' ? 'Entrada' : 'Saída'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className={`text-right font-bold ${
+                              transaction.type === 'entrada' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {transaction.type === 'entrada' ? '+' : '-'}{formatCurrency(transaction.value)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleTransactionVisibilityChange(transaction.id, !transaction.isPublic)}
+                                  className={transaction.isPublic ? "text-green-600" : "text-gray-400"}
+                                >
+                                  {transaction.isPublic ? (
+                                    <Eye className="w-4 h-4" />
+                                  ) : (
+                                    <EyeOff className="w-4 h-4" />
+                                  )}
+                                </Button>
+                                <Badge 
+                                  variant={transaction.isPublic ? "default" : "outline"}
+                                  className={transaction.isPublic ? "bg-green-100 text-green-800 text-xs" : "text-gray-600 text-xs"}
+                                >
+                                  {transaction.isPublic ? "Público" : "Privado"}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Resumo */}
+                <div className="mt-6 grid md:grid-cols-3 gap-4">
+                  <Card className="border-l-4 border-l-blue-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Total de Transações</p>
+                          <p className="text-2xl font-bold text-gray-900">
+                            {getFilteredTransparencyTransactions().length}
+                          </p>
+                        </div>
+                        <Receipt className="h-8 w-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-green-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Transações Públicas</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {getFilteredTransparencyTransactions().filter(t => t.isPublic).length}
+                          </p>
+                        </div>
+                        <Eye className="h-8 w-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-gray-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Transações Privadas</p>
+                          <p className="text-2xl font-bold text-gray-600">
+                            {getFilteredTransparencyTransactions().filter(t => !t.isPublic).length}
+                          </p>
+                        </div>
+                        <EyeOff className="h-8 w-8 text-gray-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
