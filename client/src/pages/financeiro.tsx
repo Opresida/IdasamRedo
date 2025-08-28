@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   PiggyBank, 
   TrendingUp, 
@@ -25,7 +26,11 @@ import {
   AlertTriangle,
   Download,
   Building2,
-  CreditCard
+  CreditCard,
+  Users,
+  Heart,
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 interface BankAccount {
@@ -49,6 +54,40 @@ interface Transaction {
   createdAt: string;
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+  document: string; // CNPJ ou CPF
+  documentType: 'cpf' | 'cnpj';
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  category: string;
+  notes?: string;
+  createdAt: string;
+}
+
+interface Donor {
+  id: string;
+  name: string;
+  document: string; // CNPJ ou CPF
+  documentType: 'cpf' | 'cnpj';
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  donationType: 'mensal' | 'pontual' | 'anual';
+  totalDonated: number;
+  lastDonation?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -67,6 +106,41 @@ export default function FinanceiroPage() {
     agency: '',
     accountNumber: '',
     initialBalance: ''
+  });
+  
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [donors, setDonors] = useState<Donor[]>([]);
+  const [showSupplierDialog, setShowSupplierDialog] = useState(false);
+  const [showDonorDialog, setShowDonorDialog] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [editingDonor, setEditingDonor] = useState<Donor | null>(null);
+  
+  const [supplierFormData, setSupplierFormData] = useState({
+    name: '',
+    document: '',
+    documentType: 'cnpj' as 'cpf' | 'cnpj',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    category: '',
+    notes: ''
+  });
+  
+  const [donorFormData, setDonorFormData] = useState({
+    name: '',
+    document: '',
+    documentType: 'cpf' as 'cpf' | 'cnpj',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    donationType: 'mensal' as 'mensal' | 'pontual' | 'anual',
+    notes: ''
   });
 
   // Dados simulados para demonstração
@@ -138,6 +212,80 @@ export default function FinanceiroPage() {
 
     setBankAccounts(mockBankAccounts);
     setTransactions(mockTransactions);
+
+    // Dados mockados para fornecedores
+    const mockSuppliers: Supplier[] = [
+      {
+        id: '1',
+        name: 'Fornecedor de Equipamentos Ltda',
+        document: '12.345.678/0001-90',
+        documentType: 'cnpj',
+        email: 'contato@equipamentos.com.br',
+        phone: '(11) 9999-8888',
+        address: 'Rua dos Fornecedores, 123',
+        city: 'São Paulo',
+        state: 'SP',
+        zipCode: '01234-567',
+        category: 'Equipamentos',
+        notes: 'Fornecedor principal de equipamentos de laboratório',
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '2',
+        name: 'João Silva - Serviços',
+        document: '123.456.789-01',
+        documentType: 'cpf',
+        email: 'joao@servicos.com',
+        phone: '(11) 8888-7777',
+        address: 'Av. Prestadores, 456',
+        city: 'Ribeirão Preto',
+        state: 'SP',
+        zipCode: '14000-000',
+        category: 'Serviços',
+        createdAt: '2024-01-01T00:00:00'
+      }
+    ];
+
+    // Dados mockados para doadores
+    const mockDonors: Donor[] = [
+      {
+        id: '1',
+        name: 'Maria Oliveira',
+        document: '987.654.321-09',
+        documentType: 'cpf',
+        email: 'maria@email.com',
+        phone: '(16) 7777-6666',
+        address: 'Rua das Flores, 789',
+        city: 'Ribeirão Preto',
+        state: 'SP',
+        zipCode: '14001-000',
+        donationType: 'mensal',
+        totalDonated: 1500.00,
+        lastDonation: '2024-01-15',
+        notes: 'Doadora fiel há 3 anos',
+        createdAt: '2024-01-01T00:00:00'
+      },
+      {
+        id: '2',
+        name: 'Empresa ABC Ltda',
+        document: '98.765.432/0001-10',
+        documentType: 'cnpj',
+        email: 'responsabilidade@abc.com.br',
+        phone: '(16) 6666-5555',
+        address: 'Av. Corporativa, 1000',
+        city: 'Ribeirão Preto',
+        state: 'SP',
+        zipCode: '14002-000',
+        donationType: 'anual',
+        totalDonated: 25000.00,
+        lastDonation: '2024-01-01',
+        notes: 'Parceira estratégica em projetos sociais',
+        createdAt: '2024-01-01T00:00:00'
+      }
+    ];
+
+    setSuppliers(mockSuppliers);
+    setDonors(mockDonors);
   }, []);
 
   // Filtrar transações por conta
@@ -251,6 +399,133 @@ export default function FinanceiroPage() {
     }
   };
 
+  const handleSupplierSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!supplierFormData.name || !supplierFormData.document || !supplierFormData.email || !supplierFormData.phone) {
+      alert('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    if (editingSupplier) {
+      // Atualizar fornecedor existente
+      const updatedSupplier: Supplier = {
+        ...editingSupplier,
+        ...supplierFormData,
+        totalDonated: editingSupplier.totalDonated || 0
+      };
+      setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? updatedSupplier : s));
+    } else {
+      // Criar novo fornecedor
+      const newSupplier: Supplier = {
+        id: Date.now().toString(),
+        ...supplierFormData,
+        totalDonated: 0,
+        createdAt: new Date().toISOString()
+      };
+      setSuppliers([...suppliers, newSupplier]);
+    }
+
+    // Resetar formulário
+    setSupplierFormData({
+      name: '',
+      document: '',
+      documentType: 'cnpj',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      category: '',
+      notes: ''
+    });
+    setEditingSupplier(null);
+    setShowSupplierDialog(false);
+    alert(editingSupplier ? 'Fornecedor atualizado com sucesso!' : 'Fornecedor adicionado com sucesso!');
+  };
+
+  const handleDonorSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!donorFormData.name || !donorFormData.document || !donorFormData.email || !donorFormData.phone) {
+      alert('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    if (editingDonor) {
+      // Atualizar doador existente
+      const updatedDonor: Donor = {
+        ...editingDonor,
+        ...donorFormData
+      };
+      setDonors(donors.map(d => d.id === editingDonor.id ? updatedDonor : d));
+    } else {
+      // Criar novo doador
+      const newDonor: Donor = {
+        id: Date.now().toString(),
+        ...donorFormData,
+        totalDonated: 0,
+        createdAt: new Date().toISOString()
+      };
+      setDonors([...donors, newDonor]);
+    }
+
+    // Resetar formulário
+    setDonorFormData({
+      name: '',
+      document: '',
+      documentType: 'cpf',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      donationType: 'mensal',
+      notes: ''
+    });
+    setEditingDonor(null);
+    setShowDonorDialog(false);
+    alert(editingDonor ? 'Doador atualizado com sucesso!' : 'Doador adicionado com sucesso!');
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setSupplierFormData({
+      name: supplier.name,
+      document: supplier.document,
+      documentType: supplier.documentType,
+      email: supplier.email,
+      phone: supplier.phone,
+      address: supplier.address,
+      city: supplier.city,
+      state: supplier.state,
+      zipCode: supplier.zipCode,
+      category: supplier.category,
+      notes: supplier.notes || ''
+    });
+    setEditingSupplier(supplier);
+    setShowSupplierDialog(true);
+  };
+
+  const handleEditDonor = (donor: Donor) => {
+    setDonorFormData({
+      name: donor.name,
+      document: donor.document,
+      documentType: donor.documentType,
+      email: donor.email,
+      phone: donor.phone,
+      address: donor.address,
+      city: donor.city,
+      state: donor.state,
+      zipCode: donor.zipCode,
+      donationType: donor.donationType,
+      notes: donor.notes || ''
+    });
+    setEditingDonor(donor);
+    setShowDonorDialog(true);
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -287,6 +562,8 @@ export default function FinanceiroPage() {
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="accounts">Contas Bancárias</TabsTrigger>
           <TabsTrigger value="new-transaction">Nova Transação</TabsTrigger>
+          <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
+          <TabsTrigger value="donors">Doadores</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -862,6 +1139,518 @@ export default function FinanceiroPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="suppliers">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Gerenciar Fornecedores
+                  </CardTitle>
+                  <CardDescription>
+                    Cadastre e gerencie fornecedores da organização
+                  </CardDescription>
+                </div>
+                <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => {
+                      setEditingSupplier(null);
+                      setSupplierFormData({
+                        name: '',
+                        document: '',
+                        documentType: 'cnpj',
+                        email: '',
+                        phone: '',
+                        address: '',
+                        city: '',
+                        state: '',
+                        zipCode: '',
+                        category: '',
+                        notes: ''
+                      });
+                    }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Novo Fornecedor
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingSupplier ? 'Editar Fornecedor' : 'Novo Fornecedor'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingSupplier ? 'Atualize as informações do fornecedor' : 'Cadastre um novo fornecedor'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSupplierSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-name">Nome/Razão Social *</Label>
+                          <Input
+                            id="supplier-name"
+                            value={supplierFormData.name}
+                            onChange={(e) => setSupplierFormData({...supplierFormData, name: e.target.value})}
+                            placeholder="Nome do fornecedor"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-document-type">Tipo de Documento *</Label>
+                          <Select value={supplierFormData.documentType} onValueChange={(value: 'cpf' | 'cnpj') => setSupplierFormData({...supplierFormData, documentType: value})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cpf">CPF</SelectItem>
+                              <SelectItem value="cnpj">CNPJ</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-document">
+                            {supplierFormData.documentType === 'cpf' ? 'CPF' : 'CNPJ'} *
+                          </Label>
+                          <Input
+                            id="supplier-document"
+                            value={supplierFormData.document}
+                            onChange={(e) => setSupplierFormData({...supplierFormData, document: e.target.value})}
+                            placeholder={supplierFormData.documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-category">Categoria</Label>
+                          <Select value={supplierFormData.category} onValueChange={(value) => setSupplierFormData({...supplierFormData, category: value})}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Equipamentos">Equipamentos</SelectItem>
+                              <SelectItem value="Serviços">Serviços</SelectItem>
+                              <SelectItem value="Materiais">Materiais</SelectItem>
+                              <SelectItem value="Alimentação">Alimentação</SelectItem>
+                              <SelectItem value="Transporte">Transporte</SelectItem>
+                              <SelectItem value="Outros">Outros</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-email">Email *</Label>
+                          <Input
+                            id="supplier-email"
+                            type="email"
+                            value={supplierFormData.email}
+                            onChange={(e) => setSupplierFormData({...supplierFormData, email: e.target.value})}
+                            placeholder="email@fornecedor.com"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-phone">Telefone *</Label>
+                          <Input
+                            id="supplier-phone"
+                            value={supplierFormData.phone}
+                            onChange={(e) => setSupplierFormData({...supplierFormData, phone: e.target.value})}
+                            placeholder="(00) 00000-0000"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier-address">Endereço</Label>
+                        <Input
+                          id="supplier-address"
+                          value={supplierFormData.address}
+                          onChange={(e) => setSupplierFormData({...supplierFormData, address: e.target.value})}
+                          placeholder="Rua, número, bairro"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-city">Cidade</Label>
+                          <Input
+                            id="supplier-city"
+                            value={supplierFormData.city}
+                            onChange={(e) => setSupplierFormData({...supplierFormData, city: e.target.value})}
+                            placeholder="Cidade"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-state">Estado</Label>
+                          <Input
+                            id="supplier-state"
+                            value={supplierFormData.state}
+                            onChange={(e) => setSupplierFormData({...supplierFormData, state: e.target.value})}
+                            placeholder="SP"
+                            maxLength={2}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-zip">CEP</Label>
+                          <Input
+                            id="supplier-zip"
+                            value={supplierFormData.zipCode}
+                            onChange={(e) => setSupplierFormData({...supplierFormData, zipCode: e.target.value})}
+                            placeholder="00000-000"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier-notes">Observações</Label>
+                        <Textarea
+                          id="supplier-notes"
+                          value={supplierFormData.notes}
+                          onChange={(e) => setSupplierFormData({...supplierFormData, notes: e.target.value})}
+                          placeholder="Informações adicionais sobre o fornecedor..."
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setShowSupplierDialog(false)}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit">
+                          {editingSupplier ? 'Atualizar' : 'Cadastrar'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome/Razão Social</TableHead>
+                      <TableHead>Documento</TableHead>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead className="text-center">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {suppliers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                          Nenhum fornecedor cadastrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      suppliers.map((supplier) => (
+                        <TableRow key={supplier.id}>
+                          <TableCell className="font-medium">{supplier.name}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{supplier.document}</span>
+                              <Badge variant="outline" className="text-xs w-fit">
+                                {supplier.documentType.toUpperCase()}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col text-sm">
+                              <span>{supplier.email}</span>
+                              <span className="text-gray-600">{supplier.phone}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{supplier.category}</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditSupplier(supplier)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Tem certeza que deseja excluir este fornecedor?')) {
+                                    setSuppliers(suppliers.filter(s => s.id !== supplier.id));
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="donors">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Heart className="w-5 h-5" />
+                    Gerenciar Doadores
+                  </CardTitle>
+                  <CardDescription>
+                    Cadastre e gerencie doadores da organização
+                  </CardDescription>
+                </div>
+                <Dialog open={showDonorDialog} onOpenChange={setShowDonorDialog}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => {
+                      setEditingDonor(null);
+                      setDonorFormData({
+                        name: '',
+                        document: '',
+                        documentType: 'cpf',
+                        email: '',
+                        phone: '',
+                        address: '',
+                        city: '',
+                        state: '',
+                        zipCode: '',
+                        donationType: 'mensal',
+                        notes: ''
+                      });
+                    }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Novo Doador
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingDonor ? 'Editar Doador' : 'Novo Doador'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingDonor ? 'Atualize as informações do doador' : 'Cadastre um novo doador'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleDonorSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-name">Nome/Razão Social *</Label>
+                          <Input
+                            id="donor-name"
+                            value={donorFormData.name}
+                            onChange={(e) => setDonorFormData({...donorFormData, name: e.target.value})}
+                            placeholder="Nome do doador"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-document-type">Tipo de Documento *</Label>
+                          <Select value={donorFormData.documentType} onValueChange={(value: 'cpf' | 'cnpj') => setDonorFormData({...donorFormData, documentType: value})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cpf">CPF</SelectItem>
+                              <SelectItem value="cnpj">CNPJ</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-document">
+                            {donorFormData.documentType === 'cpf' ? 'CPF' : 'CNPJ'} *
+                          </Label>
+                          <Input
+                            id="donor-document"
+                            value={donorFormData.document}
+                            onChange={(e) => setDonorFormData({...donorFormData, document: e.target.value})}
+                            placeholder={donorFormData.documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-donation-type">Tipo de Doação</Label>
+                          <Select value={donorFormData.donationType} onValueChange={(value: 'mensal' | 'pontual' | 'anual') => setDonorFormData({...donorFormData, donationType: value})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="mensal">Mensal</SelectItem>
+                              <SelectItem value="pontual">Pontual</SelectItem>
+                              <SelectItem value="anual">Anual</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-email">Email *</Label>
+                          <Input
+                            id="donor-email"
+                            type="email"
+                            value={donorFormData.email}
+                            onChange={(e) => setDonorFormData({...donorFormData, email: e.target.value})}
+                            placeholder="email@doador.com"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-phone">Telefone *</Label>
+                          <Input
+                            id="donor-phone"
+                            value={donorFormData.phone}
+                            onChange={(e) => setDonorFormData({...donorFormData, phone: e.target.value})}
+                            placeholder="(00) 00000-0000"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="donor-address">Endereço</Label>
+                        <Input
+                          id="donor-address"
+                          value={donorFormData.address}
+                          onChange={(e) => setDonorFormData({...donorFormData, address: e.target.value})}
+                          placeholder="Rua, número, bairro"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-city">Cidade</Label>
+                          <Input
+                            id="donor-city"
+                            value={donorFormData.city}
+                            onChange={(e) => setDonorFormData({...donorFormData, city: e.target.value})}
+                            placeholder="Cidade"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-state">Estado</Label>
+                          <Input
+                            id="donor-state"
+                            value={donorFormData.state}
+                            onChange={(e) => setDonorFormData({...donorFormData, state: e.target.value})}
+                            placeholder="SP"
+                            maxLength={2}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="donor-zip">CEP</Label>
+                          <Input
+                            id="donor-zip"
+                            value={donorFormData.zipCode}
+                            onChange={(e) => setDonorFormData({...donorFormData, zipCode: e.target.value})}
+                            placeholder="00000-000"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="donor-notes">Observações</Label>
+                        <Textarea
+                          id="donor-notes"
+                          value={donorFormData.notes}
+                          onChange={(e) => setDonorFormData({...donorFormData, notes: e.target.value})}
+                          placeholder="Informações adicionais sobre o doador..."
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setShowDonorDialog(false)}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit">
+                          {editingDonor ? 'Atualizar' : 'Cadastrar'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome/Razão Social</TableHead>
+                      <TableHead>Documento</TableHead>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Total Doado</TableHead>
+                      <TableHead className="text-center">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {donors.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                          Nenhum doador cadastrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      donors.map((donor) => (
+                        <TableRow key={donor.id}>
+                          <TableCell className="font-medium">{donor.name}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{donor.document}</span>
+                              <Badge variant="outline" className="text-xs w-fit">
+                                {donor.documentType.toUpperCase()}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col text-sm">
+                              <span>{donor.email}</span>
+                              <span className="text-gray-600">{donor.phone}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant="outline"
+                              className={
+                                donor.donationType === 'mensal' ? 'bg-green-50 text-green-700' :
+                                donor.donationType === 'anual' ? 'bg-blue-50 text-blue-700' :
+                                'bg-orange-50 text-orange-700'
+                              }
+                            >
+                              {donor.donationType.charAt(0).toUpperCase() + donor.donationType.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-bold text-green-600">
+                            {formatCurrency(donor.totalDonated)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditDonor(donor)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Tem certeza que deseja excluir este doador?')) {
+                                    setDonors(donors.filter(d => d.id !== donor.id));
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
