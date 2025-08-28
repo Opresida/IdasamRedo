@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,8 @@ import {
   Calendar,
   DollarSign,
   Receipt,
-  AlertTriangle
+  AlertTriangle,
+  Download
 } from 'lucide-react';
 
 interface Transaction {
@@ -98,11 +98,11 @@ export default function FinanceiroPage() {
     const entradas = transactions
       .filter(t => t.type === 'entrada')
       .reduce((sum, t) => sum + t.value, 0);
-    
+
     const saidas = transactions
       .filter(t => t.type === 'saida')
       .reduce((sum, t) => sum + t.value, 0);
-    
+
     return {
       saldoAtual: entradas - saidas,
       entradasMes: entradas,
@@ -114,7 +114,7 @@ export default function FinanceiroPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.type || !formData.description || !formData.value || !formData.category) {
       alert('Por favor, preencha todos os campos obrigatórios.');
       return;
@@ -132,7 +132,7 @@ export default function FinanceiroPage() {
     };
 
     setTransactions([newTransaction, ...transactions]);
-    
+
     // Resetar formulário
     setFormData({
       type: '',
