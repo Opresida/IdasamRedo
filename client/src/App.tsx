@@ -11,16 +11,15 @@ import Home from '@/pages/home';
 import Projetos from '@/pages/projetos';
 import NoticiasPage from '@/pages/noticias';
 import LoginPage from '@/pages/login';
-import AdminDashboard from './pages/admin';
-import AdminLayout from './components/admin-layout';
-import DashboardPage from './pages/dashboard';
-import ImprensaPage from './pages/imprensa';
-import FinanceiroPage from './pages/financeiro';
-import AgendaPage from './pages/agenda';
-import ProjetosAdminPage from './pages/projetos-admin';
 import NotFound from '@/pages/not-found';
 import PaginaDeDoacao from '@/PaginaDeDoacao';
 import PaginaDeDoacaoEUR from '@/PaginaDeDoacaoEUR';
+import AdminLayout from '@/components/admin-layout';
+import DashboardPage from '@/pages/dashboard';
+import ImprensaPage from '@/pages/imprensa';
+import FinanceiroPage from '@/pages/financeiro';
+import AgendaPage from '@/pages/agenda';
+import ProjetosAdminPage from '@/pages/projetos-admin';
 
 function AppContent() {
   const [location] = useLocation();
@@ -42,42 +41,41 @@ function AppContent() {
         <Route path="/projetos" component={Projetos} />
         <Route path="/noticias" component={NoticiasPage} />
         <Route path="/admin" component={LoginPage} />
-        <Route path="/dashboard" component={() => (
+        <Route path="/dashboard">
           <ProtectedRoute>
             <AdminLayout>
               <DashboardPage />
             </AdminLayout>
           </ProtectedRoute>
-        )} />
-        <Route path="/imprensa" component={() => (
+        </Route>
+        <Route path="/imprensa">
           <ProtectedRoute>
             <AdminLayout>
               <ImprensaPage />
             </AdminLayout>
           </ProtectedRoute>
-        )} />
-        <Route path="/financeiro" component={() => (
+        </Route>
+        <Route path="/financeiro">
           <ProtectedRoute>
             <AdminLayout>
               <FinanceiroPage />
             </AdminLayout>
           </ProtectedRoute>
-        )} />
-        <Route path="/agenda" component={() => (
+        </Route>
+        <Route path="/agenda">
           <ProtectedRoute>
             <AdminLayout>
               <AgendaPage />
             </AdminLayout>
           </ProtectedRoute>
-        )} />
-        <Route path="/projetos-admin" component={() => (
+        </Route>
+        <Route path="/projetos-admin">
           <ProtectedRoute>
             <AdminLayout>
               <ProjetosAdminPage />
             </AdminLayout>
           </ProtectedRoute>
-        )} />
-        <Route path="/admin-old" component={() => <ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        </Route>
         <Route path="/doacao-usd" component={PaginaDeDoacao} />
         <Route path="/doacao-eur" component={PaginaDeDoacaoEUR} />
         <Route component={NotFound} />

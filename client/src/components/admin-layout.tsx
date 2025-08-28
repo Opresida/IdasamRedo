@@ -18,116 +18,172 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-interface NavigationItem {
-  name: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  current?: boolean;
-}
-
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
-
-  const navigation: NavigationItem[] = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Imprensa', href: '/imprensa', icon: Newspaper },
-    { name: 'Financeiro', href: '/financeiro', icon: PiggyBank },
-    { name: 'Agenda', href: '/agenda', icon: Calendar },
-    { name: 'Projetos', href: '/projetos-admin', icon: FolderKanban },
-  ];
+  const [location, setLocation] = useLocation();
 
   const handleLogout = () => {
     logout();
     setLocation('/admin');
   };
 
+  const navigationItems = [
+    {
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      path: '/dashboard',
+      description: 'Visão geral do sistema'
+    },
+    {
+      label: 'Imprensa',
+      icon: Newspaper,
+      path: '/imprensa',
+      description: 'Gerenciar artigos e notícias'
+    },
+    {
+      label: 'Financeiro',
+      icon: PiggyBank,
+      path: '/financeiro',
+      description: 'Controle financeiro'
+    },
+    {
+      label: 'Agenda',
+      icon: Calendar,
+      path: '/agenda',
+      description: 'Cronograma e eventos'
+    },
+    {
+      label: 'Projetos',
+      icon: FolderKanban,
+      path: '/projetos',
+      description: 'Gestão de projetos'
+    }
+  ];
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div className="flex flex-col w-64 bg-white shadow-lg">
-        {/* Header da Sidebar */}
-        <div className="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-idasam-green-dark to-idasam-green-medium">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <Shield className="w-5 h-5 text-idasam-green-dark" />
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        {/* Logo e Header */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-idasam-green-dark to-idasam-green-medium rounded-lg flex items-center justify-center shadow-md">
+              <Shield className="w-6 h-6 text-white" />
             </div>
-            <span className="text-white font-bold text-lg">IDASAM</span>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">IDASAM</h1>
+              <p className="text-xs text-gray-600">Admin Dashboard</p>
+            </div>
           </div>
         </div>
 
-        {/* Informações do Usuário */}
-        <div className="flex items-center px-4 py-4 border-b border-gray-200">
-          <Avatar className="w-10 h-10 mr-3">
-            <AvatarFallback className="bg-idasam-green-dark text-white">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-            <p className="text-xs text-gray-500">
-              {user?.role === 'admin' ? 'Administrador' : 'Editor'}
-            </p>
+        {/* User Info */}
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center space-x-3">
+            <Avatar className="w-8 h-8">
+              <AvatarFallback className="bg-idasam-green-dark text-white text-sm">
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+              <p className="text-xs text-gray-600">{user?.role === 'admin' ? 'Administrador' : 'Editor'}</p>
+            </div>
           </div>
         </div>
 
-        {/* Navegação */}
-        <nav className="flex-1 px-2 py-4 space-y-1">
-          {navigation.map((item) => {
-            const isActive = location === item.href;
-            const Icon = item.icon;
-            
-            return (
-              <Button
-                key={item.name}
-                variant={isActive ? "default" : "ghost"}
-                className={`w-full justify-start px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-idasam-green-dark text-white hover:bg-idasam-green-dark/90'
-                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-                onClick={() => setLocation(item.href)}
-              >
-                <Icon className="w-5 h-5 mr-3" />
-                {item.name}
-              </Button>
-            );
-          })}
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-6">
+          <div className="space-y-2">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.path;
+              
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => setLocation(item.path)}
+                  className={`w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-all duration-200 group ${
+                    isActive 
+                      ? 'bg-idasam-green-dark text-white shadow-md' 
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`} />
+                  <div className="flex-1">
+                    <p className={`font-medium text-sm ${isActive ? 'text-white' : 'text-gray-900'}`}>
+                      {item.label}
+                    </p>
+                    <p className={`text-xs ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                      {item.description}
+                    </p>
+                  </div>
+                  {isActive && (
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </nav>
 
-        {/* Botão de Sair */}
-        <div className="px-2 pb-4">
+        {/* Footer da Sidebar */}
+        <div className="p-4 border-t border-gray-200">
           <Button
             variant="outline"
-            className="w-full justify-start px-3 py-2 text-sm font-medium text-gray-700 border-gray-300 hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-colors"
+            size="sm"
             onClick={handleLogout}
+            className="w-full flex items-center justify-center text-gray-700 hover:text-red-600 hover:border-red-300"
           >
-            <LogOut className="w-5 h-5 mr-3" />
-            Sair
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair do Sistema
           </Button>
+          
+          <div className="mt-4 text-center">
+            <p className="text-xs text-gray-500">
+              Sistema v1.0 | IDASAM © 2024
+            </p>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-xs text-gray-500">Sistema Online</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Área de Conteúdo Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header do Conteúdo */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="px-6 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {navigation.find(item => item.href === location)?.name || 'Dashboard'}
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Sistema de Gestão de Conteúdo IDASAM
-            </p>
+      <div className="flex-1 flex flex-col">
+        {/* Header Principal */}
+        <div className="bg-white border-b border-gray-200 px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div>
+                <p className="text-sm text-gray-600">
+                  Bem-vindo ao painel administrativo
+                </p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                  <span>Última atualização: {new Date().toLocaleString('pt-BR')}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLocation('/')}
+                className="text-gray-600"
+              >
+                Ver Site Público
+              </Button>
+            </div>
           </div>
-        </header>
+        </div>
 
-        {/* Conteúdo da Página */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <div className="container mx-auto px-6 py-8">
-            {children}
-          </div>
-        </main>
+        {/* Conteúdo */}
+        <div className="flex-1 p-8 overflow-y-auto">
+          {children}
+        </div>
       </div>
     </div>
   );
