@@ -1,0 +1,35 @@
+Olá, Replit. Vamos agora criar a funcionalidade para a rota `/agenda`, que será um sistema de gestão de tarefas e projetos inspirado no Monday.com, focado em organizar as atividades do instituto.
+
+**Tarefa:** Crie o componente de página para a rota `/agenda`, que funcionará como um gerenciador de tarefas.
+
+**Requisitos de Layout e Funcionalidades:**
+
+**1. Cabeçalho e Filtros:**
+* No topo da página, inclua um título "Agenda e Tarefas".
+* Ao lado, adicione filtros: um `Select` (dropdown) para filtrar por **Setor** (ex: "Todos", "Imprensa", "Financeiro", "Diretoria") e outro para filtrar por **Responsável** (listando os usuários da tabela `admin_users`).
+* Inclua um botão principal destacado: **"+ Nova Tarefa"**.
+
+**2. Visualização de Tarefas (com abas para alternar):**
+* Crie um sistema de abas (`Tabs`) para que o usuário possa alternar entre diferentes modos de visualização. A inspiração é a imagem do Monday.com [cite: image_daf4b5.png].
+
+    * **Aba "Lista" (Padrão):**
+        * Uma visualização em tabela, agrupando tarefas por setor.
+        * **Colunas:** "Nome da Tarefa", "Responsável" (com nome e talvez avatar do usuário), "Data de Conclusão" e "Status".
+        * A coluna **"Status"** deve usar `Badges` coloridas para indicar o progresso (ex: "Pendente", "Em Andamento", "Concluído", "Cancelado").
+
+    * **Aba "Cronograma" (Linha do Tempo):**
+        * Uma visualização de linha do tempo (Gantt chart) que mostra as tarefas como barras horizontais ao longo dos dias/semanas. Isso ajuda a visualizar a duração e os prazos dos projetos.
+
+**3. Modal/Formulário "Nova Tarefa":**
+* Ao clicar no botão "+ Nova Tarefa", um `Dialog` (modal) deve aparecer com os seguintes campos para o usuário preencher:
+    * **Título da Tarefa:** (Input de texto, obrigatório).
+    * **Anotações/Descrição:** (Textarea para detalhes).
+    * **Atribuir a (Responsável):** Um `Select` que busca e lista os nomes dos profissionais da tabela `admin_users`.
+    * **Setor:** Um `Select` com as opções predefinidas ("Imprensa", "Financeiro", "Diretoria", etc.).
+    * **Data de Conclusão:** Um seletor de data (`DatePicker`).
+    * **Status:** Um `Select` com as opções de status, que por padrão deve ser "Pendente".
+
+**Resumo da Lógica:**
+A página deve permitir que um administrador ou diretor crie tarefas, atribua-as a um profissional específico de um setor, defina um prazo e acompanhe o progresso através de diferentes visualizações. Cada profissional poderá ver as tarefas que lhe foram atribuídas.
+
+Por favor, comece criando o layout geral da página com os filtros e as abas, e a estrutura da visualização em "Lista".
