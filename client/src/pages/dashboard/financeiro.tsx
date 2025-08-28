@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   DollarSign,
@@ -562,9 +561,9 @@ function DashboardFinanceiroPage() {
                           <Button variant="ghost" size="sm">
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="text-red-600 hover:text-red-700"
                             onClick={() => deleteTransaction(transaction.id)}
                           >
@@ -885,7 +884,7 @@ function DashboardFinanceiroPage() {
                   Configurar Visibilidade
                 </CardTitle>
                 <CardDescription>
-                  Defina quais transações aparecerão no portal público
+                  Defina quais transações aparecerão no portal de transparência
                 </CardDescription>
               </CardHeader>
               <CardContent>
