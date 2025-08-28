@@ -15,7 +15,8 @@ import {
   Trash2,
   X,
   Calendar,
-  Settings
+  Settings,
+  ExternalLink
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -140,6 +141,14 @@ function FinanceiroPage() {
     setTransactions(prevTransactions =>
       prevTransactions.map(t => (t.id === id ? { ...t, isPublic } : t))
     );
+  };
+
+  const deleteTransaction = (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.')) {
+      setTransactions(prevTransactions =>
+        prevTransactions.filter(t => t.id !== id)
+      );
+    }
   };
 
   const handleCreateTransaction = () => {
@@ -370,7 +379,12 @@ function FinanceiroPage() {
                           <Button variant="ghost" size="sm">
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => deleteTransaction(transaction.id)}
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
