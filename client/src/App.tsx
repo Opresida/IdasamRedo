@@ -77,6 +77,13 @@ function AppContent() {
             </AdminLayout>
           </ProtectedRoute>
         </Route>
+        <Route path="/dashboard/projetos">
+          <ProtectedRoute>
+            <AdminLayout>
+              <ProjetosAdminPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        </Route>
         <Route path="/doacao-usd" component={PaginaDeDoacao} />
         <Route path="/doacao-eur" component={PaginaDeDoacaoEUR} />
         <Route path="/transparencia" component={TransparenciaPage} />

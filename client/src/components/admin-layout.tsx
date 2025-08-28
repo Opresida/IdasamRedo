@@ -55,7 +55,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     {
       label: 'Projetos',
       icon: FolderKanban,
-      path: '/projetos',
+      path: '/dashboard/projetos',
       description: 'Gestão de projetos'
     }
   ];
