@@ -41,16 +41,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 // Mock Data (substituir por dados reais em uma aplicação completa)
 const mockTransactions = [
-  { id: '1', date: '2024-07-20', description: 'Venda de software', category: 'Receitas', amount: 5000, project: 'Projeto A', isPublic: true, type: 'receita', status: 'public', donor_id: '1' },
-  { id: '2', date: '2024-07-19', description: 'Compra de licença', category: 'Despesas', amount: 1200, project: 'Projeto B', isPublic: false, type: 'despesa', status: 'private', supplier_id: '1' },
-  { id: '3', date: '2024-07-18', description: 'Consultoria', category: 'Receitas', amount: 1500, project: 'Projeto A', isPublic: true, type: 'receita', status: 'public' },
-  { id: '4', date: '2024-07-17', description: 'Salário Desenvolvedor', category: 'Despesas', amount: 7000, project: 'Projeto A', isPublic: false, type: 'despesa', status: 'private', supplier_id: '2' },
-  { id: '5', date: '2024-07-16', description: 'Manutenção Servidor', category: 'Despesas', amount: 300, project: null, isPublic: true, type: 'despesa', status: 'public', supplier_id: '1' },
-  { id: '6', date: '2024-07-15', description: 'Reembolso Viagem', category: 'Receitas', amount: 450, project: 'Projeto B', isPublic: false, type: 'receita', status: 'private' },
-  { id: '7', date: '2024-07-14', description: 'Pagamento Fornecedor', category: 'Despesas', amount: 800, project: 'Projeto C', isPublic: true, type: 'despesa', status: 'public', supplier_id: '3' },
-  { id: '8', date: '2024-07-13', description: 'Comissão Venda', category: 'Receitas', amount: 2500, project: 'Projeto C', isPublic: false, type: 'receita', status: 'private', donor_id: '2' },
-  { id: '9', date: '2024-07-12', description: 'Licença Software', category: 'Despesas', amount: 950, project: 'Projeto C', isPublic: true, type: 'despesa', status: 'public', supplier_id: '1' },
-  { id: '10', date: '2024-07-11', description: 'Serviços Marketing', category: 'Despesas', amount: 600, project: null, isPublic: false, type: 'despesa', status: 'private', supplier_id: '2' },
+  { id: '1', date: '2024-07-20', description: 'Venda de software', category: 'Receitas', amount: 5000, project: 'Projeto A', isPublic: true, type: 'receita', status: 'public', donor_id: '1', bank_account_id: '1' },
+  { id: '2', date: '2024-07-19', description: 'Compra de licença', category: 'Despesas', amount: 1200, project: 'Projeto B', isPublic: false, type: 'despesa', status: 'private', supplier_id: '1', bank_account_id: '1' },
+  { id: '3', date: '2024-07-18', description: 'Consultoria', category: 'Receitas', amount: 1500, project: 'Projeto A', isPublic: true, type: 'receita', status: 'public', bank_account_id: '2' },
+  { id: '4', date: '2024-07-17', description: 'Salário Desenvolvedor', category: 'Despesas', amount: 7000, project: 'Projeto A', isPublic: false, type: 'despesa', status: 'private', supplier_id: '2', bank_account_id: '1' },
+  { id: '5', date: '2024-07-16', description: 'Manutenção Servidor', category: 'Despesas', amount: 300, project: null, isPublic: true, type: 'despesa', status: 'public', supplier_id: '1', bank_account_id: '3' },
+  { id: '6', date: '2024-07-15', description: 'Reembolso Viagem', category: 'Receitas', amount: 450, project: 'Projeto B', isPublic: false, type: 'receita', status: 'private', bank_account_id: '2' },
+  { id: '7', date: '2024-07-14', description: 'Pagamento Fornecedor', category: 'Despesas', amount: 800, project: 'Projeto C', isPublic: true, type: 'despesa', status: 'public', supplier_id: '3', bank_account_id: '1' },
+  { id: '8', date: '2024-07-13', description: 'Comissão Venda', category: 'Receitas', amount: 2500, project: 'Projeto C', isPublic: false, type: 'receita', status: 'private', donor_id: '2', bank_account_id: '3' },
+  { id: '9', date: '2024-07-12', description: 'Licença Software', category: 'Despesas', amount: 950, project: 'Projeto C', isPublic: true, type: 'despesa', status: 'public', supplier_id: '1', bank_account_id: '2' },
+  { id: '10', date: '2024-07-11', description: 'Serviços Marketing', category: 'Despesas', amount: 600, project: null, isPublic: false, type: 'despesa', status: 'private', supplier_id: '2', bank_account_id: '1' },
 ];
 
 const mockSuppliers: Supplier[] = [
@@ -109,6 +109,33 @@ const mockDonors: Donor[] = [
   }
 ];
 
+const mockBankAccounts: BankAccount[] = [
+  {
+    id: '1',
+    bank_name: 'Banco do Brasil',
+    agency: '1234-5',
+    account_number: '12345-6',
+    initial_balance: 50000,
+    created_at: '2024-01-01'
+  },
+  {
+    id: '2',
+    bank_name: 'Caixa Econômica Federal',
+    agency: '5678-9',
+    account_number: '67890-1',
+    initial_balance: 25000,
+    created_at: '2024-01-15'
+  },
+  {
+    id: '3',
+    bank_name: 'Banco da Amazônia',
+    agency: '9876-5',
+    account_number: '54321-0',
+    initial_balance: 15000,
+    created_at: '2024-02-01'
+  }
+];
+
 interface Transaction {
   id: string;
   date: string;
@@ -121,6 +148,16 @@ interface Transaction {
   status: 'public' | 'private';
   supplier_id?: string | null;
   donor_id?: string | null;
+  bank_account_id?: string | null;
+}
+
+interface BankAccount {
+  id: string;
+  bank_name: string;
+  agency: string;
+  account_number: string;
+  initial_balance: number;
+  created_at: string;
 }
 
 interface Supplier {
@@ -155,15 +192,18 @@ function DashboardFinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers);
   const [donors, setDonors] = useState<Donor[]>(mockDonors);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(mockBankAccounts);
   const [filters, setFilters] = useState<Filters>({
     type: 'all',
     status: 'all',
     project: 'all',
   });
   const [activeTab, setActiveTab] = useState('transactions');
+  const [activeBankTab, setActiveBankTab] = useState('add-account');
   const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [showDonorForm, setShowDonorForm] = useState(false);
+  const [showBankAccountForm, setShowBankAccountForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editingDonor, setEditingDonor] = useState<Donor | null>(null);
   const [newTransaction, setNewTransaction] = useState<Omit<Transaction, 'id' | 'status'>>({
@@ -176,6 +216,7 @@ function DashboardFinanceiroPage() {
     type: 'receita',
     supplier_id: null,
     donor_id: null,
+    bank_account_id: null,
   });
   const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id' | 'created_at'>>({
     name: '',
@@ -192,6 +233,12 @@ function DashboardFinanceiroPage() {
     email: '',
     phone: '',
     pix_key: '',
+  });
+  const [newBankAccount, setNewBankAccount] = useState<Omit<BankAccount, 'id' | 'created_at'>>({
+    bank_name: '',
+    agency: '',
+    account_number: '',
+    initial_balance: 0,
   });
 
   const totalReceitas = useMemo(() =>
@@ -228,6 +275,24 @@ function DashboardFinanceiroPage() {
       .reduce((sum, t) => sum + t.amount, 0),
     [transacoesPublicas]
   );
+
+  const getAccountTransactions = (accountId: string) => {
+    return transactions.filter(t => t.bank_account_id === accountId);
+  };
+
+  const getAccountSummary = (accountId: string) => {
+    const accountTransactions = getAccountTransactions(accountId);
+    const receitas = accountTransactions
+      .filter(t => t.type === 'receita')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const despesas = accountTransactions
+      .filter(t => t.type === 'despesa')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const account = bankAccounts.find(a => a.id === accountId);
+    const saldo = (account?.initial_balance || 0) + receitas - despesas;
+    
+    return { receitas, despesas, saldo };
+  };
 
   const categorySummary = useMemo(() => {
     const summary: { [key: string]: number } = {};
@@ -269,6 +334,7 @@ function DashboardFinanceiroPage() {
       project: newTransaction.project === 'none' || !newTransaction.project ? null : newTransaction.project,
       supplier_id: newTransaction.supplier_id === '' ? null : newTransaction.supplier_id,
       donor_id: newTransaction.donor_id === '' ? null : newTransaction.donor_id,
+      bank_account_id: newTransaction.bank_account_id === '' ? null : newTransaction.bank_account_id,
     };
     setTransactions([...transactions, newTransactionWithId]);
     setShowTransactionForm(false);
@@ -282,6 +348,7 @@ function DashboardFinanceiroPage() {
       type: 'receita',
       supplier_id: null,
       donor_id: null,
+      bank_account_id: null,
     });
   };
 
@@ -323,6 +390,24 @@ function DashboardFinanceiroPage() {
       phone: '',
       pix_key: '',
     });
+  };
+
+  const handleCreateBankAccount = () => {
+    const newId = (bankAccounts.length + 1).toString();
+    const newAccountWithId: BankAccount = {
+      ...newBankAccount,
+      id: newId,
+      created_at: new Date().toISOString(),
+    };
+    setBankAccounts([...bankAccounts, newAccountWithId]);
+    setNewBankAccount({
+      bank_name: '',
+      agency: '',
+      account_number: '',
+      initial_balance: 0,
+    });
+    // Mudar para a aba da nova conta criada
+    setActiveBankTab(newId);
   };
 
   const handleEditSupplier = (supplier: Supplier) => {
@@ -472,10 +557,14 @@ function DashboardFinanceiroPage() {
 
       {/* Abas Principais */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="transactions" className="flex items-center gap-2">
             <List className="w-4 h-4" />
             Transações
+          </TabsTrigger>
+          <TabsTrigger value="bank-accounts" className="flex items-center gap-2">
+            <Building className="w-4 h-4" />
+            Contas Bancárias
           </TabsTrigger>
           <TabsTrigger value="contatos" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
@@ -592,7 +681,208 @@ function DashboardFinanceiroPage() {
           </div>
         </TabsContent>
 
-        {/* Aba 2: Contatos */}
+        {/* Aba 2: Contas Bancárias */}
+        <TabsContent value="bank-accounts" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Gestão de Contas Bancárias</h3>
+              <p className="text-sm text-gray-600">Gerencie suas contas bancárias e visualize os extratos individuais</p>
+            </div>
+          </div>
+
+          <Tabs value={activeBankTab} onValueChange={setActiveBankTab} className="space-y-4">
+            <TabsList className="flex-wrap h-auto">
+              <TabsTrigger value="add-account" className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                + Adicionar Conta
+              </TabsTrigger>
+              {bankAccounts.map((account) => (
+                <TabsTrigger key={account.id} value={account.id} className="flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  {account.bank_name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {/* Sub-aba Adicionar Conta */}
+            <TabsContent value="add-account" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cadastrar Nova Conta Bancária</CardTitle>
+                  <CardDescription>
+                    Adicione uma nova conta para gerenciar suas transações
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Nome do Banco</Label>
+                    <Input
+                      value={newBankAccount.bank_name}
+                      onChange={(e) => setNewBankAccount({...newBankAccount, bank_name: e.target.value})}
+                      placeholder="Ex: Banco do Brasil"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Agência</Label>
+                      <Input
+                        value={newBankAccount.agency}
+                        onChange={(e) => setNewBankAccount({...newBankAccount, agency: e.target.value})}
+                        placeholder="Ex: 1234-5"
+                      />
+                    </div>
+                    <div>
+                      <Label>Número da Conta</Label>
+                      <Input
+                        value={newBankAccount.account_number}
+                        onChange={(e) => setNewBankAccount({...newBankAccount, account_number: e.target.value})}
+                        placeholder="Ex: 12345-6"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Saldo Inicial (R$)</Label>
+                    <Input
+                      type="number"
+                      value={newBankAccount.initial_balance}
+                      onChange={(e) => setNewBankAccount({...newBankAccount, initial_balance: Number(e.target.value)})}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <Button onClick={handleCreateBankAccount} className="w-full">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Conta
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Sub-abas das Contas Bancárias */}
+            {bankAccounts.map((account) => (
+              <TabsContent key={account.id} value={account.id} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900">{account.bank_name}</h4>
+                    <p className="text-sm text-gray-600">
+                      Agência: {account.agency} • Conta: {account.account_number}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Cards de Resumo da Conta */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="border-l-4 border-l-green-500">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-700">Receitas</CardTitle>
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-green-600">
+                        R$ {getAccountSummary(account.id).receitas.toLocaleString('pt-BR')}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-red-500">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-700">Despesas</CardTitle>
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-red-600">
+                        R$ {getAccountSummary(account.id).despesas.toLocaleString('pt-BR')}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-blue-500">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-700">Saldo Atual</CardTitle>
+                      <PiggyBank className="h-4 w-4 text-blue-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className={`text-2xl font-bold ${getAccountSummary(account.id).saldo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        R$ {getAccountSummary(account.id).saldo.toLocaleString('pt-BR')}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Inicial: R$ {account.initial_balance.toLocaleString('pt-BR')}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Tabela de Transações da Conta */}
+                <div className="bg-white rounded-lg border">
+                  <div className="p-4 border-b">
+                    <h5 className="font-medium text-gray-900">Histórico de Transações</h5>
+                    <p className="text-sm text-gray-600">
+                      Mostrando {getAccountTransactions(account.id).length} transações desta conta
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {getAccountTransactions(account.id).map((transaction) => (
+                          <tr key={transaction.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{transaction.description}</div>
+                                <div className="text-sm text-gray-500">{transaction.category}</div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant={transaction.type === 'receita' ? 'default' : 'destructive'}>
+                                {transaction.type === 'receita' ? 'Receita' : 'Despesa'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-medium">
+                              <span className={transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'}>
+                                R$ {transaction.amount.toLocaleString('pt-BR')}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {transaction.isPublic ? (
+                                <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  Público
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-gray-600 border-gray-200 bg-gray-50">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  Privado
+                                </Badge>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {getAccountTransactions(account.id).length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <PiggyBank className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>Nenhuma transação encontrada para esta conta</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </TabsContent>
+
+        {/* Aba 3: Contatos */}
         <TabsContent value="contatos" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -1192,6 +1482,22 @@ function DashboardFinanceiroPage() {
                   </Select>
                 </div>
               )}
+
+              <div>
+                <Label>Conta Bancária *</Label>
+                <Select value={newTransaction.bank_account_id || ''} onValueChange={(value: string) => setNewTransaction({...newTransaction, bank_account_id: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a conta bancária" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bankAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.bank_name} - {account.agency} / {account.account_number}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div>
                 <Label>Data</Label>
