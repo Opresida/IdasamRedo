@@ -13,16 +13,25 @@ if (!supabaseKey || supabaseKey === 'your-anon-key') {
 
 import { createClient } from '@supabase/supabase-js'
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-})
+// Criar uma única instância do cliente Supabase
+let supabaseInstance: any = null;
 
+const getSupabaseClient = () => {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    });
+  }
+  return supabaseInstance;
+};
+
+export const supabase = getSupabaseClient();
 export default supabase;

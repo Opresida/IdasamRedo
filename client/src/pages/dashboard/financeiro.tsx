@@ -62,7 +62,7 @@ interface Filters {
   project: string;
 }
 
-function DashboardFinanceiroPage() {
+const DashboardFinanceiroPage: React.FC = () => {
   // Estado para controle de loading
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1554,6 +1554,6 @@ function DashboardFinanceiroPage() {
       )}
     </div>
   );
-}
+};
 
 export default DashboardFinanceiroPage;
