@@ -50,10 +50,6 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// Estado para controle de loading
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState<string | null>(null);
-
 // Adaptação para compatibilidade com o componente existente
 interface Transaction extends Omit<FinancialTransaction, 'project_id'> {
   project: string | null;
@@ -67,6 +63,9 @@ interface Filters {
 }
 
 function DashboardFinanceiroPage() {
+  // Estado para controle de loading
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [donors, setDonors] = useState<Donor[]>([]);
