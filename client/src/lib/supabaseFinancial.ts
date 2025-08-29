@@ -57,13 +57,22 @@ export interface Donor {
 export const financialTransactionsService = {
   // Buscar todas as transações
   async getAll(): Promise<FinancialTransaction[]> {
-    const { data, error } = await supabase
-      .from('financial_transactions')
-      .select('*')
-      .order('date', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    try {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .select('*')
+        .order('date', { ascending: false });
+      
+      if (error) {
+        console.error('Erro ao buscar transações:', error);
+        throw new Error(`Erro ao buscar transações: ${error.message}`);
+      }
+      return data || [];
+    } catch (err) {
+      console.error('Erro de conexão:', err);
+      // Retorna dados vazios em caso de erro de conexão
+      return [];
+    }
   },
 
   // Buscar transações por projeto
@@ -139,13 +148,21 @@ export const financialTransactionsService = {
 // Service para Contas Bancárias
 export const bankAccountsService = {
   async getAll(): Promise<BankAccount[]> {
-    const { data, error } = await supabase
-      .from('bank_accounts')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    try {
+      const { data, error } = await supabase
+        .from('bank_accounts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Erro ao buscar contas bancárias:', error);
+        throw new Error(`Erro ao buscar contas bancárias: ${error.message}`);
+      }
+      return data || [];
+    } catch (err) {
+      console.error('Erro de conexão:', err);
+      return [];
+    }
   },
 
   async create(account: Omit<BankAccount, 'id' | 'created_at' | 'updated_at'>): Promise<BankAccount> {
@@ -184,13 +201,21 @@ export const bankAccountsService = {
 // Service para Fornecedores
 export const suppliersService = {
   async getAll(): Promise<Supplier[]> {
-    const { data, error } = await supabase
-      .from('suppliers')
-      .select('*')
-      .order('name', { ascending: true });
-    
-    if (error) throw error;
-    return data || [];
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) {
+        console.error('Erro ao buscar fornecedores:', error);
+        throw new Error(`Erro ao buscar fornecedores: ${error.message}`);
+      }
+      return data || [];
+    } catch (err) {
+      console.error('Erro de conexão:', err);
+      return [];
+    }
   },
 
   async create(supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>): Promise<Supplier> {
@@ -229,13 +254,21 @@ export const suppliersService = {
 // Service para Doadores
 export const donorsService = {
   async getAll(): Promise<Donor[]> {
-    const { data, error } = await supabase
-      .from('donors')
-      .select('*')
-      .order('name', { ascending: true });
-    
-    if (error) throw error;
-    return data || [];
+    try {
+      const { data, error } = await supabase
+        .from('donors')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) {
+        console.error('Erro ao buscar doadores:', error);
+        throw new Error(`Erro ao buscar doadores: ${error.message}`);
+      }
+      return data || [];
+    } catch (err) {
+      console.error('Erro de conexão:', err);
+      return [];
+    }
   },
 
   async create(donor: Omit<Donor, 'id' | 'created_at' | 'updated_at'>): Promise<Donor> {
