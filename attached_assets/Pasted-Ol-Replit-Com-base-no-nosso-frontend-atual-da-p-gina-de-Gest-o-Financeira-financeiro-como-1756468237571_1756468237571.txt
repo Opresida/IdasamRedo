@@ -1,0 +1,23 @@
+Olá, Replit. Com base no nosso frontend atual da página de "Gestão Financeira" (`/financeiro`), como visto na imagem, vamos adicionar uma nova funcionalidade para gerenciar múltiplas contas bancárias.
+
+**Tarefa:** Modifique o componente da página `/financeiro` para incluir a gestão de contas.
+
+**1. Adicione uma Nova Aba Principal:**
+* Na `TabsList` principal, que já contém "Transações", "Contatos", "Transparência" e "Relatórios", adicione uma nova aba chamada **"Contas Bancárias"**.
+
+**2. Crie o Conteúdo para a Aba "Contas Bancárias":**
+* Dentro do `TabsContent` da nova aba, implemente um sistema de **sub-abas**.
+* **Sub-aba "+ Adicionar Conta":** A primeira sub-aba deve ser para o cadastro. Crie um formulário simples com os campos: "Nome do Banco", "Agência", "Número da Conta" e "Saldo Inicial".
+* **Sub-abas Dinâmicas:** As sub-abas seguintes devem ser geradas dinamicamente para cada conta bancária já cadastrada (ex: "Banco do Brasil", "Caixa", etc.).
+
+**3. Crie o Conteúdo para as Sub-abas de Cada Banco:**
+* Ao clicar na sub-aba de um banco específico, a interface deve exibir uma visualização filtrada:
+    * Mostre os mesmos **cards de resumo** que temos na visão geral ("Total Receitas", "Total Despesas", "Saldo Atual"), mas com valores calculados **apenas para a conta selecionada**.
+    * Abaixo dos cards, mostre a **tabela de histórico de transações**, também filtrada para exibir **apenas os lançamentos da conta selecionada**.
+
+**4. Ajuste o Formulário de Lançamento:**
+* No formulário de "Nova Transação" (que provavelmente está na aba "Transações"), adicione um novo campo `Select` (dropdown) chamado **"Conta Bancária"**.
+* Este campo deve ser obrigatório e deve listar todas as contas bancárias cadastradas, permitindo ao usuário associar cada nova transação a uma conta específica.
+
+**Resumo da Lógica:**
+O objetivo é permitir que o usuário cadastre múltiplas contas na nova aba "Contas Bancárias". Cada transação criada deve ser associada a uma conta. A aba "Transações" (ou a visão geral) mostrará o consolidado de tudo, enquanto as sub-abas em "Contas Bancárias" mostrarão o extrato de cada conta individualmente.
