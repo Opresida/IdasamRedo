@@ -80,7 +80,6 @@ const DashboardFinanceiroPage: React.FC = () => {
   const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [showDonorForm, setShowDonorForm] = useState(false);
-  const [showBankAccountForm, setShowBankAccountForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editingDonor, setEditingDonor] = useState<Donor | null>(null);
   const [newTransaction, setNewTransaction] = useState<Omit<Transaction, 'id' | 'status'>>({
@@ -205,7 +204,7 @@ const DashboardFinanceiroPage: React.FC = () => {
       .reduce((sum, t) => sum + t.amount, 0);
     const account = bankAccounts.find(a => a.id === accountId);
     const saldo = (account?.initial_balance || 0) + receitas - despesas;
-    
+
     return { receitas, despesas, saldo };
   };
 
@@ -269,7 +268,7 @@ const DashboardFinanceiroPage: React.FC = () => {
       };
 
       const createdTransaction = await financialTransactionsService.create(transactionData);
-      
+
       // Converter para o formato do componente
       const convertedTransaction: Transaction = {
         ...createdTransaction,
@@ -309,7 +308,7 @@ const DashboardFinanceiroPage: React.FC = () => {
         const createdSupplier = await suppliersService.create(newSupplier);
         setSuppliers([createdSupplier, ...suppliers]);
       }
-      
+
       setShowSupplierForm(false);
       setEditingSupplier(null);
       setNewSupplier({
@@ -337,7 +336,7 @@ const DashboardFinanceiroPage: React.FC = () => {
         const createdDonor = await donorsService.create(newDonor);
         setDonors([createdDonor, ...donors]);
       }
-      
+
       setShowDonorForm(false);
       setEditingDonor(null);
       setNewDonor({
@@ -468,16 +467,16 @@ const DashboardFinanceiroPage: React.FC = () => {
               <p className="text-gray-600">Controle de receitas, despesas e transparência</p>
             </div>
           </div>
-          <Button 
-            onClick={loadData} 
-            disabled={loading} 
+          <Button
+            onClick={loadData}
+            disabled={loading}
             variant="outline"
             className="flex items-center gap-2"
           >
-            <svg 
-              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

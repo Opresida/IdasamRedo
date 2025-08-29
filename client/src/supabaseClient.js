@@ -1,6 +1,8 @@
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co'
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 
 // Verificar se as variáveis de ambiente estão definidas
 if (!supabaseUrl || supabaseUrl === 'https://your-project.supabase.co') {
@@ -11,10 +13,8 @@ if (!supabaseKey || supabaseKey === 'your-anon-key') {
   console.warn('VITE_SUPABASE_ANON_KEY não está definida. Configure suas variáveis de ambiente.');
 }
 
-import { createClient } from '@supabase/supabase-js'
-
 // Criar uma única instância do cliente Supabase
-let supabaseInstance: any = null;
+let supabaseInstance = null;
 
 const getSupabaseClient = () => {
   if (!supabaseInstance) {
