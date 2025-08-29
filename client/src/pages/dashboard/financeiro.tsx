@@ -1255,11 +1255,11 @@ function DashboardFinanceiroPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="text-sm text-gray-600 mb-4">
-                    <strong>{transacoesPublicas.length}</strong> de <strong>{mockTransactions.length}</strong> transações são públicas
+                    <strong>{transacoesPublicas.length}</strong> de <strong>{transactions.length}</strong> transações são públicas
                   </div>
 
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {mockTransactions.map((transaction) => (
+                    {transactions.map((transaction) => (
                       <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex-1">
                           <div className="text-sm font-medium">{transaction.description}</div>
