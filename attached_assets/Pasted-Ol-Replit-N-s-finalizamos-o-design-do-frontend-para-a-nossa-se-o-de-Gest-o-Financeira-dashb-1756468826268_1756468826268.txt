@@ -1,0 +1,47 @@
+Olá, Replit. Nós finalizamos o design do frontend para a nossa seção de "Gestão Financeira" (`/dashboard/financeiro`). Agora, preciso que você crie o schema do banco de dados (backend) para suportar todas as funcionalidades que projetamos.
+
+A lógica principal envolve ter múltiplas "Contas Bancárias" e registrar "Transações Financeiras" que estão sempre vinculadas a uma dessas contas, além de poderem estar associadas a projetos, fornecedores ou doadores.
+
+**Tarefa:**
+Gere um script SQL para o Supabase que crie as tabelas e os relacionamentos necessários para o módulo financeiro.
+
+---
+
+**1. Tabela para Contas Bancárias (`bank_accounts`)**
+
+Por favor, crie uma tabela chamada `bank_accounts` com a seguinte estrutura:
+* `id` (UUID, Chave Primária, com valor padrão `gen_random_uuid()`)
+* `name` (TEXT, Obrigatório - ex: "Banco do Brasil", "Caixa")
+* `agency` (TEXT, Opcional - Agência)
+* `account_number` (TEXT, Opcional - Número da Conta)
+* `initial_balance` (NUMERIC(12, 2), Obrigatório, com valor padrão `0.00`)
+* `created_at` (TIMESTAMP WITH TIME ZONE, com valor padrão `now()`)
+* `updated_at` (TIMESTAMP WITH TIME ZONE, com valor padrão `now()`)
+
+---
+
+**2. Tabela de Transações (`financial_transactions`)**
+
+Agora, crie ou altere a tabela `financial_transactions` para garantir que ela tenha a estrutura abaixo e se conecte corretamente com todas as outras tabelas. Esta é a tabela central.
+
+* `id` (UUID, Chave Primária, com valor padrão `gen_random_uuid()`)
+* `description` (TEXT, Obrigatório)
+* `amount` (NUMERIC(12, 2), Obrigatório)
+* `type` (TEXT, Obrigatório, com checagem para aceitar apenas 'receita' ou 'despesa')
+* `category` (TEXT, Obrigatório - ex: "Custo Fixo", "Doação", etc.)
+* `date` (DATE, Obrigatório)
+* `is_publicly_visible` (BOOLEAN, com valor padrão `false`)
+* `status` (TEXT, com valor padrão `'approved'` e checagem para 'pending', 'approved', 'rejected')
+* `created_at` (TIMESTAMP WITH TIME ZONE, com valor padrão `now()`)
+* `updated_at` (TIMESTAMP WITH TIME ZONE, com valor padrão `now()`)
+
+**Conexões (Chaves Estrangeiras):**
+* `bank_account_id` (UUID, Obrigatório) - Deve ser uma chave estrangeira que se conecta a `bank_accounts(id)`. Se uma conta for deletada, esta transação **não** deve ser apagada (`ON DELETE RESTRICT`).
+* `project_id` (UUID, Opcional) - Chave estrangeira para `projects(id)`.
+* `supplier_id` (UUID, Opcional) - Chave estrangeira para `suppliers(id)`.
+* `donor_id` (UUID, Opcional) - Chave estrangeira para `donors(id)`.
+
+---
+
+**Resultado Esperado:**
+O resultado final deve ser um script SQL único que cria essas duas tabelas e estabelece todas as conexões (chaves estrangeiras) entre elas e as outras tabelas do sistema (`projects`, `suppliers`, `donors`). Por favor, inclua também os comandos para criar índices nas colunas de chaves estrangeiras para otimizar a performance.
