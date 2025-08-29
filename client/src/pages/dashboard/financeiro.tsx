@@ -112,7 +112,7 @@ const mockDonors: Donor[] = [
 const mockBankAccounts: BankAccount[] = [
   {
     id: '1',
-    bank_name: 'Banco do Brasil',
+    name: 'Banco do Brasil',
     agency: '1234-5',
     account_number: '12345-6',
     initial_balance: 50000,
@@ -120,7 +120,7 @@ const mockBankAccounts: BankAccount[] = [
   },
   {
     id: '2',
-    bank_name: 'Caixa Econômica Federal',
+    name: 'Caixa Econômica Federal',
     agency: '5678-9',
     account_number: '67890-1',
     initial_balance: 25000,
@@ -128,7 +128,7 @@ const mockBankAccounts: BankAccount[] = [
   },
   {
     id: '3',
-    bank_name: 'Banco da Amazônia',
+    name: 'Banco da Amazônia',
     agency: '9876-5',
     account_number: '54321-0',
     initial_balance: 15000,
@@ -153,7 +153,7 @@ interface Transaction {
 
 interface BankAccount {
   id: string;
-  bank_name: string;
+  name: string;
   agency: string;
   account_number: string;
   initial_balance: number;
@@ -235,7 +235,7 @@ function DashboardFinanceiroPage() {
     pix_key: '',
   });
   const [newBankAccount, setNewBankAccount] = useState<Omit<BankAccount, 'id' | 'created_at'>>({
-    bank_name: '',
+    name: '',
     agency: '',
     account_number: '',
     initial_balance: 0,
@@ -401,7 +401,7 @@ function DashboardFinanceiroPage() {
     };
     setBankAccounts([...bankAccounts, newAccountWithId]);
     setNewBankAccount({
-      bank_name: '',
+      name: '',
       agency: '',
       account_number: '',
       initial_balance: 0,
@@ -699,7 +699,7 @@ function DashboardFinanceiroPage() {
               {bankAccounts.map((account) => (
                 <TabsTrigger key={account.id} value={account.id} className="flex items-center gap-2">
                   <Building className="w-4 h-4" />
-                  {account.bank_name}
+                  {account.name}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -717,8 +717,8 @@ function DashboardFinanceiroPage() {
                   <div>
                     <Label>Nome do Banco</Label>
                     <Input
-                      value={newBankAccount.bank_name}
-                      onChange={(e) => setNewBankAccount({...newBankAccount, bank_name: e.target.value})}
+                      value={newBankAccount.name}
+                      onChange={(e) => setNewBankAccount({...newBankAccount, name: e.target.value})}
                       placeholder="Ex: Banco do Brasil"
                     />
                   </div>
@@ -762,7 +762,7 @@ function DashboardFinanceiroPage() {
               <TabsContent key={account.id} value={account.id} className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-lg font-medium text-gray-900">{account.bank_name}</h4>
+                    <h4 className="text-lg font-medium text-gray-900">{account.name}</h4>
                     <p className="text-sm text-gray-600">
                       Agência: {account.agency} • Conta: {account.account_number}
                     </p>
@@ -1492,7 +1492,7 @@ function DashboardFinanceiroPage() {
                   <SelectContent>
                     {bankAccounts.map((account) => (
                       <SelectItem key={account.id} value={account.id}>
-                        {account.bank_name} - {account.agency} / {account.account_number}
+                        {account.name} - {account.agency} / {account.account_number}
                       </SelectItem>
                     ))}
                   </SelectContent>
