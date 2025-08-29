@@ -22,6 +22,17 @@ import {
   Heart
 } from 'lucide-react';
 
+import {
+  financialTransactionsService,
+  bankAccountsService,
+  suppliersService,
+  donorsService,
+  type FinancialTransaction,
+  type BankAccount,
+  type Supplier,
+  type Donor
+} from '@/lib/supabaseFinancial';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import {
@@ -39,147 +50,14 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// Mock Data (substituir por dados reais em uma aplicação completa)
-const mockTransactions = [
-  { id: '1', date: '2024-07-20', description: 'Venda de software', category: 'Receitas', amount: 5000, project: 'Projeto A', isPublic: true, type: 'receita', status: 'public', donor_id: '1', bank_account_id: '1' },
-  { id: '2', date: '2024-07-19', description: 'Compra de licença', category: 'Despesas', amount: 1200, project: 'Projeto B', isPublic: false, type: 'despesa', status: 'private', supplier_id: '1', bank_account_id: '1' },
-  { id: '3', date: '2024-07-18', description: 'Consultoria', category: 'Receitas', amount: 1500, project: 'Projeto A', isPublic: true, type: 'receita', status: 'public', bank_account_id: '2' },
-  { id: '4', date: '2024-07-17', description: 'Salário Desenvolvedor', category: 'Despesas', amount: 7000, project: 'Projeto A', isPublic: false, type: 'despesa', status: 'private', supplier_id: '2', bank_account_id: '1' },
-  { id: '5', date: '2024-07-16', description: 'Manutenção Servidor', category: 'Despesas', amount: 300, project: null, isPublic: true, type: 'despesa', status: 'public', supplier_id: '1', bank_account_id: '3' },
-  { id: '6', date: '2024-07-15', description: 'Reembolso Viagem', category: 'Receitas', amount: 450, project: 'Projeto B', isPublic: false, type: 'receita', status: 'private', bank_account_id: '2' },
-  { id: '7', date: '2024-07-14', description: 'Pagamento Fornecedor', category: 'Despesas', amount: 800, project: 'Projeto C', isPublic: true, type: 'despesa', status: 'public', supplier_id: '3', bank_account_id: '1' },
-  { id: '8', date: '2024-07-13', description: 'Comissão Venda', category: 'Receitas', amount: 2500, project: 'Projeto C', isPublic: false, type: 'receita', status: 'private', donor_id: '2', bank_account_id: '3' },
-  { id: '9', date: '2024-07-12', description: 'Licença Software', category: 'Despesas', amount: 950, project: 'Projeto C', isPublic: true, type: 'despesa', status: 'public', supplier_id: '1', bank_account_id: '2' },
-  { id: '10', date: '2024-07-11', description: 'Serviços Marketing', category: 'Despesas', amount: 600, project: null, isPublic: false, type: 'despesa', status: 'private', supplier_id: '2', bank_account_id: '1' },
-];
+// Estado para controle de loading
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState<string | null>(null);
 
-const mockSuppliers: Supplier[] = [
-  {
-    id: '1',
-    name: 'Tech Solutions Ltda',
-    cnpj_cpf: '12.345.678/0001-99',
-    contact_person: 'João Silva',
-    email: 'contato@techsolutions.com',
-    phone: '(11) 99999-9999',
-    pix_key: 'contato@techsolutions.com',
-    created_at: '2024-01-15'
-  },
-  {
-    id: '2',
-    name: 'Maria Santos Consultoria',
-    cnpj_cpf: '123.456.789-00',
-    contact_person: 'Maria Santos',
-    email: 'maria@consultoria.com',
-    phone: '(11) 88888-8888',
-    pix_key: '123.456.789-00',
-    created_at: '2024-02-20'
-  },
-  {
-    id: '3',
-    name: 'Equipamentos Norte S.A.',
-    cnpj_cpf: '98.765.432/0001-11',
-    contact_person: 'Carlos Oliveira',
-    email: 'vendas@equipamentosnorte.com',
-    phone: '(92) 77777-7777',
-    pix_key: '98.765.432/0001-11',
-    created_at: '2024-03-10'
-  }
-];
-
-const mockDonors: Donor[] = [
-  {
-    id: '1',
-    name: 'Fundação Amazônia Verde',
-    cnpj_cpf: '11.222.333/0001-44',
-    contact_person: 'Ana Costa',
-    email: 'ana@amazoniaverde.org',
-    phone: '(11) 66666-6666',
-    pix_key: 'ana@amazoniaverde.org',
-    created_at: '2024-01-05'
-  },
-  {
-    id: '2',
-    name: 'Instituto Desenvolvimento Social',
-    cnpj_cpf: '44.555.666/0001-77',
-    contact_person: 'Roberto Lima',
-    email: 'roberto@ids.org.br',
-    phone: '(21) 55555-5555',
-    pix_key: '44.555.666/0001-77',
-    created_at: '2024-02-14'
-  }
-];
-
-const mockBankAccounts: BankAccount[] = [
-  {
-    id: '1',
-    name: 'Banco do Brasil',
-    agency: '1234-5',
-    account_number: '12345-6',
-    initial_balance: 50000,
-    created_at: '2024-01-01'
-  },
-  {
-    id: '2',
-    name: 'Caixa Econômica Federal',
-    agency: '5678-9',
-    account_number: '67890-1',
-    initial_balance: 25000,
-    created_at: '2024-01-15'
-  },
-  {
-    id: '3',
-    name: 'Banco da Amazônia',
-    agency: '9876-5',
-    account_number: '54321-0',
-    initial_balance: 15000,
-    created_at: '2024-02-01'
-  }
-];
-
-interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  category: string;
-  amount: number;
+// Adaptação para compatibilidade com o componente existente
+interface Transaction extends Omit<FinancialTransaction, 'project_id'> {
   project: string | null;
-  isPublic: boolean;
-  type: 'receita' | 'despesa';
   status: 'public' | 'private';
-  supplier_id?: string | null;
-  donor_id?: string | null;
-  bank_account_id?: string | null;
-}
-
-interface BankAccount {
-  id: string;
-  name: string;
-  agency: string;
-  account_number: string;
-  initial_balance: number;
-  created_at: string;
-}
-
-interface Supplier {
-  id: string;
-  name: string;
-  cnpj_cpf: string;
-  contact_person: string;
-  email: string;
-  phone: string;
-  pix_key: string;
-  created_at: string;
-}
-
-interface Donor {
-  id: string;
-  name: string;
-  cnpj_cpf: string;
-  contact_person: string;
-  email: string;
-  phone: string;
-  pix_key: string;
-  created_at: string;
 }
 
 interface Filters {
@@ -189,10 +67,10 @@ interface Filters {
 }
 
 function DashboardFinanceiroPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers);
-  const [donors, setDonors] = useState<Donor[]>(mockDonors);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(mockBankAccounts);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [donors, setDonors] = useState<Donor[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [filters, setFilters] = useState<Filters>({
     type: 'all',
     status: 'all',
@@ -240,6 +118,44 @@ function DashboardFinanceiroPage() {
     account_number: '',
     initial_balance: 0,
   });
+
+  // Função para carregar dados do Supabase
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [transactionsData, suppliersData, donorsData, bankAccountsData] = await Promise.all([
+        financialTransactionsService.getAll(),
+        suppliersService.getAll(),
+        donorsService.getAll(),
+        bankAccountsService.getAll()
+      ]);
+
+      // Converter transações para o formato do componente
+      const convertedTransactions: Transaction[] = transactionsData.map(t => ({
+        ...t,
+        project: t.project_id,
+        status: t.is_public ? 'public' : 'private',
+        isPublic: t.is_public
+      }));
+
+      setTransactions(convertedTransactions);
+      setSuppliers(suppliersData);
+      setDonors(donorsData);
+      setBankAccounts(bankAccountsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
+      console.error('Erro ao carregar dados:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carregar dados na inicialização
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const totalReceitas = useMemo(() =>
     transactions
@@ -311,103 +227,150 @@ function DashboardFinanceiroPage() {
     });
   }, [transactions, filters]);
 
-  const toggleTransactionVisibility = (id: string, isPublic: boolean) => {
-    setTransactions(prevTransactions =>
-      prevTransactions.map(t => (t.id === id ? { ...t, isPublic } : t))
-    );
-  };
-
-  const deleteTransaction = (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.')) {
+  const toggleTransactionVisibility = async (id: string, isPublic: boolean) => {
+    try {
+      await financialTransactionsService.updateVisibility(id, isPublic);
       setTransactions(prevTransactions =>
-        prevTransactions.filter(t => t.id !== id)
+        prevTransactions.map(t => (t.id === id ? { ...t, isPublic, status: isPublic ? 'public' : 'private' } : t))
       );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar visibilidade');
+      console.error('Erro ao atualizar visibilidade:', err);
     }
   };
 
-  const handleCreateTransaction = () => {
-    const newId = (transactions.length + 1).toString();
-    const newTransactionWithId: Transaction = {
-      ...newTransaction,
-      id: newId,
-      status: newTransaction.isPublic ? 'public' : 'private',
-      project: newTransaction.project === 'none' || !newTransaction.project ? null : newTransaction.project,
-      supplier_id: newTransaction.supplier_id === '' ? null : newTransaction.supplier_id,
-      donor_id: newTransaction.donor_id === '' ? null : newTransaction.donor_id,
-      bank_account_id: newTransaction.bank_account_id === '' ? null : newTransaction.bank_account_id,
-    };
-    setTransactions([...transactions, newTransactionWithId]);
-    setShowTransactionForm(false);
-    setNewTransaction({
-      date: '',
-      description: '',
-      category: '',
-      amount: 0,
-      project: '',
-      isPublic: false,
-      type: 'receita',
-      supplier_id: null,
-      donor_id: null,
-      bank_account_id: null,
-    });
+  const deleteTransaction = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.')) {
+      try {
+        await financialTransactionsService.delete(id);
+        setTransactions(prevTransactions =>
+          prevTransactions.filter(t => t.id !== id)
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao excluir transação');
+        console.error('Erro ao excluir transação:', err);
+      }
+    }
   };
 
-  const handleCreateSupplier = () => {
-    const newId = (suppliers.length + 1).toString();
-    const newSupplierWithId: Supplier = {
-      ...newSupplier,
-      id: newId,
-      created_at: new Date().toISOString(),
-    };
-    setSuppliers([...suppliers, newSupplierWithId]);
-    setShowSupplierForm(false);
-    setEditingSupplier(null);
-    setNewSupplier({
-      name: '',
-      cnpj_cpf: '',
-      contact_person: '',
-      email: '',
-      phone: '',
-      pix_key: '',
-    });
+  const handleCreateTransaction = async () => {
+    try {
+      const transactionData: Omit<FinancialTransaction, 'id' | 'created_at' | 'updated_at'> = {
+        date: newTransaction.date,
+        description: newTransaction.description,
+        amount: newTransaction.amount,
+        type: newTransaction.type,
+        category: newTransaction.category,
+        project_id: newTransaction.project === 'none' || !newTransaction.project ? null : newTransaction.project,
+        is_public: newTransaction.isPublic,
+        status: 'approved',
+        supplier_id: newTransaction.supplier_id === '' ? null : newTransaction.supplier_id,
+        donor_id: newTransaction.donor_id === '' ? null : newTransaction.donor_id,
+        bank_account_id: newTransaction.bank_account_id === '' ? null : newTransaction.bank_account_id,
+      };
+
+      const createdTransaction = await financialTransactionsService.create(transactionData);
+      
+      // Converter para o formato do componente
+      const convertedTransaction: Transaction = {
+        ...createdTransaction,
+        project: createdTransaction.project_id,
+        status: createdTransaction.is_public ? 'public' : 'private',
+        isPublic: createdTransaction.is_public
+      };
+
+      setTransactions([convertedTransaction, ...transactions]);
+      setShowTransactionForm(false);
+      setNewTransaction({
+        date: '',
+        description: '',
+        category: '',
+        amount: 0,
+        project: '',
+        isPublic: false,
+        type: 'receita',
+        supplier_id: null,
+        donor_id: null,
+        bank_account_id: null,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar transação');
+      console.error('Erro ao criar transação:', err);
+    }
   };
 
-  const handleCreateDonor = () => {
-    const newId = (donors.length + 1).toString();
-    const newDonorWithId: Donor = {
-      ...newDonor,
-      id: newId,
-      created_at: new Date().toISOString(),
-    };
-    setDonors([...donors, newDonorWithId]);
-    setShowDonorForm(false);
-    setEditingDonor(null);
-    setNewDonor({
-      name: '',
-      cnpj_cpf: '',
-      contact_person: '',
-      email: '',
-      phone: '',
-      pix_key: '',
-    });
+  const handleCreateSupplier = async () => {
+    try {
+      if (editingSupplier) {
+        // Atualizar fornecedor existente
+        const updatedSupplier = await suppliersService.update(editingSupplier.id, newSupplier);
+        setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? updatedSupplier : s));
+      } else {
+        // Criar novo fornecedor
+        const createdSupplier = await suppliersService.create(newSupplier);
+        setSuppliers([createdSupplier, ...suppliers]);
+      }
+      
+      setShowSupplierForm(false);
+      setEditingSupplier(null);
+      setNewSupplier({
+        name: '',
+        cnpj_cpf: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        pix_key: '',
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar fornecedor');
+      console.error('Erro ao salvar fornecedor:', err);
+    }
   };
 
-  const handleCreateBankAccount = () => {
-    const newId = (bankAccounts.length + 1).toString();
-    const newAccountWithId: BankAccount = {
-      ...newBankAccount,
-      id: newId,
-      created_at: new Date().toISOString(),
-    };
-    setBankAccounts([...bankAccounts, newAccountWithId]);
-    setNewBankAccount({
-      name: '',
-      agency: '',
-      account_number: '',
-      initial_balance: 0,
-    });
-    // Mudar para a aba da nova conta criada
-    setActiveBankTab(newId);
+  const handleCreateDonor = async () => {
+    try {
+      if (editingDonor) {
+        // Atualizar doador existente
+        const updatedDonor = await donorsService.update(editingDonor.id, newDonor);
+        setDonors(donors.map(d => d.id === editingDonor.id ? updatedDonor : d));
+      } else {
+        // Criar novo doador
+        const createdDonor = await donorsService.create(newDonor);
+        setDonors([createdDonor, ...donors]);
+      }
+      
+      setShowDonorForm(false);
+      setEditingDonor(null);
+      setNewDonor({
+        name: '',
+        cnpj_cpf: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        pix_key: '',
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar doador');
+      console.error('Erro ao salvar doador:', err);
+    }
+  };
+
+  const handleCreateBankAccount = async () => {
+    try {
+      const createdAccount = await bankAccountsService.create(newBankAccount);
+      setBankAccounts([createdAccount, ...bankAccounts]);
+      setNewBankAccount({
+        name: '',
+        agency: '',
+        account_number: '',
+        initial_balance: 0,
+      });
+      // Mudar para a aba da nova conta criada
+      setActiveBankTab(createdAccount.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar conta bancária');
+      console.error('Erro ao criar conta bancária:', err);
+    }
   };
 
   const handleEditSupplier = (supplier: Supplier) => {
@@ -436,30 +399,92 @@ function DashboardFinanceiroPage() {
     setShowDonorForm(true);
   };
 
-  const handleDeleteSupplier = (id: string) => {
+  const handleDeleteSupplier = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este fornecedor? Esta ação não pode ser desfeita.')) {
-      setSuppliers(suppliers.filter(s => s.id !== id));
+      try {
+        await suppliersService.delete(id);
+        setSuppliers(suppliers.filter(s => s.id !== id));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao excluir fornecedor');
+        console.error('Erro ao excluir fornecedor:', err);
+      }
     }
   };
 
-  const handleDeleteDonor = (id: string) => {
+  const handleDeleteDonor = async (id: string) => {
     if (window.confirm('Tem certeza que deseja excluir este doador? Esta ação não pode ser desfeita.')) {
-      setDonors(donors.filter(d => d.id !== id));
+      try {
+        await donorsService.delete(id);
+        setDonors(donors.filter(d => d.id !== id));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao excluir doador');
+        console.error('Erro ao excluir doador:', err);
+      }
     }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="text-red-600">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Erro</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="text-sm text-red-600 hover:text-red-500 mt-2"
+              >
+                Dispensar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-green-50 rounded-lg">
-            <DollarSign className="w-6 h-6 text-green-600" />
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-green-50 rounded-lg">
+              <DollarSign className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Gestão Financeira</h1>
+              <p className="text-gray-600">Controle de receitas, despesas e transparência</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gestão Financeira</h1>
-            <p className="text-gray-600">Controle de receitas, despesas e transparência</p>
-          </div>
+          <Button 
+            onClick={loadData} 
+            disabled={loading} 
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <svg 
+              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Atualizar
+          </Button>
         </div>
       </div>
 
