@@ -1,0 +1,40 @@
+table_schema,table_name,column_name,data_type,is_nullable,column_default,ordinal_position
+public,bank_accounts,id,uuid,NO,gen_random_uuid(),1
+public,bank_accounts,name,text,NO,null,2
+public,bank_accounts,agency,text,YES,null,3
+public,bank_accounts,account_number,text,YES,null,4
+public,bank_accounts,initial_balance,numeric,NO,0.00,5
+public,bank_accounts,created_at,timestamp with time zone,YES,now(),6
+public,bank_accounts,updated_at,timestamp with time zone,YES,now(),7
+public,donors,id,uuid,NO,gen_random_uuid(),1
+public,donors,name,text,NO,null,2
+public,donors,cnpj_cpf,text,YES,null,3
+public,donors,contact_person,text,YES,null,4
+public,donors,email,text,YES,null,5
+public,donors,phone,text,YES,null,6
+public,donors,pix_key,text,YES,null,7
+public,donors,created_at,timestamp with time zone,YES,now(),8
+public,donors,updated_at,timestamp with time zone,YES,now(),9
+public,financial_transactions,id,uuid,NO,gen_random_uuid(),1
+public,financial_transactions,date,date,NO,null,2
+public,financial_transactions,description,text,NO,null,3
+public,financial_transactions,amount,numeric,NO,null,4
+public,financial_transactions,type,text,NO,null,5
+public,financial_transactions,category,text,NO,null,6
+public,financial_transactions,project_id,uuid,YES,null,7
+public,financial_transactions,is_public,boolean,YES,false,8
+public,financial_transactions,status,text,YES,'approved'::text,9
+public,financial_transactions,created_at,timestamp with time zone,YES,now(),10
+public,financial_transactions,updated_at,timestamp with time zone,YES,now(),11
+public,financial_transactions,supplier_id,uuid,YES,null,12
+public,financial_transactions,donor_id,uuid,YES,null,13
+public,financial_transactions,bank_account_id,uuid,YES,null,14
+public,suppliers,id,uuid,NO,gen_random_uuid(),1
+public,suppliers,name,text,NO,null,2
+public,suppliers,cnpj_cpf,text,YES,null,3
+public,suppliers,contact_person,text,YES,null,4
+public,suppliers,email,text,YES,null,5
+public,suppliers,phone,text,YES,null,6
+public,suppliers,pix_key,text,YES,null,7
+public,suppliers,created_at,timestamp with time zone,YES,now(),8
+public,suppliers,updated_at,timestamp with time zone,YES,now(),9
