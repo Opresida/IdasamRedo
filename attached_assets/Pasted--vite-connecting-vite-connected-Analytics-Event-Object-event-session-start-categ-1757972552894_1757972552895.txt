@@ -1,0 +1,86 @@
+[vite] connecting...
+[vite] connected.
+📊 Analytics Event: 
+Object {event: "session_start", category: "engagement", action: "session_start", metadata: {…}, timestamp: "2025-09-15T21:40:51.765Z", …}
+Erro ao carregar comentários: 
+Object {message: "TypeError: Failed to fetch", details: "TypeError: Failed to fetch↵    at window.fetch…", hint: "", code: ""}
+
+Failed to fetch
+Erro ao carregar artigos: 
+Object {message: "TypeError: Failed to fetch", details: "TypeError: Failed to fetch↵    at window.fetch…", hint: "", code: ""}
+code: ""
+details: "TypeError: Failed to fetch↵ at window.fetch (https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:218642)↵ at Object.apply (https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/__replco/static/devtools/injected.js:278:39)↵ at https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@supabase_supabase-js.js?v=37bfad53:4198:23↵ at https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@supabase_supabase-js.js?v=37bfad53:4219:12↵ at Generator.next (<anonymous>)↵ at fulfilled (https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@supabase_supabase-js.js?v=37bfad53:4171:24)"
+hint: ""
+message: "TypeError: Failed to fetch"
+[[Prototype]]: Object
+
+Failed to fetch
+Erro ao carregar estatísticas: 
+Object {message: "TypeError: Failed to fetch", details: "TypeError: Failed to fetch↵    at window.fetch…", hint: "", code: ""}
+
+Failed to fetch
+Erro ao carregar artigos: 
+Object {message: "TypeError: Failed to fetch", details: "TypeError: Failed to fetch↵    at window.fetch…", hint: "", code: ""}
+
+Failed to fetch
+Erro ao carregar estatísticas: 
+Object {message: "TypeError: Failed to fetch", details: "TypeError: Failed to fetch↵    at window.fetch…", hint: "", code: ""}
+
+Erro ao carregar comentários: 
+Object {message: "TypeError: Failed to fetch", details: "TypeError: Failed to fetch↵    at window.fetch…", hint: "", code: ""}
+
+Failed to fetch
+Failed to fetch
+Erro ao carregar comentários: 
+Object {code: "PGRST205", details: null, hint: null, message: "Could not find the table 'public.comments' in the schema cache"}
+code: "PGRST205"
+details: null
+hint: null
+message: "Could not find the table 'public.comments' in the schema cache"
+[[Prototype]]: Object
+
+Erro ao carregar estatísticas: 
+Object {code: "PGRST205", details: null, hint: null, message: "Could not find the table 'public.article_stats' in the schema cache"}
+code: "PGRST205"
+details: null
+hint: null
+message: "Could not find the table 'public.article_stats' in the schema cache"
+[[Prototype]]: Object
+
+Erro ao carregar categorias: 
+Object {code: "PGRST205", details: null, hint: null, message: "Could not find the table 'public.categories' in the schema cache"}
+code: "PGRST205"
+details: null
+hint: null
+message: "Could not find the table 'public.categories' in the schema cache"
+[[Prototype]]: Object
+
+Erro ao carregar artigos: 
+Object {code: "PGRST205", details: null, hint: null, message: "Could not find the table 'public.articles_full' in the schema cache"}
+code: "PGRST205"
+details: null
+hint: null
+message: "Could not find the table 'public.articles_full' in the schema cache"
+[[Prototype]]: Object
+
+Erro ao carregar categorias: 
+Object {code: "PGRST205", details: null, hint: null, message: "Could not find the table 'public.categories' in the schema cache"}
+code: "PGRST205"
+details: null
+hint: null
+message: "Could not find the table 'public.categories' in the schema cache"
+[[Prototype]]: Object
+
+Erro ao carregar estatísticas: 
+Object {code: "PGRST205", details: null, hint: null, message: "Could not find the table 'public.article_stats' in the schema cache"}
+code: "PGRST205"
+details: null
+hint: null
+message: "Could not find the table 'public.article_stats' in the schema cache"
+[[Prototype]]: Object
+
+Erro ao carregar comentários: 
+Object {code: "PGRST205", details: null, hint: null, message: "Could not find the table 'public.comments' in the schema cache"}
+
+Erro ao carregar artigos: 
+Object {code: "PGRST205", details: null, hint: null, message: "Could not find the table 'public.articles_full' in the schema cache"}
