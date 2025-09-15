@@ -382,11 +382,6 @@ const DashboardFinanceiroPage: React.FC = () => {
 };
 
 export default GestaoFinanceira;
-    [transactions]
-  );
-
-  const receitasPublicas = useMemo(() =>
-    transacoesPublicas
       .filter(t => t.type === 'receita')
       .reduce((sum, t) => sum + t.amount, 0),
     [transacoesPublicas]
