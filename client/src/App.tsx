@@ -21,6 +21,7 @@ import DashboardFinanceiroPage from '@/pages/dashboard/financeiro';
 import AgendaPage from '@/pages/agenda';
 import ProjetosAdminPage from '@/pages/projetos-admin';
 import TransparenciaPage from './pages/transparencia';
+import BioPage from './pages/bio';
 
 function AppContent() {
   const [location] = useLocation();
@@ -87,6 +88,7 @@ function AppContent() {
         <Route path="/doacao-usd" component={PaginaDeDoacao} />
         <Route path="/doacao-eur" component={PaginaDeDoacaoEUR} />
         <Route path="/transparencia" component={TransparenciaPage} />
+        <Route path="/bio" component={BioPage} />
         <Route component={NotFound} />
       </Switch>
     </PageLoader>
