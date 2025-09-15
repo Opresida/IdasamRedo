@@ -379,7 +379,118 @@ const DashboardFinanceiroPage: React.FC = () => {
       )}
     </div>
   );
-}espesas;
+};
+
+export default GestaoFinanceira;
+
+const DashboardFinanceiroPage: React.FC = () => {
+  // Estado para controle de loading
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [donors, setDonors] = useState<Donor[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [filters, setFilters] = useState<Filters>({
+    type: 'all',
+    status: 'all',
+    project: 'all',
+  });
+  const [activeTab, setActiveTab] = useState('transactions');
+  const [activeBankTab, setActiveBankTab] = useState('add-account');
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [showDonorForm, setShowDonorForm] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [editingDonor, setEditingDonor] = useState<Donor | null>(null);
+  const [newTransaction, setNewTransaction] = useState<Omit<Transaction, 'id' | 'status'>>({
+    date: '',
+    description: '',
+    category: '',
+    amount: 0,
+    project: '',
+    isPublic: false,
+    type: 'receita',
+    supplier_id: null,
+    donor_id: null,
+    bank_account_id: null,
+  });
+  const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id' | 'created_at'>>({
+    name: '',
+    cnpj_cpf: '',
+    contact_person: '',
+    email: '',
+    phone: '',
+    pix_key: '',
+  });
+  const [newDonor, setNewDonor] = useState<Omit<Donor, 'id' | 'created_at'>>({
+    name: '',
+    cnpj_cpf: '',
+    contact_person: '',
+    email: '',
+    phone: '',
+    pix_key: '',
+  });
+  const [newBankAccount, setNewBankAccount] = useState<Omit<BankAccount, 'id' | 'created_at'>>({
+    name: '',
+    agency: '',
+    account_number: '',
+    initial_balance: 0,
+  });
+
+  // Função para carregar dados do Supabase
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [transactionsData, suppliersData, donorsData, bankAccountsData] = await Promise.all([
+        financialTransactionsService.getAll(),
+        suppliersService.getAll(),
+        donorsService.getAll(),
+        bankAccountsService.getAll()
+      ]);
+
+      // Converter transações para o formato do componente
+      const convertedTransactions: Transaction[] = transactionsData.map(t => ({
+        ...t,
+        project: t.project_id,
+        status: t.is_public ? 'public' : 'private',
+        isPublic: t.is_public
+      }));
+
+      setTransactions(convertedTransactions);
+      setSuppliers(suppliersData);
+      setDonors(donorsData);
+      setBankAccounts(bankAccountsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
+      console.error('Erro ao carregar dados:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carregar dados na inicialização
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const totalReceitas = useMemo(() =>
+    transactions
+      .filter(t => t.type === 'receita')
+      .reduce((sum, t) => sum + t.amount, 0),
+    [transactions]
+  );
+
+  const totalDespesas = useMemo(() =>
+    transactions
+      .filter(t => t.type === 'despesa')
+      .reduce((sum, t) => sum + t.amount, 0),
+    [transactions]
+  );
+
+  const saldoAtual = totalReceitas - totalDespesas;
 
   const transacoesPublicas = useMemo(() =>
     transactions.filter(t => t.isPublic),
