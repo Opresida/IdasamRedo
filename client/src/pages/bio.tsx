@@ -100,7 +100,10 @@ export default function BioPage() {
           
           <div className="flex items-center justify-between">
             <p className="text-gray-400 text-xs">@institutoidasam</p>
-            <p className="text-white text-lg font-script italic">Santa Abyss</p>
+            <div className="text-right">
+              <p className="text-white text-lg font-script italic">Saulo Araujo</p>
+              <p className="text-gray-300 text-sm">presidente IDASAM</p>
+            </div>
           </div>
           
           <div className="mt-6 pt-4 border-t border-gray-700">
