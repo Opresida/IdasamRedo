@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   DollarSign,
@@ -57,24 +58,13 @@ interface Transaction extends Omit<FinancialTransaction, 'project_id'> {
   isPublic: boolean;
 }
 
-export default function GestaoFinanceira() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [donors, setDonors] = useState<Donor[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState('all');
-  const [view, setView] = useState<'list' | 'chart'>('list');
-}
-
 interface Filters {
   type: 'all' | 'receita' | 'despesa';
   status: 'all' | 'public' | 'private';
   project: string;
 }
 
-const DashboardFinanceiroPage: React.FC = () => {
+const GestaoFinanceira: React.FC = () => {
   // Estado para controle de loading
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +84,8 @@ const DashboardFinanceiroPage: React.FC = () => {
   const [showDonorForm, setShowDonorForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editingDonor, setEditingDonor] = useState<Donor | null>(null);
+  const [filter, setFilter] = useState('all');
+  const [view, setView] = useState<'list' | 'chart'>('list');
   const [newTransaction, setNewTransaction] = useState<Omit<Transaction, 'id' | 'status'>>({
     date: '',
     description: '',
