@@ -170,7 +170,38 @@ export default function DashboardFinanceiroPage() {
   });
 
   // Calculate totals (using filtered transactions for display)
-  const filteredTransactions = getFilteredTransactions();
+  const filteredTransactions = transactions.filter(transaction => {
+    // Date filters
+    if (filters.dateFrom) {
+      const transactionDate = new Date(transaction.date);
+      const fromDate = new Date(filters.dateFrom);
+      if (transactionDate < fromDate) return false;
+    }
+
+    if (filters.dateTo) {
+      const transactionDate = new Date(transaction.date);
+      const toDate = new Date(filters.dateTo);
+      if (transactionDate > toDate) return false;
+    }
+
+    // Type filter
+    if (filters.type && transaction.type !== filters.type) return false;
+
+    // Status filter
+    if (filters.status && transaction.status !== filters.status) return false;
+
+    // Account filter
+    if (filters.account && transaction.account !== filters.account) return false;
+
+    // Category filter
+    if (filters.category && transaction.category !== filters.category) return false;
+
+    // Project filter
+    if (filters.project && transaction.project !== filters.project) return false;
+
+    return true;
+  });
+
 
   const totalReceitas = filteredTransactions
     .filter(t => t.type === 'Receita' && t.status === 'Pago')
@@ -414,41 +445,6 @@ export default function DashboardFinanceiroPage() {
       .filter(t => t.status === 'Pago')
       .reduce((sum, t) => sum + t.amount, 0);
     return account ? account.balance + transactionSum : 0;
-  };
-
-  // Filter transactions based on filters
-  const getFilteredTransactions = () => {
-    return transactions.filter(transaction => {
-      // Date filters
-      if (filters.dateFrom) {
-        const transactionDate = new Date(transaction.date);
-        const fromDate = new Date(filters.dateFrom);
-        if (transactionDate < fromDate) return false;
-      }
-
-      if (filters.dateTo) {
-        const transactionDate = new Date(transaction.date);
-        const toDate = new Date(filters.dateTo);
-        if (transactionDate > toDate) return false;
-      }
-
-      // Type filter
-      if (filters.type && transaction.type !== filters.type) return false;
-
-      // Status filter
-      if (filters.status && transaction.status !== filters.status) return false;
-
-      // Account filter
-      if (filters.account && transaction.account !== filters.account) return false;
-
-      // Category filter
-      if (filters.category && transaction.category !== filters.category) return false;
-
-      // Project filter
-      if (filters.project && transaction.project !== filters.project) return false;
-
-      return true;
-    });
   };
 
   const clearFilters = () => {
@@ -1204,12 +1200,11 @@ export default function DashboardFinanceiroPage() {
                           </div>
                         )}
                       </Droppable>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </DragDropContext>
-          )}
+                    </Card>
+                  ))}
+                </div>
+              </DragDropContext>
+            )}
         </TabsContent>
 
         {/* ABA CONTAS BANCÁRIAS */}
