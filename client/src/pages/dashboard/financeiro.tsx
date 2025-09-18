@@ -158,12 +158,26 @@ export default function DashboardFinanceiroPage() {
     type: 'both'
   });
 
-  // Calculate totals
-  const totalReceitas = transactions
+  // Estados para filtros
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    dateFrom: '',
+    dateTo: '',
+    type: '',
+    status: '',
+    account: '',
+    category: '',
+    project: ''
+  });
+
+  // Calculate totals (using filtered transactions for display)
+  const filteredTransactions = getFilteredTransactions();
+  
+  const totalReceitas = filteredTransactions
     .filter(t => t.type === 'Receita' && t.status === 'Pago')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalDespesas = transactions
+  const totalDespesas = filteredTransactions
     .filter(t => t.type === 'Despesa' && t.status === 'Pago')
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
@@ -289,6 +303,22 @@ export default function DashboardFinanceiroPage() {
     }
   };
 
+  const handleDeleteTransaction = (transactionId) => {
+    const transactionToDelete = transactions.find(t => t.id === transactionId);
+    
+    if (!transactionToDelete) {
+      alert('Transação não encontrada.');
+      return;
+    }
+
+    const confirmMessage = `Tem certeza que deseja excluir a transação "${transactionToDelete.description}"?\n\nValor: R$ ${Math.abs(transactionToDelete.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nData: ${format(new Date(transactionToDelete.date), 'dd/MM/yyyy')}\n\nEsta ação não pode ser desfeita.`;
+    
+    if (window.confirm(confirmMessage)) {
+      setTransactions(prevTransactions => prevTransactions.filter(t => t.id !== transactionId));
+      alert('Transação excluída com sucesso!');
+    }
+  };
+
   const handleEditTransaction = (transaction) => {
     setEditingTransaction(transaction);
     setEditTransaction({
@@ -385,6 +415,53 @@ export default function DashboardFinanceiroPage() {
       .filter(t => t.status === 'Pago')
       .reduce((sum, t) => sum + t.amount, 0);
     return account ? account.balance + transactionSum : 0;
+  };
+
+  // Filter transactions based on filters
+  const getFilteredTransactions = () => {
+    return transactions.filter(transaction => {
+      // Date filters
+      if (filters.dateFrom) {
+        const transactionDate = new Date(transaction.date);
+        const fromDate = new Date(filters.dateFrom);
+        if (transactionDate < fromDate) return false;
+      }
+      
+      if (filters.dateTo) {
+        const transactionDate = new Date(transaction.date);
+        const toDate = new Date(filters.dateTo);
+        if (transactionDate > toDate) return false;
+      }
+      
+      // Type filter
+      if (filters.type && transaction.type !== filters.type) return false;
+      
+      // Status filter
+      if (filters.status && transaction.status !== filters.status) return false;
+      
+      // Account filter
+      if (filters.account && transaction.account !== filters.account) return false;
+      
+      // Category filter
+      if (filters.category && transaction.category !== filters.category) return false;
+      
+      // Project filter
+      if (filters.project && transaction.project !== filters.project) return false;
+      
+      return true;
+    });
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      dateFrom: '',
+      dateTo: '',
+      type: '',
+      status: '',
+      account: '',
+      category: '',
+      project: ''
+    });
   };
 
   return (
@@ -844,10 +921,124 @@ export default function DashboardFinanceiroPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filtros
-              </Button>
+              <Dialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filtros
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Filtrar Transações</DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Data Inicial</Label>
+                        <Input
+                          type="date"
+                          value={filters.dateFrom}
+                          onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Data Final</Label>
+                        <Input
+                          type="date"
+                          value={filters.dateTo}
+                          onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os tipos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todos os tipos</SelectItem>
+                          <SelectItem value="Receita">Receita</SelectItem>
+                          <SelectItem value="Despesa">Despesa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todos os status</SelectItem>
+                          <SelectItem value="Pendente">Pendente</SelectItem>
+                          <SelectItem value="Pago">Pago</SelectItem>
+                          <SelectItem value="A Vencer">A Vencer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Conta Bancária</Label>
+                      <Select value={filters.account} onValueChange={(value) => setFilters({...filters, account: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todas as contas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todas as contas</SelectItem>
+                          {accounts.map(account => (
+                            <SelectItem key={account.id} value={account.name}>{account.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Categoria</Label>
+                      <Select value={filters.category} onValueChange={(value) => setFilters({...filters, category: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todas as categorias" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todas as categorias</SelectItem>
+                          {categories.map(category => (
+                            <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Projeto</Label>
+                      <Select value={filters.project} onValueChange={(value) => setFilters({...filters, project: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os projetos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todos os projetos</SelectItem>
+                          {mockProjects.map(project => (
+                            <SelectItem key={project.id} value={project.name}>{project.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <Button variant="outline" onClick={handleResetFilters} className="flex-1">
+                      Limpar Filtros
+                    </Button>
+                    <Button onClick={() => setIsFiltersOpen(false)} className="flex-1">
+                      Aplicar Filtros
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              
               <Button variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 Exportar
@@ -869,49 +1060,61 @@ export default function DashboardFinanceiroPage() {
                       <TableHead>Descrição</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Valor</TableHead>
+                      <TableHead>Banco</TableHead>
                       <TableHead>Projeto</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{format(new Date(transaction.date), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell>{transaction.description}</TableCell>
-                        <TableCell>
-                          <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
-                            {transaction.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className={transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}>
-                          R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell>{transaction.project || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            transaction.status === 'Pago' ? 'default' : 
-                            transaction.status === 'Pendente' ? 'secondary' : 'outline'
-                          }>
-                            {transaction.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleEditTransaction(transaction)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {getFilteredTransactions().map((transaction) => {
+                      const account = accounts.find(a => a.name === transaction.account);
+                      return (
+                        <TableRow key={transaction.id}>
+                          <TableCell>{format(new Date(transaction.date), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>{transaction.description}</TableCell>
+                          <TableCell>
+                            <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
+                              {transaction.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className={transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}>
+                            R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell>{account ? account.bank : '-'}</TableCell>
+                          <TableCell>{transaction.project || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              transaction.status === 'Pago' ? 'default' : 
+                              transaction.status === 'Pendente' ? 'secondary' : 'outline'
+                            }>
+                              {transaction.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleEditTransaction(transaction)}
+                                title="Editar transação"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleDeleteTransaction(transaction.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Excluir transação"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -940,7 +1143,7 @@ export default function DashboardFinanceiroPage() {
                               snapshot.isDraggingOver ? 'bg-gray-50 border-2 border-dashed border-gray-300' : ''
                             }`}
                           >
-                            {transactions
+                            {getFilteredTransactions()
                               .filter(t => t.status === status)
                               .map((transaction, index) => (
                                 <Draggable key={transaction.id} draggableId={transaction.id.toString()} index={index}>
