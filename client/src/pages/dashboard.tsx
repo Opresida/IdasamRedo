@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +46,13 @@ interface Comment {
   created_at: string;
 }
 
+interface Statistics {
+  total_articles: number;
+  total_comments: number;
+  total_views: number;
+  engagement_rate: number;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -56,6 +62,12 @@ export default function DashboardPage() {
   const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statistics, setStatistics] = useState<Statistics>({
+    total_articles: 0,
+    total_comments: 0,
+    total_views: 0,
+    engagement_rate: 0
+  });
 
   useEffect(() => {
     loadInitialData();
@@ -387,11 +399,11 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="font-medium text-sm">Total de Conteúdo</p>
-                    <p className="text-xs text-gray-600">{totalArticles} artigos criados</p>
+                    <p className="text-xs text-gray-600">{statistics.total_articles} artigos criados</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold">{totalArticles}</p>
+                  <p className="text-lg font-bold">{statistics.total_articles}</p>
                   <p className="text-xs text-gray-500">itens</p>
                 </div>
               </div>
@@ -407,7 +419,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold">{totalViews.toLocaleString()}</p>
+                  <p className="text-lg font-bold">{statistics.total_views.toLocaleString()}</p>
                   <p className="text-xs text-gray-500">views</p>
                 </div>
               </div>
@@ -423,7 +435,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold">{comments.length}</p>
+                  <p className="text-lg font-bold">{statistics.total_comments}</p>
                   <p className="text-xs text-gray-500">comentários</p>
                 </div>
               </div>

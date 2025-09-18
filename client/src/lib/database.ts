@@ -1,4 +1,3 @@
-
 import { Pool } from 'pg';
 
 // Cliente PostgreSQL nativo do Replit

@@ -112,83 +112,33 @@ const GestaoFinanceira: React.FC = () => {
 
   // Carregar dados na inicialização
   useEffect(() => {
-    fetchTransactions();
-    fetchSuppliers();
-    fetchDonors();
-    fetchBankAccounts();
+    fetchFinancialData();
   }, []);
 
-  const fetchTransactions = async () => {
-    try {
-      setLoading(true);
-      const result = await query(`
-        SELECT 
-          t.*,
-          s.name as supplier_name,
-          d.name as donor_name,
-          ba.bank_name,
-          ba.account_number
-        FROM transactions t
-        LEFT JOIN suppliers s ON t.supplier_id = s.id
-        LEFT JOIN donors d ON t.donor_id = d.id
-        LEFT JOIN bank_accounts ba ON t.bank_account_id = ba.id
-        ORDER BY t.date DESC
-      `);
+  const fetchFinancialData = async () => {
+      try {
+        // Fetch transactions
+        const transactionsData = await database.getTransactions();
+        setTransactions(transactionsData || []);
 
-      const convertedTransactions: Transaction[] = (result.rows || []).map((t: any) => ({
-        ...t,
-        project: t.project_id, // Assuming project_id is the correct field
-        status: t.is_public ? 'public' : 'private',
-        isPublic: t.is_public
-      }));
+        // Fetch bank accounts
+        const accountsData = await database.getBankAccounts();
+        setBankAccounts(accountsData || []);
 
-      setTransactions(convertedTransactions);
-    } catch (err) {
-      console.error('Erro ao buscar transações:', err);
-      setError('Erro ao carregar transações');
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Fetch suppliers
+        const suppliersData = await database.getSuppliers();
+        setSuppliers(suppliersData || []);
 
-  const fetchSuppliers = async () => {
-    try {
-      const result = await query(`
-        SELECT * FROM suppliers 
-        ORDER BY name
-      `);
+        // Fetch donors
+        const donorsData = await database.getDonors();
+        setDonors(donorsData || []);
 
-      setSuppliers(result.rows || []);
-    } catch (err) {
-      console.error('Erro ao buscar fornecedores:', err);
-    }
-  };
-
-  const fetchDonors = async () => {
-    try {
-      const result = await query(`
-        SELECT * FROM donors 
-        ORDER BY name
-      `);
-
-      setDonors(result.rows || []);
-    } catch (err) {
-      console.error('Erro ao buscar doadores:', err);
-    }
-  };
-
-  const fetchBankAccounts = async () => {
-    try {
-      const result = await query(`
-        SELECT * FROM bank_accounts 
-        ORDER BY bank_name
-      `);
-
-      setBankAccounts(result.rows || []);
-    } catch (err) {
-      console.error('Erro ao buscar contas bancárias:', err);
-    }
-  };
+      } catch (error) {
+        console.error('Erro de conexão:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const totalReceitas = useMemo(() =>
     transactions
@@ -224,7 +174,7 @@ const GestaoFinanceira: React.FC = () => {
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <h3 className="text-red-800 font-medium mb-2">Erro ao carregar dados</h3>
             <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={fetchTransactions} variant="outline">
+            <Button onClick={fetchFinancialData} variant="outline">
               Tentar novamente
             </Button>
           </div>
