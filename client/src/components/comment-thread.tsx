@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -72,7 +71,7 @@ export default function CommentThread({ articleId }: CommentThreadProps) {
       setFormError('Comentário é obrigatório');
       return false;
     }
-    
+
     // Validação básica de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(authorEmail)) {
@@ -105,7 +104,7 @@ export default function CommentThread({ articleId }: CommentThreadProps) {
         setAuthorEmail('');
         setReplyTo(null);
         setShowAddComment(false);
-        
+
         // Recarregar comentários
         await loadComments();
       }
@@ -189,7 +188,7 @@ export default function CommentThread({ articleId }: CommentThreadProps) {
           {replyTo === comment.id && (
             <div className="mt-4 p-4 bg-white rounded border">
               <h4 className="font-medium mb-3">Responder a {comment.author_name}</h4>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <div>
                   <Label htmlFor={`reply-name-${comment.id}`}>Seu nome</Label>
@@ -274,7 +273,7 @@ export default function CommentThread({ articleId }: CommentThreadProps) {
           <MessageCircle className="w-5 h-5" />
           Comentários ({comments.length})
         </h3>
-        
+
         <Button
           onClick={() => setShowAddComment(!showAddComment)}
           variant="outline"
@@ -288,7 +287,7 @@ export default function CommentThread({ articleId }: CommentThreadProps) {
         <Card className="mb-6">
           <CardContent className="p-6">
             <h4 className="font-medium mb-4">Deixe seu comentário</h4>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
                 <Label htmlFor="author-name">Seu nome *</Label>
@@ -361,186 +360,6 @@ export default function CommentThread({ articleId }: CommentThreadProps) {
           <p className="text-gray-400 text-sm">Seja o primeiro a comentar!</p>
         </div>
       )}
-    </div>
-  );
-}
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { MessageCircle, Send, User, Clock } from 'lucide-react';
-import { addComment, getComments } from '@/lib/socialInteractions';
-import { formatDate } from '@/lib/utils';
-
-interface Comment {
-  id: string;
-  author_name: string;
-  author_email: string;
-  content: string;
-  created_at: string;
-  is_approved: boolean;
-}
-
-interface CommentThreadProps {
-  articleId: string;
-  maxComments?: number;
-}
-
-export default function CommentThread({ articleId, maxComments = 10 }: CommentThreadProps) {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState({
-    author_name: '',
-    author_email: '',
-    content: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-
-  useEffect(() => {
-    loadComments();
-  }, [articleId]);
-
-  const loadComments = async () => {
-    try {
-      const commentsData = await getComments(articleId);
-      setComments(commentsData.slice(0, maxComments));
-    } catch (error) {
-      console.error('Erro ao carregar comentários:', error);
-    }
-  };
-
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newComment.author_name || !newComment.content) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      await addComment(
-        articleId,
-        newComment.author_name,
-        newComment.author_email,
-        newComment.content
-      );
-
-      // Reset form
-      setNewComment({ author_name: '', author_email: '', content: '' });
-      setShowForm(false);
-      
-      // Reload comments
-      await loadComments();
-      
-    } catch (error) {
-      console.error('Erro ao enviar comentário:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <MessageCircle className="w-5 h-5" />
-          Comentários ({comments.length})
-        </h3>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setShowForm(!showForm)}
-        >
-          Adicionar Comentário
-        </Button>
-      </div>
-
-      {/* Comment Form */}
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <h4 className="font-medium">Deixe seu comentário</h4>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmitComment} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  placeholder="Seu nome *"
-                  value={newComment.author_name}
-                  onChange={(e) => setNewComment(prev => ({ ...prev, author_name: e.target.value }))}
-                  required
-                />
-                <Input
-                  type="email"
-                  placeholder="Seu email"
-                  value={newComment.author_email}
-                  onChange={(e) => setNewComment(prev => ({ ...prev, author_email: e.target.value }))}
-                />
-              </div>
-              <Textarea
-                placeholder="Escreva seu comentário... *"
-                value={newComment.content}
-                onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
-                rows={4}
-                required
-              />
-              <div className="flex gap-2">
-                <Button type="submit" disabled={isSubmitting}>
-                  <Send className="w-4 h-4 mr-2" />
-                  {isSubmitting ? 'Enviando...' : 'Enviar Comentário'}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Comments List */}
-      <div className="space-y-4">
-        {comments.map((comment) => (
-          <Card key={comment.id} className="bg-gray-50">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback>
-                    <User className="w-4 h-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-medium text-sm">{comment.author_name}</span>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatDate(comment.created_at)}</span>
-                    </div>
-                    {!comment.is_approved && (
-                      <Badge variant="secondary" className="text-xs">
-                        Aguardando aprovação
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-gray-700 text-sm">{comment.content}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {comments.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Seja o primeiro a comentar!</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
