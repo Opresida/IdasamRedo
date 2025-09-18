@@ -1,0 +1,141 @@
+// /dashboard/financeiro.tsx - Versão Corrigida
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import {
+  Plus,
+  CalendarIcon,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Eye,
+  Edit,
+  Trash2,
+  Download,
+  Filter,
+  Columns,
+  Grid3X3,
+  Building2,
+  Users,
+  FileText,
+  Settings,
+  Upload,
+  CreditCard,
+  Target,
+  PieChart
+} from 'lucide-react';
+
+// (Todo o seu código de mock data e a definição do componente permanece o mesmo até a aba de relatórios)
+// ...
+
+// << INÍCIO DA SEÇÃO CORRIGIDA >>
+        {/* ABA RELATÓRIOS */}
+        <TabsContent value="relatorios" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Relatórios Financeiros</h3>
+            <div className="flex items-center gap-2">
+              <Select defaultValue="este-mes">
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="este-mes">Este Mês</SelectItem>
+                  <SelectItem value="ultimos-90">Últimos 90 dias</SelectItem>
+                  <SelectItem value="personalizado">Período Customizado</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button>
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Relatório
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PieChart className="h-5 w-5" />
+                  Resumo Mensal
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span>Total Receitas:</span>
+                    <span className="font-bold text-green-600">R$ {totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Despesas:</span>
+                    <span className="font-bold text-red-600">R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="font-bold">Saldo:</span>
+                    <span className={`font-bold ${saldoAtual >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      R$ {saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Despesas por Categoria</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* ... (código do gráfico de categorias, que já estava certo) ... */}
+              </CardContent>
+            </Card>
+            
+            {/* O ERRO ESTAVA AQUI, NA FORMA COMO ESTE CARD ERA FECHADO */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Custos Fixos vs Variáveis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-blue-600">75%</div>
+                    <p className="text-sm text-gray-600">Custos Fixos</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-orange-600">25%</div>
+                    <p className="text-sm text-gray-600">Custos Variáveis</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          {/* O </div> que fecha o grid foi movido para fora, mas ainda dentro do TabsContent */}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Evolução Mensal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 flex items-center justify-center text-gray-500">
+                [Gráfico de evolução mensal seria implementado aqui]
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+// << FIM DA SEÇÃO CORRIGIDA >>
+// ... (o resto do seu arquivo, com as abas Contatos, Configurações, etc., continua aqui)
