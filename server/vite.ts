@@ -23,17 +23,8 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     host: "0.0.0.0",
-    port: 5000, // <- CORRIGIDO PARA 5000
-    
-    // CORREÇÃO DEFINITIVA:
-    // Define a URL pública do servidor para o cliente Vite.
-    // Usamos variáveis de ambiente do Replit para fazer isso dinamicamente.
-    origin: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`,
-    
-    hmr: { 
-      server,
-      clientPort: 443
-    },
+    port: 5000,
+    hmr: false,
     allowedHosts: true as const,
   };
 
