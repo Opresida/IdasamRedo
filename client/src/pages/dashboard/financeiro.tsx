@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,10 +44,10 @@ import {
 
 // Mock data
 const mockTransactions = [
-  { id: 1, date: '2024-01-15', description: 'Doação João Silva', type: 'Receita', amount: 1500, project: 'Projeto Coração Ribeirinho', status: 'Aprovado', account: 'Bradesco 001', category: 'Doação' },
+  { id: 1, date: '2024-01-15', description: 'Doação João Silva', type: 'Receita', amount: 1500, project: 'Projeto Coração Ribeirinho', status: 'Pago', account: 'Bradesco 001', category: 'Doação' },
   { id: 2, date: '2024-01-14', description: 'Compra de equipamentos', type: 'Despesa', amount: -800, project: 'Infraestrutura', status: 'Pendente', account: 'Caixa 002', category: 'Equipamentos' },
-  { id: 3, date: '2024-01-13', description: 'Salário funcionário', type: 'Despesa', amount: -2500, project: null, status: 'Aprovado', account: 'Bradesco 001', category: 'Recursos Humanos' },
-  { id: 4, date: '2024-01-12', description: 'Doação Maria Santos', type: 'Receita', amount: 500, project: 'Projeto Educação', status: 'Aprovado', account: 'Caixa 002', category: 'Doação' }
+  { id: 3, date: '2024-01-13', description: 'Salário funcionário', type: 'Despesa', amount: -2500, project: null, status: 'Pago', account: 'Bradesco 001', category: 'Recursos Humanos' },
+  { id: 4, date: '2024-01-12', description: 'Doação Maria Santos', type: 'Receita', amount: 500, project: 'Projeto Educação', status: 'A Vencer', account: 'Caixa 002', category: 'Doação' }
 ];
 
 const mockAccounts = [
@@ -141,11 +142,11 @@ export default function DashboardFinanceiroPage() {
 
   // Calculate totals
   const totalReceitas = transactions
-    .filter(t => t.type === 'Receita' && t.status === 'Aprovado')
+    .filter(t => t.type === 'Receita' && t.status === 'Pago')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalDespesas = transactions
-    .filter(t => t.type === 'Despesa' && t.status === 'Aprovado')
+    .filter(t => t.type === 'Despesa' && t.status === 'Pago')
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   const saldoAtual = totalReceitas - totalDespesas;
@@ -239,6 +240,31 @@ export default function DashboardFinanceiroPage() {
     setNewCategory({ name: '', type: 'both' });
   };
 
+  // Drag and drop handler
+  const handleOnDragEnd = (result) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) {
+      return;
+    }
+
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
+
+    const newStatus = destination.droppableId;
+    const transactionId = parseInt(draggableId);
+
+    setTransactions(transactions.map(transaction => 
+      transaction.id === transactionId 
+        ? { ...transaction, status: newStatus }
+        : transaction
+    ));
+  };
+
   // Filter transactions by account
   const getTransactionsByAccount = (accountName) => {
     return transactions.filter(t => t.account === accountName);
@@ -249,7 +275,7 @@ export default function DashboardFinanceiroPage() {
     const account = accounts.find(a => a.name === accountName);
     const accountTransactions = getTransactionsByAccount(accountName);
     const transactionSum = accountTransactions
-      .filter(t => t.status === 'Aprovado')
+      .filter(t => t.status === 'Pago')
       .reduce((sum, t) => sum + t.amount, 0);
     return account ? account.balance + transactionSum : 0;
   };
@@ -522,7 +548,8 @@ export default function DashboardFinanceiroPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Pendente">Pendente</SelectItem>
-                          <SelectItem value="Aprovado">Aprovado</SelectItem>
+                          <SelectItem value="Pago">Pago</SelectItem>
+                          <SelectItem value="A Vencer">A Vencer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -620,7 +647,10 @@ export default function DashboardFinanceiroPage() {
                         </TableCell>
                         <TableCell>{transaction.project || '-'}</TableCell>
                         <TableCell>
-                          <Badge variant={transaction.status === 'Aprovado' ? 'default' : 'secondary'}>
+                          <Badge variant={
+                            transaction.status === 'Pago' ? 'default' : 
+                            transaction.status === 'Pendente' ? 'secondary' : 'outline'
+                          }>
                             {transaction.status}
                           </Badge>
                         </TableCell>
@@ -641,39 +671,70 @@ export default function DashboardFinanceiroPage() {
               </CardContent>
             </Card>
           ) : (
-            // Visualização Quadro (Kanban)
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {['Pendente', 'Aprovado', 'Rejeitado'].map((status) => (
-                <Card key={status}>
-                  <CardHeader>
-                    <CardTitle className="text-center">{status}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {transactions
-                      .filter(t => t.status === status)
-                      .map((transaction) => (
-                        <Card key={transaction.id} className="p-3">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
-                                {transaction.type}
-                              </Badge>
-                              <span className={`font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                            <p className="text-sm font-medium">{transaction.description}</p>
-                            <p className="text-xs text-gray-500">{format(new Date(transaction.date), 'dd/MM/yyyy')}</p>
-                            {transaction.project && (
-                              <p className="text-xs text-blue-600">{transaction.project}</p>
-                            )}
+            // Visualização Quadro (Kanban) com Drag and Drop
+            <DragDropContext onDragEnd={handleOnDragEnd}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {['Pendente', 'Pago', 'A Vencer'].map((status) => (
+                  <Card key={status}>
+                    <CardHeader>
+                      <CardTitle className="text-center flex items-center justify-center gap-2">
+                        {status === 'Pendente' && <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>}
+                        {status === 'Pago' && <div className="w-3 h-3 bg-green-500 rounded-full"></div>}
+                        {status === 'A Vencer' && <div className="w-3 h-3 bg-blue-500 rounded-full"></div>}
+                        {status}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Droppable droppableId={status}>
+                        {(provided, snapshot) => (
+                          <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className={`space-y-3 min-h-[200px] p-2 rounded-lg transition-colors ${
+                              snapshot.isDraggingOver ? 'bg-gray-50 border-2 border-dashed border-gray-300' : ''
+                            }`}
+                          >
+                            {transactions
+                              .filter(t => t.status === status)
+                              .map((transaction, index) => (
+                                <Draggable key={transaction.id} draggableId={transaction.id.toString()} index={index}>
+                                  {(provided, snapshot) => (
+                                    <Card
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      className={`p-3 cursor-move transition-shadow ${
+                                        snapshot.isDragging ? 'shadow-lg rotate-3' : 'hover:shadow-md'
+                                      }`}
+                                    >
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
+                                            {transaction.type}
+                                          </Badge>
+                                          <span className={`font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                          </span>
+                                        </div>
+                                        <p className="text-sm font-medium">{transaction.description}</p>
+                                        <p className="text-xs text-gray-500">{format(new Date(transaction.date), 'dd/MM/yyyy')}</p>
+                                        {transaction.project && (
+                                          <p className="text-xs text-blue-600">{transaction.project}</p>
+                                        )}
+                                      </div>
+                                    </Card>
+                                  )}
+                                </Draggable>
+                              ))}
+                            {provided.placeholder}
                           </div>
-                        </Card>
-                      ))}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                        )}
+                      </Droppable>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </DragDropContext>
           )}
         </TabsContent>
 
@@ -777,7 +838,7 @@ export default function DashboardFinanceiroPage() {
                       <CardContent>
                         <div className="text-2xl font-bold text-green-600">
                           R$ {getTransactionsByAccount(account.name)
-                            .filter(t => t.type === 'Receita' && t.status === 'Aprovado')
+                            .filter(t => t.type === 'Receita' && t.status === 'Pago')
                             .reduce((sum, t) => sum + t.amount, 0)
                             .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </div>
@@ -792,7 +853,7 @@ export default function DashboardFinanceiroPage() {
                       <CardContent>
                         <div className="text-2xl font-bold text-red-600">
                           R$ {getTransactionsByAccount(account.name)
-                            .filter(t => t.type === 'Despesa' && t.status === 'Aprovado')
+                            .filter(t => t.type === 'Despesa' && t.status === 'Pago')
                             .reduce((sum, t) => sum + Math.abs(t.amount), 0)
                             .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </div>
@@ -845,7 +906,10 @@ export default function DashboardFinanceiroPage() {
                                 R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                               </TableCell>
                               <TableCell>
-                                <Badge variant={transaction.status === 'Aprovado' ? 'default' : 'secondary'}>
+                                <Badge variant={
+                                  transaction.status === 'Pago' ? 'default' : 
+                                  transaction.status === 'Pendente' ? 'secondary' : 'outline'
+                                }>
                                   {transaction.status}
                                 </Badge>
                               </TableCell>
@@ -1124,7 +1188,7 @@ export default function DashboardFinanceiroPage() {
                 <div className="space-y-3">
                   {categories.filter(cat => cat.type === 'expense' || cat.type === 'both').map((category) => {
                     const categoryTotal = transactions
-                      .filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Aprovado')
+                      .filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Pago')
                       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
                     const percentage = totalDespesas > 0 ? (categoryTotal / totalDespesas) * 100 : 0;
                     
