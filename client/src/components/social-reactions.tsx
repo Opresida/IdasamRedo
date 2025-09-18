@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, ThumbsUp, Share2, Smile, Hand as HandHeart, Zap, Frown } from 'lucide-react';
+import { Heart, ThumbsUp, Share2, Smile, Hand as HandHeart, Zap, Frown, Frown as Angry } from 'lucide-react';
 import { addReaction, removeReaction, getReactions } from '@/lib/socialInteractions';
 import { useAnalytics } from '@/hooks/use-analytics';
 
@@ -111,104 +111,6 @@ export default function SocialReactions({
           ))}
         </div>
       )}
-    </div>
-  );
-}tId, targetType });
-
-    // Animação de feedback
-    setTimeout(() => {
-      setAnimatingReaction(null);
-    }, 300);
-  };
-
-  const totalReactions = Object.values(reactions).reduce((sum, count) => sum + count, 0);
-  const topReactions = Object.entries(reactions)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 3)
-    .filter(([, count]) => count > 0);
-
-  return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      {/* Resumo das Reações */}
-      {totalReactions > 0 && (
-        <div className="flex items-center gap-1">
-          {topReactions.map(([type, count]) => (
-            <span key={type} className="text-base">
-              {reactionConfig[type as keyof typeof reactionConfig]?.emoji}
-            </span>
-          ))}
-          {totalReactions > 0 && (
-            <span className="text-sm text-gray-500 ml-1">
-              {totalReactions}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Botão Principal de Reações */}
-      <div className="relative">
-        <button
-          onClick={() => setShowAllReactions(!showAllReactions)}
-          className={`flex items-center gap-1 ${sizeClasses[size]} rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm ${
-            userReactions.length > 0 ? 'bg-blue-50 border-blue-200' : 'bg-white'
-          }`}
-        >
-          {userReactions.length > 0 ? (
-            <span className="text-base">
-              {reactionConfig[userReactions[0] as keyof typeof reactionConfig]?.emoji}
-            </span>
-          ) : (
-            <Heart className={`${iconSizes[size]} text-gray-500`} />
-          )}
-          <span className="text-gray-700 font-medium">
-            {userReactions.length > 0 ? 'Reagiu' : 'Reagir'}
-          </span>
-        </button>
-
-        {/* Menu de Reações */}
-        {showAllReactions && (
-          <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 p-2 z-50 min-w-max">
-            <div className="flex items-center gap-1">
-              {Object.entries(reactionConfig).map(([type, config]) => {
-                const isActive = userReactions.includes(type);
-                const count = reactions[type] || 0;
-                const isAnimating = animatingReaction === type;
-
-                return (
-                  <button
-                    key={type}
-                    onClick={() => handleReactionClick(type)}
-                    className={`flex flex-col items-center p-2 rounded-lg transition-all duration-200 hover:scale-110 group relative ${
-                      isActive ? `${config.bgColor} ${config.color}` : 'hover:bg-gray-50'
-                    } ${isAnimating ? 'animate-bounce' : ''}`}
-                    title={config.label}
-                  >
-                    <span className={`text-xl ${isAnimating ? 'animate-pulse' : ''}`}>
-                      {config.emoji}
-                    </span>
-                    {count > 0 && (
-                      <span className={`text-xs font-medium ${isActive ? config.color : 'text-gray-600'}`}>
-                        {count}
-                      </span>
-                    )}
-
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
-                      {config.label}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Fechar ao clicar fora */}
-            <div 
-              className="fixed inset-0 z-[-1]" 
-              onClick={() => setShowAllReactions(false)}
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
 }
