@@ -1,0 +1,78 @@
+Olá, Replit. Vamos construir o frontend completo para a seção de "Gestão Financeira" (`/dashboard/financeiro`). O objetivo é criar uma interface robusta e integrada, baseada na imagem de referência e em novas funcionalidades.
+
+**Tarefa:** Crie ou modifique o componente da página `/dashboard/financeiro` para ter a seguinte estrutura e funcionalidades. Por enquanto, todo o backend será simulado (mockado).
+
+---
+
+**1. Estrutura Principal com Abas (`Tabs`)**
+
+A página deve ter as seguintes abas principais:
+* **Transações** (Visão principal)
+* **Contas Bancárias**
+* **Contatos** (Fornecedores e Doadores)
+* **Relatórios**
+* **Configurações**
+
+---
+
+**2. Conteúdo da Aba "Transações"**
+
+* **Cabeçalho:** Mantenha os cards de resumo no topo: "Total Receitas", "Total Despesas", "Saldo Atual", e "Transparência".
+* **Botão de Ação:** Um botão destacado **"+ Nova Transação"**, que abrirá um modal com o formulário detalhado (descrito no item 6).
+* **Visualizações:** Inclua um seletor para alternar entre duas visualizações:
+    * **"Lista" (Padrão):** A tabela de transações como na imagem, com colunas para Data, Descrição, Tipo, Valor, Projeto, Status e Ações.
+    * **"Quadro" (Estilo Trello):** Uma visualização Kanban com colunas representando o **Status** da transação ("Pendente", "Aprovado", "Rejeitado"). Cada transação deve ser um card que pode ser arrastado entre as colunas.
+
+---
+
+**3. Conteúdo da Aba "Contas Bancárias"**
+
+* Implemente um sistema de **sub-abas**:
+    * **"+ Adicionar Conta":** Um formulário para cadastrar uma nova conta (Nome do Banco, Agência, Nº da Conta, Saldo Inicial).
+    * **Sub-abas Dinâmicas:** Para cada conta cadastrada, crie uma sub-aba com seu nome. O conteúdo de cada uma deve ser um extrato filtrado, mostrando os cards de resumo e a tabela de transações **apenas daquela conta**.
+
+---
+
+**4. Conteúdo da Aba "Contatos"**
+
+* Implemente um sistema de **sub-abas**:
+    * **"Fornecedores":** Um botão "+ Novo Fornecedor", uma tabela listando os fornecedores e um modal para criar/editar seus dados (Nome, CNPJ/CPF, Contato, PIX, etc.).
+    * **"Doadores":** Mesma estrutura (botão, tabela, modal) para gerenciar os doadores.
+
+---
+
+**5. Conteúdo da Aba "Relatórios"**
+
+* **Filtros:** Adicione seletores de período (ex: "Este Mês", "Últimos 90 dias", "Período Customizado").
+* **Visualização:**
+    * Um **"Resumo Mensal"** como na imagem.
+    * Um gráfico de **"Despesas por Categoria"** (gráfico de pizza ou barras).
+    * Um gráfico de **"Custos Fixos vs. Variáveis"**.
+* **Ação:** Um botão **"Exportar Relatório"** (para CSV/PDF).
+
+---
+
+**6. Conteúdo da Aba "Configurações" (para Categorias)**
+
+* Crie uma interface simples para **gerenciar as categorias de transação**.
+* Deve permitir ao usuário **adicionar, editar e excluir** categorias (ex: "Recursos Humanos", "Infraestrutura", "Marketing", "Doação - Projeto X").
+
+---
+
+**7. O Modal "Nova Transação" (A Peça Central)**
+
+Este modal deve ser completo e conter os seguintes campos:
+
+* **`Tipo`**: Select ("Receita" ou "Despesa").
+* **`Descrição`**: Input de texto.
+* **`Valor (R$)`**: Input de número.
+* **`Data`**: Seletor de data.
+* **`Conta Bancária *`**: Select **obrigatório** com a lista de contas cadastradas.
+* **`Categoria *`**: Select **obrigatório** populado com as categorias criadas na aba "Configurações".
+* **`Projeto (Opcional)`**: Select **opcional** com a lista de projetos cadastrados em `/dashboard/projetos`.
+* **`Tipo de Custo (Opcional)`**: Aparece **apenas se o Tipo for "Despesa"**. Select com "Custo Fixo" e "Custo Variável".
+* **`Fornecedor (Opcional)`**: Aparece **apenas se o Tipo for "Despesa"**. Select com a lista de fornecedores.
+* **`Doador (Opcional)`**: Aparece **apenas se o Tipo for "Receita"**. Select com a lista de doadores.
+* **`Status`**: Select com "Pendente" e "Aprovado".
+* **`Tornar público...`**: Switch para controlar a visibilidade.
+* **`Anexar Documento`**: Botão para upload de arquivos.
