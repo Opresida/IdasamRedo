@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   DollarSign,
@@ -24,17 +23,7 @@ import {
 } from 'lucide-react';
 
 import {
-  financialTransactionsService,
-  bankAccountsService,
-  suppliersService,
-  donorsService,
-  type FinancialTransaction,
-  type BankAccount,
-  type Supplier,
-  type Donor
-} from '@/lib/supabaseFinancial';
-
-import { Button } from '@/components/ui/button';
+  Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import {
   Select,
@@ -121,43 +110,85 @@ const GestaoFinanceira: React.FC = () => {
     initial_balance: 0,
   });
 
-  // Função para carregar dados do Supabase
-  const loadData = async () => {
+  // Carregar dados na inicialização
+  useEffect(() => {
+    fetchTransactions();
+    fetchSuppliers();
+    fetchDonors();
+    fetchBankAccounts();
+  }, []);
+
+  const fetchTransactions = async () => {
     try {
       setLoading(true);
-      setError(null);
+      const result = await query(`
+        SELECT 
+          t.*,
+          s.name as supplier_name,
+          d.name as donor_name,
+          ba.bank_name,
+          ba.account_number
+        FROM transactions t
+        LEFT JOIN suppliers s ON t.supplier_id = s.id
+        LEFT JOIN donors d ON t.donor_id = d.id
+        LEFT JOIN bank_accounts ba ON t.bank_account_id = ba.id
+        ORDER BY t.date DESC
+      `);
 
-      const [transactionsData, suppliersData, donorsData, bankAccountsData] = await Promise.all([
-        financialTransactionsService.getAll(),
-        suppliersService.getAll(),
-        donorsService.getAll(),
-        bankAccountsService.getAll()
-      ]);
-
-      // Converter transações para o formato do componente
-      const convertedTransactions: Transaction[] = transactionsData.map(t => ({
+      const convertedTransactions: Transaction[] = (result.rows || []).map((t: any) => ({
         ...t,
-        project: t.project_id,
+        project: t.project_id, // Assuming project_id is the correct field
         status: t.is_public ? 'public' : 'private',
         isPublic: t.is_public
       }));
 
       setTransactions(convertedTransactions);
-      setSuppliers(suppliersData);
-      setDonors(donorsData);
-      setBankAccounts(bankAccountsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
-      console.error('Erro ao carregar dados:', err);
+      console.error('Erro ao buscar transações:', err);
+      setError('Erro ao carregar transações');
     } finally {
       setLoading(false);
     }
   };
 
-  // Carregar dados na inicialização
-  useEffect(() => {
-    loadData();
-  }, []);
+  const fetchSuppliers = async () => {
+    try {
+      const result = await query(`
+        SELECT * FROM suppliers 
+        ORDER BY name
+      `);
+
+      setSuppliers(result.rows || []);
+    } catch (err) {
+      console.error('Erro ao buscar fornecedores:', err);
+    }
+  };
+
+  const fetchDonors = async () => {
+    try {
+      const result = await query(`
+        SELECT * FROM donors 
+        ORDER BY name
+      `);
+
+      setDonors(result.rows || []);
+    } catch (err) {
+      console.error('Erro ao buscar doadores:', err);
+    }
+  };
+
+  const fetchBankAccounts = async () => {
+    try {
+      const result = await query(`
+        SELECT * FROM bank_accounts 
+        ORDER BY bank_name
+      `);
+
+      setBankAccounts(result.rows || []);
+    } catch (err) {
+      console.error('Erro ao buscar contas bancárias:', err);
+    }
+  };
 
   const totalReceitas = useMemo(() =>
     transactions
@@ -193,7 +224,7 @@ const GestaoFinanceira: React.FC = () => {
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <h3 className="text-red-800 font-medium mb-2">Erro ao carregar dados</h3>
             <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={loadData} variant="outline">
+            <Button onClick={fetchTransactions} variant="outline">
               Tentar novamente
             </Button>
           </div>
@@ -364,7 +395,7 @@ const GestaoFinanceira: React.FC = () => {
           <CardContent className="text-center py-8">
             <p className="text-gray-500">Nenhuma transação encontrada</p>
             <p className="text-sm text-gray-400 mt-2">
-              Conectado ao Supabase: {suppliers.length + donors.length + bankAccounts.length > 0 ? '✅' : '❌'}
+              Banco de dados local: ✅
             </p>
           </CardContent>
         </Card>

@@ -22,7 +22,7 @@ import {
   Star
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { supabase } from '@/supabaseClient';
+import { dashboardQueries } from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
@@ -83,13 +83,8 @@ export default function DashboardPage() {
 
   const loadArticles = async () => {
     try {
-      const { data, error } = await supabase
-        .from('articles_full')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setArticles(data || []);
+      const articles = await dashboardQueries.getArticlesFull();
+      setArticles(articles || []);
     } catch (error) {
       console.error('Erro ao carregar artigos:', error);
     }
@@ -97,14 +92,8 @@ export default function DashboardPage() {
 
   const loadComments = async () => {
     try {
-      const { data, error } = await supabase
-        .from('comments')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      setComments(data || []);
+      const comments = await dashboardQueries.getComments();
+      setComments(comments || []);
     } catch (error) {
       console.error('Erro ao carregar comentários:', error);
     }
@@ -112,17 +101,13 @@ export default function DashboardPage() {
 
   const loadArticleStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('article_stats')
-        .select('*');
-
-      if (error) throw error;
+      const stats = await dashboardQueries.getArticleStats();
 
       const statsMap: Record<string, ArticleStats> = {};
-      (data || []).forEach(stat => {
+      (stats || []).forEach(stat => {
         statsMap[stat.article_id] = {
           views: stat.views || 0,
-          reaction_counts: stat.reaction_counts || {},
+          reaction_counts: { like: stat.likes || 0 },
         };
       });
 
