@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -91,7 +90,7 @@ export default function DashboardFinanceiroPage() {
   const [isNewCategoryOpen, setIsNewCategoryOpen] = useState(false);
   const [isEditTransactionOpen, setIsEditTransactionOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
-  
+
   const [accounts, setAccounts] = useState(mockAccounts);
   const [suppliers, setSuppliers] = useState(mockSuppliers);
   const [donors, setDonors] = useState(mockDonors);
@@ -161,8 +160,8 @@ export default function DashboardFinanceiroPage() {
   // Estados para filtros
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({
-    dateFrom: '',
-    dateTo: '',
+    dateFrom: null, // Changed to null for better date handling with Popover/Calendar
+    dateTo: null,   // Changed to null for better date handling with Popover/Calendar
     type: '',
     status: '',
     account: '',
@@ -172,7 +171,7 @@ export default function DashboardFinanceiroPage() {
 
   // Calculate totals (using filtered transactions for display)
   const filteredTransactions = getFilteredTransactions();
-  
+
   const totalReceitas = filteredTransactions
     .filter(t => t.type === 'Receita' && t.status === 'Pago')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -196,7 +195,7 @@ export default function DashboardFinanceiroPage() {
       account: newTransaction.account,
       category: newTransaction.category
     };
-    
+
     setTransactions([transaction, ...transactions]);
     setIsNewTransactionOpen(false);
     setNewTransaction({
@@ -225,7 +224,7 @@ export default function DashboardFinanceiroPage() {
       number: newAccount.number,
       balance: Number(newAccount.balance)
     };
-    
+
     setAccounts([...accounts, account]);
     setIsNewAccountOpen(false);
     setNewAccount({ name: '', bank: '', agency: '', number: '', balance: '' });
@@ -240,7 +239,7 @@ export default function DashboardFinanceiroPage() {
       contact: newSupplier.contact,
       pix: newSupplier.pix
     };
-    
+
     setSuppliers([...suppliers, supplier]);
     setIsNewSupplierOpen(false);
     setNewSupplier({ name: '', document: '', contact: '', pix: '' });
@@ -254,7 +253,7 @@ export default function DashboardFinanceiroPage() {
       contact: newDonor.contact,
       pix: newDonor.pix
     };
-    
+
     setDonors([...donors, donor]);
     setIsNewDonorOpen(false);
     setNewDonor({ name: '', document: '', contact: '', pix: '' });
@@ -266,7 +265,7 @@ export default function DashboardFinanceiroPage() {
       name: newCategory.name,
       type: newCategory.type
     };
-    
+
     setCategories([...categories, category]);
     setIsNewCategoryOpen(false);
     setNewCategory({ name: '', type: 'both' });
@@ -281,38 +280,38 @@ export default function DashboardFinanceiroPage() {
     }
 
     const hasTransactions = transactions.some(t => t.account === accountToDelete.name);
-    
+
     if (hasTransactions) {
       alert(`Não é possível excluir a conta "${accountToDelete.name}" pois há transações vinculadas a ela. Exclua ou transfira as transações primeiro.`);
       return;
     }
-    
+
     const confirmMessage = `Tem certeza que deseja excluir a conta "${accountToDelete.name}" do banco ${accountToDelete.bank}?\n\nEsta ação não pode ser desfeita.`;
-    
+
     if (window.confirm(confirmMessage)) {
       // Remover a conta
       setAccounts(prevAccounts => prevAccounts.filter(account => account.id !== accountId));
-      
+
       // Se a aba atual for da conta excluída, voltar para "add-account"
       const accountTab = accountToDelete.name.toLowerCase().replace(/\s+/g, '-');
       if (activeAccountTab === accountTab) {
         setActiveAccountTab('add-account');
       }
-      
+
       alert(`Conta "${accountToDelete.name}" excluída com sucesso!`);
     }
   };
 
   const handleDeleteTransaction = (transactionId) => {
     const transactionToDelete = transactions.find(t => t.id === transactionId);
-    
+
     if (!transactionToDelete) {
       alert('Transação não encontrada.');
       return;
     }
 
     const confirmMessage = `Tem certeza que deseja excluir a transação "${transactionToDelete.description}"?\n\nValor: R$ ${Math.abs(transactionToDelete.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nData: ${format(new Date(transactionToDelete.date), 'dd/MM/yyyy')}\n\nEsta ação não pode ser desfeita.`;
-    
+
     if (window.confirm(confirmMessage)) {
       setTransactions(prevTransactions => prevTransactions.filter(t => t.id !== transactionId));
       alert('Transação excluída com sucesso!');
@@ -357,7 +356,7 @@ export default function DashboardFinanceiroPage() {
     setTransactions(transactions.map(t => 
       t.id === editingTransaction.id ? updatedTransaction : t
     ));
-    
+
     setIsEditTransactionOpen(false);
     setEditingTransaction(null);
     setEditTransaction({
@@ -426,36 +425,36 @@ export default function DashboardFinanceiroPage() {
         const fromDate = new Date(filters.dateFrom);
         if (transactionDate < fromDate) return false;
       }
-      
+
       if (filters.dateTo) {
         const transactionDate = new Date(transaction.date);
         const toDate = new Date(filters.dateTo);
         if (transactionDate > toDate) return false;
       }
-      
+
       // Type filter
       if (filters.type && transaction.type !== filters.type) return false;
-      
+
       // Status filter
       if (filters.status && transaction.status !== filters.status) return false;
-      
+
       // Account filter
       if (filters.account && transaction.account !== filters.account) return false;
-      
+
       // Category filter
       if (filters.category && transaction.category !== filters.category) return false;
-      
+
       // Project filter
       if (filters.project && transaction.project !== filters.project) return false;
-      
+
       return true;
     });
   };
 
-  const handleResetFilters = () => {
+  const clearFilters = () => {
     setFilters({
-      dateFrom: '',
-      dateTo: '',
+      dateFrom: null,
+      dateTo: null,
       type: '',
       status: '',
       account: '',
@@ -577,7 +576,7 @@ export default function DashboardFinanceiroPage() {
                       Adicione uma nova transação financeira
                     </DialogDescription>
                   </DialogHeader>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="type">Tipo *</Label>
@@ -776,7 +775,7 @@ export default function DashboardFinanceiroPage() {
                       Modifique os dados da transação financeira
                     </DialogDescription>
                   </DialogHeader>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="edit-type">Tipo *</Label>
@@ -926,31 +925,57 @@ export default function DashboardFinanceiroPage() {
                   <Button variant="outline" size="sm">
                     <Filter className="h-4 w-4 mr-2" />
                     Filtros
+                    {(filters.dateFrom || filters.dateTo || filters.type || filters.status || filters.account || filters.category || filters.project) && (
+                      <Badge variant="secondary" className="ml-2 px-1 py-0 text-xs">
+                        {[filters.dateFrom, filters.dateTo, filters.type, filters.status, filters.account, filters.category, filters.project].filter(Boolean).length}
+                      </Badge>
+                    )}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Filtrar Transações</DialogTitle>
+                    <DialogTitle>Filtros de Transação</DialogTitle>
                   </DialogHeader>
-                  
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Data Inicial</Label>
-                        <Input
-                          type="date"
-                          value={filters.dateFrom}
-                          onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Data Final</Label>
-                        <Input
-                          type="date"
-                          value={filters.dateTo}
-                          onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
-                        />
-                      </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Data Inicial</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !filters.dateFrom && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {filters.dateFrom ? format(filters.dateFrom, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={filters.dateFrom}
+                            onSelect={(date) => setFilters({...filters, dateFrom: date})}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Data Final</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !filters.dateTo && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {filters.dateTo ? format(filters.dateTo, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={filters.dateTo}
+                            onSelect={(date) => setFilters({...filters, dateTo: date})}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div className="space-y-2">
@@ -1012,7 +1037,7 @@ export default function DashboardFinanceiroPage() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="col-span-2 space-y-2">
                       <Label>Projeto</Label>
                       <Select value={filters.project} onValueChange={(value) => setFilters({...filters, project: value})}>
                         <SelectTrigger>
@@ -1029,7 +1054,7 @@ export default function DashboardFinanceiroPage() {
                   </div>
 
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" onClick={handleResetFilters} className="flex-1">
+                    <Button variant="outline" onClick={clearFilters} className="flex-1">
                       Limpar Filtros
                     </Button>
                     <Button onClick={() => setIsFiltersOpen(false)} className="flex-1">
@@ -1038,7 +1063,6 @@ export default function DashboardFinanceiroPage() {
                   </div>
                 </DialogContent>
               </Dialog>
-              
               <Button variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 Exportar
@@ -1067,54 +1091,55 @@ export default function DashboardFinanceiroPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {getFilteredTransactions().map((transaction) => {
-                      const account = accounts.find(a => a.name === transaction.account);
-                      return (
-                        <TableRow key={transaction.id}>
-                          <TableCell>{format(new Date(transaction.date), 'dd/MM/yyyy')}</TableCell>
-                          <TableCell>{transaction.description}</TableCell>
-                          <TableCell>
-                            <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
-                              {transaction.type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className={transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}>
-                            R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell>{account ? account.bank : '-'}</TableCell>
-                          <TableCell>{transaction.project || '-'}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              transaction.status === 'Pago' ? 'default' : 
-                              transaction.status === 'Pendente' ? 'secondary' : 'outline'
-                            }>
-                              {transaction.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleEditTransaction(transaction)}
-                                title="Editar transação"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleDeleteTransaction(transaction.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                title="Excluir transação"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {filteredTransactions.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>{format(new Date(transaction.date), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell>{transaction.description}</TableCell>
+                        <TableCell>
+                          <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
+                            {transaction.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}>
+                          R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-gray-600">
+                            {accounts.find(acc => acc.name === transaction.account)?.bank || transaction.account}
+                          </span>
+                        </TableCell>
+                        <TableCell>{transaction.project || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            transaction.status === 'Pago' ? 'default' : 
+                            transaction.status === 'Pendente' ? 'secondary' : 'outline'
+                          }>
+                            {transaction.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditTransaction(transaction)}
+                              title="Editar transação"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteTransaction(transaction.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Excluir transação"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -1143,7 +1168,7 @@ export default function DashboardFinanceiroPage() {
                               snapshot.isDraggingOver ? 'bg-gray-50 border-2 border-dashed border-gray-300' : ''
                             }`}
                           >
-                            {getFilteredTransactions()
+                            {filteredTransactions
                               .filter(t => t.status === status)
                               .map((transaction, index) => (
                                 <Draggable key={transaction.id} draggableId={transaction.id.toString()} index={index}>
@@ -1661,7 +1686,7 @@ export default function DashboardFinanceiroPage() {
                       .filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Pago')
                       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
                     const percentage = totalDespesas > 0 ? (categoryTotal / totalDespesas) * 100 : 0;
-                    
+
                     return (
                       <div key={category.id} className="space-y-1">
                         <div className="flex justify-between text-sm">
