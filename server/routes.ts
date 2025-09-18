@@ -1,5 +1,5 @@
 import { type Express } from "express";
-import { db } from "@/server/db";
+import { db } from "./db";
 import { articles, categories, comments, transactions, bankAccounts, suppliers, donors } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
