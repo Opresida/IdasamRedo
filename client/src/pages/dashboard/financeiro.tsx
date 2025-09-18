@@ -260,20 +260,32 @@ export default function DashboardFinanceiroPage() {
 
   const handleDeleteAccount = (accountId) => {
     // Verificar se há transações vinculadas a esta conta
-    const hasTransactions = transactions.some(t => t.account === accounts.find(a => a.id === accountId)?.name);
+    const accountToDelete = accounts.find(a => a.id === accountId);
+    if (!accountToDelete) {
+      alert('Conta não encontrada.');
+      return;
+    }
+
+    const hasTransactions = transactions.some(t => t.account === accountToDelete.name);
     
     if (hasTransactions) {
-      alert('Não é possível excluir esta conta pois há transações vinculadas a ela.');
+      alert(`Não é possível excluir a conta "${accountToDelete.name}" pois há transações vinculadas a ela. Exclua ou transfira as transações primeiro.`);
       return;
     }
     
-    if (window.confirm('Tem certeza que deseja excluir esta conta bancária?')) {
-      setAccounts(accounts.filter(account => account.id !== accountId));
+    const confirmMessage = `Tem certeza que deseja excluir a conta "${accountToDelete.name}" do banco ${accountToDelete.bank}?\n\nEsta ação não pode ser desfeita.`;
+    
+    if (window.confirm(confirmMessage)) {
+      // Remover a conta
+      setAccounts(prevAccounts => prevAccounts.filter(account => account.id !== accountId));
+      
       // Se a aba atual for da conta excluída, voltar para "add-account"
-      const deletedAccount = accounts.find(a => a.id === accountId);
-      if (deletedAccount && activeAccountTab === deletedAccount.name.toLowerCase().replace(/\s+/g, '-')) {
+      const accountTab = accountToDelete.name.toLowerCase().replace(/\s+/g, '-');
+      if (activeAccountTab === accountTab) {
         setActiveAccountTab('add-account');
       }
+      
+      alert(`Conta "${accountToDelete.name}" excluída com sucesso!`);
     }
   };
 
@@ -1056,7 +1068,11 @@ export default function DashboardFinanceiroPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDeleteAccount(account.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDeleteAccount(account.id);
+                      }}
                       className="flex items-center gap-2"
                     >
                       <Trash2 className="h-4 w-4" />
