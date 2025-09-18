@@ -258,6 +258,25 @@ export default function DashboardFinanceiroPage() {
     setNewCategory({ name: '', type: 'both' });
   };
 
+  const handleDeleteAccount = (accountId) => {
+    // Verificar se há transações vinculadas a esta conta
+    const hasTransactions = transactions.some(t => t.account === accounts.find(a => a.id === accountId)?.name);
+    
+    if (hasTransactions) {
+      alert('Não é possível excluir esta conta pois há transações vinculadas a ela.');
+      return;
+    }
+    
+    if (window.confirm('Tem certeza que deseja excluir esta conta bancária?')) {
+      setAccounts(accounts.filter(account => account.id !== accountId));
+      // Se a aba atual for da conta excluída, voltar para "add-account"
+      const deletedAccount = accounts.find(a => a.id === accountId);
+      if (deletedAccount && activeAccountTab === deletedAccount.name.toLowerCase().replace(/\s+/g, '-')) {
+        setActiveAccountTab('add-account');
+      }
+    }
+  };
+
   const handleEditTransaction = (transaction) => {
     setEditingTransaction(transaction);
     setEditTransaction({
@@ -1028,6 +1047,23 @@ export default function DashboardFinanceiroPage() {
             {accounts.map((account) => (
               <TabsContent key={account.id} value={account.name.toLowerCase().replace(/\s+/g, '-')}>
                 <div className="space-y-6">
+                  {/* Cabeçalho da Conta com Botão de Excluir */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold">{account.name}</h3>
+                      <p className="text-sm text-gray-600">{account.bank} - Agência: {account.agency} - Conta: {account.number}</p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteAccount(account.id)}
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir Conta
+                    </Button>
+                  </div>
+
                   {/* Resumo da Conta */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <Card>
