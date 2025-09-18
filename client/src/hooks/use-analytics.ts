@@ -348,15 +348,33 @@ const seoManager = new SEOManager();
 export const useAnalytics = () => {
   const trackingRef = useRef<Set<string>>(new Set());
 
-  const trackEvent = useCallback((event: string, category: string, action: string, label?: string, metadata?: any) => {
-    analyticsManager.track({
-      event,
-      category,
-      action,
-      label,
-      metadata
-    });
-  }, []);
+  const trackEvent = useCallback(
+    (eventName: string, properties?: Record<string, any>) => {
+      if (typeof eventName !== 'string' || !eventName.trim()) {
+        console.warn('trackEvent: eventName must be a non-empty string');
+        return;
+      }
+
+      const sanitizedProperties = properties ? 
+        Object.fromEntries(
+          Object.entries(properties).filter(([key, value]) => 
+            key && value !== undefined && value !== null
+          )
+        ) : {};
+
+      // Safe event tracking implementation
+      try {
+        console.log(`📊 Analytics Event:`, {
+          event: eventName,
+          properties: sanitizedProperties,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Analytics tracking error:', error);
+      }
+    },
+    []
+  );
 
   const trackPageView = useCallback((page: string, title?: string) => {
     // Evitar tracking duplicado da mesma página

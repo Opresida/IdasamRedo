@@ -1,5 +1,3 @@
-
-
 // Mock implementation for social interactions - ready for internal database integration
 
 export interface CommentWithThread {
@@ -83,23 +81,32 @@ export async function getComments(contentId: string, contentType: 'article' | 'n
   );
 }
 
-export async function addComment(
+export const addComment = async (
   articleId: string,
-  authorName: string,
-  authorEmail: string,
   content: string,
-  parentCommentId?: string
-): Promise<CommentWithThread> {
+  userId: string,
+  parentId?: string
+): Promise<CommentWithThread> => {
+  if (!articleId?.trim()) {
+    throw new Error('Article ID is required');
+  }
+  if (!content?.trim()) {
+    throw new Error('Comment content is required');
+  }
+  if (!userId?.trim()) {
+    throw new Error('User ID is required');
+  }
+
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 800));
 
   const newComment: CommentWithThread = {
     id: Date.now().toString(),
     article_id: articleId,
-    author_name: authorName,
-    author_email: authorEmail,
+    author_name: "Anonymous", // Placeholder, will be resolved by backend or user profile
+    author_email: "anonymous@example.com", // Placeholder
     content: content,
-    parent_comment_id: parentCommentId || null,
+    parent_comment_id: parentId || null,
     is_approved: false, // Comments need approval in real system
     reaction_counts: {},
     created_at: new Date().toISOString(),
@@ -155,7 +162,7 @@ export async function getReactions(contentId: string) {
   } catch (error) {
     console.warn('API not available, using mock data:', error);
   }
-  
+
   // Fallback to mock data
   return await getReactionCounts(contentId);
 }
@@ -202,4 +209,3 @@ export async function toggleCommentReaction(
   // In real implementation, this would toggle the reaction in the database
   console.log('Comment reaction would be toggled:', { commentId, reactionType, userId });
 }
-

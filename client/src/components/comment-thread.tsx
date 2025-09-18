@@ -28,7 +28,19 @@ interface CommentThreadProps {
   articleTitle?: string;
 }
 
+const validateProps = (props: CommentThreadProps): boolean => {
+  if (!props?.articleId || typeof props.articleId !== 'string' || !props.articleId.trim()) {
+    console.error('CommentThread: articleId prop is required and must be a non-empty string');
+    return false;
+  }
+  return true;
+};
+
 export default function CommentThread({ articleId, articleTitle }: CommentThreadProps) {
+  if (!validateProps({ articleId })) {
+    return <div className="p-4 text-red-500">Erro: Propriedades inválidas</div>;
+  }
+
   const [comments, setComments] = useState<CommentWithThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

@@ -7,6 +7,7 @@ import { queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/contexts/auth-context';
 import PageLoader from '@/components/page-loader';
 import ProtectedRoute from '@/components/protected-route';
+import ErrorBoundary from '@/components/error-boundary';
 import Home from '@/pages/home';
 import Projetos from '@/pages/projetos';
 import NoticiasPage from '@/pages/noticias';
@@ -97,15 +98,17 @@ function AppContent() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <Router>
-            <AppContent />
-          </Router>
-          <Toaster />
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
+            <Router>
+              <AppContent />
+            </Router>
+            <Toaster />
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

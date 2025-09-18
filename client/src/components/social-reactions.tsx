@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Heart, ThumbsUp, Share2, Smile, Hand as HandHeart, Zap, Frown, Frown as Angry, AlertTriangle } from 'lucide-react';
 import { addReaction, removeReaction, getReactions } from '@/lib/socialInteractions';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/hooks/use-toast';
 
 interface Reaction {
   type: 'like' | 'love' | 'clap' | 'wow' | 'sad' | 'angry';
@@ -29,6 +31,8 @@ const reactionConfig = {
   angry: { emoji: '😡', icon: Angry, color: 'text-orange-600', bgColor: 'bg-orange-50', label: 'Raiva' }
 };
 
+type ReactionType = keyof typeof reactionConfig;
+
 export default function SocialReactions({
   targetId,
   targetType,
@@ -41,7 +45,8 @@ export default function SocialReactions({
   const [showAllReactions, setShowAllReactions] = useState(false);
   const [animatingReaction, setAnimatingReaction] = useState<string | null>(null);
   const { trackEvent } = useAnalytics();
-
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const sizeClasses = {
     sm: 'text-xs px-2 py-1',
@@ -55,18 +60,40 @@ export default function SocialReactions({
     lg: 'w-5 h-5'
   };
 
-  const handleReactionClick = async (reactionType: string) => {
-    setAnimatingReaction(reactionType);
-    await onReactionToggle(reactionType);
+  const handleReaction = useCallback(async (type: ReactionType) => {
+    if (!user) {
+      toast({
+        title: 'Login necessário',
+        description: 'Faça login para reagir aos artigos',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    trackEvent('reaction_clicked', 'engagement', 'reaction_toggle', reactionType, {
-      reactionType,
+    const newReactions = { ...reactions };
+    const currentCount = newReactions[type] || 0;
+    const userAlreadyReacted = userReactions.includes(type);
+
+    if (userAlreadyReacted) {
+      newReactions[type] = currentCount - 1;
+    } else {
+      newReactions[type] = currentCount + 1;
+    }
+
+    setAnimatingReaction(type);
+    await onReactionToggle(type);
+
+    trackEvent('reaction_clicked', 'engagement', 'reaction_toggle', type, {
+      reactionType: type,
       targetId,
-      targetType
+      targetType,
+      userReacted: userAlreadyReacted,
+      newCount: newReactions[type],
     });
 
     setTimeout(() => setAnimatingReaction(null), 300);
-  };
+  }, [user, targetId, targetType, reactions, userReactions, onReactionToggle, toast]);
+
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
@@ -87,7 +114,7 @@ export default function SocialReactions({
                 ${userReacted ? `${config.color} ${config.bgColor}` : 'text-gray-600 hover:text-gray-900'}
                 ${animatingReaction === type ? 'animate-pulse' : ''}
               `}
-              onClick={() => handleReactionClick(type)}
+              onClick={() => handleReaction(type as ReactionType)}
               title={config.label}
             >
               <Icon className={`${iconSizes[size]} mr-1`} />
@@ -103,7 +130,7 @@ export default function SocialReactions({
             <button
               key={type}
               className="text-lg hover:scale-125 transition-transform"
-              onClick={() => handleReactionClick(type)}
+              onClick={() => handleReaction(type as ReactionType)}
               title={config.label}
             >
               {config.emoji}
@@ -116,10 +143,10 @@ export default function SocialReactions({
 }
 
 // Componente para exibir estatísticas das reações
-export function ReactionStats({ 
-  reactions, 
-  className = '' 
-}: { 
+export function ReactionStats({
+  reactions,
+  className = ''
+}: {
   reactions: Record<string, number>;
   className?: string;
 }) {
