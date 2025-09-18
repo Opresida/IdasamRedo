@@ -1,0 +1,34 @@
+eruda.js:2 WebSocket connection to 'wss://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/?token=cdEXTK2eDbR4' failed: 
+
+eruda.js:2 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=cdEXTK2eDbR4' is invalid.
+    at new t (eruda.js:2:218737)
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+eruda.js:2 📊 Analytics Event: 
+Object
+763f043…:1 
+ Failed to load resource: the server responded with a status of 404 ()
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'ambient-light-sensor'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'battery'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'execution-while-not-rendered'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'execution-while-out-of-viewport'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'layout-animations'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'legacy-image-formats'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'navigation-override'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'oversized-images'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'publickey-credentials'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'speaker-selection'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'unoptimized-images'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Unrecognized feature: 'unsized-media'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Allow attribute will take precedence over 'allowfullscreen'.
+workspace_iframe.htm…2F&id=%3Arbt2%3A:32 Allow attribute will take precedence over 'allowpaymentrequest'.
+Console.js:61 📊 Analytics Event: 
+{event: 'session_start', category: 'engagement', action: 'session_start', metadata: {…}, timestamp: '2025-09-18T15:02:52.711Z', …}
+client:536 WebSocket connection to 'wss://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/?token=-ofZWve3pYx9' failed: 
+Network.js:227 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=-ofZWve3pYx9' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+
+﻿
