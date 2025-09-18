@@ -1,5 +1,4 @@
-
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 interface AnalyticsEvent {
   event: string;
@@ -75,7 +74,7 @@ class AnalyticsManager {
     };
 
     this.events.push(enrichedEvent);
-    
+
     // Log no console para desenvolvimento
     console.log('📊 Analytics Event:', enrichedEvent);
 
@@ -97,7 +96,7 @@ class AnalyticsManager {
 
       // Exemplo: enviar para seu próprio backend/Supabase
       // await supabase.from('analytics_events').insert(event);
-      
+
     } catch (error) {
       console.warn('⚠️ Erro ao enviar evento de analytics:', error);
     }
@@ -250,7 +249,7 @@ class SEOManager {
 
     // Atualizar ou criar meta tags
     this.updateMetaTag('description', seoData.description);
-    
+
     if (seoData.keywords && seoData.keywords.length > 0) {
       this.updateMetaTag('keywords', seoData.keywords.join(', '));
     }
@@ -259,11 +258,11 @@ class SEOManager {
     this.updateMetaTag('og:title', seoData.title, 'property');
     this.updateMetaTag('og:description', seoData.description, 'property');
     this.updateMetaTag('og:type', seoData.type || 'article', 'property');
-    
+
     if (seoData.image) {
       this.updateMetaTag('og:image', seoData.image, 'property');
     }
-    
+
     if (seoData.url) {
       this.updateMetaTag('og:url', seoData.url, 'property');
     }
@@ -272,7 +271,7 @@ class SEOManager {
     this.updateMetaTag('twitter:card', 'summary_large_image', 'name');
     this.updateMetaTag('twitter:title', seoData.title, 'name');
     this.updateMetaTag('twitter:description', seoData.description, 'name');
-    
+
     if (seoData.image) {
       this.updateMetaTag('twitter:image', seoData.image, 'name');
     }
@@ -282,13 +281,13 @@ class SEOManager {
 
   private updateMetaTag(name: string, content: string, attribute: string = 'name'): void {
     let tag = document.querySelector(`meta[${attribute}="${name}"]`);
-    
+
     if (!tag) {
       tag = document.createElement('meta');
       tag.setAttribute(attribute, name);
       document.head.appendChild(tag);
     }
-    
+
     tag.setAttribute('content', content);
   }
 
@@ -301,9 +300,9 @@ class SEOManager {
     const script = document.createElement('script');
     script.id = 'structured-data';
     script.type = 'application/ld+json';
-    
+
     let structuredData;
-    
+
     if (type === 'article') {
       structuredData = {
         '@context': 'https://schema.org',
@@ -349,30 +348,36 @@ const seoManager = new SEOManager();
 export const useAnalytics = () => {
   const trackingRef = useRef<Set<string>>(new Set());
 
-  const track = (event: AnalyticsEvent) => {
-    analyticsManager.track(event);
-  };
+  const trackEvent = useCallback((event: string, category: string, action: string, label?: string, metadata?: any) => {
+    analyticsManager.track({
+      event,
+      category,
+      action,
+      label,
+      metadata
+    });
+  }, []);
 
-  const trackPageView = (page: string, title?: string) => {
+  const trackPageView = useCallback((page: string, title?: string) => {
     // Evitar tracking duplicado da mesma página
     const pageKey = `${page}_${title}`;
     if (trackingRef.current.has(pageKey)) return;
-    
+
     trackingRef.current.add(pageKey);
     analyticsManager.trackPageView(page, title);
-  };
+  }, []);
 
-  const trackArticleView = (articleId: string, title: string) => {
+  const trackArticleView = useCallback((articleId: string, title: string) => {
     // Rastrear apenas uma vez por sessão por artigo
     const articleKey = `article_${articleId}`;
     if (trackingRef.current.has(articleKey)) return;
-    
+
     trackingRef.current.add(articleKey);
     analyticsManager.trackArticleView(articleId, title);
-  };
+  }, []);
 
   return {
-    track,
+    trackEvent,
     trackPageView,
     trackArticleView,
     trackArticleLike: analyticsManager.trackArticleLike.bind(analyticsManager),
@@ -387,11 +392,11 @@ export const useAnalytics = () => {
 
 // Hook para SEO
 export const useSEO = () => {
-  const updateSEO = (seoData: SEOData) => {
+  const updateSEO = useCallback((seoData: SEOData) => {
     seoManager.updateSEO(seoData);
-  };
+  }, []);
 
-  const updateArticleSEO = (article: any) => {
+  const updateArticleSEO = useCallback((article: any) => {
     const seoData: SEOData = {
       title: `${article.title} | IDASAM Notícias`,
       description: article.excerpt,
@@ -409,7 +414,7 @@ export const useSEO = () => {
       publishDate: article.publishDate,
       modifiedDate: article.publishDate
     });
-  };
+  }, []);
 
   return {
     updateSEO,
@@ -428,118 +433,3 @@ export const useAnalyticsAndSEO = () => {
     ...seo
   };
 };
-import { useCallback } from 'react';
-
-interface AnalyticsEvent {
-  event: string;
-  category: string;
-  action: string;
-  label?: string;
-  value?: number;
-  metadata?: Record<string, any>;
-}
-
-interface SEOData {
-  title?: string;
-  description?: string;
-  keywords?: string[];
-  url?: string;
-  type?: string;
-  image?: string;
-}
-
-export function useAnalytics() {
-  const trackEvent = useCallback((event: string, category: string, action: string, label?: string, metadata?: any) => {
-    const eventData: AnalyticsEvent = {
-      event,
-      category,
-      action,
-      label,
-      metadata: {
-        ...metadata,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        referrer: document.referrer
-      }
-    };
-
-    // Log para desenvolvimento
-    console.log('📊 Analytics Event:', eventData);
-
-    // Aqui você pode integrar com Google Analytics, Mixpanel, etc.
-    if (typeof gtag !== 'undefined') {
-      gtag('event', action, {
-        event_category: category,
-        event_label: label,
-        custom_map: metadata
-      });
-    }
-  }, []);
-
-  const trackPageView = useCallback((path: string, title?: string) => {
-    const pageData = {
-      page_path: path,
-      page_title: title || document.title,
-      timestamp: new Date().toISOString()
-    };
-
-    console.log('📄 Page View:', pageData);
-
-    if (typeof gtag !== 'undefined') {
-      gtag('config', 'GA_MEASUREMENT_ID', {
-        page_path: path,
-        page_title: title
-      });
-    }
-  }, []);
-
-  return {
-    trackEvent,
-    trackPageView
-  };
-}
-
-export function useAnalyticsAndSEO() {
-  const { trackEvent, trackPageView } = useAnalytics();
-
-  const updateSEO = useCallback((seoData: SEOData) => {
-    if (seoData.title) {
-      document.title = seoData.title;
-    }
-
-    // Update meta tags
-    const updateMetaTag = (name: string, content: string) => {
-      let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.setAttribute('name', name);
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute('content', content);
-    };
-
-    if (seoData.description) {
-      updateMetaTag('description', seoData.description);
-    }
-
-    if (seoData.keywords) {
-      updateMetaTag('keywords', seoData.keywords.join(', '));
-    }
-
-    // Open Graph tags
-    if (seoData.url) {
-      updateMetaTag('og:url', seoData.url);
-    }
-
-    if (seoData.type) {
-      updateMetaTag('og:type', seoData.type);
-    }
-  }, []);
-
-  return {
-    trackEvent,
-    trackPageView,
-    updateSEO
-  };
-}
