@@ -98,7 +98,10 @@ class AnalyticsManager {
       // await supabase.from('analytics_events').insert(event);
 
     } catch (error) {
-      console.warn('⚠️ Erro ao enviar evento de analytics:', error);
+      // Silently handle network errors in production
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Erro ao enviar evento de analytics:', error);
+      }
     }
   }
 

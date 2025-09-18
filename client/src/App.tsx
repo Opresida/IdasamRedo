@@ -97,6 +97,32 @@ function AppContent() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Handle WebSocket errors globally
+    const handleWebSocketError = (event: Event) => {
+      if (event.target instanceof WebSocket) {
+        console.warn('WebSocket connection issue (expected in Replit environment)');
+      }
+    };
+
+    // Handle unhandled promise rejections
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason?.message?.includes('WebSocket') || 
+          event.reason?.message?.includes('Failed to construct')) {
+        event.preventDefault(); // Prevent console spam
+        console.warn('Handled WebSocket connection issue');
+      }
+    };
+
+    window.addEventListener('error', handleWebSocketError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleWebSocketError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
