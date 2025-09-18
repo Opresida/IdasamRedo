@@ -39,8 +39,8 @@ export default defineConfig({
     hmr: {
       port: 3000,
       host: "0.0.0.0",
-      protocol: 'ws',
-      clientPort: 3000
+      protocol: 'wss',
+      clientPort: 443
     }
   },
 });
