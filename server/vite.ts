@@ -22,10 +22,17 @@ export function log(message: string, source = "express") {
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
+    host: "0.0.0.0",
+    port: 3000,
+    
+    // CORREÇÃO DEFINITIVA:
+    // Define a URL pública do servidor para o cliente Vite.
+    // Usamos variáveis de ambiente do Replit para fazer isso dinamicamente.
+    origin: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`,
+    
     hmr: { 
       server,
-      port: 3000,
-      host: "0.0.0.0"
+      clientPort: 443
     },
     allowedHosts: true as const,
   };
