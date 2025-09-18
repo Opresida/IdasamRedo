@@ -27,7 +27,7 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     host: "0.0.0.0",
-    port: 3000,
+    port: 5000, // <- CORRIGIDO PARA 5000
     
     // CORREÇÃO DEFINITIVA:
     // Define a URL pública do servidor para o cliente Vite.
