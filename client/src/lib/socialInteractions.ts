@@ -160,3 +160,20 @@ export function saveUserReactionLocally(articleId: string, reactionType: string)
   userReactions[articleId] = reactionType;
   localStorage.setItem('user_reactions', JSON.stringify(userReactions));
 }
+
+// Function to get comments for a specific content
+async function getComments(contentId: string, contentType: 'article' | 'news' = 'article') {
+  try {
+    const response = await fetch(`/api/comments?contentId=${contentId}&contentType=${contentType}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch comments');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return [];
+  }
+}
+
+// Export all functions that might be needed
+export { addComment, addReaction, removeReaction, getComments };
