@@ -1,4 +1,5 @@
 
+
 // Mock implementation for social interactions - ready for internal database integration
 
 export interface CommentWithThread {
@@ -80,10 +81,6 @@ export async function getComments(contentId: string, contentType: 'article' | 'n
   return MOCK_COMMENTS.filter(comment =>
     comment.article_id === contentId && comment.parent_comment_id === null
   );
-}
-
-export async function getCommentsForArticle(articleId: string): Promise<CommentWithThread[]> {
-  return getComments(articleId, 'article');
 }
 
 export async function addComment(
@@ -205,3 +202,4 @@ export async function toggleCommentReaction(
   // In real implementation, this would toggle the reaction in the database
   console.log('Comment reaction would be toggled:', { commentId, reactionType, userId });
 }
+

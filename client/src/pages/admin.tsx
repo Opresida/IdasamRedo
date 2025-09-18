@@ -49,7 +49,6 @@ import {
   PieChart
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { supabase } from '@/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
@@ -704,12 +703,12 @@ export default function AdminDashboard() {
 
   const handleApproveComment = async (commentId: string) => {
     try {
-      const { error } = await supabase
-        .from('comments')
-        .update({ is_approved: true })
-        .eq('id', commentId);
+      const response = await fetch(`/api/comments/${commentId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to approve comment');
 
       toast({
         title: 'Sucesso',
@@ -729,12 +728,11 @@ export default function AdminDashboard() {
 
   const handleDeleteComment = async (commentId: string) => {
     try {
-      const { error } = await supabase
-        .from('comments')
-        .delete()
-        .eq('id', commentId);
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'DELETE',
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to delete comment');
 
       toast({
         title: 'Sucesso',

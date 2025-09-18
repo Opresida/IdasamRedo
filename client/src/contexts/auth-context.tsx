@@ -18,7 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Usuários simulados para demo (em produção, isso viria do Supabase)
+// Usuários simulados para demo (em produção, isso viria do banco interno)se)
 const DEMO_USERS = [
   {
     id: '1',

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { supabase } from './supabaseClient'; // Importa o cliente Supabase
 
 const DonationFormUSD = () => {
   const [amount, setAmount] = useState(25); // Valor padrão em USD

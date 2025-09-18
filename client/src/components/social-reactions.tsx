@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, ThumbsUp, Share2, Smile, Hand as HandHeart, Zap, Frown, Frown as Angry } from 'lucide-react';
+import { Heart, ThumbsUp, Share2, Smile, Hand as HandHeart, Zap, Frown, Frown as Angry, AlertTriangle } from 'lucide-react';
 import { addReaction, removeReaction, getReactions } from '@/lib/socialInteractions';
 import { useAnalytics } from '@/hooks/use-analytics';
 
@@ -58,13 +58,13 @@ export default function SocialReactions({
   const handleReactionClick = async (reactionType: string) => {
     setAnimatingReaction(reactionType);
     await onReactionToggle(reactionType);
-    
+
     trackEvent('reaction_clicked', 'engagement', 'reaction_toggle', reactionType, {
       reactionType,
       targetId,
       targetType
     });
-    
+
     setTimeout(() => setAnimatingReaction(null), 300);
   };
 
@@ -75,7 +75,7 @@ export default function SocialReactions({
           const count = reactions[type] || 0;
           const userReacted = userReactions.includes(type);
           const Icon = config.icon;
-          
+
           return (
             <Button
               key={type}
@@ -96,7 +96,7 @@ export default function SocialReactions({
           );
         })}
       </div>
-      
+
       {showAllReactions && (
         <div className="flex items-center gap-1 ml-2 p-2 bg-gray-50 rounded-lg">
           {Object.entries(reactionConfig).map(([type, config]) => (
