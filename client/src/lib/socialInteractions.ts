@@ -1,3 +1,4 @@
+
 // Mock implementation for social interactions - ready for internal database integration
 
 export interface CommentWithThread {
@@ -62,14 +63,27 @@ const MOCK_COMMENTS: CommentWithThread[] = [
   }
 ];
 
-// Mock functions - will be replaced with real database calls
-export async function getCommentsForArticle(articleId: string): Promise<CommentWithThread[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+// Function to get comments for a specific content
+export async function getComments(contentId: string, contentType: 'article' | 'news' = 'article') {
+  try {
+    // First try to get from API
+    const response = await fetch(`/api/comments?contentId=${contentId}&contentType=${contentType}`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (error) {
+    console.warn('API not available, using mock data:', error);
+  }
 
+  // Fallback to mock data
+  await new Promise(resolve => setTimeout(resolve, 500));
   return MOCK_COMMENTS.filter(comment =>
-    comment.article_id === articleId && comment.parent_comment_id === null
+    comment.article_id === contentId && comment.parent_comment_id === null
   );
+}
+
+export async function getCommentsForArticle(articleId: string): Promise<CommentWithThread[]> {
+  return getComments(articleId, 'article');
 }
 
 export async function addComment(
@@ -110,6 +124,9 @@ export async function addReaction(
 
   const userId = getAnonymousUserId();
 
+  // Save to localStorage
+  saveUserReactionLocally(articleId, reactionType);
+
   // In real implementation, this would save to database
   console.log('Reaction would be saved:', { articleId, reactionType, userId });
 }
@@ -129,6 +146,21 @@ export async function getReactionCounts(articleId: string): Promise<ReactionCoun
   };
 
   return mockArticleReactions[articleId] || { like: 0 };
+}
+
+// Function to get reactions for a specific content
+export async function getReactions(contentId: string) {
+  try {
+    const response = await fetch(`/api/reactions?contentId=${contentId}`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (error) {
+    console.warn('API not available, using mock data:', error);
+  }
+  
+  // Fallback to mock data
+  return await getReactionCounts(contentId);
 }
 
 export async function getUserReaction(
@@ -161,51 +193,6 @@ export function saveUserReactionLocally(articleId: string, reactionType: string)
   localStorage.setItem('user_reactions', JSON.stringify(userReactions));
 }
 
-// Function to get comments for a specific content
-export async function getComments(contentId: string, contentType: 'article' | 'news' = 'article') {
-  try {
-    const response = await fetch(`/api/comments?contentId=${contentId}&contentType=${contentType}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch comments');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching comments:', error);
-    return [];
-  }
-}
-
-// Function to get reactions for a specific content
-export async function getReactions(contentId: string) {
-  try {
-    const response = await fetch(`/api/reactions?contentId=${contentId}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch reactions');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching reactions:', error);
-    return { like: 0, love: 0, celebrate: 0 };
-  }
-}
-
-// Export all functions
-export { addComment, addReaction, removeReaction };
-
-// Function to get comments for a specific content
-export async function getComments(contentId: string, contentType: 'article' | 'news' = 'article') {
-  try {
-    const response = await fetch(`/api/comments?contentId=${contentId}&contentType=${contentType}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch comments');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching comments:', error);
-    return [];
-  }
-}
-
 export async function toggleCommentReaction(
   commentId: string,
   reactionType: string
@@ -218,5 +205,3 @@ export async function toggleCommentReaction(
   // In real implementation, this would toggle the reaction in the database
   console.log('Comment reaction would be toggled:', { commentId, reactionType, userId });
 }
-
-// All functions are exported directly with their declarations

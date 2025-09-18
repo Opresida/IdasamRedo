@@ -25,6 +25,215 @@ import {
 
 interface CommentThreadProps {
   articleId: string;
+  articleTitle?: string;
+}
+
+export default function CommentThread({ articleId, articleTitle }: CommentThreadProps) {
+  const [comments, setComments] = useState<CommentWithThread[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newComment, setNewComment] = useState('');
+  const [authorName, setAuthorName] = useState('');
+  const [authorEmail, setAuthorEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadComments();
+  }, [articleId]);
+
+  const loadComments = async () => {
+    try {
+      setLoading(true);
+      const commentsData = await getComments(articleId, 'article');
+      setComments(commentsData);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || !authorName.trim() || !authorEmail.trim()) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const comment = await addComment(
+        articleId,
+        authorName,
+        authorEmail,
+        newComment,
+        replyingTo || undefined
+      );
+      
+      setNewComment('');
+      setReplyingTo(null);
+      await loadComments(); // Reload comments
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReaction = async (commentId: string, reactionType: string) => {
+    try {
+      await toggleCommentReaction(commentId, reactionType);
+      await loadComments(); // Reload to get updated counts
+    } catch (error) {
+      console.error('Error toggling reaction:', error);
+    }
+  };
+
+  const renderComment = (comment: CommentWithThread, depth = 0) => (
+    <div key={comment.id} className={`${depth > 0 ? 'ml-8 mt-4' : 'mt-4'}`}>
+      <Card className="bg-white border border-gray-200">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-medium text-gray-900">{comment.author_name}</span>
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {formatDate(comment.created_at)}
+                </span>
+                {!comment.is_approved && (
+                  <Badge variant="secondary" className="text-xs">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    Aguardando aprovação
+                  </Badge>
+                )}
+              </div>
+              <p className="text-gray-700 text-sm leading-relaxed mb-3">
+                {comment.content}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleReaction(comment.id, 'like')}
+                  className="text-xs"
+                >
+                  <ThumbsUp className="w-3 h-3 mr-1" />
+                  {comment.reaction_counts.like || 0}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setReplyingTo(comment.id)}
+                  className="text-xs"
+                >
+                  <Reply className="w-3 h-3 mr-1" />
+                  Responder
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {comment.replies?.map(reply => renderComment(reply, depth + 1))}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="animate-pulse bg-gray-200 h-24 rounded-lg"></div>
+        <div className="animate-pulse bg-gray-200 h-16 rounded-lg"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <MessageCircle className="w-5 h-5" />
+          Comentários ({comments.length})
+        </h3>
+
+        {/* Comment form */}
+        <form onSubmit={handleSubmitComment} className="space-y-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="authorName">Nome</Label>
+              <Input
+                id="authorName"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                placeholder="Seu nome"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="authorEmail">Email</Label>
+              <Input
+                id="authorEmail"
+                type="email"
+                value={authorEmail}
+                onChange={(e) => setAuthorEmail(e.target.value)}
+                placeholder="seu@email.com"
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="comment">Comentário</Label>
+            <Textarea
+              id="comment"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Escreva seu comentário..."
+              className="min-h-[100px]"
+              required
+            />
+          </div>
+          {replyingTo && (
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                Respondendo ao comentário. 
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={() => setReplyingTo(null)}
+                  className="text-blue-700 p-0 ml-2"
+                >
+                  Cancelar
+                </Button>
+              </p>
+            </div>
+          )}
+          <Button type="submit" disabled={submitting} className="w-full">
+            <Send className="w-4 h-4 mr-2" />
+            {submitting ? 'Enviando...' : 'Enviar Comentário'}
+          </Button>
+        </form>
+
+        {/* Comments list */}
+        <div className="space-y-4">
+          {comments.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">
+              Seja o primeiro a comentar!
+            </p>
+          ) : (
+            comments.map(comment => renderComment(comment))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface CommentThreadProps {
+  articleId: string;
 }
 
 export default function CommentThread({ articleId }: CommentThreadProps) {

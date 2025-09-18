@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, ThumbsUp, Share2, Smile } from 'lucide-react';
+import { Heart, ThumbsUp, Share2, Smile, Hand as HandHeart, Zap, Frown } from 'lucide-react';
 import { addReaction, removeReaction, getReactions } from '@/lib/socialInteractions';
 import { useAnalytics } from '@/hooks/use-analytics';
 
@@ -59,7 +59,61 @@ export default function SocialReactions({
     setAnimatingReaction(reactionType);
     await onReactionToggle(reactionType);
     
-    trackEvent('reaction_clicked', { reactionType, targetId, targetType });
+    trackEvent('reaction_clicked', 'engagement', 'reaction_toggle', reactionType, {
+      reactionType,
+      targetId,
+      targetType
+    });
+    
+    setTimeout(() => setAnimatingReaction(null), 300);
+  };
+
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      <div className="flex items-center gap-1">
+        {Object.entries(reactionConfig).map(([type, config]) => {
+          const count = reactions[type] || 0;
+          const userReacted = userReactions.includes(type);
+          const Icon = config.icon;
+          
+          return (
+            <Button
+              key={type}
+              variant="ghost"
+              size="sm"
+              className={`
+                ${sizeClasses[size]} 
+                transition-all duration-200 hover:scale-105
+                ${userReacted ? `${config.color} ${config.bgColor}` : 'text-gray-600 hover:text-gray-900'}
+                ${animatingReaction === type ? 'animate-pulse' : ''}
+              `}
+              onClick={() => handleReactionClick(type)}
+              title={config.label}
+            >
+              <Icon className={`${iconSizes[size]} mr-1`} />
+              <span className="text-xs">{count > 0 ? count : ''}</span>
+            </Button>
+          );
+        })}
+      </div>
+      
+      {showAllReactions && (
+        <div className="flex items-center gap-1 ml-2 p-2 bg-gray-50 rounded-lg">
+          {Object.entries(reactionConfig).map(([type, config]) => (
+            <button
+              key={type}
+              className="text-lg hover:scale-125 transition-transform"
+              onClick={() => handleReactionClick(type)}
+              title={config.label}
+            >
+              {config.emoji}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}tId, targetType });
 
     // Animação de feedback
     setTimeout(() => {
