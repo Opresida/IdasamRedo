@@ -40,11 +40,51 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// Adaptação para compatibilidade com o componente existente
-interface Transaction extends Omit<FinancialTransaction, 'project_id'> {
+// Definição de tipos locais
+interface Transaction {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  amount: number;
+  type: 'receita' | 'despesa';
   project: string | null;
   status: 'public' | 'private';
   isPublic: boolean;
+  supplier_id: string | null;
+  donor_id: string | null;
+  bank_account_id: string | null;
+}
+
+interface Supplier {
+  id: string;
+  name: string;
+  cnpj_cpf: string;
+  contact_person: string;
+  email: string;
+  phone: string;
+  pix_key: string;
+  created_at: string;
+}
+
+interface Donor {
+  id: string;
+  name: string;
+  cnpj_cpf: string;
+  contact_person: string;
+  email: string;
+  phone: string;
+  pix_key: string;
+  created_at: string;
+}
+
+interface BankAccount {
+  id: string;
+  name: string;
+  agency: string;
+  account_number: string;
+  initial_balance: number;
+  created_at: string;
 }
 
 interface Filters {
@@ -116,29 +156,91 @@ const GestaoFinanceira: React.FC = () => {
   }, []);
 
   const fetchFinancialData = async () => {
-      try {
-        // Fetch transactions
-        const transactionsData = await database.getTransactions();
-        setTransactions(transactionsData || []);
+    try {
+      // Mock data temporário até implementar banco de dados
+      const mockTransactions: Transaction[] = [
+        {
+          id: '1',
+          date: '2024-01-15',
+          description: 'Doação mensal - Janeiro',
+          category: 'Doações',
+          amount: 5000,
+          type: 'receita',
+          project: 'Coração Ribeirinho',
+          status: 'public',
+          isPublic: true,
+          supplier_id: null,
+          donor_id: '1',
+          bank_account_id: '1'
+        },
+        {
+          id: '2',
+          date: '2024-01-20',
+          description: 'Compra de materiais pedagógicos',
+          category: 'Material Didático',
+          amount: 1500,
+          type: 'despesa',
+          project: 'Educação Digital',
+          status: 'public',
+          isPublic: true,
+          supplier_id: '1',
+          donor_id: null,
+          bank_account_id: '1'
+        }
+      ];
 
-        // Fetch bank accounts
-        const accountsData = await database.getBankAccounts();
-        setBankAccounts(accountsData || []);
+      const mockBankAccounts: BankAccount[] = [
+        {
+          id: '1',
+          name: 'Conta Corrente Principal',
+          agency: '1234',
+          account_number: '567890',
+          initial_balance: 10000,
+          created_at: '2024-01-01'
+        }
+      ];
 
-        // Fetch suppliers
-        const suppliersData = await database.getSuppliers();
-        setSuppliers(suppliersData || []);
+      const mockSuppliers: Supplier[] = [
+        {
+          id: '1',
+          name: 'Fornecedor Exemplo',
+          cnpj_cpf: '12.345.678/0001-90',
+          contact_person: 'João Silva',
+          email: 'contato@fornecedor.com',
+          phone: '(92) 99999-9999',
+          pix_key: 'fornecedor@email.com',
+          created_at: '2024-01-01'
+        }
+      ];
 
-        // Fetch donors
-        const donorsData = await database.getDonors();
-        setDonors(donorsData || []);
+      const mockDonors: Donor[] = [
+        {
+          id: '1',
+          name: 'Doador Exemplo',
+          cnpj_cpf: '123.456.789-00',
+          contact_person: 'Maria Santos',
+          email: 'maria@email.com',
+          phone: '(92) 98888-8888',
+          pix_key: 'maria@email.com',
+          created_at: '2024-01-01'
+        }
+      ];
 
-      } catch (error) {
-        console.error('Erro de conexão:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Simular delay de rede
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      setTransactions(mockTransactions);
+      setBankAccounts(mockBankAccounts);
+      setSuppliers(mockSuppliers);
+      setDonors(mockDonors);
+
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      setError('Falha ao carregar dados financeiros. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const totalReceitas = useMemo(() =>
     transactions
