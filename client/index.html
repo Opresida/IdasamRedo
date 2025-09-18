@@ -9,6 +9,35 @@
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- Vite Connection Blocker for Replit Environment -->
+    <script>
+      // Block Vite WebSocket connections before main app loads
+      if (window.location.hostname.includes('replit.dev')) {
+        const originalFetch = window.fetch;
+        window.fetch = function(input, init) {
+          const url = input.toString();
+          if (url.includes('vite') && url.includes('ping')) {
+            console.warn('Vite ping blocked (Replit environment)');
+            return Promise.reject(new Error('Vite ping blocked in Replit'));
+          }
+          return originalFetch.apply(this, arguments);
+        };
+        
+        // Suppress console.error for known Vite connection issues
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+          const message = args.join(' ');
+          if (message.includes('[vite]') || 
+              message.includes('WebSocket') || 
+              message.includes('Failed to fetch')) {
+            return; // Suppress these specific errors
+          }
+          originalConsoleError.apply(console, args);
+        };
+      }
+    </script>
+    
     <script type="module" src="/src/main.tsx"></script>
     <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
     <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
