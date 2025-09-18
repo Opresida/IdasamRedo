@@ -1,0 +1,360 @@
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+at window.fetch (https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:218642)
+at Object.apply (https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/__replco/static/devtools/injected.js:278:39)
+at ping (https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/@vite/client:736:13)
+at waitForSuccessfulPing (https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/@vite/client:755:17)
+at async WebSocket.<anonymous> (https://581e632d-81fc-42f8-a405-f1c44311e0bf-00-s1g8l9seapfz.worf.replit.dev/@vite/client:561:7)
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Failed to fetch
+Home
+Quem Somos
+Projetos
+Notícias
+Transparência
+Parcerias
+Legislação
+Contato
+Projetos
+Doe Agora
+Idasam - Instituto de Desenvolvimento
+Ambiental e Social da Amazônia
+
+consciente
+Contribuir para um futuro mais sustentável através da criação de projetos e plataformas focados na inovação tecnológica para o desenvolvimento da Amazônia.
+
+
+Nossos Projetos
+
+Fale Conosco
+
+Sobre o Idasam
+O Instituto de Desenvolvimento Ambiental e Social da Amazônia (IDASAM) é uma entidade privada fundada em 1996 na capital do Amazonas, com foco em desenvolver soluções transformadoras para o mundo sustentável.
+
+Promovemos impacto positivo em políticas públicas, modelos de negócio e tomada de decisão junto a governos, empresas, organizações multilaterais e da sociedade civil, atuando para o fortalecimento da região amazônica e impulsionando a bioeconomia.
+
+1996
+Fundado em Manaus, Amazonas
+
+Missão
+Contribuir para um futuro sustentável através de projetos e inovação tecnológica
+
+Visão
+Organização de excelência na geração de conhecimento e inovações sustentáveis
+
+Valores
+Responsabilidade, ética e foco nos Objetivos de Desenvolvimento Sustentável
+
+Nossa Missão
+Contribuir para um futuro mais sustentável através da criação de projetos e plataformas focados na inovação tecnológica para o desenvolvimento da Amazônia.
+
+Nossa Visão
+Estabelecer uma organização de excelência na geração do conhecimento e na promoção de inovações com o foco na construção de um futuro mais sustentável e um padrão de vida mais saudável.
+
+Nossos Valores
+Agir com responsabilidade e ética nos aspectos tecnológicos, ambiental e social, baseadas no conceito de localização dos ODS, implementando desafios globais em escala local.
+
+Nossa Equipe de Pesquisadores
+Conheça os especialistas que lideram nossas pesquisas e projetos de desenvolvimento sustentável na Amazônia.
+
+Prof. Dr. Francisco Miranda
+Prof. Dr. Francisco Miranda
+Pesquisador Associado
+
+ID Lattes: 2549543844450894
+
+Acesse o currículo
+Prof. Dr. Elton Santos
+Prof. Dr. Elton Santos
+Pesquisador Associado
+
+ID Lattes: 3240855513970442
+
+Acesse o currículo
+Prof. Dr. João Orestes
+Prof. Dr. João Orestes
+Pesquisador Associado
+
+ID Lattes: 5516771589110657
+
+Acesse o currículo
+Prof. Dr. Léo Bruno
+Prof. Dr. Léo Bruno
+Pesquisador Associado
+
+ID Lattes: 0430663064387301
+
+Acesse o currículo
+Prof. Dr. Marceliano Oliveira
+Prof. Dr. Marceliano Oliveira
+Pesquisador Associado
+
+ID Lattes: 3008131259766638
+
+Acesse o currículo
+Prof. Dr. Orlem Pinheiro
+Prof. Dr. Orlem Pinheiro
+Pesquisador Associado
+
+ID Lattes: 8148029403735260
+
+Acesse o currículo
+
+
+Projeto Coração Ribeirinho
+Levando alimento e esperança para as comunidades ribeirinhas da Amazônia desde 2021.
+
+Nas margens dos rios da Amazônia, milhares de famílias enfrentam um desafio diário: a insegurança alimentar. A distância e as dificuldades sazonais tornam o acesso a alimentos uma luta constante.
+
+Desde 2021, o projeto Coração Ribeirinho atua como uma ponte de solidariedade. Com a sua ajuda, transformamos doações em cestas básicas completas que chegam a quem mais precisa.
+
+Foto da ação do projeto Coração Ribeirinho 1
+Foto da ação do projeto Coração Ribeirinho 2
+Foto da ação do projeto Coração Ribeirinho 3
+Foto da ação do projeto Coração Ribeirinho 4
+Foto da ação do projeto Coração Ribeirinho 5
+Foto da ação do projeto Coração Ribeirinho 6
+Foto da ação do projeto Coração Ribeirinho 7
+Foto da ação do projeto Coração Ribeirinho 8
+Faça parte deste movimento. Com um simples gesto, você nutre uma família e fortalece o coração da Amazônia.
+
+Nossa Meta: 5.000 Cestas Básicas
+9.0%
+452 / 5.000 Cestas
+Escolha o valor da sua doação:
+R$ 25
+R$ 50
+Doe 1 Cesta (R$ 120)
+Outro valor (R$)
+
+QUERO DOAR AGORA
+
+$
+QUERO DOAR EM DÓLAR
+
+€
+QUERO DOAR EM EURO
+Testemunhos
+O que dizem sobre o IDASAM
+Veja como nossos projetos e pesquisas têm impactado positivamente a Amazônia e suas comunidades.
+
+O IDASAM tem sido fundamental para o desenvolvimento sustentável da nossa comunidade. Seus projetos trouxeram oportunidades reais de crescimento sem prejudicar o meio ambiente.
+Carlos Silva
+Carlos Silva
+Líder Comunitário
+Os projetos de pesquisa do instituto são revolucionários. Eles conseguem aliar tecnologia de ponta com o respeito às tradições amazônicas, criando soluções inovadoras.
+Dra. Maria Santos
+Dra. Maria Santos
+Pesquisadora Ambiental
+A abordagem do IDASAM para conservação da biodiversidade é exemplar. Eles demonstram que é possível proteger a Amazônia enquanto promovem o desenvolvimento social.
+Prof. João Amazonas
+Prof. João Amazonas
+Biólogo
+O IDASAM tem sido fundamental para o desenvolvimento sustentável da nossa comunidade. Seus projetos trouxeram oportunidades reais de crescimento sem prejudicar o meio ambiente.
+Carlos Silva
+Carlos Silva
+Líder Comunitário
+Os projetos de pesquisa do instituto são revolucionários. Eles conseguem aliar tecnologia de ponta com o respeito às tradições amazônicas, criando soluções inovadoras.
+Dra. Maria Santos
+Dra. Maria Santos
+Pesquisadora Ambiental
+A abordagem do IDASAM para conservação da biodiversidade é exemplar. Eles demonstram que é possível proteger a Amazônia enquanto promovem o desenvolvimento social.
+Prof. João Amazonas
+Prof. João Amazonas
+Biólogo
+Trabalhar com o IDASAM transformou nossa visão sobre sustentabilidade. Seus métodos científicos rigorosos garantem resultados confiáveis e impacto real.
+Ana Ribeiro
+Ana Ribeiro
+Coordenadora de Projetos
+O instituto IDASAM é uma referência em pesquisa aplicada na Amazônia. Sua contribuição para a ciência e para a sociedade é inestimável.
+Dr. Pedro Floresta
+Dr. Pedro Floresta
+Especialista em Ecologia
+Os projetos do IDASAM geram conhecimento científico de qualidade internacional, sempre com foco na aplicação prática para beneficiar as comunidades locais.
+Dra. Lucia Verde
+Dra. Lucia Verde
+Diretora de ONG Ambiental
+Trabalhar com o IDASAM transformou nossa visão sobre sustentabilidade. Seus métodos científicos rigorosos garantem resultados confiáveis e impacto real.
+Ana Ribeiro
+Ana Ribeiro
+Coordenadora de Projetos
+O instituto IDASAM é uma referência em pesquisa aplicada na Amazônia. Sua contribuição para a ciência e para a sociedade é inestimável.
+Dr. Pedro Floresta
+Dr. Pedro Floresta
+Especialista em Ecologia
+Os projetos do IDASAM geram conhecimento científico de qualidade internacional, sempre com foco na aplicação prática para beneficiar as comunidades locais.
+Dra. Lucia Verde
+Dra. Lucia Verde
+Diretora de ONG Ambiental
+Projetos que transformam a Amazônia e beneficiam todo o território nacional
+Nossos projetos de inovação e sustentabilidade geram impacto positivo que vai além das fronteiras amazônicas, contribuindo para o desenvolvimento sustentável de todo o Brasil e inspirando soluções globais.
+
+Apresente seu projeto
+Nossos Parceiros Estratégicos
+Trabalhamos em colaboração com organizações líderes para amplificar nosso impacto na região amazônica.
+
+VERITAS
+CESP
+PIMM
+CLIMETO
+Q3 QUALIDADE
+Manaus Play
+VERITAS
+CESP
+PIMM
+CLIMETO
+Q3 QUALIDADE
+Manaus Play
+Marco Legal
+Marco Legal e Regulamentações
+O IDASAM opera em conformidade com as principais legislações que regem a inovação, pesquisa e desenvolvimento sustentável no Estado do Amazonas.
+
+Lei Nº 3.095 de 17/11/2006
+Inovação e Pesquisa
+
+Dispõe sobre incentivos à inovação e à pesquisa científica e tecnológica no ambiente produtivo no âmbito do Estado do Amazonas.
+
+Ler na íntegra
+Lei Nº 4940 de 04/10/2019
+Empreendedorismo
+
+Dispõe sobre a Política Estadual de Incentivo ao Empreendedorismo e o Desenvolvimento da Indústria 4.0.
+
+Ler na íntegra
+Lei Estadual Nº 4.985 de 31/10/2019
+Marco Legal
+
+Marco Legal das Startups no Estado do Amazonas.
+
+Ler na íntegra
+DOM 3323 03.01.2014
+Utilidade Pública
+
+Considera-se de Utilidade Pública o Instituto de Desenvolvimento Ambiental e Social da Amazônia (Idasam).
+
+Ler na íntegra
+DOE 11 LEI 3.686
+Reconhecimento
+
+Considera como utilidade pública a ASSOCIAÇÃO DOS AMIGOS DO PROJETO CULTURAL 'VIDA ABUNDANTE'.
+
+Ler na íntegra
+Lei nº 12.846/2013
+Lei Anticorrupção
+
+Lei Anticorrupção Empresarial - Dispõe sobre a responsabilização administrativa e civil de pessoas jurídicas pela prática de atos contra a administração pública.
+
+Ler na íntegra
+Lei nº 8.429/1992
+Improbidade Administrativa
+
+Lei de Improbidade Administrativa - Dispõe sobre as sanções aplicáveis em virtude da prática de atos de improbidade administrativa.
+
+Ler na íntegra
+Lei nº 13.303/2016
+Lei das Estatais
+
+Lei das Estatais - Dispõe sobre o estatuto jurídico da empresa pública, da sociedade de economia mista e de suas subsidiárias.
+
+Ler na íntegra
+Lei nº 9.613/1998
+Lavagem de Dinheiro
+
+Lei de Lavagem de Dinheiro - Dispõe sobre os crimes de 'lavagem' ou ocultação de bens, direitos e valores.
+
+Ler na íntegra
+Decreto nº 11.129/2022
+Programas de Integridade
+
+Regulamentação dos Programas de Integridade - Regulamenta a Lei nº 12.846/2013 para dispor sobre a avaliação de programas de integridade.
+
+Ler na íntegra
+Logomarca Idasam
+Inovação e Tecnologia para o Desenvolvimento da Amazônia.
+
+Institucional
+Sobre Nós
+Equipe
+Notícias
+Contato
+Atuação
+Bioeconomia
+Projetos
+Governança Territorial
+Transparência
+Legislação
+Relatórios
+O Instituto de Desenvolvimento Ambiental e Social da Amazônia – IDASAM (CNPJ: 02.906.177/0001-87) cumpre rigorosamente as leis brasileiras de combate à corrupção, assegurando transparência, ética e integridade em todas as suas atividades.
+
+© 2024 Idasam. Todos os direitos reservados.
+
+
