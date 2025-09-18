@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,6 @@ import {
   Newspaper
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { supabase } from '@/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
@@ -60,23 +58,25 @@ interface Article {
   id: string;
   title: string;
   content: string;
-  excerpt: string;
+  excerpt?: string;
   published: boolean;
   featured: boolean;
   category_id: string;
-  tags: string[];
+  tags?: string[];
   image?: string;
   created_at: string;
   updated_at: string;
-  author_id: string;
+  author_id?: string;
   author_name?: string;
   category_name?: string;
+  categories?: { id: string; name: string } | null;
+  views?: number;
 }
 
 interface Category {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
   description?: string;
 }
 
@@ -97,6 +97,75 @@ interface Comment {
   articles?: { title: string };
 }
 
+interface Statistics {
+  total_articles: number;
+  total_comments: number;
+  total_views: number;
+  engagement_rate: number;
+}
+
+// Dados mocados para desenvolvimento
+const MOCK_ARTICLES: Article[] = [
+  {
+    id: '1',
+    title: 'IDASAM Lança Novo Projeto de Bioeconomia',
+    content: 'Conteúdo do artigo sobre bioeconomia...',
+    published: true,
+    featured: true,
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    author_name: 'Dr. Maria Silva',
+    category_id: '1',
+    categories: { id: '1', name: 'Bioeconomia' },
+    views: 1245,
+    excerpt: 'Novo projeto focado em desenvolvimento sustentável da Amazônia'
+  },
+  {
+    id: '2',
+    title: 'Workshop de Capacitação Tecnológica',
+    content: 'Detalhes sobre o workshop...',
+    published: true,
+    featured: false,
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    author_name: 'Prof. João Santos',
+    category_id: '2',
+    categories: { id: '2', name: 'Educação' },
+    views: 892,
+    excerpt: 'Capacitação em tecnologias sustentáveis para comunidades'
+  }
+];
+
+const MOCK_CATEGORIES: Category[] = [
+  { id: '1', name: 'Bioeconomia', description: 'Projetos de bioeconomia' },
+  { id: '2', name: 'Educação', description: 'Programas educacionais' },
+  { id: '3', name: 'Pesquisa', description: 'Projetos de pesquisa' },
+  { id: '4', name: 'Sustentabilidade', description: 'Iniciativas sustentáveis' }
+];
+
+const MOCK_COMMENTS: Comment[] = [
+  {
+    id: '1',
+    content: 'Excelente iniciativa para a região!',
+    author_name: 'Ana Costa',
+    author_email: 'ana@email.com',
+    is_approved: false,
+    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    article_id: '1',
+    articles: { id: '1', title: 'IDASAM Lança Novo Projeto de Bioeconomia' }
+  },
+  {
+    id: '2',
+    content: 'Quando será o próximo workshop?',
+    author_name: 'Carlos Silva',
+    author_email: 'carlos@email.com',
+    is_approved: false,
+    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    article_id: '2',
+    articles: { id: '2', title: 'Workshop de Capacitação Tecnológica' }
+  }
+];
+
 export default function ImprensaPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -107,6 +176,7 @@ export default function ImprensaPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
   const [comments, setComments] = useState<Comment[]>([]);
+  const [stats, setStats] = useState<Statistics>({ total_articles: 0, total_comments: 0, total_views: 0, engagement_rate: 0 });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -127,32 +197,54 @@ export default function ImprensaPage() {
 
   // Estados do formulário de categoria
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
-  const [categoryForm, setCategoryForm] = useState({
-    name: '',
-    slug: '',
-    description: ''
-  });
+  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
 
   // Estados para o modal de preview
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
 
-  // Carregar dados iniciais
+  // Carregar dados iniciais (simulado)
   useEffect(() => {
     loadInitialData();
   }, []);
 
   const loadInitialData = async () => {
     setLoading(true);
+
+    // Simular delay de carregamento
+    await new Promise(resolve => setTimeout(resolve, 800));
+
     try {
-      await Promise.all([
-        loadArticles(),
-        loadCategories(),
-        loadComments(),
-        loadArticleStats()
-      ]);
+      // Carregar dados mocados
+      setArticles(MOCK_ARTICLES);
+      setCategories(MOCK_CATEGORIES);
+      setComments(MOCK_COMMENTS);
+      setStats({
+        total_articles: MOCK_ARTICLES.length,
+        total_comments: MOCK_COMMENTS.length,
+        total_views: MOCK_ARTICLES.reduce((sum, a) => sum + (a.views || 0), 0),
+        engagement_rate: 85
+      });
+
+      // Simular estatísticas de artigos individuais
+      const statsMap: Record<string, ArticleStats> = {};
+      MOCK_ARTICLES.forEach(article => {
+        statsMap[article.id] = {
+          views: article.views || 0,
+          reaction_counts: { like: Math.floor(Math.random() * 100) }
+        };
+      });
+      setArticleStats(statsMap);
+
+
+      toast({
+        title: 'Dados carregados',
+        description: 'Interface de imprensa atualizada',
+      });
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('Erro simulado:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao carregar dados da imprensa',
@@ -163,263 +255,80 @@ export default function ImprensaPage() {
     }
   };
 
-  const loadArticles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('articles_full')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setArticles(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar artigos:', error);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
-    }
-  };
-
-  const loadComments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('comments')
-        .select(`
-          *,
-          articles!inner(title)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      const commentsWithArticleTitle = (data || []).map(comment => ({
-        ...comment,
-        article_title: comment.articles?.title
-      }));
-
-      setComments(commentsWithArticleTitle);
-    } catch (error) {
-      console.error('Erro ao carregar comentários:', error);
-    }
-  };
-
-  const loadArticleStats = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('article_stats')
-        .select('*');
-
-      if (error) throw error;
-
-      const statsMap: Record<string, ArticleStats> = {};
-      (data || []).forEach(stat => {
-        statsMap[stat.article_id] = {
-          views: stat.views || 0,
-          reaction_counts: stat.reaction_counts || {},
-        };
-      });
-
-      setArticleStats(statsMap);
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-    }
-  };
-
   // Funções de CRUD para artigos
   const handleSaveArticle = async () => {
-    if (!user) {
-      toast({ title: 'Erro', description: 'Você precisa estar logado.', variant: 'destructive' });
-      return;
-    }
-
-    // Validações básicas
-    if (!articleForm.title.trim()) {
-      toast({ title: 'Erro', description: 'O título é obrigatório.', variant: 'destructive' });
-      return;
-    }
-
-    if (!articleForm.content.trim()) {
-      toast({ title: 'Erro', description: 'O conteúdo é obrigatório.', variant: 'destructive' });
-      return;
-    }
-
-    if (!articleForm.category_id) {
-      toast({ title: 'Erro', description: 'Selecione uma categoria.', variant: 'destructive' });
+    if (!articleForm.title || !articleForm.content) {
+      toast({
+        title: 'Erro',
+        description: 'Título e conteúdo são obrigatórios',
+        variant: 'destructive',
+      });
       return;
     }
 
     try {
-      // Gerar slug único
-      const baseSlug = articleForm.title
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-        .replace(/[^\w\s-]/g, '') // Remove caracteres especiais
-        .replace(/\s+/g, '-') // Substitui espaços por hífens
-        .replace(/-+/g, '-') // Remove hífens duplos
-        .replace(/^-+|-+$/g, ''); // Remove hífens das bordas
-
-      // Verificar se o slug já existe (para novos artigos)
-      let finalSlug = baseSlug;
-      if (!editingId) {
-        const { data: existingSlugs } = await supabase
-          .from('articles')
-          .select('slug')
-          .like('slug', `${baseSlug}%`);
-
-        if (existingSlugs && existingSlugs.length > 0) {
-          const slugNumbers = existingSlugs
-            .map(item => {
-              const match = item.slug.match(new RegExp(`^${baseSlug}(?:-(\\d+))?$`));
-              return match ? (match[1] ? parseInt(match[1]) : 0) : -1;
-            })
-            .filter(num => num >= 0);
-
-          if (slugNumbers.length > 0) {
-            const maxNumber = Math.max(...slugNumbers);
-            finalSlug = `${baseSlug}-${maxNumber + 1}`;
-          }
-        }
-      }
-
-      // Preparar dados do artigo
-      const articleData = {
-        title: articleForm.title.trim(),
-        slug: finalSlug,
-        content: articleForm.content.trim(),
-        excerpt: articleForm.excerpt.trim() || null,
-        published: articleForm.published,
-        featured: articleForm.featured,
-        category_id: articleForm.category_id,
-        image: articleForm.image.trim() || null,
-        author_id: user.id,
-        updated_at: new Date().toISOString()
-      };
-
-      let articleId = editingId;
+      // Simular delay de salvamento
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       if (editingId) {
-        // ATUALIZAR ARTIGO EXISTENTE
-        const updateData = { ...articleData };
-        delete updateData.author_id; // Não alterar o autor original
+        // Simular atualização
+        const updatedArticles = articles.map(article =>
+          article.id === editingId
+            ? {
+                ...article,
+                title: articleForm.title,
+                content: articleForm.content,
+                excerpt: articleForm.excerpt,
+                category_id: articleForm.category_id,
+                published: articleForm.published,
+                featured: articleForm.featured,
+                tags: articleForm.tags.split(',').map(t => t.trim()).filter(t => t),
+                image: articleForm.image || undefined,
+                updated_at: new Date().toISOString()
+              }
+            : article
+        );
+        setArticles(updatedArticles);
 
-        const { error } = await supabase
-          .from('articles')
-          .update(updateData)
-          .eq('id', editingId);
-        
-        if (error) {
-          throw new Error(`Erro ao atualizar artigo: ${error.message}`);
-        }
+        toast({
+          title: 'Sucesso',
+          description: 'Artigo atualizado com sucesso',
+        });
       } else {
-        // CRIAR NOVO ARTIGO
-        const createData = {
-          ...articleData,
+        // Simular criação
+        const newArticleData: Article = {
+          id: Date.now().toString(),
+          title: articleForm.title,
+          content: articleForm.content,
+          excerpt: articleForm.excerpt,
+          category_id: articleForm.category_id,
+          published: articleForm.published,
+          featured: articleForm.featured,
+          tags: articleForm.tags.split(',').map(t => t.trim()).filter(t => t),
+          image: articleForm.image || undefined,
           created_at: new Date().toISOString(),
-          publish_date: articleForm.published ? new Date().toISOString() : null
+          updated_at: new Date().toISOString(),
+          author_name: user?.email || 'Admin',
+          views: 0,
+          categories: categories.find(c => c.id === articleForm.category_id) || null
         };
 
-        const { data, error } = await supabase
-          .from('articles')
-          .insert(createData)
-          .select('id')
-          .single();
-        
-        if (error) {
-          throw new Error(`Erro ao criar artigo: ${error.message}`);
-        }
-        
-        if (!data?.id) {
-          throw new Error("Não foi possível obter o ID do novo artigo.");
-        }
-        
-        articleId = data.id;
+        setArticles(prev => [newArticleData, ...prev]);
+
+        toast({
+          title: 'Sucesso',
+          description: 'Artigo criado com sucesso',
+        });
       }
 
-      // Processar Tags
-      if (articleId && articleForm.tags.trim()) {
-        // Remover tags existentes se estiver editando
-        if (editingId) {
-          await supabase
-            .from('article_tags')
-            .delete()
-            .eq('article_id', articleId);
-        }
-
-        const tagNames = articleForm.tags
-          .split(',')
-          .map(tag => tag.trim().toLowerCase())
-          .filter(tag => tag.length > 0 && tag.length <= 50);
-
-        if (tagNames.length > 0) {
-          // Buscar ou criar tags
-          const { data: existingTags } = await supabase
-            .from('tags')
-            .select('id, name')
-            .in('name', tagNames);
-
-          const existingTagMap = new Map((existingTags || []).map(t => [t.name, t.id]));
-          const tagsToCreate = tagNames.filter(name => !existingTagMap.has(name));
-          
-          // Criar novas tags
-          if (tagsToCreate.length > 0) {
-            const { data: newTags, error: createTagsError } = await supabase
-              .from('tags')
-              .insert(tagsToCreate.map(name => ({
-                name,
-                slug: name.replace(/\s+/g, '-').toLowerCase()
-              })))
-              .select('id, name');
-            
-            if (!createTagsError) {
-              newTags?.forEach(tag => existingTagMap.set(tag.name, tag.id));
-            }
-          }
-
-          // Criar relacionamentos article_tags
-          const tagsToInsert = tagNames
-            .map(name => {
-              const tagId = existingTagMap.get(name);
-              return tagId ? { article_id: articleId, tag_id: tagId } : null;
-            })
-            .filter(Boolean);
-
-          if (tagsToInsert.length > 0) {
-            await supabase
-              .from('article_tags')
-              .insert(tagsToInsert);
-          }
-        }
-      }
-
-      toast({
-        title: 'Sucesso',
-        description: `Artigo ${editingId ? 'atualizado' : 'criado'} com sucesso!`,
-      });
-
-      // Resetar formulário e recarregar lista
       setIsEditing(false);
       setEditingId(null);
       resetArticleForm();
-      await loadArticles();
-
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao salvar artigo:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível salvar o artigo.',
+        description: 'Erro ao salvar artigo',
         variant: 'destructive',
       });
     }
@@ -447,19 +356,15 @@ export default function ImprensaPage() {
 
   const handleDeleteArticle = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('articles')
-        .delete()
-        .eq('id', id);
+      // Simular delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (error) throw error;
+      setArticles(prev => prev.filter(article => article.id !== id));
 
       toast({
         title: 'Sucesso',
         description: 'Artigo excluído com sucesso',
       });
-
-      loadArticles();
     } catch (error) {
       console.error('Erro ao excluir artigo:', error);
       toast({
@@ -486,26 +391,47 @@ export default function ImprensaPage() {
   };
 
   const handleSaveCategory = async () => {
-    try {
-      const slug = categoryForm.slug || categoryForm.name.toLowerCase().replace(/\s+/g, '-');
-
-      const { error } = await supabase
-        .from('categories')
-        .insert([{
-          ...categoryForm,
-          slug
-        }]);
-
-      if (error) throw error;
-
+    if (!newCategory.name) {
       toast({
-        title: 'Sucesso',
-        description: 'Categoria criada com sucesso',
+        title: 'Erro',
+        description: 'Nome da categoria é obrigatório',
+        variant: 'destructive',
       });
+      return;
+    }
+
+    try {
+      // Simular delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      if (editingCategory) {
+        setCategories(prev => prev.map(cat =>
+          cat.id === editingCategory.id
+            ? { ...cat, ...newCategory }
+            : cat
+        ));
+
+        toast({
+          title: 'Sucesso',
+          description: 'Categoria atualizada com sucesso',
+        });
+      } else {
+        const newCategoryData: Category = {
+          id: Date.now().toString(),
+          ...newCategory
+        };
+
+        setCategories(prev => [...prev, newCategoryData]);
+
+        toast({
+          title: 'Sucesso',
+          description: 'Categoria criada com sucesso',
+        });
+      }
 
       setShowCategoryDialog(false);
-      setCategoryForm({ name: '', slug: '', description: '' });
-      loadCategories();
+      setNewCategory({ name: '', description: '' });
+      setEditingCategory(null);
     } catch (error) {
       console.error('Erro ao salvar categoria:', error);
       toast({
@@ -516,21 +442,42 @@ export default function ImprensaPage() {
     }
   };
 
-  const handleApproveComment = async (commentId: string) => {
+  const handleDeleteCategory = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('comments')
-        .update({ is_approved: true })
-        .eq('id', commentId);
+      // Simular delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (error) throw error;
+      setCategories(prev => prev.filter(cat => cat.id !== id));
+
+      toast({
+        title: 'Sucesso',
+        description: 'Categoria excluída com sucesso',
+      });
+    } catch (error) {
+      console.error('Erro ao excluir categoria:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir categoria',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleApproveComment = async (id: string) => {
+    try {
+      // Simular delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setComments(prev => prev.map(comment =>
+        comment.id === id
+          ? { ...comment, is_approved: true }
+          : comment
+      ));
 
       toast({
         title: 'Sucesso',
         description: 'Comentário aprovado',
       });
-
-      loadComments();
     } catch (error) {
       console.error('Erro ao aprovar comentário:', error);
       toast({
@@ -541,21 +488,17 @@ export default function ImprensaPage() {
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
+  const handleDeleteComment = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('comments')
-        .delete()
-        .eq('id', commentId);
+      // Simular delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (error) throw error;
+      setComments(prev => prev.filter(comment => comment.id !== id));
 
       toast({
         title: 'Sucesso',
         description: 'Comentário excluído',
       });
-
-      loadComments();
     } catch (error) {
       console.error('Erro ao excluir comentário:', error);
       toast({
@@ -608,7 +551,7 @@ export default function ImprensaPage() {
           <div className="hidden md:flex items-center space-x-4 px-4 py-2 bg-gray-50 rounded-lg">
             <div className="flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-blue-600" />
-              <span className="font-medium">{totalArticles}</span>
+              <span className="font-medium">{stats.total_articles}</span>
               <span className="text-gray-500">artigos</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -1008,8 +951,8 @@ export default function ImprensaPage() {
                         <Label htmlFor="category-name">Nome</Label>
                         <Input
                           id="category-name"
-                          value={categoryForm.name}
-                          onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                          value={newCategory.name}
+                          onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
                           placeholder="Nome da categoria"
                         />
                       </div>
@@ -1017,8 +960,8 @@ export default function ImprensaPage() {
                         <Label htmlFor="category-slug">Slug</Label>
                         <Input
                           id="category-slug"
-                          value={categoryForm.slug}
-                          onChange={(e) => setCategoryForm(prev => ({ ...prev, slug: e.target.value }))}
+                          value={newCategory.slug}
+                          onChange={(e) => setNewCategory(prev => ({ ...prev, slug: e.target.value }))}
                           placeholder="slug-da-categoria (opcional)"
                         />
                       </div>
@@ -1026,19 +969,19 @@ export default function ImprensaPage() {
                         <Label htmlFor="category-description">Descrição</Label>
                         <Textarea
                           id="category-description"
-                          value={categoryForm.description}
-                          onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+                          value={newCategory.description}
+                          onChange={(e) => setNewCategory(prev => ({ ...prev, description: e.target.value }))}
                           placeholder="Descrição da categoria (opcional)"
                           rows={3}
                         />
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>
+                      <Button variant="outline" onClick={() => { setShowCategoryDialog(false); setEditingCategory(null); }}>
                         Cancelar
                       </Button>
                       <Button onClick={handleSaveCategory}>
-                        Criar Categoria
+                        {editingCategory ? 'Atualizar Categoria' : 'Criar Categoria'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -1056,6 +999,43 @@ export default function ImprensaPage() {
                     <p className="text-sm text-gray-600 mb-2">{category.description}</p>
                     <div className="text-xs text-gray-500">
                       Slug: {category.slug}
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setNewCategory({ name: category.name, description: category.description || '' });
+                          setEditingCategory(category);
+                          setShowCategoryDialog(true);
+                        }}
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Editar
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="destructive">
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir a categoria "{category.name}"?
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteCategory(category.id)}>
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 ))}
