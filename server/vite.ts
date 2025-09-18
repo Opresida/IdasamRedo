@@ -20,10 +20,6 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
-  // ADICIONE ESTAS DUAS LINHAS:
-  console.log("DEBUG: REPL_SLUG =", process.env.REPL_SLUG);
-  console.log("DEBUG: REPL_OWNER =", process.env.REPL_OWNER);
-  
   const serverOptions = {
     middlewareMode: true,
     host: "0.0.0.0",
