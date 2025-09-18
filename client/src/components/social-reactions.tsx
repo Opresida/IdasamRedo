@@ -1,6 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { Heart, ThumbsUp, HandHeart, Zap, Frown, Angry } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Heart, ThumbsUp, Share2, Smile } from 'lucide-react';
+import { addReaction, removeReaction, getReactions } from '@/lib/socialInteractions';
+import { useAnalytics } from '@/hooks/use-analytics';
 
 interface Reaction {
   type: 'like' | 'love' | 'clap' | 'wow' | 'sad' | 'angry';
@@ -38,6 +40,8 @@ export default function SocialReactions({
 }: SocialReactionsProps) {
   const [showAllReactions, setShowAllReactions] = useState(false);
   const [animatingReaction, setAnimatingReaction] = useState<string | null>(null);
+  const { trackEvent } = useAnalytics();
+
 
   const sizeClasses = {
     sm: 'text-xs px-2 py-1',
@@ -55,6 +59,8 @@ export default function SocialReactions({
     setAnimatingReaction(reactionType);
     await onReactionToggle(reactionType);
     
+    trackEvent('reaction_clicked', { reactionType, targetId, targetType });
+
     // Animação de feedback
     setTimeout(() => {
       setAnimatingReaction(null);
@@ -131,7 +137,7 @@ export default function SocialReactions({
                         {count}
                       </span>
                     )}
-                    
+
                     {/* Tooltip */}
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
                       {config.label}
@@ -140,7 +146,7 @@ export default function SocialReactions({
                 );
               })}
             </div>
-            
+
             {/* Fechar ao clicar fora */}
             <div 
               className="fixed inset-0 z-[-1]" 
@@ -162,7 +168,7 @@ export function ReactionStats({
   className?: string;
 }) {
   const totalReactions = Object.values(reactions).reduce((sum, count) => sum + count, 0);
-  
+
   if (totalReactions === 0) return null;
 
   const sortedReactions = Object.entries(reactions)

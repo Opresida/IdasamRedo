@@ -428,3 +428,118 @@ export const useAnalyticsAndSEO = () => {
     ...seo
   };
 };
+import { useCallback } from 'react';
+
+interface AnalyticsEvent {
+  event: string;
+  category: string;
+  action: string;
+  label?: string;
+  value?: number;
+  metadata?: Record<string, any>;
+}
+
+interface SEOData {
+  title?: string;
+  description?: string;
+  keywords?: string[];
+  url?: string;
+  type?: string;
+  image?: string;
+}
+
+export function useAnalytics() {
+  const trackEvent = useCallback((event: string, category: string, action: string, label?: string, metadata?: any) => {
+    const eventData: AnalyticsEvent = {
+      event,
+      category,
+      action,
+      label,
+      metadata: {
+        ...metadata,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+        referrer: document.referrer
+      }
+    };
+
+    // Log para desenvolvimento
+    console.log('📊 Analytics Event:', eventData);
+
+    // Aqui você pode integrar com Google Analytics, Mixpanel, etc.
+    if (typeof gtag !== 'undefined') {
+      gtag('event', action, {
+        event_category: category,
+        event_label: label,
+        custom_map: metadata
+      });
+    }
+  }, []);
+
+  const trackPageView = useCallback((path: string, title?: string) => {
+    const pageData = {
+      page_path: path,
+      page_title: title || document.title,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('📄 Page View:', pageData);
+
+    if (typeof gtag !== 'undefined') {
+      gtag('config', 'GA_MEASUREMENT_ID', {
+        page_path: path,
+        page_title: title
+      });
+    }
+  }, []);
+
+  return {
+    trackEvent,
+    trackPageView
+  };
+}
+
+export function useAnalyticsAndSEO() {
+  const { trackEvent, trackPageView } = useAnalytics();
+
+  const updateSEO = useCallback((seoData: SEOData) => {
+    if (seoData.title) {
+      document.title = seoData.title;
+    }
+
+    // Update meta tags
+    const updateMetaTag = (name: string, content: string) => {
+      let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', name);
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', content);
+    };
+
+    if (seoData.description) {
+      updateMetaTag('description', seoData.description);
+    }
+
+    if (seoData.keywords) {
+      updateMetaTag('keywords', seoData.keywords.join(', '));
+    }
+
+    // Open Graph tags
+    if (seoData.url) {
+      updateMetaTag('og:url', seoData.url);
+    }
+
+    if (seoData.type) {
+      updateMetaTag('og:type', seoData.type);
+    }
+  }, []);
+
+  return {
+    trackEvent,
+    trackPageView,
+    updateSEO
+  };
+}

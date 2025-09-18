@@ -175,6 +175,37 @@ export async function getComments(contentId: string, contentType: 'article' | 'n
   }
 }
 
+// Function to get reactions for a specific content
+export async function getReactions(contentId: string) {
+  try {
+    const response = await fetch(`/api/reactions?contentId=${contentId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch reactions');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching reactions:', error);
+    return { like: 0, love: 0, celebrate: 0 };
+  }
+}
+
+// Export all functions
+export { addComment, addReaction, removeReaction };
+
+// Function to get comments for a specific content
+export async function getComments(contentId: string, contentType: 'article' | 'news' = 'article') {
+  try {
+    const response = await fetch(`/api/comments?contentId=${contentId}&contentType=${contentType}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch comments');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return [];
+  }
+}
+
 export async function toggleCommentReaction(
   commentId: string,
   reactionType: string
