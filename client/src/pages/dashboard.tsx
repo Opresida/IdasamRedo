@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,29 +22,26 @@ import {
   Star
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { dashboardQueries } from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
-// Interfaces
+// Interfaces para tipagem
 interface Article {
   id: string;
   title: string;
   published: boolean;
   featured: boolean;
   created_at: string;
-  author_name?: string;
-}
-
-interface ArticleStats {
+  author_name: string;
   views: number;
-  reaction_counts: Record<string, number>;
+  likes: number;
 }
 
 interface Comment {
   id: string;
   is_approved: boolean;
   created_at: string;
+  article_title: string;
 }
 
 interface Statistics {
@@ -53,36 +51,114 @@ interface Statistics {
   engagement_rate: number;
 }
 
+// Dados mocados - simulando um sistema real
+const MOCK_ARTICLES: Article[] = [
+  {
+    id: '1',
+    title: 'IDASAM Lança Novo Projeto de Bioeconomia na Amazônia',
+    published: true,
+    featured: true,
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    author_name: 'Dr. Maria Silva',
+    views: 1245,
+    likes: 89
+  },
+  {
+    id: '2',
+    title: 'Capacitação em Tecnologias Sustentáveis para Comunidades',
+    published: true,
+    featured: false,
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    author_name: 'Prof. João Santos',
+    views: 892,
+    likes: 67
+  },
+  {
+    id: '3',
+    title: 'Workshop de Agricultura Regenerativa - Rascunho',
+    published: false,
+    featured: false,
+    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    author_name: 'Ana Costa',
+    views: 0,
+    likes: 0
+  },
+  {
+    id: '4',
+    title: 'Parceria Estratégica com Universidades Europeias',
+    published: true,
+    featured: true,
+    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    author_name: 'Dr. Carlos Mendes',
+    views: 2341,
+    likes: 156
+  },
+  {
+    id: '5',
+    title: 'Relatório Anual de Impacto Social 2024',
+    published: true,
+    featured: false,
+    created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    author_name: 'Equipe IDASAM',
+    views: 567,
+    likes: 43
+  }
+];
+
+const MOCK_COMMENTS: Comment[] = [
+  {
+    id: '1',
+    is_approved: false,
+    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    article_title: 'IDASAM Lança Novo Projeto de Bioeconomia na Amazônia'
+  },
+  {
+    id: '2',
+    is_approved: false,
+    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    article_title: 'Capacitação em Tecnologias Sustentáveis para Comunidades'
+  },
+  {
+    id: '3',
+    is_approved: true,
+    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    article_title: 'Parceria Estratégica com Universidades Europeias'
+  }
+];
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   const [articles, setArticles] = useState<Article[]>([]);
-  const [articleStats, setArticleStats] = useState<Record<string, ArticleStats>>({});
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statistics, setStatistics] = useState<Statistics>({
-    total_articles: 0,
-    total_comments: 0,
-    total_views: 0,
-    engagement_rate: 0
-  });
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
+  // Simular carregamento de dados
   useEffect(() => {
     loadInitialData();
   }, []);
 
   const loadInitialData = async () => {
     setLoading(true);
+    
+    // Simular delay de carregamento
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     try {
-      await Promise.all([
-        loadArticles(),
-        loadComments(),
-        loadArticleStats()
-      ]);
+      // "Carregar" dados mocados
+      setArticles(MOCK_ARTICLES);
+      setComments(MOCK_COMMENTS);
+      setLastUpdate(new Date());
+      
+      toast({
+        title: 'Dados atualizados',
+        description: 'Dashboard atualizado com sucesso',
+      });
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('Erro simulado:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao carregar dados do dashboard',
@@ -93,53 +169,19 @@ export default function DashboardPage() {
     }
   };
 
-  const loadArticles = async () => {
-    try {
-      const articles = await dashboardQueries.getArticlesFull();
-      setArticles(articles || []);
-    } catch (error) {
-      console.error('Erro ao carregar artigos:', error);
-    }
-  };
-
-  const loadComments = async () => {
-    try {
-      const comments = await dashboardQueries.getComments();
-      setComments(comments || []);
-    } catch (error) {
-      console.error('Erro ao carregar comentários:', error);
-    }
-  };
-
-  const loadArticleStats = async () => {
-    try {
-      const stats = await dashboardQueries.getArticleStats();
-
-      const statsMap: Record<string, ArticleStats> = {};
-      (stats || []).forEach(stat => {
-        statsMap[stat.article_id] = {
-          views: stat.views || 0,
-          reaction_counts: { like: stat.likes || 0 },
-        };
-      });
-
-      setArticleStats(statsMap);
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-    }
-  };
-
+  // Cálculos baseados nos dados mocados
   const totalArticles = articles.length;
   const publishedArticles = articles.filter(a => a.published).length;
   const featuredArticles = articles.filter(a => a.featured).length;
+  const draftArticles = articles.filter(a => !a.published).length;
   const pendingComments = comments.filter(c => !c.is_approved).length;
-  const totalViews = Object.values(articleStats).reduce((sum, stats) => sum + (stats.views || 0), 0);
-  const totalLikes = Object.values(articleStats).reduce((sum, stats) => sum + (stats.reaction_counts?.like || 0), 0);
+  const totalViews = articles.reduce((sum, article) => sum + article.views, 0);
+  const totalLikes = articles.reduce((sum, article) => sum + article.likes, 0);
 
-  // Dados fictícios para demonstração
+  // Dados fictícios para outras seções
   const nextMeeting = {
     title: "Reunião de Planejamento 2024",
-    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 dias à frente
+    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     time: "14:00"
   };
 
@@ -147,6 +189,13 @@ export default function DashboardPage() {
     income: 15000,
     expenses: 8500,
     balance: 6500
+  };
+
+  const statistics: Statistics = {
+    total_articles: totalArticles,
+    total_comments: comments.length,
+    total_views: totalViews,
+    engagement_rate: totalViews > 0 ? Math.round((totalLikes / totalViews) * 100) : 0
   };
 
   if (loading) {
@@ -172,7 +221,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-gray-600">
-            Última atualização: {new Date().toLocaleString('pt-BR')}
+            Última atualização: {lastUpdate.toLocaleString('pt-BR')}
           </div>
           <Button onClick={loadInitialData} disabled={loading} size="sm">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -369,12 +418,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
-              {articles.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p>Nenhum artigo encontrado</p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

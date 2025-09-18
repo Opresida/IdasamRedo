@@ -1,12 +1,15 @@
-// Clean slate - old database functions removed
-// Ready for new internal database implementation
+
+// Database placeholder - Ready for future implementation
+// All queries will be implemented as needed during development
 
 export const query = async (text: string, params?: any[]) => {
-  // Placeholder - will be implemented with new schema
   console.log("Database query placeholder:", text, params);
-  throw new Error("Database functions need to be reimplemented with new schema");
+  throw new Error("Database functions will be implemented as needed");
 };
 
 export const getClient = () => {
-  throw new Error("Database client needs to be reimplemented with new schema");
+  throw new Error("Database client will be implemented as needed");
 };
+
+// Placeholder for future database functions
+// These will be added incrementally as features are developed
