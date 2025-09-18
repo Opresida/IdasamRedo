@@ -157,7 +157,7 @@ export default function DashboardFinanceiroPage() {
     type: 'both'
   });
 
-  // Estados para filtros
+  // Estados para filters
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({
     dateFrom: null, // Changed to null for better date handling with Popover/Calendar
@@ -456,6 +456,41 @@ export default function DashboardFinanceiroPage() {
       account: '',
       category: '',
       project: ''
+    });
+  };
+
+  // Function to get filtered transactions (as requested by changes)
+  const getFilteredTransactions = () => {
+    return transactions.filter(transaction => {
+      // Date filters
+      if (filters.dateFrom) {
+        const transactionDate = new Date(transaction.date);
+        const fromDate = new Date(filters.dateFrom);
+        if (transactionDate < fromDate) return false;
+      }
+
+      if (filters.dateTo) {
+        const transactionDate = new Date(transaction.date);
+        const toDate = new Date(filters.dateTo);
+        if (transactionDate > toDate) return false;
+      }
+
+      // Type filter
+      if (filters.type && transaction.type !== filters.type) return false;
+
+      // Status filter
+      if (filters.status && transaction.status !== filters.status) return false;
+
+      // Account filter
+      if (filters.account && transaction.account !== filters.account) return false;
+
+      // Category filter
+      if (filters.category && transaction.category !== filters.category) return false;
+
+      // Project filter
+      if (filters.project && transaction.project !== filters.project) return false;
+
+      return true;
     });
   };
 
