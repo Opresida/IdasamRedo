@@ -1,4 +1,4 @@
-import { supabase } from '@/supabaseClient';
+// Mock implementation for social interactions - ready for internal database integration
 
 export interface CommentWithThread {
   id: string;
@@ -23,320 +23,140 @@ export interface ReactionCounts {
 }
 
 // Função para obter ou criar um identificador único para o usuário anônimo
-function getUserIdentifier(): string {
-  let identifier = localStorage.getItem('user_identifier');
-  if (!identifier) {
-    identifier = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem('user_identifier', identifier);
+function getAnonymousUserId(): string {
+  let userId = localStorage.getItem('anonymous_user_id');
+  if (!userId) {
+    userId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('anonymous_user_id', userId);
   }
-  return identifier;
+  return userId;
 }
 
-// Função para adicionar um comentário (usando author_name e author_email)
+// Mock data para desenvolvimento
+const MOCK_COMMENTS: CommentWithThread[] = [
+  {
+    id: '1',
+    article_id: '1',
+    author_name: 'Ana Silva',
+    author_email: 'ana@email.com',
+    content: 'Excelente iniciativa! É isso que precisamos para desenvolver a Amazônia de forma sustentável.',
+    parent_comment_id: null,
+    is_approved: true,
+    reaction_counts: { like: 12, love: 3 },
+    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    replies: [
+      {
+        id: '2',
+        article_id: '1',
+        author_name: 'Carlos Santos',
+        author_email: 'carlos@email.com',
+        content: 'Concordo plenamente! Já era hora de vermos projetos assim.',
+        parent_comment_id: '1',
+        is_approved: true,
+        reaction_counts: { like: 5 },
+        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      }
+    ]
+  }
+];
+
+// Mock functions - will be replaced with real database calls
+export async function getCommentsForArticle(articleId: string): Promise<CommentWithThread[]> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  return MOCK_COMMENTS.filter(comment =>
+    comment.article_id === articleId && comment.parent_comment_id === null
+  );
+}
+
 export async function addComment(
   articleId: string,
-  content: string,
   authorName: string,
   authorEmail: string,
+  content: string,
   parentCommentId?: string
-): Promise<CommentWithThread | null> {
-  try {
-    const { data, error } = await supabase
-      .from('comments')
-      .insert([{
-        article_id: articleId,
-        author_name: authorName,
-        author_email: authorEmail,
-        content: content,
-        parent_comment_id: parentCommentId || null,
-        is_approved: false, // Comentários precisam ser aprovados
-        reaction_counts: {}
-      }])
-      .select()
-      .single();
+): Promise<CommentWithThread> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 800));
 
-    if (error) throw error;
-    return data as CommentWithThread;
-  } catch (error) {
-    console.error('Erro ao adicionar comentário:', error);
-    return null;
-  }
+  const newComment: CommentWithThread = {
+    id: Date.now().toString(),
+    article_id: articleId,
+    author_name: authorName,
+    author_email: authorEmail,
+    content: content,
+    parent_comment_id: parentCommentId || null,
+    is_approved: false, // Comments need approval in real system
+    reaction_counts: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  // In real implementation, this would save to database
+  console.log('Comment would be saved:', newComment);
+
+  return newComment;
 }
 
-// Função para buscar comentários de um artigo
-export async function getComments(articleId: string): Promise<CommentWithThread[]> {
-  try {
-    const { data, error } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('article_id', articleId)
-      .eq('is_approved', true) // Só buscar comentários aprovados
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-
-    // Organizar comentários em thread (com replies)
-    const commentsMap = new Map<string, CommentWithThread>();
-    const rootComments: CommentWithThread[] = [];
-
-    (data || []).forEach(comment => {
-      const commentWithReplies: CommentWithThread = {
-        ...comment,
-        replies: []
-      };
-      commentsMap.set(comment.id, commentWithReplies);
-
-      if (!comment.parent_comment_id) {
-        rootComments.push(commentWithReplies);
-      } else {
-        const parentComment = commentsMap.get(comment.parent_comment_id);
-        if (parentComment) {
-          if (!parentComment.replies) {
-            parentComment.replies = [];
-          }
-          parentComment.replies.push(commentWithReplies);
-        }
-      }
-    });
-
-    return rootComments;
-  } catch (error) {
-    console.error('Erro ao buscar comentários:', error);
-    return [];
-  }
-}
-
-// Função para reagir a um artigo
-export async function toggleArticleReaction(
+export async function addReaction(
   articleId: string,
   reactionType: string
-): Promise<boolean> {
-  try {
-    const userIdentifier = getUserIdentifier();
+): Promise<void> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Verificar se o usuário já reagiu
-    const { data: existingReaction, error: checkError } = await supabase
-      .from('article_reactions')
-      .select('*')
-      .eq('article_id', articleId)
-      .eq('user_identifier', userIdentifier)
-      .single();
+  const userId = getAnonymousUserId();
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      throw checkError;
-    }
-
-    if (existingReaction) {
-      if (existingReaction.reaction_type === reactionType) {
-        // Remover a reação se for a mesma
-        const { error: deleteError } = await supabase
-          .from('article_reactions')
-          .delete()
-          .eq('article_id', articleId)
-          .eq('user_identifier', userIdentifier);
-
-        if (deleteError) throw deleteError;
-      } else {
-        // Atualizar para nova reação
-        const { error: updateError } = await supabase
-          .from('article_reactions')
-          .update({ reaction_type: reactionType })
-          .eq('article_id', articleId)
-          .eq('user_identifier', userIdentifier);
-
-        if (updateError) throw updateError;
-      }
-    } else {
-      // Inserir nova reação
-      const { error: insertError } = await supabase
-        .from('article_reactions')
-        .insert([{
-          article_id: articleId,
-          user_identifier: userIdentifier,
-          reaction_type: reactionType
-        }]);
-
-      if (insertError) throw insertError;
-    }
-
-    // Atualizar contadores na tabela article_stats
-    await updateArticleReactionCounts(articleId);
-    return true;
-  } catch (error) {
-    console.error('Erro ao reagir ao artigo:', error);
-    return false;
-  }
+  // In real implementation, this would save to database
+  console.log('Reaction would be saved:', { articleId, reactionType, userId });
 }
 
-// Função para reagir a um comentário
-export async function toggleCommentReaction(
-  commentId: string,
-  reactionType: string
-): Promise<boolean> {
-  try {
-    const userIdentifier = getUserIdentifier();
+export async function getReactionCounts(articleId: string): Promise<ReactionCounts> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 200));
 
-    // Verificar se o usuário já reagiu
-    const { data: existingReaction, error: checkError } = await supabase
-      .from('comment_reactions')
-      .select('*')
-      .eq('comment_id', commentId)
-      .eq('user_identifier', userIdentifier)
-      .single();
+  // Return mock data - in real implementation, this would come from database
+  const mockArticleReactions: Record<string, ReactionCounts> = {
+    '1': { like: 89, love: 23, laugh: 5 },
+    '2': { like: 67, love: 12, laugh: 3 },
+    '3': { like: 45, love: 8, laugh: 2 },
+    '4': { like: 112, love: 34, laugh: 7 },
+    '5': { like: 58, love: 15, laugh: 4 },
+    '6': { like: 43, love: 9, laugh: 1 }
+  };
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      throw checkError;
-    }
-
-    if (existingReaction) {
-      if (existingReaction.reaction_type === reactionType) {
-        // Remover a reação se for a mesma
-        const { error: deleteError } = await supabase
-          .from('comment_reactions')
-          .delete()
-          .eq('comment_id', commentId)
-          .eq('user_identifier', userIdentifier);
-
-        if (deleteError) throw deleteError;
-      } else {
-        // Atualizar para nova reação
-        const { error: updateError } = await supabase
-          .from('comment_reactions')
-          .update({ reaction_type: reactionType })
-          .eq('comment_id', commentId)
-          .eq('user_identifier', userIdentifier);
-
-        if (updateError) throw updateError;
-      }
-    } else {
-      // Inserir nova reação
-      const { error: insertError } = await supabase
-        .from('comment_reactions')
-        .insert([{
-          comment_id: commentId,
-          user_identifier: userIdentifier,
-          reaction_type: reactionType
-        }]);
-
-      if (insertError) throw insertError;
-    }
-
-    // Atualizar contadores na tabela comments
-    await updateCommentReactionCounts(commentId);
-    return true;
-  } catch (error) {
-    console.error('Erro ao reagir ao comentário:', error);
-    return false;
-  }
+  return mockArticleReactions[articleId] || { like: 0 };
 }
 
-// Função auxiliar para atualizar contadores de reação de artigos
-async function updateArticleReactionCounts(articleId: string): Promise<void> {
-  try {
-    // Buscar todas as reações do artigo
-    const { data: reactions, error } = await supabase
-      .from('article_reactions')
-      .select('reaction_type')
-      .eq('article_id', articleId);
+export async function getUserReaction(
+  articleId: string
+): Promise<string | null> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 200));
 
-    if (error) throw error;
-
-    // Contar reações por tipo
-    const reactionCounts: Record<string, number> = {};
-    (reactions || []).forEach(reaction => {
-      reactionCounts[reaction.reaction_type] = (reactionCounts[reaction.reaction_type] || 0) + 1;
-    });
-
-    // Atualizar ou inserir na tabela article_stats
-    const { error: upsertError } = await supabase
-      .from('article_stats')
-      .upsert({
-        article_id: articleId,
-        reaction_counts: reactionCounts,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'article_id'
-      });
-
-    if (upsertError) throw upsertError;
-  } catch (error) {
-    console.error('Erro ao atualizar contadores de reação do artigo:', error);
-  }
+  // Check localStorage for user's previous reactions
+  const userReactions = JSON.parse(localStorage.getItem('user_reactions') || '{}');
+  return userReactions[articleId] || null;
 }
 
-// Função auxiliar para atualizar contadores de reação de comentários
-async function updateCommentReactionCounts(commentId: string): Promise<void> {
-  try {
-    // Buscar todas as reações do comentário
-    const { data: reactions, error } = await supabase
-      .from('comment_reactions')
-      .select('reaction_type')
-      .eq('comment_id', commentId);
+export async function removeReaction(articleId: string): Promise<void> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 300));
 
-    if (error) throw error;
+  // Remove from localStorage
+  const userReactions = JSON.parse(localStorage.getItem('user_reactions') || '{}');
+  delete userReactions[articleId];
+  localStorage.setItem('user_reactions', JSON.stringify(userReactions));
 
-    // Contar reações por tipo
-    const reactionCounts: Record<string, number> = {};
-    (reactions || []).forEach(reaction => {
-      reactionCounts[reaction.reaction_type] = (reactionCounts[reaction.reaction_type] || 0) + 1;
-    });
-
-    // Atualizar a tabela comments
-    const { error: updateError } = await supabase
-      .from('comments')
-      .update({
-        reaction_counts: reactionCounts,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', commentId);
-
-    if (updateError) throw updateError;
-  } catch (error) {
-    console.error('Erro ao atualizar contadores de reação do comentário:', error);
-  }
+  console.log('Reaction would be removed from database');
 }
 
-// Função para obter as reações atuais do usuário
-export async function getUserReactions(articleId: string): Promise<Record<string, string | null>> {
-  try {
-    const userIdentifier = getUserIdentifier();
-
-    const { data: articleReaction, error: articleError } = await supabase
-      .from('article_reactions')
-      .select('reaction_type')
-      .eq('article_id', articleId)
-      .eq('user_identifier', userIdentifier)
-      .single();
-
-    if (articleError && articleError.code !== 'PGRST116') {
-      throw articleError;
-    }
-
-    return {
-      article: articleReaction?.reaction_type || null
-    };
-  } catch (error) {
-    console.error('Erro ao buscar reações do usuário:', error);
-    return { article: null };
-  }
-}
-
-// Função para obter estatísticas atualizadas de um artigo
-export async function getArticleStats(articleId: string): Promise<ReactionCounts> {
-  try {
-    const { data, error } = await supabase
-      .from('article_stats')
-      .select('reaction_counts')
-      .eq('article_id', articleId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      throw error;
-    }
-
-    return data?.reaction_counts || {};
-  } catch (error) {
-    console.error('Erro ao buscar estatísticas do artigo:', error);
-    return {};
-  }
+// Helper function to save user reaction locally
+export function saveUserReactionLocally(articleId: string, reactionType: string): void {
+  const userReactions = JSON.parse(localStorage.getItem('user_reactions') || '{}');
+  userReactions[articleId] = reactionType;
+  localStorage.setItem('user_reactions', JSON.stringify(userReactions));
 }
