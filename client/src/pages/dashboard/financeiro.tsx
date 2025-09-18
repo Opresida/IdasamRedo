@@ -89,6 +89,8 @@ export default function DashboardFinanceiroPage() {
   const [isNewSupplierOpen, setIsNewSupplierOpen] = useState(false);
   const [isNewDonorOpen, setIsNewDonorOpen] = useState(false);
   const [isNewCategoryOpen, setIsNewCategoryOpen] = useState(false);
+  const [isEditTransactionOpen, setIsEditTransactionOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   
   const [accounts, setAccounts] = useState(mockAccounts);
   const [suppliers, setSuppliers] = useState(mockSuppliers);
@@ -98,6 +100,22 @@ export default function DashboardFinanceiroPage() {
 
   // Form states
   const [newTransaction, setNewTransaction] = useState({
+    type: '',
+    description: '',
+    amount: '',
+    date: new Date(),
+    account: '',
+    category: '',
+    project: '',
+    costType: '',
+    supplier: '',
+    donor: '',
+    status: 'Pendente',
+    isPublic: false,
+    document: null
+  });
+
+  const [editTransaction, setEditTransaction] = useState({
     type: '',
     description: '',
     amount: '',
@@ -238,6 +256,64 @@ export default function DashboardFinanceiroPage() {
     setCategories([...categories, category]);
     setIsNewCategoryOpen(false);
     setNewCategory({ name: '', type: 'both' });
+  };
+
+  const handleEditTransaction = (transaction) => {
+    setEditingTransaction(transaction);
+    setEditTransaction({
+      type: transaction.type,
+      description: transaction.description,
+      amount: Math.abs(transaction.amount).toString(),
+      date: new Date(transaction.date),
+      account: transaction.account,
+      category: transaction.category,
+      project: transaction.project || '',
+      costType: '',
+      supplier: '',
+      donor: '',
+      status: transaction.status,
+      isPublic: false,
+      document: null
+    });
+    setIsEditTransactionOpen(true);
+  };
+
+  const handleUpdateTransaction = () => {
+    if (!editingTransaction) return;
+
+    const updatedTransaction = {
+      ...editingTransaction,
+      type: editTransaction.type,
+      description: editTransaction.description,
+      amount: editTransaction.type === 'Despesa' ? -Math.abs(Number(editTransaction.amount)) : Number(editTransaction.amount),
+      date: format(editTransaction.date, 'yyyy-MM-dd'),
+      account: editTransaction.account,
+      category: editTransaction.category,
+      project: editTransaction.project || null,
+      status: editTransaction.status
+    };
+
+    setTransactions(transactions.map(t => 
+      t.id === editingTransaction.id ? updatedTransaction : t
+    ));
+    
+    setIsEditTransactionOpen(false);
+    setEditingTransaction(null);
+    setEditTransaction({
+      type: '',
+      description: '',
+      amount: '',
+      date: new Date(),
+      account: '',
+      category: '',
+      project: '',
+      costType: '',
+      supplier: '',
+      donor: '',
+      status: 'Pendente',
+      isPublic: false,
+      document: null
+    });
   };
 
   // Drag and drop handler
@@ -583,6 +659,141 @@ export default function DashboardFinanceiroPage() {
                 </DialogContent>
               </Dialog>
 
+              {/* Modal de Edição de Transação */}
+              <Dialog open={isEditTransactionOpen} onOpenChange={setIsEditTransactionOpen}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Editar Transação</DialogTitle>
+                    <DialogDescription>
+                      Modifique os dados da transação financeira
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-type">Tipo *</Label>
+                      <Select value={editTransaction.type} onValueChange={(value) => setEditTransaction({...editTransaction, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Receita">Receita</SelectItem>
+                          <SelectItem value="Despesa">Despesa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-amount">Valor (R$) *</Label>
+                      <Input
+                        type="number"
+                        placeholder="0,00"
+                        value={editTransaction.amount}
+                        onChange={(e) => setEditTransaction({...editTransaction, amount: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="edit-description">Descrição *</Label>
+                      <Input
+                        placeholder="Descrição da transação"
+                        value={editTransaction.description}
+                        onChange={(e) => setEditTransaction({...editTransaction, description: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Data *</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !editTransaction.date && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {editTransaction.date ? format(editTransaction.date, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={editTransaction.date}
+                            onSelect={(date) => setEditTransaction({...editTransaction, date: date || new Date()})}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-account">Conta Bancária *</Label>
+                      <Select value={editTransaction.account} onValueChange={(value) => setEditTransaction({...editTransaction, account: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a conta" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accounts.map(account => (
+                            <SelectItem key={account.id} value={account.name}>{account.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-category">Categoria *</Label>
+                      <Select value={editTransaction.category} onValueChange={(value) => setEditTransaction({...editTransaction, category: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories
+                            .filter(cat => cat.type === 'both' || 
+                              (editTransaction.type === 'Receita' && cat.type === 'income') ||
+                              (editTransaction.type === 'Despesa' && cat.type === 'expense'))
+                            .map(category => (
+                              <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-project">Projeto (Opcional)</Label>
+                      <Select value={editTransaction.project} onValueChange={(value) => setEditTransaction({...editTransaction, project: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o projeto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mockProjects.map(project => (
+                            <SelectItem key={project.id} value={project.name}>{project.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-status">Status</Label>
+                      <Select value={editTransaction.status} onValueChange={(value) => setEditTransaction({...editTransaction, status: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pendente">Pendente</SelectItem>
+                          <SelectItem value="Pago">Pago</SelectItem>
+                          <SelectItem value="A Vencer">A Vencer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <Button variant="outline" onClick={() => setIsEditTransactionOpen(false)} className="flex-1">
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleUpdateTransaction} className="flex-1">
+                      Salvar Alterações
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
               <div className="flex items-center gap-2">
                 <Button
                   variant={viewMode === 'lista' ? 'default' : 'outline'}
@@ -656,7 +867,11 @@ export default function DashboardFinanceiroPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditTransaction(transaction)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="sm">
