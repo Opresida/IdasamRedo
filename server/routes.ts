@@ -1,105 +1,21 @@
 import { type Express } from "express";
 import { db } from "./db";
-import { articles, categories, comments, transactions, bankAccounts, suppliers, donors } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { users } from "@shared/schema";
 
 export function registerRoutes(app: Express) {
-  // Articles routes
-  app.get("/api/articles", async (req, res) => {
-    try {
-      const data = await db.select().from(articles).orderBy(articles.createdAt);
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch articles" });
-    }
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", message: "Server is running" });
   });
 
-  app.post("/api/articles", async (req, res) => {
+  // Placeholder endpoint - ready for new implementation
+  app.get("/api/test", async (req, res) => {
     try {
-      const [article] = await db.insert(articles).values(req.body).returning();
-      res.json(article);
+      // Test database connection
+      const result = await db.select().from(users).limit(1);
+      res.json({ message: "Database connected successfully", userCount: result.length });
     } catch (error) {
-      res.status(500).json({ error: "Failed to create article" });
-    }
-  });
-
-  // Categories routes
-  app.get("/api/categories", async (req, res) => {
-    try {
-      const data = await db.select().from(categories);
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch categories" });
-    }
-  });
-
-  // Comments routes
-  app.get("/api/comments", async (req, res) => {
-    try {
-      let query = db.select().from(comments);
-      
-      if (req.query.articleId) {
-        query = query.where(eq(comments.articleId, parseInt(req.query.articleId as string)));
-      }
-      
-      const data = await query.orderBy(comments.createdAt);
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch comments" });
-    }
-  });
-
-  // Financial routes
-  app.get("/api/transactions", async (req, res) => {
-    try {
-      const data = await db.select().from(transactions).orderBy(transactions.date);
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch transactions" });
-    }
-  });
-
-  app.get("/api/bank-accounts", async (req, res) => {
-    try {
-      const data = await db.select().from(bankAccounts);
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch bank accounts" });
-    }
-  });
-
-  app.get("/api/suppliers", async (req, res) => {
-    try {
-      const data = await db.select().from(suppliers);
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch suppliers" });
-    }
-  });
-
-  app.get("/api/donors", async (req, res) => {
-    try {
-      const data = await db.select().from(donors);
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch donors" });
-    }
-  });
-
-  // Statistics route
-  app.get("/api/statistics", async (req, res) => {
-    try {
-      const [articleCount] = await db.select({ count: articles.id }).from(articles);
-      const [commentCount] = await db.select({ count: comments.id }).from(comments);
-      
-      res.json({
-        total_articles: articleCount?.count || 0,
-        total_comments: commentCount?.count || 0,
-        total_views: 0, // Mock data
-        engagement_rate: 0 // Mock data
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch statistics" });
+      res.status(500).json({ error: "Database connection failed" });
     }
   });
 
