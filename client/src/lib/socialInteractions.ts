@@ -162,7 +162,7 @@ export function saveUserReactionLocally(articleId: string, reactionType: string)
 }
 
 // Function to get comments for a specific content
-async function getComments(contentId: string, contentType: 'article' | 'news' = 'article') {
+export async function getComments(contentId: string, contentType: 'article' | 'news' = 'article') {
   try {
     const response = await fetch(`/api/comments?contentId=${contentId}&contentType=${contentType}`);
     if (!response.ok) {
@@ -175,5 +175,17 @@ async function getComments(contentId: string, contentType: 'article' | 'news' = 
   }
 }
 
-// Export all functions that might be needed
-export { addComment, addReaction, removeReaction, getComments };
+export async function toggleCommentReaction(
+  commentId: string,
+  reactionType: string
+): Promise<void> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const userId = getAnonymousUserId();
+
+  // In real implementation, this would toggle the reaction in the database
+  console.log('Comment reaction would be toggled:', { commentId, reactionType, userId });
+}
+
+// All functions are exported directly with their declarations
