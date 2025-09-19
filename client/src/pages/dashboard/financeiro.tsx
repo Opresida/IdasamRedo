@@ -456,6 +456,42 @@ export default function DashboardFinanceiroPage() {
     });
   };
 
+  const handleExportTransactions = () => {
+    // Preparar dados para exportação
+    const exportData = filteredTransactions.map(transaction => ({
+      Data: format(new Date(transaction.date), 'dd/MM/yyyy'),
+      Descrição: transaction.description,
+      Tipo: transaction.type,
+      Valor: `R$ ${Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      'Conta Bancária': transaction.account,
+      Categoria: transaction.category,
+      Projeto: transaction.project || 'N/A',
+      Status: transaction.status
+    }));
+
+    // Converter para CSV
+    const headers = Object.keys(exportData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map(row => 
+        headers.map(header => `"${row[header] || ''}"`).join(',')
+      )
+    ].join('\n');
+
+    // Criar arquivo e fazer download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `transacoes_financeiras_${format(new Date(), 'dd-MM-yyyy')}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -1051,7 +1087,7 @@ export default function DashboardFinanceiroPage() {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleExportTransactions}>
                 <Download className="h-4 w-4 mr-2" />
                 Exportar
               </Button>
