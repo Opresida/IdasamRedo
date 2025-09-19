@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -467,7 +466,7 @@ export default function DashboardFinanceiroPage() {
       // Formatar valor sem símbolos para melhor compatibilidade
       const valorFormatado = Math.abs(transaction.amount).toFixed(2).replace('.', ',');
       const sinalValor = transaction.type === 'Receita' ? '+' : '-';
-      
+
       return {
         'Data': format(new Date(transaction.date), 'dd/MM/yyyy'),
         'Descrição': transaction.description || '',
@@ -507,10 +506,10 @@ export default function DashboardFinanceiroPage() {
 
     // Criar conteúdo CSV
     const csvRows = [];
-    
+
     // Adicionar cabeçalho
     csvRows.push(headers.map(escapeCsvField).join(','));
-    
+
     // Adicionar dados
     exportData.forEach(row => {
       const csvRow = headers.map(header => escapeCsvField(row[header] || '')).join(',');
@@ -524,10 +523,10 @@ export default function DashboardFinanceiroPage() {
     const blob = new Blob([csvContent], { 
       type: 'text/csv;charset=utf-8;' 
     });
-    
+
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    
+
     // Nome do arquivo com informações dos filtros
     let fileName = `transacoes_financeiras_${format(new Date(), 'dd-MM-yyyy')}`;
     if (filters.dateFrom || filters.dateTo) {
@@ -538,18 +537,18 @@ export default function DashboardFinanceiroPage() {
       fileName += `_${filters.type.toLowerCase()}`;
     }
     fileName += '.csv';
-    
+
     link.setAttribute('href', url);
     link.setAttribute('download', fileName);
     link.style.visibility = 'hidden';
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Limpar URL
     URL.revokeObjectURL(url);
-    
+
     // Feedback para o usuário
     alert(`✅ Exportação concluída!\n\n📊 ${filteredTransactions.length} transações exportadas\n📁 Arquivo: ${fileName}`);
   };
@@ -1595,10 +1594,29 @@ export default function DashboardFinanceiroPage() {
                           <TableCell>{supplier.pix}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  // Implementar edição de fornecedor
+                                  alert('Funcionalidade de edição será implementada em breve');
+                                }}
+                                title="Editar fornecedor"
+                              >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  if (window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) {
+                                    setSuppliers(prev => prev.filter(s => s.id !== supplier.id));
+                                    alert('Fornecedor excluído com sucesso!');
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Excluir fornecedor"
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -1692,10 +1710,29 @@ export default function DashboardFinanceiroPage() {
                           <TableCell>{donor.pix}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  // Implementar edição de doador
+                                  alert('Funcionalidade de edição será implementada em breve');
+                                }}
+                                title="Editar doador"
+                              >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  if (window.confirm(`Tem certeza que deseja excluir o doador "${donor.name}"?`)) {
+                                    setDonors(prev => prev.filter(d => d.id !== donor.id));
+                                    alert('Doador excluído com sucesso!');
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Excluir doador"
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -1710,7 +1747,7 @@ export default function DashboardFinanceiroPage() {
           </Tabs>
         </TabsContent>
 
-        {/* ABA RELATÓRIOS - SEÇÃO CORRIGIDA */}
+        {/* ABA RELATÓRIOS */}
         <TabsContent value="relatorios" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Relatórios Financeiros</h3>
