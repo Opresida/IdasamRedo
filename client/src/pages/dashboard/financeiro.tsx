@@ -92,6 +92,7 @@ export default function DashboardFinanceiroPage() {
   const [isEditDonorOpen, setIsEditDonorOpen] = useState(false);
   const [editingDonor, setEditingDonor] = useState(null);
   const [isNewCategoryOpen, setIsNewCategoryOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState(null); // State to track the category being edited
   const [isEditTransactionOpen, setIsEditTransactionOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
 
@@ -308,15 +309,24 @@ export default function DashboardFinanceiroPage() {
   };
 
   const handleCreateCategory = () => {
-    const category = {
-      id: Date.now(),
-      name: newCategory.name,
-      type: newCategory.type
-    };
-
-    setCategories([...categories, category]);
+    if (editingCategoryId) {
+      // Update existing category
+      const updatedCategories = categories.map(cat => 
+        cat.id === editingCategoryId ? { ...cat, name: newCategory.name, type: newCategory.type } : cat
+      );
+      setCategories(updatedCategories);
+    } else {
+      // Create new category
+      const category = {
+        id: Date.now(),
+        name: newCategory.name,
+        type: newCategory.type
+      };
+      setCategories([...categories, category]);
+    }
     setIsNewCategoryOpen(false);
     setNewCategory({ name: '', type: 'both' });
+    setEditingCategoryId(null);
   };
 
   const handleDeleteAccount = (accountId) => {
@@ -546,9 +556,9 @@ export default function DashboardFinanceiroPage() {
       if (value === null || value === undefined || value === '') {
         return '""'; // Campo vazio sempre entre aspas
       }
-      
+
       const stringValue = String(value).trim();
-      
+
       // Sempre envolver campos em aspas duplas para garantir separação correta
       const escapedValue = stringValue.replace(/"/g, '""');
       return `"${escapedValue}"`;
@@ -556,7 +566,7 @@ export default function DashboardFinanceiroPage() {
 
     // Preparar dados para exportação
     const csvRows = [];
-    
+
     // Cabeçalho - sempre com ponto e vírgula como delimitador (padrão brasileiro)
     const headers = ['Data', 'Descrição', 'Tipo', 'Valor (R$)', 'Conta Bancária', 'Categoria', 'Projeto', 'Status'];
     csvRows.push(headers.map(header => formatCsvField(header)).join(';'));
@@ -566,7 +576,7 @@ export default function DashboardFinanceiroPage() {
       const valorNumerico = Math.abs(transaction.amount).toFixed(2);
       const sinalValor = transaction.type === 'Receita' ? '+' : '-';
       const valorFormatado = `${sinalValor}${valorNumerico}`;
-      
+
       const row = [
         formatCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
         formatCsvField(transaction.description || ''),
@@ -577,7 +587,7 @@ export default function DashboardFinanceiroPage() {
         formatCsvField(transaction.project || ''),
         formatCsvField(transaction.status || '')
       ];
-      
+
       // Usar ponto e vírgula como delimitador (padrão brasileiro)
       csvRows.push(row.join(';'));
     });
@@ -625,9 +635,9 @@ export default function DashboardFinanceiroPage() {
       if (field === null || field === undefined || field === '') {
         return '""'; // Campo vazio sempre entre aspas
       }
-      
+
       const stringValue = String(field).trim();
-      
+
       // Sempre envolver campos em aspas duplas para garantir separação correta
       const escapedValue = stringValue.replace(/"/g, '""');
       return `"${escapedValue}"`;
@@ -681,7 +691,7 @@ export default function DashboardFinanceiroPage() {
       formatCsvField('Qtd. Transações'),
       formatCsvField('Ticket Médio (R$)')
     ].join(';'));
-    
+
     categories.filter(cat => cat.type === 'expense' || cat.type === 'both').forEach((category) => {
       const categoryTransactions = transactions.filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Pago');
       const categoryTotal = categoryTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
@@ -709,16 +719,16 @@ export default function DashboardFinanceiroPage() {
       formatCsvField('Movimentação (R$)'),
       formatCsvField('Status')
     ].join(';'));
-    
+
     let totalContas = 0;
     accounts.forEach(account => {
       const saldoConta = getAccountBalance(account.name);
       const movimentacao = getTransactionsByAccount(account.name)
         .filter(t => t.status === 'Pago')
         .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      
+
       totalContas += saldoConta;
-      
+
       csvRows.push([
         formatCsvField(account.name),
         formatCsvField(account.bank),
@@ -752,13 +762,13 @@ export default function DashboardFinanceiroPage() {
       formatCsvField('Projeto'),
       formatCsvField('Status')
     ].join(';'));
-    
+
     const ultimasTransacoes = filteredTransactions.slice(0, 15);
     ultimasTransacoes.forEach(transaction => {
       const valorNumerico = Math.abs(transaction.amount).toFixed(2);
       const sinalValor = transaction.type === 'Receita' ? '+' : '-';
       const valorFormatado = `${sinalValor}${valorNumerico.replace('.', ',')}`;
-      
+
       csvRows.push([
         formatCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
         formatCsvField(transaction.description || ''),
@@ -776,10 +786,10 @@ export default function DashboardFinanceiroPage() {
     // SEÇÃO 5: INDICADORES E OBSERVAÇÕES
     csvRows.push(formatCsvField('📈 INDICADORES E OBSERVAÇÕES'));
     csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
-    
+
     const receitasPendentes = transactions.filter(t => t.type === 'Receita' && t.status !== 'Pago').reduce((sum, t) => sum + t.amount, 0);
     const despesasPendentes = transactions.filter(t => t.type === 'Despesa' && t.status !== 'Pago').reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
+
     csvRows.push([formatCsvField('Indicador'), formatCsvField('Valor'), formatCsvField('Observação')].join(';'));
     csvRows.push([
       formatCsvField('Receitas Pendentes'),
@@ -845,7 +855,7 @@ export default function DashboardFinanceiroPage() {
     // Feedback detalhado para o usuário
     const totalTransacoesNoRelatorio = ultimasTransacoes.length;
     const resumoCategoria = categories.filter(cat => cat.type === 'expense' || cat.type === 'both').length;
-    
+
     alert(`✅ Relatório Financeiro Exportado com Sucesso!
 
 📊 DETALHES DO RELATÓRIO:
@@ -862,6 +872,28 @@ export default function DashboardFinanceiroPage() {
 • Dados organizados em seções para fácil análise
 
 🏦 SALDO ATUAL: R$ ${saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+  };
+
+  const handleEditCategory = (category) => {
+    setEditingCategoryId(category.id);
+    setNewCategory({ name: category.name, type: category.type });
+    setIsNewCategoryOpen(true);
+  };
+
+  const handleDeleteCategory = (categoryId) => {
+    const categoryToDelete = categories.find(cat => cat.id === categoryId);
+    if (!categoryToDelete) return;
+
+    const hasTransactions = transactions.some(t => t.category === categoryToDelete.name);
+    if (hasTransactions) {
+      alert(`Não é possível excluir a categoria "${categoryToDelete.name}" pois ela está sendo usada em transações.`);
+      return;
+    }
+
+    if (window.confirm(`Tem certeza que deseja excluir a categoria "${categoryToDelete.name}"?`)) {
+      setCategories(prevCategories => prevCategories.filter(cat => cat.id !== categoryId));
+      alert('Categoria excluída com sucesso!');
+    }
   };
 
   return (
@@ -1600,12 +1632,11 @@ export default function DashboardFinanceiroPage() {
                           </div>
                         )}
                       </Droppable>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </DragDropContext>
-          )}
+                    </Card>
+                  ))}
+                </div>
+              </DragDropContext>
+            )}
         </TabsContent>
 
         {/* ABA CONTAS BANCÁRIAS */}
@@ -2270,50 +2301,68 @@ export default function DashboardFinanceiroPage() {
               <h3 className="text-lg font-semibold">Categorias de Transação</h3>
               <p className="text-gray-600">Gerencie as categorias disponíveis para classificar as transações</p>
             </div>
-            <Dialog open={isNewCategoryOpen} onOpenChange={setIsNewCategoryOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Categoria
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Nova Categoria</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Nome da Categoria</Label>
-                    <Input
-                      placeholder="Ex: Marketing"
-                      value={newCategory.name}
-                      onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <Select value={newCategory.type} onValueChange={(value) => setNewCategory({...newCategory, type: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="both">Receita e Despesa</SelectItem>
-                        <SelectItem value="income">Apenas Receita</SelectItem>
-                        <SelectItem value="expense">Apenas Despesa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setIsNewCategoryOpen(false)} className="flex-1">
-                    Cancelar
+            <Dialog 
+                open={isNewCategoryOpen} 
+                onOpenChange={(open) => {
+                  setIsNewCategoryOpen(open);
+                  if (!open) {
+                    setNewCategory({ name: '', type: 'both' });
+                    setEditingCategoryId(null);
+                  }
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button onClick={() => {
+                    setNewCategory({ name: '', type: 'both' });
+                    setEditingCategoryId(null);
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Categoria
                   </Button>
-                  <Button onClick={handleCreateCategory} className="flex-1">
-                    Criar
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingCategoryId ? 'Editar Categoria' : 'Nova Categoria'}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Nome da Categoria</Label>
+                      <Input
+                        placeholder="Ex: Marketing"
+                        value={newCategory.name}
+                        onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <Select value={newCategory.type} onValueChange={(value) => setNewCategory({...newCategory, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="both">Receita e Despesa</SelectItem>
+                          <SelectItem value="income">Apenas Receita</SelectItem>
+                          <SelectItem value="expense">Apenas Despesa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => {
+                      setIsNewCategoryOpen(false);
+                      setNewCategory({ name: '', type: 'both' });
+                      setEditingCategoryId(null);
+                    }} className="flex-1">
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleCreateCategory} className="flex-1">
+                      {editingCategoryId ? 'Salvar Alterações' : 'Criar Categoria'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
           </div>
 
           <Card>
@@ -2345,10 +2394,10 @@ export default function DashboardFinanceiroPage() {
                         <TableCell>{usage} transações</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" disabled={usage > 0}>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteCategory(category.id)} disabled={usage > 0}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
