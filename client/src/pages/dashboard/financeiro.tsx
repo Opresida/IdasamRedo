@@ -544,53 +544,50 @@ export default function DashboardFinanceiroPage() {
     // Função para escapar e formatar campos CSV corretamente
     const formatCsvField = (value) => {
       if (value === null || value === undefined || value === '') {
-        return '';
+        return '""'; // Campo vazio sempre entre aspas
       }
       
-      const stringValue = String(value);
+      const stringValue = String(value).trim();
       
-      // Se o valor contém vírgula, quebra de linha, ou aspas, deve ser envolvido em aspas duplas
-      if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"') || stringValue.includes('\r')) {
-        // Escapar aspas duplas existentes duplicando-as
-        const escapedValue = stringValue.replace(/"/g, '""');
-        return `"${escapedValue}"`;
-      }
-      
-      return stringValue;
+      // Sempre envolver campos em aspas duplas para garantir separação correta
+      const escapedValue = stringValue.replace(/"/g, '""');
+      return `"${escapedValue}"`;
     };
 
     // Preparar dados para exportação
     const csvRows = [];
     
-    // Cabeçalho
+    // Cabeçalho - sempre com vírgula como delimitador
     const headers = ['Data', 'Descrição', 'Tipo', 'Valor (R$)', 'Conta Bancária', 'Categoria', 'Projeto', 'Status'];
-    csvRows.push(headers.join(','));
+    csvRows.push(headers.map(header => formatCsvField(header)).join(','));
 
     // Dados das transações
     filteredTransactions.forEach(transaction => {
-      const valorFormatado = Math.abs(transaction.amount).toFixed(2).replace('.', ',');
+      const valorNumerico = Math.abs(transaction.amount).toFixed(2);
       const sinalValor = transaction.type === 'Receita' ? '+' : '-';
+      const valorFormatado = `${sinalValor}${valorNumerico}`;
       
       const row = [
         formatCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
-        formatCsvField(transaction.description),
-        formatCsvField(transaction.type),
-        formatCsvField(`${sinalValor}${valorFormatado}`),
-        formatCsvField(transaction.account),
-        formatCsvField(transaction.category),
+        formatCsvField(transaction.description || ''),
+        formatCsvField(transaction.type || ''),
+        formatCsvField(valorFormatado),
+        formatCsvField(transaction.account || ''),
+        formatCsvField(transaction.category || ''),
         formatCsvField(transaction.project || ''),
-        formatCsvField(transaction.status)
+        formatCsvField(transaction.status || '')
       ];
       
+      // Usar vírgula explicitamente como delimitador
       csvRows.push(row.join(','));
     });
 
-    // Adicionar BOM para UTF-8 (melhora compatibilidade com Excel)
-    const csvContent = '\uFEFF' + csvRows.join('\n');
+    // Adicionar BOM para UTF-8 e usar \r\n para quebras de linha (padrão CSV)
+    const csvContent = '\uFEFF' + csvRows.join('\r\n');
 
-    // Criar arquivo e fazer download
+    // Criar arquivo e fazer download com MIME type específico para CSV
     const blob = new Blob([csvContent], { 
-      type: 'text/csv;charset=utf-8;' 
+      type: 'text/csv;charset=utf-8;'
     });
 
     const link = document.createElement('a');
@@ -619,42 +616,42 @@ export default function DashboardFinanceiroPage() {
     URL.revokeObjectURL(url);
 
     // Feedback para o usuário
-    alert(`✅ Exportação concluída!\n\n📊 ${filteredTransactions.length} transações exportadas\n📁 Arquivo: ${fileName}`);
+    alert(`✅ Exportação concluída!\n\n📊 ${filteredTransactions.length} transações exportadas\n📁 Arquivo: ${fileName}\n\n💡 Dica: Arquivo formatado com vírgulas como delimitador padrão CSV`);
   };
 
   const handleExportReport = () => {
     // Função para escapar caracteres especiais no CSV
     const escapeCsvField = (field) => {
-      if (field === null || field === undefined) return '';
-      const stringField = String(field);
-      // Escapar aspas duplas duplicando-as
+      if (field === null || field === undefined) return '""';
+      const stringField = String(field).trim();
+      // Sempre escapar aspas duplas duplicando-as e envolver em aspas
       const escapedField = stringField.replace(/"/g, '""');
-      // Envolver em aspas se contém vírgula, quebra de linha ou aspas
-      if (stringField.includes(',') || stringField.includes('\n') || stringField.includes('"')) {
-        return `"${escapedField}"`;
-      }
-      return escapedField;
+      return `"${escapedField}"`;
     };
 
     // Criar conteúdo CSV estruturado
     const csvRows = [];
 
     // Adicionar título do relatório
-    csvRows.push('RELATÓRIO FINANCEIRO - IDASAM');
-    csvRows.push(`Período: ${format(new Date(), 'dd/MM/yyyy')}`);
+    csvRows.push(escapeCsvField('RELATÓRIO FINANCEIRO - IDASAM'));
+    csvRows.push(escapeCsvField(`Período: ${format(new Date(), 'dd/MM/yyyy')}`));
     csvRows.push(''); // Linha vazia
 
     // Seção: Resumo Geral
-    csvRows.push('RESUMO GERAL');
-    csvRows.push('Descrição,Valor (R$)');
-    csvRows.push(`"Total de Receitas","${totalReceitas.toFixed(2).replace('.', ',')}"`);
-    csvRows.push(`"Total de Despesas","${totalDespesas.toFixed(2).replace('.', ',')}"`);
-    csvRows.push(`"Saldo Atual","${saldoAtual.toFixed(2).replace('.', ',')}"`);
+    csvRows.push(escapeCsvField('RESUMO GERAL'));
+    csvRows.push([escapeCsvField('Descrição'), escapeCsvField('Valor (R$)')].join(','));
+    csvRows.push([escapeCsvField('Total de Receitas'), escapeCsvField(totalReceitas.toFixed(2))].join(','));
+    csvRows.push([escapeCsvField('Total de Despesas'), escapeCsvField(totalDespesas.toFixed(2))].join(','));
+    csvRows.push([escapeCsvField('Saldo Atual'), escapeCsvField(saldoAtual.toFixed(2))].join(','));
     csvRows.push(''); // Linha vazia
 
     // Seção: Despesas por Categoria
-    csvRows.push('DESPESAS POR CATEGORIA');
-    csvRows.push('Categoria,Valor (R$),Porcentagem (%)');
+    csvRows.push(escapeCsvField('DESPESAS POR CATEGORIA'));
+    csvRows.push([
+      escapeCsvField('Categoria'), 
+      escapeCsvField('Valor (R$)'), 
+      escapeCsvField('Porcentagem (%)')
+    ].join(','));
     
     categories.filter(cat => cat.type === 'expense' || cat.type === 'both').forEach((category) => {
       const categoryTotal = transactions
@@ -662,51 +659,75 @@ export default function DashboardFinanceiroPage() {
         .reduce((sum, t) => sum + Math.abs(t.amount), 0);
       const percentage = totalDespesas > 0 ? (categoryTotal / totalDespesas) * 100 : 0;
 
-      csvRows.push(`"${escapeCsvField(category.name)}","${categoryTotal.toFixed(2).replace('.', ',')}","${percentage.toFixed(1).replace('.', ',')}%"`);
+      csvRows.push([
+        escapeCsvField(category.name),
+        escapeCsvField(categoryTotal.toFixed(2)),
+        escapeCsvField(`${percentage.toFixed(1)}%`)
+      ].join(','));
     });
 
     csvRows.push(''); // Linha vazia
 
     // Seção: Contas Bancárias
-    csvRows.push('SALDOS POR CONTA BANCÁRIA');
-    csvRows.push('Conta,Banco,Saldo (R$)');
+    csvRows.push(escapeCsvField('SALDOS POR CONTA BANCÁRIA'));
+    csvRows.push([
+      escapeCsvField('Conta'), 
+      escapeCsvField('Banco'), 
+      escapeCsvField('Saldo (R$)')
+    ].join(','));
     
     accounts.forEach(account => {
       const saldoConta = getAccountBalance(account.name);
-      csvRows.push(`"${escapeCsvField(account.name)}","${escapeCsvField(account.bank)}","${saldoConta.toFixed(2).replace('.', ',')}"`);
+      csvRows.push([
+        escapeCsvField(account.name),
+        escapeCsvField(account.bank),
+        escapeCsvField(saldoConta.toFixed(2))
+      ].join(','));
     });
 
     csvRows.push(''); // Linha vazia
 
     // Seção: Últimas Transações
-    csvRows.push('ÚLTIMAS 10 TRANSAÇÕES');
-    csvRows.push('Data,Descrição,Tipo,Valor (R$),Conta,Categoria,Status');
+    csvRows.push(escapeCsvField('ÚLTIMAS 10 TRANSAÇÕES'));
+    csvRows.push([
+      escapeCsvField('Data'),
+      escapeCsvField('Descrição'),
+      escapeCsvField('Tipo'),
+      escapeCsvField('Valor (R$)'),
+      escapeCsvField('Conta'),
+      escapeCsvField('Categoria'),
+      escapeCsvField('Status')
+    ].join(','));
     
     const ultimasTransacoes = filteredTransactions.slice(0, 10);
     ultimasTransacoes.forEach(transaction => {
-      const valorFormatado = Math.abs(transaction.amount).toFixed(2).replace('.', ',');
+      const valorNumerico = Math.abs(transaction.amount).toFixed(2);
       const sinalValor = transaction.type === 'Receita' ? '+' : '-';
+      const valorFormatado = `${sinalValor}${valorNumerico}`;
       
       csvRows.push([
-        `"${format(new Date(transaction.date), 'dd/MM/yyyy')}"`,
-        `"${escapeCsvField(transaction.description)}"`,
-        `"${escapeCsvField(transaction.type)}"`,
-        `"${sinalValor}${valorFormatado}"`,
-        `"${escapeCsvField(transaction.account)}"`,
-        `"${escapeCsvField(transaction.category)}"`,
-        `"${escapeCsvField(transaction.status)}"`
+        escapeCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
+        escapeCsvField(transaction.description || ''),
+        escapeCsvField(transaction.type || ''),
+        escapeCsvField(valorFormatado),
+        escapeCsvField(transaction.account || ''),
+        escapeCsvField(transaction.category || ''),
+        escapeCsvField(transaction.status || '')
       ].join(','));
     });
 
     csvRows.push(''); // Linha vazia
-    csvRows.push(`"Relatório gerado em:","${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}"`);
+    csvRows.push([
+      escapeCsvField('Relatório gerado em:'),
+      escapeCsvField(format(new Date(), 'dd/MM/yyyy HH:mm:ss'))
+    ].join(','));
 
-    // Adicionar BOM para UTF-8 (melhora compatibilidade com Excel)
-    const csvContent = '\uFEFF' + csvRows.join('\n');
+    // Adicionar BOM para UTF-8 e usar \r\n para quebras de linha (padrão CSV)
+    const csvContent = '\uFEFF' + csvRows.join('\r\n');
 
     // Criar arquivo e fazer download
     const blob = new Blob([csvContent], { 
-      type: 'text/csv;charset=utf-8;' 
+      type: 'text/csv;charset=utf-8;'
     });
 
     const link = document.createElement('a');
@@ -726,7 +747,7 @@ export default function DashboardFinanceiroPage() {
     URL.revokeObjectURL(url);
 
     // Feedback para o usuário
-    alert(`✅ Relatório exportado com sucesso!\n\n📊 Resumo financeiro completo\n📁 Arquivo: ${fileName}`);
+    alert(`✅ Relatório exportado com sucesso!\n\n📊 Resumo financeiro completo\n📁 Arquivo: ${fileName}\n\n💡 Dica: Arquivo formatado com vírgulas como delimitador padrão CSV`);
   };
 
   return (
