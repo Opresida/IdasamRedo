@@ -457,39 +457,101 @@ export default function DashboardFinanceiroPage() {
   };
 
   const handleExportTransactions = () => {
-    // Preparar dados para exportação
-    const exportData = filteredTransactions.map(transaction => ({
-      Data: format(new Date(transaction.date), 'dd/MM/yyyy'),
-      Descrição: transaction.description,
-      Tipo: transaction.type,
-      Valor: `R$ ${Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      'Conta Bancária': transaction.account,
-      Categoria: transaction.category,
-      Projeto: transaction.project || 'N/A',
-      Status: transaction.status
-    }));
+    if (filteredTransactions.length === 0) {
+      alert('Não há transações para exportar com os filtros aplicados.');
+      return;
+    }
 
-    // Converter para CSV
-    const headers = Object.keys(exportData[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...exportData.map(row => 
-        headers.map(header => `"${row[header] || ''}"`).join(',')
-      )
-    ].join('\n');
+    // Preparar dados para exportação de forma mais organizada
+    const exportData = filteredTransactions.map(transaction => {
+      // Formatar valor sem símbolos para melhor compatibilidade
+      const valorFormatado = Math.abs(transaction.amount).toFixed(2).replace('.', ',');
+      const sinalValor = transaction.type === 'Receita' ? '+' : '-';
+      
+      return {
+        'Data': format(new Date(transaction.date), 'dd/MM/yyyy'),
+        'Descrição': transaction.description || '',
+        'Tipo': transaction.type || '',
+        'Valor (R$)': `${sinalValor}${valorFormatado}`,
+        'Conta Bancária': transaction.account || '',
+        'Categoria': transaction.category || '',
+        'Projeto': transaction.project || '',
+        'Status': transaction.status || ''
+      };
+    });
+
+    // Definir ordem das colunas
+    const headers = [
+      'Data',
+      'Descrição', 
+      'Tipo',
+      'Valor (R$)',
+      'Conta Bancária',
+      'Categoria',
+      'Projeto',
+      'Status'
+    ];
+
+    // Função para escapar caracteres especiais no CSV
+    const escapeCsvField = (field) => {
+      if (field === null || field === undefined) return '';
+      const stringField = String(field);
+      // Escapar aspas duplas duplicando-as
+      const escapedField = stringField.replace(/"/g, '""');
+      // Envolver em aspas se contém vírgula, quebra de linha ou aspas
+      if (stringField.includes(',') || stringField.includes('\n') || stringField.includes('"')) {
+        return `"${escapedField}"`;
+      }
+      return escapedField;
+    };
+
+    // Criar conteúdo CSV
+    const csvRows = [];
+    
+    // Adicionar cabeçalho
+    csvRows.push(headers.map(escapeCsvField).join(','));
+    
+    // Adicionar dados
+    exportData.forEach(row => {
+      const csvRow = headers.map(header => escapeCsvField(row[header] || '')).join(',');
+      csvRows.push(csvRow);
+    });
+
+    // Adicionar BOM para UTF-8 (melhora compatibilidade com Excel)
+    const csvContent = '\uFEFF' + csvRows.join('\n');
 
     // Criar arquivo e fazer download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], { 
+      type: 'text/csv;charset=utf-8;' 
+    });
+    
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     
+    // Nome do arquivo com informações dos filtros
+    let fileName = `transacoes_financeiras_${format(new Date(), 'dd-MM-yyyy')}`;
+    if (filters.dateFrom || filters.dateTo) {
+      const periodo = `${filters.dateFrom ? format(filters.dateFrom, 'dd-MM-yyyy') : 'inicio'}_a_${filters.dateTo ? format(filters.dateTo, 'dd-MM-yyyy') : 'hoje'}`;
+      fileName += `_periodo_${periodo}`;
+    }
+    if (filters.type) {
+      fileName += `_${filters.type.toLowerCase()}`;
+    }
+    fileName += '.csv';
+    
     link.setAttribute('href', url);
-    link.setAttribute('download', `transacoes_financeiras_${format(new Date(), 'dd-MM-yyyy')}.csv`);
+    link.setAttribute('download', fileName);
     link.style.visibility = 'hidden';
     
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Limpar URL
+    URL.revokeObjectURL(url);
+    
+    // Feedback para o usuário
+    alert(`✅ Exportação concluída!\n\n📊 ${filteredTransactions.length} transações exportadas\n📁 Arquivo: ${fileName}`);
   };
 
   return (
