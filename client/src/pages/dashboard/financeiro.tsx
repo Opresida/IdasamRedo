@@ -2181,7 +2181,7 @@ export default function DashboardFinanceiroPage() {
           </Tabs>
         </TabsContent>
 
-        {/* ABA RELATÓRIOS (COM ESTRUTURA JSX CORRIGIDA) */}
+        {/* ABA RELATÓRIOS */}
         <TabsContent value="relatorios" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Relatórios Financeiros</h3>
@@ -2254,7 +2254,7 @@ export default function DashboardFinanceiroPage() {
                           <div
                             className="bg-blue-600 h-2 rounded-full"
                             style={{ width: `${percentage}%` }}
-                          ></div>
+                          />
                         </div>
                       </div>
                     );
