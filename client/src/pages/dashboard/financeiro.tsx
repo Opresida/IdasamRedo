@@ -2181,7 +2181,7 @@ export default function DashboardFinanceiroPage() {
           </Tabs>
         </TabsContent>
 
-        {/* ABA RELATÓRIOS */}
+        {/* ABA RELATÓRIOS (COM ESTRUTURA JSX CORRIGIDA) */}
         <TabsContent value="relatorios" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Relatórios Financeiros</h3>
