@@ -621,111 +621,198 @@ export default function DashboardFinanceiroPage() {
 
   const handleExportReport = () => {
     // Função para escapar caracteres especiais no CSV
-    const escapeCsvField = (field) => {
-      if (field === null || field === undefined) return '""';
-      const stringField = String(field).trim();
-      // Sempre escapar aspas duplas duplicando-as e envolver em aspas
-      const escapedField = stringField.replace(/"/g, '""');
-      return `"${escapedField}"`;
+    const formatCsvField = (field) => {
+      if (field === null || field === undefined || field === '') {
+        return '""'; // Campo vazio sempre entre aspas
+      }
+      
+      const stringValue = String(field).trim();
+      
+      // Sempre envolver campos em aspas duplas para garantir separação correta
+      const escapedValue = stringValue.replace(/"/g, '""');
+      return `"${escapedValue}"`;
     };
 
     // Criar conteúdo CSV estruturado
     const csvRows = [];
 
-    // Adicionar título do relatório
-    csvRows.push(escapeCsvField('RELATÓRIO FINANCEIRO - IDASAM'));
-    csvRows.push(escapeCsvField(`Período: ${format(new Date(), 'dd/MM/yyyy')}`));
+    // CABEÇALHO DO RELATÓRIO
+    csvRows.push(formatCsvField('═══════════════════════════════════════════════════════════'));
+    csvRows.push(formatCsvField('                    RELATÓRIO FINANCEIRO - IDASAM'));
+    csvRows.push(formatCsvField('═══════════════════════════════════════════════════════════'));
+    csvRows.push(formatCsvField(`Data de Geração: ${format(new Date(), 'dd/MM/yyyy - HH:mm:ss')}`));
+    csvRows.push(formatCsvField(`Período Analisado: ${filters.dateFrom ? format(filters.dateFrom, 'dd/MM/yyyy') : 'Início'} até ${filters.dateTo ? format(filters.dateTo, 'dd/MM/yyyy') : 'Hoje'}`));
+    csvRows.push(formatCsvField(`Total de Transações: ${filteredTransactions.length}`));
     csvRows.push(''); // Linha vazia
 
-    // Seção: Resumo Geral
-    csvRows.push(escapeCsvField('RESUMO GERAL'));
-    csvRows.push([escapeCsvField('Descrição'), escapeCsvField('Valor (R$)')].join(','));
-    csvRows.push([escapeCsvField('Total de Receitas'), escapeCsvField(totalReceitas.toFixed(2))].join(','));
-    csvRows.push([escapeCsvField('Total de Despesas'), escapeCsvField(totalDespesas.toFixed(2))].join(','));
-    csvRows.push([escapeCsvField('Saldo Atual'), escapeCsvField(saldoAtual.toFixed(2))].join(','));
-    csvRows.push(''); // Linha vazia
-
-    // Seção: Despesas por Categoria
-    csvRows.push(escapeCsvField('DESPESAS POR CATEGORIA'));
+    // SEÇÃO 1: RESUMO EXECUTIVO
+    csvRows.push(formatCsvField('📊 RESUMO EXECUTIVO'));
+    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
+    csvRows.push([formatCsvField('Indicador'), formatCsvField('Valor (R$)'), formatCsvField('Status')].join(';'));
     csvRows.push([
-      escapeCsvField('Categoria'), 
-      escapeCsvField('Valor (R$)'), 
-      escapeCsvField('Porcentagem (%)')
-    ].join(','));
+      formatCsvField('Total de Receitas'), 
+      formatCsvField(totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+      formatCsvField(totalReceitas > 0 ? '✅ Positivo' : '⚠️ Sem receitas')
+    ].join(';'));
+    csvRows.push([
+      formatCsvField('Total de Despesas'), 
+      formatCsvField(totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+      formatCsvField(totalDespesas > 0 ? '📈 Ativo' : '✅ Sem despesas')
+    ].join(';'));
+    csvRows.push([
+      formatCsvField('Saldo Líquido'), 
+      formatCsvField(saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+      formatCsvField(saldoAtual >= 0 ? '🟢 Positivo' : '🔴 Negativo')
+    ].join(';'));
+    csvRows.push([
+      formatCsvField('Margem Financeira'), 
+      formatCsvField(totalReceitas > 0 ? `${((saldoAtual / totalReceitas) * 100).toFixed(1)}%` : '0%'),
+      formatCsvField(saldoAtual > 0 ? '📊 Saudável' : '⚠️ Atenção')
+    ].join(';'));
+    csvRows.push(''); // Linha vazia
+
+    // SEÇÃO 2: ANÁLISE POR CATEGORIA
+    csvRows.push(formatCsvField('🏷️ ANÁLISE DE DESPESAS POR CATEGORIA'));
+    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
+    csvRows.push([
+      formatCsvField('Categoria'), 
+      formatCsvField('Valor (R$)'), 
+      formatCsvField('Participação (%)'),
+      formatCsvField('Qtd. Transações'),
+      formatCsvField('Ticket Médio (R$)')
+    ].join(';'));
     
     categories.filter(cat => cat.type === 'expense' || cat.type === 'both').forEach((category) => {
-      const categoryTotal = transactions
-        .filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Pago')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const categoryTransactions = transactions.filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Pago');
+      const categoryTotal = categoryTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
       const percentage = totalDespesas > 0 ? (categoryTotal / totalDespesas) * 100 : 0;
+      const ticketMedio = categoryTransactions.length > 0 ? categoryTotal / categoryTransactions.length : 0;
 
       csvRows.push([
-        escapeCsvField(category.name),
-        escapeCsvField(categoryTotal.toFixed(2)),
-        escapeCsvField(`${percentage.toFixed(1)}%`)
-      ].join(','));
+        formatCsvField(category.name),
+        formatCsvField(categoryTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+        formatCsvField(`${percentage.toFixed(1)}%`),
+        formatCsvField(categoryTransactions.length),
+        formatCsvField(ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 }))
+      ].join(';'));
     });
 
     csvRows.push(''); // Linha vazia
 
-    // Seção: Contas Bancárias
-    csvRows.push(escapeCsvField('SALDOS POR CONTA BANCÁRIA'));
+    // SEÇÃO 3: POSIÇÃO DAS CONTAS BANCÁRIAS
+    csvRows.push(formatCsvField('🏦 POSIÇÃO DAS CONTAS BANCÁRIAS'));
+    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
     csvRows.push([
-      escapeCsvField('Conta'), 
-      escapeCsvField('Banco'), 
-      escapeCsvField('Saldo (R$)')
-    ].join(','));
+      formatCsvField('Conta'), 
+      formatCsvField('Banco'), 
+      formatCsvField('Saldo Atual (R$)'),
+      formatCsvField('Movimentação (R$)'),
+      formatCsvField('Status')
+    ].join(';'));
     
+    let totalContas = 0;
     accounts.forEach(account => {
       const saldoConta = getAccountBalance(account.name);
+      const movimentacao = getTransactionsByAccount(account.name)
+        .filter(t => t.status === 'Pago')
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      
+      totalContas += saldoConta;
+      
       csvRows.push([
-        escapeCsvField(account.name),
-        escapeCsvField(account.bank),
-        escapeCsvField(saldoConta.toFixed(2))
-      ].join(','));
+        formatCsvField(account.name),
+        formatCsvField(account.bank),
+        formatCsvField(saldoConta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+        formatCsvField(movimentacao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+        formatCsvField(saldoConta >= 0 ? '🟢 Positivo' : '🔴 Negativo')
+      ].join(';'));
     });
+
+    // Total das contas
+    csvRows.push([
+      formatCsvField('TOTAL GERAL'),
+      formatCsvField('Todas as contas'),
+      formatCsvField(totalContas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
+      formatCsvField(''),
+      formatCsvField(totalContas >= 0 ? '🟢 Saudável' : '🔴 Crítico')
+    ].join(';'));
 
     csvRows.push(''); // Linha vazia
 
-    // Seção: Últimas Transações
-    csvRows.push(escapeCsvField('ÚLTIMAS 10 TRANSAÇÕES'));
+    // SEÇÃO 4: HISTÓRICO DE TRANSAÇÕES RECENTES
+    csvRows.push(formatCsvField('📋 ÚLTIMAS 15 TRANSAÇÕES'));
+    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
     csvRows.push([
-      escapeCsvField('Data'),
-      escapeCsvField('Descrição'),
-      escapeCsvField('Tipo'),
-      escapeCsvField('Valor (R$)'),
-      escapeCsvField('Conta'),
-      escapeCsvField('Categoria'),
-      escapeCsvField('Status')
-    ].join(','));
+      formatCsvField('Data'),
+      formatCsvField('Descrição'),
+      formatCsvField('Tipo'),
+      formatCsvField('Valor (R$)'),
+      formatCsvField('Conta'),
+      formatCsvField('Categoria'),
+      formatCsvField('Projeto'),
+      formatCsvField('Status')
+    ].join(';'));
     
-    const ultimasTransacoes = filteredTransactions.slice(0, 10);
+    const ultimasTransacoes = filteredTransactions.slice(0, 15);
     ultimasTransacoes.forEach(transaction => {
       const valorNumerico = Math.abs(transaction.amount).toFixed(2);
       const sinalValor = transaction.type === 'Receita' ? '+' : '-';
-      const valorFormatado = `${sinalValor}${valorNumerico}`;
+      const valorFormatado = `${sinalValor}${valorNumerico.replace('.', ',')}`;
       
       csvRows.push([
-        escapeCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
-        escapeCsvField(transaction.description || ''),
-        escapeCsvField(transaction.type || ''),
-        escapeCsvField(valorFormatado),
-        escapeCsvField(transaction.account || ''),
-        escapeCsvField(transaction.category || ''),
-        escapeCsvField(transaction.status || '')
-      ].join(','));
+        formatCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
+        formatCsvField(transaction.description || ''),
+        formatCsvField(transaction.type === 'Receita' ? '💰 Receita' : '💸 Despesa'),
+        formatCsvField(valorFormatado),
+        formatCsvField(transaction.account || ''),
+        formatCsvField(transaction.category || ''),
+        formatCsvField(transaction.project || 'Sem projeto'),
+        formatCsvField(transaction.status === 'Pago' ? '✅ Pago' : transaction.status === 'Pendente' ? '⏳ Pendente' : '📅 A Vencer')
+      ].join(';'));
     });
 
     csvRows.push(''); // Linha vazia
+
+    // SEÇÃO 5: INDICADORES E OBSERVAÇÕES
+    csvRows.push(formatCsvField('📈 INDICADORES E OBSERVAÇÕES'));
+    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
+    
+    const receitasPendentes = transactions.filter(t => t.type === 'Receita' && t.status !== 'Pago').reduce((sum, t) => sum + t.amount, 0);
+    const despesasPendentes = transactions.filter(t => t.type === 'Despesa' && t.status !== 'Pago').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    
+    csvRows.push([formatCsvField('Indicador'), formatCsvField('Valor'), formatCsvField('Observação')].join(';'));
     csvRows.push([
-      escapeCsvField('Relatório gerado em:'),
-      escapeCsvField(format(new Date(), 'dd/MM/yyyy HH:mm:ss'))
-    ].join(','));
+      formatCsvField('Receitas Pendentes'),
+      formatCsvField(`R$ ${receitasPendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
+      formatCsvField(receitasPendentes > 0 ? 'Valores a receber em aberto' : 'Nenhuma receita pendente')
+    ].join(';'));
+    csvRows.push([
+      formatCsvField('Despesas Pendentes'),
+      formatCsvField(`R$ ${despesasPendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
+      formatCsvField(despesasPendentes > 0 ? 'Valores a pagar em aberto' : 'Nenhuma despesa pendente')
+    ].join(';'));
+    csvRows.push([
+      formatCsvField('Fluxo Futuro'),
+      formatCsvField(`R$ ${(receitasPendentes - despesasPendentes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
+      formatCsvField((receitasPendentes - despesasPendentes) >= 0 ? 'Projeção positiva' : 'Atenção ao fluxo futuro')
+    ].join(';'));
+
+    csvRows.push(''); // Linha vazia
+
+    // RODAPÉ
+    csvRows.push(formatCsvField('═══════════════════════════════════════════════════════════'));
+    csvRows.push(formatCsvField('                         IDASAM'));
+    csvRows.push(formatCsvField('          Instituto de Desenvolvimento da Amazônia'));
+    csvRows.push(formatCsvField('═══════════════════════════════════════════════════════════'));
+    csvRows.push([
+      formatCsvField('Relatório automático gerado pelo sistema em:'),
+      formatCsvField(format(new Date(), 'dd/MM/yyyy às HH:mm:ss'))
+    ].join(';'));
 
     // Adicionar BOM para UTF-8 e usar \r\n para quebras de linha (padrão CSV)
     const csvContent = '\uFEFF' + csvRows.join('\r\n');
 
-    // Criar arquivo e fazer download
+    // Criar arquivo e fazer download com MIME type específico para CSV
     const blob = new Blob([csvContent], { 
       type: 'text/csv;charset=utf-8;'
     });
@@ -733,7 +820,16 @@ export default function DashboardFinanceiroPage() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
 
-    const fileName = `relatorio_financeiro_${format(new Date(), 'dd-MM-yyyy_HH-mm')}.csv`;
+    // Nome do arquivo com informações dos filtros
+    let fileName = `relatorio_financeiro_IDASAM_${format(new Date(), 'dd-MM-yyyy_HH-mm')}`;
+    if (filters.dateFrom || filters.dateTo) {
+      const periodo = `${filters.dateFrom ? format(filters.dateFrom, 'dd-MM-yyyy') : 'inicio'}_a_${filters.dateTo ? format(filters.dateTo, 'dd-MM-yyyy') : 'hoje'}`;
+      fileName += `_periodo_${periodo}`;
+    }
+    if (filters.type) {
+      fileName += `_${filters.type.toLowerCase()}`;
+    }
+    fileName += '.csv';
 
     link.setAttribute('href', url);
     link.setAttribute('download', fileName);
@@ -746,8 +842,26 @@ export default function DashboardFinanceiroPage() {
     // Limpar URL
     URL.revokeObjectURL(url);
 
-    // Feedback para o usuário
-    alert(`✅ Relatório exportado com sucesso!\n\n📊 Resumo financeiro completo\n📁 Arquivo: ${fileName}\n\n💡 Dica: Arquivo formatado com vírgulas como delimitador padrão CSV`);
+    // Feedback detalhado para o usuário
+    const totalTransacoesNoRelatorio = ultimasTransacoes.length;
+    const resumoCategoria = categories.filter(cat => cat.type === 'expense' || cat.type === 'both').length;
+    
+    alert(`✅ Relatório Financeiro Exportado com Sucesso!
+
+📊 DETALHES DO RELATÓRIO:
+• ${filteredTransactions.length} transações analisadas
+• ${accounts.length} contas bancárias incluídas  
+• ${resumoCategoria} categorias de despesas
+• ${totalTransacoesNoRelatorio} transações recentes listadas
+
+📁 ARQUIVO: ${fileName}
+
+💡 DICAS:
+• Arquivo formatado com ponto e vírgula (;) para Excel Brasil
+• Inclui resumo executivo, análise por categorias e indicadores
+• Dados organizados em seções para fácil análise
+
+🏦 SALDO ATUAL: R$ ${saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
   };
 
   return (
