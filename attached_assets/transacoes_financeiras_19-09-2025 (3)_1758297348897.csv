@@ -1,0 +1,5 @@
+﻿Data,Descrição,Tipo,Valor (R$),Conta Bancária,Categoria,Projeto,Status
+"14/01/2024,Doação João Silva,Receita,""+1500,00"",Bradesco 001,Doação,Projeto Coração Ribeirinho,Pago"
+"13/01/2024,Compra de equipamentos,Despesa,""-800,00"",Caixa 002,Equipamentos,Infraestrutura,Pendente"
+"12/01/2024,Salário funcionário,Despesa,""-2500,00"",Bradesco 001,Recursos Humanos,,Pago"
+"11/01/2024,Doação Maria Santos,Receita,""+500,00"",Caixa 002,Doação,Projeto Educação,A Vencer"
