@@ -541,59 +541,48 @@ export default function DashboardFinanceiroPage() {
       return;
     }
 
-    // Preparar dados para exportação de forma mais organizada
-    const exportData = filteredTransactions.map(transaction => {
-      // Formatar valor sem símbolos para melhor compatibilidade
-      const valorFormatado = Math.abs(transaction.amount).toFixed(2).replace('.', ',');
-      const sinalValor = transaction.type === 'Receita' ? '+' : '-';
-
-      return {
-        'Data': format(new Date(transaction.date), 'dd/MM/yyyy'),
-        'Descrição': transaction.description || '',
-        'Tipo': transaction.type || '',
-        'Valor (R$)': `${sinalValor}${valorFormatado}`,
-        'Conta Bancária': transaction.account || '',
-        'Categoria': transaction.category || '',
-        'Projeto': transaction.project || '',
-        'Status': transaction.status || ''
-      };
-    });
-
-    // Definir ordem das colunas
-    const headers = [
-      'Data',
-      'Descrição', 
-      'Tipo',
-      'Valor (R$)',
-      'Conta Bancária',
-      'Categoria',
-      'Projeto',
-      'Status'
-    ];
-
-    // Função para escapar caracteres especiais no CSV
-    const escapeCsvField = (field) => {
-      if (field === null || field === undefined) return '';
-      const stringField = String(field);
-      // Escapar aspas duplas duplicando-as
-      const escapedField = stringField.replace(/"/g, '""');
-      // Envolver em aspas se contém vírgula, quebra de linha ou aspas
-      if (stringField.includes(',') || stringField.includes('\n') || stringField.includes('"')) {
-        return `"${escapedField}"`;
+    // Função para escapar e formatar campos CSV corretamente
+    const formatCsvField = (value) => {
+      if (value === null || value === undefined || value === '') {
+        return '';
       }
-      return escapedField;
+      
+      const stringValue = String(value);
+      
+      // Se o valor contém vírgula, quebra de linha, ou aspas, deve ser envolvido em aspas duplas
+      if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"') || stringValue.includes('\r')) {
+        // Escapar aspas duplas existentes duplicando-as
+        const escapedValue = stringValue.replace(/"/g, '""');
+        return `"${escapedValue}"`;
+      }
+      
+      return stringValue;
     };
 
-    // Criar conteúdo CSV
+    // Preparar dados para exportação
     const csvRows = [];
+    
+    // Cabeçalho
+    const headers = ['Data', 'Descrição', 'Tipo', 'Valor (R$)', 'Conta Bancária', 'Categoria', 'Projeto', 'Status'];
+    csvRows.push(headers.join(','));
 
-    // Adicionar cabeçalho
-    csvRows.push(headers.map(escapeCsvField).join(','));
-
-    // Adicionar dados
-    exportData.forEach(row => {
-      const csvRow = headers.map(header => escapeCsvField(row[header] || '')).join(',');
-      csvRows.push(csvRow);
+    // Dados das transações
+    filteredTransactions.forEach(transaction => {
+      const valorFormatado = Math.abs(transaction.amount).toFixed(2).replace('.', ',');
+      const sinalValor = transaction.type === 'Receita' ? '+' : '-';
+      
+      const row = [
+        formatCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
+        formatCsvField(transaction.description),
+        formatCsvField(transaction.type),
+        formatCsvField(`${sinalValor}${valorFormatado}`),
+        formatCsvField(transaction.account),
+        formatCsvField(transaction.category),
+        formatCsvField(transaction.project || ''),
+        formatCsvField(transaction.status)
+      ];
+      
+      csvRows.push(row.join(','));
     });
 
     // Adicionar BOM para UTF-8 (melhora compatibilidade com Excel)
