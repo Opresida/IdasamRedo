@@ -2181,7 +2181,7 @@ export default function DashboardFinanceiroPage() {
           </Tabs>
         </TabsContent>
 
-        {/* ABA RELATÓRIOS */}
+        {/* ABA RELATÓRIOS (COM ESTRUTURA JSX CORRIGIDA) */}
         <TabsContent value="relatorios" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Relatórios Financeiros</h3>
@@ -2251,8 +2251,8 @@ export default function DashboardFinanceiroPage() {
                           <span>R$ {categoryTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full" 
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
                             style={{ width: `${percentage}%` }}
                           ></div>
                         </div>
@@ -2394,10 +2394,22 @@ export default function DashboardFinanceiroPage() {
                         <TableCell>{usage} transações</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleEditCategory(category)}
+                              title="Editar categoria"
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteCategory(category.id)} disabled={usage > 0}>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleDeleteCategory(category.id)} 
+                              disabled={usage > 0}
+                              className={usage > 0 ? "opacity-50 cursor-not-allowed" : "text-red-600 hover:text-red-700 hover:bg-red-50"}
+                              title={usage > 0 ? "Categoria em uso, não pode ser excluída" : "Excluir categoria"}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
