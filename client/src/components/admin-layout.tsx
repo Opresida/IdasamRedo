@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,8 @@ import {
   Calendar,
   FolderKanban,
   LogOut,
-  Shield
+  Shield,
+  Users
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -57,6 +57,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: FolderKanban,
       path: '/dashboard/projetos',
       description: 'Gestão de projetos'
+    },
+    {
+      label: 'Usuários',
+      icon: Users,
+      path: '/dashboard/usuarios',
+      description: 'Gerenciamento de usuários'
     }
   ];
 
@@ -98,14 +104,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {navigationItems.map((item) => {
               const Icon = item.icon;
               const isActive = location === item.path;
-              
+
               return (
                 <button
                   key={item.path}
                   onClick={() => setLocation(item.path)}
                   className={`w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-all duration-200 group ${
-                    isActive 
-                      ? 'bg-idasam-green-dark text-white shadow-md' 
+                    isActive
+                      ? 'bg-idasam-green-dark text-white shadow-md'
                       : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
@@ -138,7 +144,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <LogOut className="w-4 h-4 mr-2" />
             Sair do Sistema
           </Button>
-          
+
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-500">
               Sistema v1.0 | IDASAM © 2024
@@ -166,11 +172,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setLocation('/')}
                 className="text-gray-600"
               >

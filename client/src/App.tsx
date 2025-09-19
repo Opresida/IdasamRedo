@@ -21,6 +21,7 @@ import ImprensaPage from '@/pages/imprensa';
 import DashboardFinanceiroPage from '@/pages/dashboard/financeiro';
 import AgendaPage from '@/pages/agenda';
 import ProjetosAdminPage from '@/pages/projetos-admin';
+import UsuariosPage from '@/pages/dashboard/usuarios';
 import TransparenciaPage from './pages/transparencia';
 import BioPage from './pages/bio';
 
@@ -83,6 +84,13 @@ function AppContent() {
           <ProtectedRoute>
             <AdminLayout>
               <ProjetosAdminPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/dashboard/usuarios">
+          <ProtectedRoute>
+            <AdminLayout>
+              <UsuariosPage />
             </AdminLayout>
           </ProtectedRoute>
         </Route>
