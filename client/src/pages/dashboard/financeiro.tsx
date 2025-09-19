@@ -1632,7 +1632,8 @@ export default function DashboardFinanceiroPage() {
                           </div>
                         )}
                       </Droppable>
-                    </Card>
+                    </CardContent>
+                  </Card>
                   ))}
                 </div>
               </DragDropContext>
