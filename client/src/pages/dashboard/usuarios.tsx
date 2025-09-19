@@ -142,7 +142,7 @@ const mockSectors: Sector[] = [
   }
 ];
 
-export default function UsuariosPage() {
+const UsuariosPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -817,4 +817,6 @@ export default function UsuariosPage() {
       </Tabs>
     </div>
   );
-}
+};
+
+export default UsuariosPage;
