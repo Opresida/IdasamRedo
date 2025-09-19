@@ -86,7 +86,11 @@ export default function DashboardFinanceiroPage() {
   const [isNewTransactionOpen, setIsNewTransactionOpen] = useState(false);
   const [isNewAccountOpen, setIsNewAccountOpen] = useState(false);
   const [isNewSupplierOpen, setIsNewSupplierOpen] = useState(false);
+  const [isEditSupplierOpen, setIsEditSupplierOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState(null);
   const [isNewDonorOpen, setIsNewDonorOpen] = useState(false);
+  const [isEditDonorOpen, setIsEditDonorOpen] = useState(false);
+  const [editingDonor, setEditingDonor] = useState(null);
   const [isNewCategoryOpen, setIsNewCategoryOpen] = useState(false);
   const [isEditTransactionOpen, setIsEditTransactionOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
@@ -145,7 +149,21 @@ export default function DashboardFinanceiroPage() {
     pix: ''
   });
 
+  const [editSupplier, setEditSupplier] = useState({
+    name: '',
+    document: '',
+    contact: '',
+    pix: ''
+  });
+
   const [newDonor, setNewDonor] = useState({
+    name: '',
+    document: '',
+    contact: '',
+    pix: ''
+  });
+
+  const [editDonor, setEditDonor] = useState({
     name: '',
     document: '',
     contact: '',
@@ -401,6 +419,68 @@ export default function DashboardFinanceiroPage() {
       isPublic: false,
       document: null
     });
+  };
+
+  const handleEditSupplier = (supplier) => {
+    setEditingSupplier(supplier);
+    setEditSupplier({
+      name: supplier.name,
+      document: supplier.document,
+      contact: supplier.contact,
+      pix: supplier.pix,
+    });
+    setIsEditSupplierOpen(true);
+  };
+
+  const handleUpdateSupplier = () => {
+    if (!editingSupplier) return;
+
+    const updatedSupplier = {
+      ...editingSupplier,
+      name: editSupplier.name,
+      document: editSupplier.document,
+      contact: editSupplier.contact,
+      pix: editSupplier.pix,
+    };
+
+    setSuppliers(suppliers.map(s =>
+      s.id === editingSupplier.id ? updatedSupplier : s
+    ));
+
+    setIsEditSupplierOpen(false);
+    setEditingSupplier(null);
+    setEditSupplier({ name: '', document: '', contact: '', pix: '' });
+  };
+
+  const handleEditDonor = (donor) => {
+    setEditingDonor(donor);
+    setEditDonor({
+      name: donor.name,
+      document: donor.document,
+      contact: donor.contact,
+      pix: donor.pix,
+    });
+    setIsEditDonorOpen(true);
+  };
+
+  const handleUpdateDonor = () => {
+    if (!editingDonor) return;
+
+    const updatedDonor = {
+      ...editingDonor,
+      name: editDonor.name,
+      document: editDonor.document,
+      contact: editDonor.contact,
+      pix: editDonor.pix,
+    };
+
+    setDonors(donors.map(d =>
+      d.id === editingDonor.id ? updatedDonor : d
+    ));
+
+    setIsEditDonorOpen(false);
+    setEditingDonor(null);
+    setEditDonor({ name: '', document: '', contact: '', pix: '' });
   };
 
   // Drag and drop handler
@@ -1571,6 +1651,55 @@ export default function DashboardFinanceiroPage() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                <Dialog open={isEditSupplierOpen} onOpenChange={setIsEditSupplierOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Editar Fornecedor</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Nome/Razão Social</Label>
+                        <Input
+                          placeholder="Nome do fornecedor"
+                          value={editSupplier.name}
+                          onChange={(e) => setEditSupplier({...editSupplier, name: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>CNPJ/CPF</Label>
+                        <Input
+                          placeholder="00.000.000/0000-00"
+                          value={editSupplier.document}
+                          onChange={(e) => setEditSupplier({...editSupplier, document: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Contato</Label>
+                        <Input
+                          placeholder="(11) 99999-9999"
+                          value={editSupplier.contact}
+                          onChange={(e) => setEditSupplier({...editSupplier, contact: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>PIX</Label>
+                        <Input
+                          placeholder="Chave PIX"
+                          value={editSupplier.pix}
+                          onChange={(e) => setEditSupplier({...editSupplier, pix: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setIsEditSupplierOpen(false)} className="flex-1">
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleUpdateSupplier} className="flex-1">
+                        Salvar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               <Card>
@@ -1597,10 +1726,7 @@ export default function DashboardFinanceiroPage() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => {
-                                  // Implementar edição de fornecedor
-                                  alert('Funcionalidade de edição será implementada em breve');
-                                }}
+                                onClick={() => handleEditSupplier(supplier)}
                                 title="Editar fornecedor"
                               >
                                 <Edit className="h-4 w-4" />
@@ -1687,6 +1813,55 @@ export default function DashboardFinanceiroPage() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                <Dialog open={isEditDonorOpen} onOpenChange={setIsEditDonorOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Editar Doador</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Nome</Label>
+                        <Input
+                          placeholder="Nome do doador"
+                          value={editDonor.name}
+                          onChange={(e) => setEditDonor({...editDonor, name: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>CPF</Label>
+                        <Input
+                          placeholder="000.000.000-00"
+                          value={editDonor.document}
+                          onChange={(e) => setEditDonor({...editDonor, document: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Contato</Label>
+                        <Input
+                          placeholder="(11) 99999-9999"
+                          value={editDonor.contact}
+                          onChange={(e) => setEditDonor({...editDonor, contact: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>PIX</Label>
+                        <Input
+                          placeholder="Chave PIX"
+                          value={editDonor.pix}
+                          onChange={(e) => setEditDonor({...editDonor, pix: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setIsEditDonorOpen(false)} className="flex-1">
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleUpdateDonor} className="flex-1">
+                        Salvar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               <Card>
@@ -1713,10 +1888,7 @@ export default function DashboardFinanceiroPage() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => {
-                                  // Implementar edição de doador
-                                  alert('Funcionalidade de edição será implementada em breve');
-                                }}
+                                onClick={() => handleEditDonor(donor)}
                                 title="Editar doador"
                               >
                                 <Edit className="h-4 w-4" />
