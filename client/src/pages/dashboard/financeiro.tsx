@@ -633,6 +633,113 @@ export default function DashboardFinanceiroPage() {
     alert(`✅ Exportação concluída!\n\n📊 ${filteredTransactions.length} transações exportadas\n📁 Arquivo: ${fileName}`);
   };
 
+  const handleExportReport = () => {
+    // Função para escapar caracteres especiais no CSV
+    const escapeCsvField = (field) => {
+      if (field === null || field === undefined) return '';
+      const stringField = String(field);
+      // Escapar aspas duplas duplicando-as
+      const escapedField = stringField.replace(/"/g, '""');
+      // Envolver em aspas se contém vírgula, quebra de linha ou aspas
+      if (stringField.includes(',') || stringField.includes('\n') || stringField.includes('"')) {
+        return `"${escapedField}"`;
+      }
+      return escapedField;
+    };
+
+    // Criar conteúdo CSV estruturado
+    const csvRows = [];
+
+    // Adicionar título do relatório
+    csvRows.push('RELATÓRIO FINANCEIRO - IDASAM');
+    csvRows.push(`Período: ${format(new Date(), 'dd/MM/yyyy')}`);
+    csvRows.push(''); // Linha vazia
+
+    // Seção: Resumo Geral
+    csvRows.push('RESUMO GERAL');
+    csvRows.push('Descrição,Valor (R$)');
+    csvRows.push(`"Total de Receitas","${totalReceitas.toFixed(2).replace('.', ',')}"`);
+    csvRows.push(`"Total de Despesas","${totalDespesas.toFixed(2).replace('.', ',')}"`);
+    csvRows.push(`"Saldo Atual","${saldoAtual.toFixed(2).replace('.', ',')}"`);
+    csvRows.push(''); // Linha vazia
+
+    // Seção: Despesas por Categoria
+    csvRows.push('DESPESAS POR CATEGORIA');
+    csvRows.push('Categoria,Valor (R$),Porcentagem (%)');
+    
+    categories.filter(cat => cat.type === 'expense' || cat.type === 'both').forEach((category) => {
+      const categoryTotal = transactions
+        .filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Pago')
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const percentage = totalDespesas > 0 ? (categoryTotal / totalDespesas) * 100 : 0;
+
+      csvRows.push(`"${escapeCsvField(category.name)}","${categoryTotal.toFixed(2).replace('.', ',')}","${percentage.toFixed(1).replace('.', ',')}%"`);
+    });
+
+    csvRows.push(''); // Linha vazia
+
+    // Seção: Contas Bancárias
+    csvRows.push('SALDOS POR CONTA BANCÁRIA');
+    csvRows.push('Conta,Banco,Saldo (R$)');
+    
+    accounts.forEach(account => {
+      const saldoConta = getAccountBalance(account.name);
+      csvRows.push(`"${escapeCsvField(account.name)}","${escapeCsvField(account.bank)}","${saldoConta.toFixed(2).replace('.', ',')}"`);
+    });
+
+    csvRows.push(''); // Linha vazia
+
+    // Seção: Últimas Transações
+    csvRows.push('ÚLTIMAS 10 TRANSAÇÕES');
+    csvRows.push('Data,Descrição,Tipo,Valor (R$),Conta,Categoria,Status');
+    
+    const ultimasTransacoes = filteredTransactions.slice(0, 10);
+    ultimasTransacoes.forEach(transaction => {
+      const valorFormatado = Math.abs(transaction.amount).toFixed(2).replace('.', ',');
+      const sinalValor = transaction.type === 'Receita' ? '+' : '-';
+      
+      csvRows.push([
+        `"${format(new Date(transaction.date), 'dd/MM/yyyy')}"`,
+        `"${escapeCsvField(transaction.description)}"`,
+        `"${escapeCsvField(transaction.type)}"`,
+        `"${sinalValor}${valorFormatado}"`,
+        `"${escapeCsvField(transaction.account)}"`,
+        `"${escapeCsvField(transaction.category)}"`,
+        `"${escapeCsvField(transaction.status)}"`
+      ].join(','));
+    });
+
+    csvRows.push(''); // Linha vazia
+    csvRows.push(`"Relatório gerado em:","${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}"`);
+
+    // Adicionar BOM para UTF-8 (melhora compatibilidade com Excel)
+    const csvContent = '\uFEFF' + csvRows.join('\n');
+
+    // Criar arquivo e fazer download
+    const blob = new Blob([csvContent], { 
+      type: 'text/csv;charset=utf-8;' 
+    });
+
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    const fileName = `relatorio_financeiro_${format(new Date(), 'dd-MM-yyyy_HH-mm')}.csv`;
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Limpar URL
+    URL.revokeObjectURL(url);
+
+    // Feedback para o usuário
+    alert(`✅ Relatório exportado com sucesso!\n\n📊 Resumo financeiro completo\n📁 Arquivo: ${fileName}`);
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -1934,7 +2041,7 @@ export default function DashboardFinanceiroPage() {
                   <SelectItem value="personalizado">Período Customizado</SelectItem>
                 </SelectContent>
               </Select>
-              <Button>
+              <Button onClick={handleExportReport}>
                 <Download className="h-4 w-4 mr-2" />
                 Exportar Relatório
               </Button>
