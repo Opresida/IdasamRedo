@@ -978,7 +978,6 @@ export default function DashboardFinanceiroPage() {
                           <SelectValue placeholder="Todos os tipos" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos os tipos</SelectItem>
                           <SelectItem value="Receita">Receita</SelectItem>
                           <SelectItem value="Despesa">Despesa</SelectItem>
                         </SelectContent>
@@ -992,7 +991,6 @@ export default function DashboardFinanceiroPage() {
                           <SelectValue placeholder="Todos os status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos os status</SelectItem>
                           <SelectItem value="Pendente">Pendente</SelectItem>
                           <SelectItem value="Pago">Pago</SelectItem>
                           <SelectItem value="A Vencer">A Vencer</SelectItem>
@@ -1007,7 +1005,6 @@ export default function DashboardFinanceiroPage() {
                           <SelectValue placeholder="Todas as contas" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todas as contas</SelectItem>
                           {accounts.map(account => (
                             <SelectItem key={account.id} value={account.name}>{account.name}</SelectItem>
                           ))}
@@ -1022,7 +1019,6 @@ export default function DashboardFinanceiroPage() {
                           <SelectValue placeholder="Todas as categorias" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todas as categorias</SelectItem>
                           {categories.map(category => (
                             <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
                           ))}
@@ -1037,7 +1033,6 @@ export default function DashboardFinanceiroPage() {
                           <SelectValue placeholder="Todos os projetos" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos os projetos</SelectItem>
                           {mockProjects.map(project => (
                             <SelectItem key={project.id} value={project.name}>{project.name}</SelectItem>
                           ))}
