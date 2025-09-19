@@ -557,9 +557,9 @@ export default function DashboardFinanceiroPage() {
     // Preparar dados para exportação
     const csvRows = [];
     
-    // Cabeçalho - sempre com vírgula como delimitador
+    // Cabeçalho - sempre com ponto e vírgula como delimitador (padrão brasileiro)
     const headers = ['Data', 'Descrição', 'Tipo', 'Valor (R$)', 'Conta Bancária', 'Categoria', 'Projeto', 'Status'];
-    csvRows.push(headers.map(header => formatCsvField(header)).join(','));
+    csvRows.push(headers.map(header => formatCsvField(header)).join(';'));
 
     // Dados das transações
     filteredTransactions.forEach(transaction => {
@@ -578,8 +578,8 @@ export default function DashboardFinanceiroPage() {
         formatCsvField(transaction.status || '')
       ];
       
-      // Usar vírgula explicitamente como delimitador
-      csvRows.push(row.join(','));
+      // Usar ponto e vírgula como delimitador (padrão brasileiro)
+      csvRows.push(row.join(';'));
     });
 
     // Adicionar BOM para UTF-8 e usar \r\n para quebras de linha (padrão CSV)
