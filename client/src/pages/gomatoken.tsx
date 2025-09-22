@@ -296,30 +296,114 @@ const NFTCards = () => {
           {nfts.map((nft, index) => (
             <Card 
               key={index}
-              className="bg-slate-800/30 border-2 border-cyan-400/30 hover:border-cyan-400/80 transition-all duration-500 hover:transform hover:-translate-y-4 hover:rotate-y-12 hover:shadow-[0_20px_60px_rgba(0,245,195,0.3)] backdrop-blur-sm relative overflow-hidden group perspective-1000"
+              className="bg-slate-800/30 border-2 border-cyan-400/30 hover:border-cyan-400/80 transition-all duration-700 backdrop-blur-sm relative overflow-hidden group cursor-pointer transform-gpu"
               style={{
                 transformStyle: 'preserve-3d',
+                perspective: '1000px',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-16px) rotateY(8deg) rotateX(5deg)';
+                const card = e.currentTarget;
+                card.style.transition = 'transform 0.3s ease-out, box-shadow 0.3s ease-out, border-color 0.3s ease-out';
+                card.style.transform = 'translateY(-20px) rotateX(8deg) rotateY(12deg) scale(1.05)';
+                card.style.boxShadow = `
+                  0 25px 80px rgba(0,245,195,0.4),
+                  0 15px 40px rgba(74,222,128,0.3),
+                  0 5px 20px rgba(168,85,247,0.2),
+                  inset 0 1px 0 rgba(255,255,255,0.1)
+                `;
+                
+                // Ativar efeito de brilho interno
+                const glowOverlay = card.querySelector('.glow-overlay') as HTMLElement;
+                if (glowOverlay) {
+                  glowOverlay.style.opacity = '0.6';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0) rotateY(0deg) rotateX(0deg)';
+                const card = e.currentTarget;
+                card.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.6s ease-out, border-color 0.6s ease-out';
+                card.style.transform = 'translateY(0) rotateX(0deg) rotateY(0deg) scale(1)';
+                card.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+                
+                // Desativar efeito de brilho interno
+                const glowOverlay = card.querySelector('.glow-overlay') as HTMLElement;
+                if (glowOverlay) {
+                  glowOverlay.style.opacity = '0';
+                }
               }}
               onMouseMove={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
+                const card = e.currentTarget;
+                const rect = card.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
                 const centerX = rect.width / 2;
                 const centerY = rect.height / 2;
-                const rotateX = (y - centerY) / 10;
-                const rotateY = (centerX - x) / 10;
                 
-                e.currentTarget.style.transform = `translateY(-16px) rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
+                // Cálculo mais suave e responsivo
+                const rotateX = ((y - centerY) / centerY) * 15; // Máximo 15 graus
+                const rotateY = ((centerX - x) / centerX) * 15; // Máximo 15 graus
+                
+                // Efeito de profundidade baseado na distância do centro
+                const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                const maxDistance = Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerY, 2));
+                const intensity = 1 - (distance / maxDistance);
+                const scale = 1.05 + (intensity * 0.05);
+                
+                card.style.transform = `
+                  translateY(-20px) 
+                  rotateX(${rotateX}deg) 
+                  rotateY(${rotateY}deg) 
+                  scale(${scale})
+                  translateZ(${intensity * 10}px)
+                `;
+                
+                // Atualizar posição do gradiente de brilho
+                const glowOverlay = card.querySelector('.glow-overlay') as HTMLElement;
+                if (glowOverlay) {
+                  const gradientX = (x / rect.width) * 100;
+                  const gradientY = (y / rect.height) * 100;
+                  glowOverlay.style.background = `
+                    radial-gradient(circle at ${gradientX}% ${gradientY}%, 
+                      rgba(0,245,195,0.3) 0%, 
+                      rgba(74,222,128,0.2) 30%, 
+                      rgba(168,85,247,0.1) 60%, 
+                      transparent 100%
+                    )
+                  `;
+                }
               }}
             >
               {/* Animated background effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 to-green-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              {/* Interactive glow overlay */}
+              <div 
+                className="glow-overlay absolute inset-0 pointer-events-none transition-opacity duration-300"
+                style={{
+                  opacity: 0,
+                  background: `radial-gradient(circle at 50% 50%, 
+                    rgba(0,245,195,0.3) 0%, 
+                    rgba(74,222,128,0.2) 30%, 
+                    rgba(168,85,247,0.1) 60%, 
+                    transparent 100%
+                  )`
+                }}
+              />
+              
+              {/* Floating particles on hover */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                {[...Array(12)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute w-1 h-1 bg-cyan-400 rounded-full animate-float-particle"
+                    style={{
+                      left: `${10 + (i * 7)}%`,
+                      top: `${10 + (i * 6)}%`,
+                      animationDelay: `${i * 0.2}s`,
+                      animationDuration: `${2 + (i * 0.3)}s`
+                    }}
+                  />
+                ))}
+              </div>
               
               <CardHeader className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
@@ -331,38 +415,101 @@ const NFTCards = () => {
                   </div>
                 </div>
                 
-                {/* NFT Image with Holographic Effect */}
-                <div className="mb-6 relative overflow-hidden rounded-xl group-hover:shadow-[0_0_30px_rgba(0,245,195,0.5)]">
+                {/* NFT Image with Advanced Holographic Effect */}
+                <div className="mb-6 relative overflow-hidden rounded-xl group-hover:shadow-[0_0_40px_rgba(0,245,195,0.6)] transition-all duration-700">
                   <img 
                     src={nft.image} 
                     alt={nft.title}
-                    className="w-full h-48 object-cover transition-all duration-500 group-hover:scale-110"
+                    className="w-full h-48 object-cover transition-all duration-700 group-hover:scale-115 group-hover:brightness-110"
                     loading="lazy"
                     style={{
                       filter: 'contrast(1.1) saturate(1.2)',
+                      transformOrigin: 'center center',
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent transition-opacity duration-700 group-hover:from-slate-900/40" />
                   
-                  {/* Holographic overlay */}
+                  {/* Enhanced Holographic overlay */}
                   <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none"
+                    className="absolute inset-0 opacity-0 group-hover:opacity-60 transition-all duration-700 pointer-events-none"
                     style={{
-                      background: 'linear-gradient(45deg, transparent 30%, rgba(0,245,195,0.1) 40%, rgba(74,222,128,0.1) 50%, rgba(168,85,247,0.1) 60%, transparent 70%)',
-                      backgroundSize: '200% 200%',
-                      animation: 'holographic 3s ease-in-out infinite'
+                      background: `
+                        linear-gradient(45deg, 
+                          transparent 20%, 
+                          rgba(0,245,195,0.15) 25%, 
+                          rgba(74,222,128,0.15) 35%, 
+                          rgba(168,85,247,0.15) 45%, 
+                          rgba(59,130,246,0.15) 55%,
+                          rgba(236,72,153,0.15) 65%,
+                          transparent 80%
+                        ),
+                        linear-gradient(135deg, 
+                          transparent 30%, 
+                          rgba(0,245,195,0.1) 50%, 
+                          transparent 70%
+                        )
+                      `,
+                      backgroundSize: '300% 300%, 200% 200%',
+                      animation: 'holographic 2.5s ease-in-out infinite, shimmer 4s ease-in-out infinite'
                     }}
                   />
                   
-                  {/* Rainbow reflection */}
+                  {/* Advanced Rainbow reflection */}
                   <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-700"
+                    className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-1000"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255,0,150,0.2), rgba(0,255,255,0.2), rgba(255,255,0,0.2), rgba(255,0,150,0.2))',
-                      backgroundSize: '400% 400%',
-                      animation: 'rainbow-shift 4s ease-in-out infinite'
+                      background: `
+                        conic-gradient(from 0deg at 50% 50%, 
+                          rgba(255,0,150,0.2) 0deg, 
+                          rgba(0,255,255,0.2) 60deg, 
+                          rgba(255,255,0,0.2) 120deg, 
+                          rgba(150,0,255,0.2) 180deg,
+                          rgba(255,150,0,0.2) 240deg,
+                          rgba(0,255,150,0.2) 300deg,
+                          rgba(255,0,150,0.2) 360deg
+                        )
+                      `,
+                      animation: 'rainbow-spin 6s linear infinite'
                     }}
                   />
+                  
+                  {/* Prismatic light streaks */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-40 transition-opacity duration-500">
+                    <div 
+                      className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+                      style={{
+                        animation: 'light-sweep 3s ease-in-out infinite',
+                        animationDelay: '0s'
+                      }}
+                    />
+                    <div 
+                      className="absolute bottom-0 right-0 w-full h-0.5 bg-gradient-to-r from-transparent via-purple-400 to-transparent"
+                      style={{
+                        animation: 'light-sweep-reverse 3s ease-in-out infinite',
+                        animationDelay: '1.5s'
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Floating light orbs */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-70 transition-opacity duration-700 pointer-events-none">
+                    {[...Array(6)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute w-2 h-2 rounded-full"
+                        style={{
+                          background: `radial-gradient(circle, ${
+                            ['rgba(0,245,195,0.8)', 'rgba(74,222,128,0.8)', 'rgba(168,85,247,0.8)', 
+                             'rgba(59,130,246,0.8)', 'rgba(236,72,153,0.8)', 'rgba(251,191,36,0.8)'][i]
+                          } 0%, transparent 70%)`,
+                          left: `${15 + (i * 12)}%`,
+                          top: `${20 + (i * 10)}%`,
+                          animation: `float-orb ${2 + (i * 0.5)}s ease-in-out infinite`,
+                          animationDelay: `${i * 0.3}s`
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
                 
                 <CardTitle className="text-2xl font-['Orbitron'] text-white mb-2">
@@ -579,8 +726,16 @@ export default function GomaTokenPage() {
         
         @keyframes holographic {
           0% { background-position: 0% 0%; }
+          25% { background-position: 100% 0%; }
           50% { background-position: 100% 100%; }
+          75% { background-position: 0% 100%; }
           100% { background-position: 0% 0%; }
+        }
+        
+        @keyframes shimmer {
+          0% { background-position: 0% 0%, 0% 0%; }
+          50% { background-position: 100% 100%, 100% 100%; }
+          100% { background-position: 0% 0%, 0% 0%; }
         }
         
         @keyframes rainbow-shift {
@@ -591,6 +746,12 @@ export default function GomaTokenPage() {
           100% { background-position: 0% 50%; }
         }
         
+        @keyframes rainbow-spin {
+          0% { transform: rotate(0deg) scale(1); }
+          50% { transform: rotate(180deg) scale(1.1); }
+          100% { transform: rotate(360deg) scale(1); }
+        }
+        
         @keyframes card-float {
           0%, 100% { 
             transform: translateY(0px) rotateY(0deg);
@@ -599,6 +760,69 @@ export default function GomaTokenPage() {
           50% { 
             transform: translateY(-8px) rotateY(2deg);
             box-shadow: 0 20px 50px rgba(0,245,195,0.2);
+          }
+        }
+        
+        @keyframes float-particle {
+          0% { 
+            transform: translateY(0px) translateX(0px) scale(0); 
+            opacity: 0;
+          }
+          20% { 
+            opacity: 1; 
+            scale: 1;
+          }
+          80% { 
+            opacity: 1; 
+          }
+          100% { 
+            transform: translateY(-20px) translateX(10px) scale(0); 
+            opacity: 0;
+          }
+        }
+        
+        @keyframes light-sweep {
+          0% { 
+            transform: translateX(-100%) scaleX(0); 
+            opacity: 0;
+          }
+          50% { 
+            transform: translateX(0%) scaleX(1); 
+            opacity: 1;
+          }
+          100% { 
+            transform: translateX(100%) scaleX(0); 
+            opacity: 0;
+          }
+        }
+        
+        @keyframes light-sweep-reverse {
+          0% { 
+            transform: translateX(100%) scaleX(0); 
+            opacity: 0;
+          }
+          50% { 
+            transform: translateX(0%) scaleX(1); 
+            opacity: 1;
+          }
+          100% { 
+            transform: translateX(-100%) scaleX(0); 
+            opacity: 0;
+          }
+        }
+        
+        @keyframes float-orb {
+          0%, 100% { 
+            transform: translateY(0px) translateX(0px) scale(0.8);
+            opacity: 0.6;
+          }
+          33% { 
+            transform: translateY(-10px) translateX(5px) scale(1.2);
+            opacity: 1;
+          }
+          66% { 
+            transform: translateY(-5px) translateX(-5px) scale(1);
+            opacity: 0.8;
           }
         }
         
