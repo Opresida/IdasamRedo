@@ -864,14 +864,14 @@ export default function GomaTokenPage() {
             ) : (
               <Button 
                 variant="outline" 
-                className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10"
+                className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300"
                 onClick={() => setIsWalletModalOpen(true)}
               >
                 <Wallet className="w-4 h-4 mr-2" />
                 Connect Wallet
               </Button>
             )}
-            <Button variant="outline" className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10">
+            <Button variant="outline" className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300">
               <a href="#nfts">Comprar NFT</a>
             </Button>
             <Link href="/">
@@ -942,9 +942,9 @@ export default function GomaTokenPage() {
             <Button 
               size="lg" 
               variant="outline" 
-              className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 text-lg px-8 py-4"
+              className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 text-lg px-8 py-4"
             >
-              <a href="#ciclo-virtuoso">Entender o Projeto</a>
+              <a href="#ciclo-virtuoso">Leia o WhitePaper</a>
             </Button>
           </div>
         </div>
