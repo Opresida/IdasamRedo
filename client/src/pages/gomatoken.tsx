@@ -839,7 +839,7 @@ export default function GomaTokenPage() {
       // Open Graph
       { property: 'og:title', content: 'Token $GOMA - Lançamento Oficial | Projeto Curupira' },
       { property: 'og:description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira. Uma revolução sustentável que conecta Web3 e preservação ambiental. Junte-se ao futuro descentralizado da bioeconomia amazônica.' },
-      { property: 'og:image', content: 'https://i.imgur.com/8egOLPo.png' },
+      { property: 'og:image', content: `${window.location.origin}/og-gomatoken.png` },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
       { property: 'og:image:alt', content: 'Token $GOMA - Projeto Curupira - NFTs Amazônia' },
@@ -853,23 +853,23 @@ export default function GomaTokenPage() {
       { name: 'twitter:creator', content: '@institutoidasam' },
       { name: 'twitter:title', content: 'Token $GOMA - Lançamento Oficial | Projeto Curupira' },
       { name: 'twitter:description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira. Uma revolução sustentável que conecta Web3 e preservação ambiental.' },
-      { name: 'twitter:image', content: 'https://i.imgur.com/8egOLPo.png' },
+      { name: 'twitter:image', content: `${window.location.origin}/og-gomatoken.png` },
       { name: 'twitter:image:alt', content: 'Token $GOMA - Projeto Curupira - NFTs Amazônia' },
       
       // LinkedIn
       { property: 'linkedin:title', content: 'Token $GOMA - Lançamento Oficial | Projeto Curupira' },
       { property: 'linkedin:description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira. Revolução sustentável Web3 + preservação ambiental.' },
-      { property: 'linkedin:image', content: 'https://i.imgur.com/8egOLPo.png' },
+      { property: 'linkedin:image', content: `${window.location.origin}/og-gomatoken.png` },
       
       // WhatsApp
       { property: 'whatsapp:title', content: 'Token $GOMA - Projeto Curupira' },
       { property: 'whatsapp:description', content: 'NFTs que conectam Web3 e preservação da Amazônia 🌳' },
-      { property: 'whatsapp:image', content: 'https://i.imgur.com/8egOLPo.png' },
+      { property: 'whatsapp:image', content: `${window.location.origin}/og-gomatoken.png` },
       
       // Discord
       { property: 'discord:title', content: 'Token $GOMA - Lançamento Oficial' },
       { property: 'discord:description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira 🚀' },
-      { property: 'discord:image', content: 'https://i.imgur.com/8egOLPo.png' },
+      { property: 'discord:image', content: `${window.location.origin}/og-gomatoken.png` },
       
       // General Meta Tags
       { name: 'description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira. Uma revolução sustentável que conecta Web3 e preservação ambiental no Projeto Curupira.' },

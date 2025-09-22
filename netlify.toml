@@ -20,6 +20,19 @@
   bundle = true
   minify = true
 
+# Headers para imagens Open Graph
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+    Access-Control-Allow-Origin = "*"
+
 # Headers para segurança
 [[headers]]
   for = "/*"
