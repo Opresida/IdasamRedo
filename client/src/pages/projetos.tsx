@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { X, ExternalLink, QrCode, Copy, Check } from 'lucide-react';
-import FloatingNavbar from '@/components/floating-navbar';
-import WhatsAppFloat from '@/components/whatsapp-float';
-import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
-import GlobeFeatureSection from '@/components/ui/globe-feature-section';
-import Floating, { FloatingElement } from '@/components/ui/parallax-floating';
-import ContactForm from '@/components/contact-form';
+import FloatingNavbar from '../components/floating-navbar';
+import WhatsAppFloat from '../components/whatsapp-float';
+import ShadcnblocksComFooter2 from '../components/shadcnblocks-com-footer2';
+import GlobeFeatureSection from '../components/ui/globe-feature-section';
+import Floating, { FloatingElement } from '../components/ui/parallax-floating';
+import ContactForm from '../components/contact-form';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '../components/ui/dialog';
 
 // Definição dos tipos
 interface Project {

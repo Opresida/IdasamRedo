@@ -1,16 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import { Menu, X, Heart, DollarSign } from 'lucide-react';
-import { Component as LumaSpin } from "@/components/ui/luma-spin"; // Import the LumaSpin component
+import { Component as LumaSpin } from "./ui/luma-spin"; // Import the LumaSpin component
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from './ui/dialog';
 import { Link } from 'wouter'; // Import Link for navigation
 
 interface NavItem {

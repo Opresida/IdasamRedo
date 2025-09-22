@@ -1,14 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Separator } from '../components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { ScrollArea } from '../components/ui/scroll-area';
 import {
   Calendar,
   Clock,
@@ -26,10 +26,10 @@ import {
   ArrowRight,
   ExternalLink
 } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
-import { useAnalytics } from '@/hooks/use-analytics';
-import CommentThread from '@/components/comment-thread';
-import SocialReactions from '@/components/social-reactions';
+import { formatDate } from '../lib/utils';
+import { useAnalytics } from '../hooks/use-analytics';
+import CommentThread from '../components/comment-thread';
+import SocialReactions from '../components/social-reactions';
 
 // Interfaces
 interface Article {
