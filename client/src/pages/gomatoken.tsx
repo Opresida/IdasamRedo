@@ -167,29 +167,29 @@ const NFTCollectionStatus = () => {
   }, []);
 
   return (
-    <div className="fixed top-6 right-6 z-30">
-      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm min-w-[240px]">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-gradient-to-r from-cyan-400 to-green-400 rounded-full animate-pulse" />
-              <span className="text-white font-semibold font-['Orbitron']">Curupira NFT</span>
+    <div className="fixed top-4 lg:top-6 right-4 lg:right-6 z-30">
+      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm w-[200px] lg:min-w-[240px]">
+        <CardContent className="p-3 lg:p-4">
+          <div className="flex items-center justify-between mb-2 lg:mb-3">
+            <div className="flex items-center gap-1 lg:gap-2">
+              <div className="w-2 h-2 lg:w-3 lg:h-3 bg-gradient-to-r from-cyan-400 to-green-400 rounded-full animate-pulse" />
+              <span className="text-white font-semibold font-['Orbitron'] text-xs lg:text-sm">Curupira NFT</span>
             </div>
             <div className="flex items-center gap-1">
-              <Wifi className="w-3 h-3 text-green-400" />
+              <Wifi className="w-2 h-2 lg:w-3 lg:h-3 text-green-400" />
               <span className="text-xs text-green-400">Live</span>
             </div>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1 lg:space-y-2">
             <div className="flex justify-between">
               <span className="text-xs text-slate-400">Vendidos:</span>
-              <span className="text-sm font-bold text-cyan-400">{totalMinted}/500</span>
+              <span className="text-xs lg:text-sm font-bold text-cyan-400">{totalMinted}/500</span>
             </div>
             
             <div className="flex justify-between">
               <span className="text-xs text-slate-400">Preço Mínimo:</span>
-              <span className="text-sm font-bold text-green-400">{floorPrice.toFixed(2)} ETH</span>
+              <span className="text-xs lg:text-sm font-bold text-green-400">{floorPrice.toFixed(2)} ETH</span>
             </div>
             
             <div className="flex justify-between">
@@ -224,39 +224,39 @@ const LiveVisitorsCounter = () => {
   }, []);
 
   return (
-    <div className="fixed bottom-6 left-6 z-30">
-      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm min-w-[280px]">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-cyan-400" />
-            <CardTitle className="text-sm font-['Orbitron'] text-white">Atividade em Tempo Real</CardTitle>
+    <div className="fixed bottom-4 lg:bottom-6 left-4 lg:left-6 z-30">
+      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm w-[240px] lg:min-w-[280px]">
+        <CardHeader className="pb-2 lg:pb-3">
+          <div className="flex items-center gap-1 lg:gap-2">
+            <Users className="w-3 h-3 lg:w-4 lg:h-4 text-cyan-400" />
+            <CardTitle className="text-xs lg:text-sm font-['Orbitron'] text-white">Atividade em Tempo Real</CardTitle>
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse ml-auto" />
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2 lg:space-y-3">
           <div className="flex items-center justify-between p-2 rounded bg-slate-700/50">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 lg:gap-2">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
               <span className="text-xs text-slate-300">Visitantes Online</span>
             </div>
-            <div className="text-sm font-semibold text-green-400">
+            <div className="text-xs lg:text-sm font-semibold text-green-400">
               {visitors}
             </div>
           </div>
           
           <div className="flex items-center justify-between p-2 rounded bg-slate-700/50">
-            <div className="flex items-center gap-2">
-              <Crown className="w-3 h-3 text-purple-400" />
+            <div className="flex items-center gap-1 lg:gap-2">
+              <Crown className="w-2 h-2 lg:w-3 lg:h-3 text-purple-400" />
               <span className="text-xs text-slate-300">NFTs Vendidos Hoje</span>
             </div>
-            <div className="text-sm font-semibold text-purple-400">
+            <div className="text-xs lg:text-sm font-semibold text-purple-400">
               {nftSales}
             </div>
           </div>
           
           <div className="flex items-center justify-between p-2 rounded bg-slate-700/50">
-            <div className="flex items-center gap-2">
-              <TreePine className="w-3 h-3 text-cyan-400" />
+            <div className="flex items-center gap-1 lg:gap-2">
+              <TreePine className="w-2 h-2 lg:w-3 lg:h-3 text-cyan-400" />
               <span className="text-xs text-slate-300">Projeto Ativo</span>
             </div>
             <div className="text-xs text-cyan-400 font-semibold">
@@ -375,45 +375,45 @@ const CicloVirtuoso = () => {
       id: 1,
       title: 'Produção Real',
       description: 'Venda da goma de tapioca pelos agricultores familiares',
-      icon: <Leaf className="w-8 h-8" />,
+      icon: <Leaf className="w-6 h-6 lg:w-8 lg:h-8" />,
       color: 'from-green-400 to-emerald-500'
     },
     {
       id: 2,
       title: 'Lucro Líquido',
       description: '10% do lucro destinado ao fundo do token',
-      icon: <Coins className="w-8 h-8" />,
+      icon: <Coins className="w-6 h-6 lg:w-8 lg:h-8" />,
       color: 'from-yellow-400 to-orange-500'
     },
     {
       id: 3,
       title: 'Recompra',
       description: 'Compra de tokens $GOMA no mercado secundário',
-      icon: <Target className="w-8 h-8" />,
+      icon: <Target className="w-6 h-6 lg:w-8 lg:h-8" />,
       color: 'from-blue-400 to-cyan-500'
     },
     {
       id: 4,
       title: 'Valorização',
       description: 'Pressão de compra e queima aumentam o valor',
-      icon: <TrendingUp className="w-8 h-8" />,
+      icon: <TrendingUp className="w-6 h-6 lg:w-8 lg:h-8" />,
       color: 'from-purple-400 to-pink-500'
     }
   ];
 
   return (
-    <section className="py-20 px-4" id="ciclo-virtuoso">
+    <section className="py-12 lg:py-20 px-4" id="ciclo-virtuoso">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4 drop-shadow-lg">
+        <div className="text-center mb-8 lg:mb-16">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-['Orbitron'] text-white mb-3 lg:mb-4 drop-shadow-lg">
             Entenda o <span className="text-cyan-300 font-black bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-400/30">Ciclo Virtuoso</span>
           </h2>
-          <p className="text-xl text-gray-100 font-semibold max-w-3xl mx-auto drop-shadow-md bg-slate-800/20 px-6 py-3 rounded-lg border border-slate-600/30">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-100 font-semibold max-w-3xl mx-auto drop-shadow-md bg-slate-800/20 px-4 lg:px-6 py-2 lg:py-3 rounded-lg border border-slate-600/30">
             Uma economia circular que conecta a produção real com o valor digital
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 relative">
           {/* Connecting lines */}
           <div className="hidden lg:block absolute top-1/2 left-0 w-full h-px">
             <div className="w-full h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse" />
@@ -421,24 +421,24 @@ const CicloVirtuoso = () => {
 
           {steps.map((step, index) => (
             <div key={step.id} className="relative">
-              <Card className="bg-slate-800/50 border-cyan-400/30 hover:border-cyan-400/60 transition-all duration-300 hover:transform hover:-translate-y-2 backdrop-blur-sm">
-                <CardHeader className="text-center pb-4">
-                  <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${step.color} flex items-center justify-center text-slate-900`}>
+              <Card className="bg-slate-800/50 border-cyan-400/30 hover:border-cyan-400/60 transition-all duration-300 hover:transform hover:-translate-y-2 backdrop-blur-sm h-full">
+                <CardHeader className="text-center pb-3 lg:pb-4">
+                  <div className={`w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-3 lg:mb-4 rounded-full bg-gradient-to-r ${step.color} flex items-center justify-center text-slate-900`}>
                     {step.icon}
                   </div>
-                  <CardTitle className="text-white font-['Orbitron'] text-lg">
+                  <CardTitle className="text-white font-['Orbitron'] text-base lg:text-lg">
                     {step.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-300 text-center text-sm">
+                  <p className="text-slate-300 text-center text-xs lg:text-sm">
                     {step.description}
                   </p>
                 </CardContent>
               </Card>
               
               {/* Step number */}
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-gradient-to-r from-cyan-400 to-green-400 flex items-center justify-center text-slate-900 font-bold text-sm z-10">
+              <div className="absolute -top-3 lg:-top-4 left-1/2 transform -translate-x-1/2 w-6 h-6 lg:w-8 lg:h-8 rounded-full bg-gradient-to-r from-cyan-400 to-green-400 flex items-center justify-center text-slate-900 font-bold text-xs lg:text-sm z-10">
                 {step.id}
               </div>
             </div>
@@ -523,11 +523,11 @@ const NFTCards = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {nfts.map((nft, index) => (
             <Card 
               key={index}
-              className="bg-slate-800/30 border-2 border-cyan-400/30 hover:border-cyan-400/80 transition-all duration-700 backdrop-blur-sm relative overflow-hidden group cursor-pointer transform-gpu"
+              className="bg-slate-800/30 border-2 border-cyan-400/30 hover:border-cyan-400/80 transition-all duration-700 backdrop-blur-sm relative overflow-hidden group cursor-pointer transform-gpu max-w-md mx-auto lg:max-w-none"
               style={{
                 transformStyle: 'preserve-3d',
                 perspective: '1000px',
@@ -836,46 +836,50 @@ export default function GomaTokenPage() {
       <ParticleSystem count={80} tokenRain={true} className="opacity-60" />
       <GlowingBorder />
       
-      {/* Web3 Components */}
-      <NFTCollectionStatus />
-      <LiveVisitorsCounter />
+      {/* Web3 Components - Responsive positioning */}
+      <div className="hidden lg:block">
+        <NFTCollectionStatus />
+        <LiveVisitorsCounter />
+      </div>
+      
       <WalletConnectionModal 
         isOpen={isWalletModalOpen} 
         onClose={() => setIsWalletModalOpen(false)}
         onConnect={handleWalletConnect}
       />
 
-      {/* Header */}
-      <header className="relative z-20 p-6">
-        <nav className="max-w-7xl mx-auto flex justify-between items-center">
+      {/* Header - Responsive */}
+      <header className="relative z-20 p-4 lg:p-6">
+        <nav className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0">
           <div className="flex items-center gap-3">
-            <TreePine className="w-8 h-8 text-cyan-400" />
-            <span className="text-xl font-['Orbitron'] font-bold">Projeto Curupira</span>
+            <TreePine className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-400" />
+            <span className="text-lg lg:text-xl font-['Orbitron'] font-bold">Projeto Curupira</span>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4">
             {connectedWallet ? (
               <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-cyan-400/30">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-cyan-400 text-sm font-mono">
+                <span className="text-cyan-400 text-xs lg:text-sm font-mono">
                   {connectedWallet.substring(0, 6)}...{connectedWallet.substring(38)}
                 </span>
               </div>
             ) : (
               <Button 
                 variant="outline" 
-                className="border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:text-purple-300"
+                size="sm"
+                className="border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:text-purple-300 text-xs lg:text-sm"
                 onClick={() => setIsWalletModalOpen(true)}
               >
-                <Wallet className="w-4 h-4 mr-2" />
+                <Wallet className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
                 Connect Wallet
               </Button>
             )}
-            <Button variant="outline" className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300">
+            <Button variant="outline" size="sm" className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 text-xs lg:text-sm">
               <a href="#nfts">Comprar NFT</a>
             </Button>
             <Link href="/">
-              <Button className="bg-slate-800 hover:bg-slate-700">
+              <Button size="sm" className="bg-slate-800 hover:bg-slate-700 text-xs lg:text-sm">
                 Voltar ao site
               </Button>
             </Link>
@@ -883,66 +887,66 @@ export default function GomaTokenPage() {
         </nav>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative z-20 py-20 px-4" id="hero">
+      {/* Hero Section - Responsive */}
+      <section className="relative z-20 py-12 lg:py-20 px-4" id="hero">
         <div className="max-w-6xl mx-auto text-center">
           <div className="mb-8">
-            <Badge className="bg-gradient-to-r from-cyan-400 to-green-400 text-slate-900 font-semibold text-sm px-4 py-2 mb-6">
+            <Badge className="bg-gradient-to-r from-cyan-400 to-green-400 text-slate-900 font-semibold text-xs lg:text-sm px-3 lg:px-4 py-1 lg:py-2 mb-4 lg:mb-6">
               Token $GOMA - Lançamento Oficial
             </Badge>
             
-            <h1 className="text-6xl md:text-7xl font-bold font-['Orbitron'] mb-6 bg-gradient-to-r from-white via-cyan-300 to-green-400 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-['Orbitron'] mb-4 lg:mb-6 bg-gradient-to-r from-white via-cyan-300 to-green-400 bg-clip-text text-transparent">
               Seja um Patrono da Amazônia
             </h1>
             
-            <p className="text-xl md:text-2xl text-slate-300 max-w-4xl mx-auto mb-8 leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-slate-300 max-w-4xl mx-auto mb-6 lg:mb-8 leading-relaxed px-4">
               Torne-se parte da revolução sustentável da Amazônia através dos 
               <span className="text-cyan-400 font-semibold"> NFTs Curupira</span> - uma coleção exclusiva 
               que conecta <span className="text-green-400 font-semibold">Web3 e preservação ambiental</span>.
             </p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6 mb-12">
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 border border-cyan-400/30">
-              <div className="flex items-center gap-3 mb-2">
-                <Users className="w-6 h-6 text-cyan-400" />
-                <span className="text-cyan-400 font-semibold">Agricultura Familiar</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8 lg:mb-12 max-w-4xl mx-auto">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 lg:p-6 border border-cyan-400/30">
+              <div className="flex items-center gap-2 lg:gap-3 mb-2 justify-center md:justify-start">
+                <Users className="w-5 h-5 lg:w-6 lg:h-6 text-cyan-400" />
+                <span className="text-cyan-400 font-semibold text-sm lg:text-base">Agricultura Familiar</span>
               </div>
-              <p className="text-slate-300 text-sm">500+ Famílias Beneficiadas</p>
+              <p className="text-slate-300 text-xs lg:text-sm">500+ Famílias Beneficiadas</p>
             </div>
             
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 border border-green-400/30">
-              <div className="flex items-center gap-3 mb-2">
-                <Globe className="w-6 h-6 text-green-400" />
-                <span className="text-green-400 font-semibold">Economia Circular</span>
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 lg:p-6 border border-green-400/30">
+              <div className="flex items-center gap-2 lg:gap-3 mb-2 justify-center md:justify-start">
+                <Globe className="w-5 h-5 lg:w-6 lg:h-6 text-green-400" />
+                <span className="text-green-400 font-semibold text-sm lg:text-base">Economia Circular</span>
               </div>
-              <p className="text-slate-300 text-sm">100% Sustentável</p>
+              <p className="text-slate-300 text-xs lg:text-sm">100% Sustentável</p>
             </div>
             
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 border border-purple-400/30">
-              <div className="flex items-center gap-3 mb-2">
-                <Zap className="w-6 h-6 text-purple-400" />
-                <span className="text-purple-400 font-semibold">Web3 Technology</span>
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 lg:p-6 border border-purple-400/30">
+              <div className="flex items-center gap-2 lg:gap-3 mb-2 justify-center md:justify-start">
+                <Zap className="w-5 h-5 lg:w-6 lg:h-6 text-purple-400" />
+                <span className="text-purple-400 font-semibold text-sm lg:text-base">Web3 Technology</span>
               </div>
-              <p className="text-slate-300 text-sm">Blockchain Verified</p>
+              <p className="text-slate-300 text-xs lg:text-sm">Blockchain Verified</p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 justify-center items-center max-w-md sm:max-w-none mx-auto">
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-cyan-400 to-green-400 hover:from-cyan-500 hover:to-green-500 text-slate-900 font-semibold text-lg px-8 py-4"
+              className="w-full sm:w-auto bg-gradient-to-r from-cyan-400 to-green-400 hover:from-cyan-500 hover:to-green-500 text-slate-900 font-semibold text-sm lg:text-lg px-6 lg:px-8 py-3 lg:py-4"
             >
-              <a href="#nfts" className="flex items-center gap-2">
+              <a href="#nfts" className="flex items-center gap-2 justify-center">
                 Começar Jornada
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5" />
               </a>
             </Button>
             
             <Button 
               size="lg" 
               variant="outline" 
-              className="border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:text-purple-300 text-lg px-8 py-4"
+              className="w-full sm:w-auto border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:text-purple-300 text-sm lg:text-lg px-6 lg:px-8 py-3 lg:py-4"
             >
               <a href="#ciclo-virtuoso">Leia o WhitePaper</a>
             </Button>
@@ -957,31 +961,31 @@ export default function GomaTokenPage() {
       <NFTCards />
 
       {/* Twitter Follow Section */}
-      <section className="relative z-20 py-16 px-4 bg-gradient-to-r from-blue-500/20 to-sky-400/20 border-y border-cyan-400/30">
+      <section className="relative z-20 py-12 lg:py-16 px-4 bg-gradient-to-r from-blue-500/20 to-sky-400/20 border-y border-cyan-400/30">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-slate-800/70 backdrop-blur-sm rounded-2xl p-8 border border-cyan-400/30 shadow-[0_0_40px_rgba(0,245,195,0.2)]">
-            <div className="flex flex-col items-center space-y-6">
+          <div className="bg-slate-800/70 backdrop-blur-sm rounded-2xl p-6 lg:p-8 border border-cyan-400/30 shadow-[0_0_40px_rgba(0,245,195,0.2)]">
+            <div className="flex flex-col items-center space-y-4 lg:space-y-6">
               {/* Twitter Icon */}
-              <div className="w-20 h-20 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                <svg className="w-12 h-12 text-slate-900" fill="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                <svg className="w-8 h-8 lg:w-12 lg:h-12 text-slate-900" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                 </svg>
               </div>
 
               {/* Title */}
-              <h2 className="text-3xl md:text-4xl font-bold font-['Orbitron'] text-white mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-['Orbitron'] text-white mb-2 lg:mb-4">
                 Siga-nos no <span className="text-cyan-400">Twitter</span>
               </h2>
 
               {/* Description */}
-              <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              <p className="text-base sm:text-lg lg:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed px-4">
                 Acompanhe em tempo real as últimas novidades sobre desenvolvimento sustentável na Amazônia, 
                 nossos projetos inovadores e o impacto social do <span className="text-green-400 font-semibold">Token $GOMA</span>.
               </p>
 
               {/* Handle */}
-              <div className="bg-slate-700/50 rounded-lg px-6 py-3 backdrop-blur-sm border border-cyan-400/30">
-                <span className="text-cyan-400 font-mono text-lg font-semibold">@institutoidasam</span>
+              <div className="bg-slate-700/50 rounded-lg px-4 lg:px-6 py-2 lg:py-3 backdrop-blur-sm border border-cyan-400/30">
+                <span className="text-cyan-400 font-mono text-base lg:text-lg font-semibold">@institutoidasam</span>
               </div>
 
               {/* Follow Button */}
@@ -989,29 +993,29 @@ export default function GomaTokenPage() {
                 href="https://x.com/institutoidasam"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-slate-900 font-bold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center gap-2 lg:gap-3 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-slate-900 font-bold py-3 lg:py-4 px-6 lg:px-8 rounded-full text-base lg:text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl w-full sm:w-auto justify-center"
               >
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                 </svg>
                 Seguir no Twitter
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </a>
 
               {/* Stats */}
-              <div className="flex flex-col sm:flex-row gap-6 text-slate-300 text-sm">
-                <div className="flex items-center gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-6 text-slate-300 text-xs lg:text-sm w-full max-w-lg">
+                <div className="flex items-center gap-2 justify-center">
                   <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
                   <span>Atualizações em tempo real</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 justify-center">
                   <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
                   <span>Projetos e novidades</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 justify-center">
                   <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
                   <span>Token $GOMA updates</span>
                 </div>
@@ -1022,22 +1026,22 @@ export default function GomaTokenPage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-20 py-12 px-4 border-t border-slate-700">
+      <footer className="relative z-20 py-8 lg:py-12 px-4 border-t border-slate-700">
         <div className="max-w-6xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <TreePine className="w-8 h-8 text-cyan-400" />
-            <span className="text-2xl font-['Orbitron'] font-bold">Projeto Curupira</span>
+          <div className="flex items-center justify-center gap-2 lg:gap-3 mb-3 lg:mb-4">
+            <TreePine className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-400" />
+            <span className="text-lg lg:text-2xl font-['Orbitron'] font-bold">Projeto Curupira</span>
           </div>
           
-          <p className="text-slate-300 text-lg mb-6">
+          <p className="text-slate-300 text-base lg:text-lg mb-4 lg:mb-6 px-4">
             Junte-se a nós e seja uma <span className="text-green-400 font-semibold">semente da mudança</span>.
           </p>
           
-          <div className="flex justify-center gap-8 text-sm text-slate-400">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 lg:gap-8 text-xs lg:text-sm text-slate-400">
             <span>Powered by IDASAM</span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span>Blockchain Verified</span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span>Auditado & Seguro</span>
           </div>
         </div>
