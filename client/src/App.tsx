@@ -107,7 +107,7 @@ function AppContent() {
       </Switch>
       
       {/* Mostrar TelegramFloat apenas na rota /gomatoken após carregamento */}
-      {location === '/gomatoken' && !isLoading && <TelegramFloat />}
+      {location === '/gomatoken' && <TelegramFloat show={!isLoading} />}
     </PageLoader>
   );
 }
