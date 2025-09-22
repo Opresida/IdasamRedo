@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -859,7 +860,30 @@ export default function GomaTokenPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white relative overflow-x-hidden font-['Rajdhani']">
+    <>
+      <Helmet>
+        {/* --- Tags de Preview para Redes Sociais --- */}
+
+        {/* Título e Descrição Principal */}
+        <title>Token $GOMA - A Revolução Sustentável na Amazônia</title>
+        <meta name="description" content="Faça parte do futuro da bioeconomia da Amazônia. Adquira os NFTs Curupira e apoie um ecossistema que une Web3 e preservação ambiental." />
+
+        {/* Open Graph / Facebook / WhatsApp */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://URL_DO_SEU_SITE/gomatoken" />
+        <meta property="og:title" content="Token $GOMA - A Revolução Sustentável na Amazônia" />
+        <meta property="og:description" content="Faça parte do futuro da bioeconomia da Amazônia. Adquira os NFTs Curupira e apoie um ecossistema que une Web3 e preservação ambiental." />
+        <meta property="og:image" content="https://i.imgur.com/OV0eBrM.png" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://URL_DO_SEU_SITE/gomatoken" />
+        <meta name="twitter:title" content="Token $GOMA - A Revolução Sustentável na Amazônia" />
+        <meta name="twitter:description" content="Faça parte do futuro da bioeconomia da Amazônia. Adquira os NFTs Curupira e apoie um ecossistema que une Web3 e preservação ambiental." />
+        <meta name="twitter:image" content="https://i.imgur.com/OV0eBrM.png" />
+      </Helmet>
+
+      <div className="min-h-screen bg-slate-900 text-white relative overflow-x-hidden font-['Rajdhani']">
       {/* Background effects */}
       <ParticleBackground />
       <ParticleSystem count={80} tokenRain={true} className="opacity-60" />
@@ -1446,6 +1470,7 @@ export default function GomaTokenPage() {
           to { transform: rotate(360deg); }
         }
       `}</style>
-    </div>
+      </div>
+    </>
   );
 }
