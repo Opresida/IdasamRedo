@@ -1162,9 +1162,9 @@ export default function GomaTokenPage() {
                         <span className="font-semibold text-white">Time e Consultores</span>
                       </div>
                     </td>
-                    <td className="p-4 lg:p-6 font-mono">10.000.000</td>
+                    <td className="p-4 lg:p-6 font-mono">5.000.000</td>
                     <td className="p-4 lg:p-6">
-                      <Badge className="bg-yellow-400/20 text-yellow-400">10%</Badge>
+                      <Badge className="bg-yellow-400/20 text-yellow-400">5%</Badge>
                     </td>
                     <td className="p-4 lg:p-6">
                       <div className="font-mono text-xs lg:text-sm bg-slate-700/50 px-2 py-1 rounded">
