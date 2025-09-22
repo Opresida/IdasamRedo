@@ -893,7 +893,7 @@ export default function GomaTokenPage() {
       <section className="relative z-20 py-12 lg:py-20 px-4" id="hero">
         <div className="max-w-6xl mx-auto text-center">
           <div className="mb-8">
-            <Badge className="bg-gradient-to-r from-cyan-400 to-green-400 text-slate-900 font-semibold text-xs lg:text-sm px-3 lg:px-4 py-1 lg:py-2 mb-4 lg:mb-6">
+            <Badge className="bg-gradient-to-r from-cyan-400 to-green-400 text-slate-900 font-semibold text-xs lg:text-sm px-3 lg:px-4 py-1 lg:py-2 mb-2 lg:mb-3">
               Token $GOMA - Lançamento Oficial
             </Badge>
 
