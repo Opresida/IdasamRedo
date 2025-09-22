@@ -106,8 +106,8 @@ function AppContent() {
         <Route component={NotFoundPage} />
       </Switch>
       
-      {/* Mostrar TelegramFloat apenas na rota /gomatoken */}
-      {location === '/gomatoken' && <TelegramFloat />}
+      {/* Mostrar TelegramFloat apenas na rota /gomatoken após carregamento */}
+      {location === '/gomatoken' && !isLoading && <TelegramFloat />}
     </PageLoader>
   );
 }

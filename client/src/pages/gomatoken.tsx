@@ -814,11 +814,16 @@ const NFTCards = () => {
 
 export default function GomaTokenPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [showContent, setShowContent] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState(null);
 
   const handleLoadComplete = () => {
     setIsLoading(false);
+    // Pequeno delay para garantir transição suave
+    setTimeout(() => {
+      setShowContent(true);
+    }, 300);
   };
 
   const handleWalletConnect = (address) => {
@@ -836,11 +841,13 @@ export default function GomaTokenPage() {
       <ParticleSystem count={80} tokenRain={true} className="opacity-60" />
       <GlowingBorder />
       
-      {/* Web3 Components - Responsive positioning */}
-      <div className="hidden lg:block">
-        <NFTCollectionStatus />
-        <LiveVisitorsCounter />
-      </div>
+      {/* Web3 Components - Responsive positioning - só aparecem após carregamento */}
+      {showContent && (
+        <div className="hidden lg:block">
+          <NFTCollectionStatus />
+          <LiveVisitorsCounter />
+        </div>
+      )}
       
       <WalletConnectionModal 
         isOpen={isWalletModalOpen} 
