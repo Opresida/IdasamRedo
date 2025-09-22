@@ -11,8 +11,9 @@ import ErrorBoundary from '@/components/error-boundary';
 import Home from '@/pages/home';
 import Projetos from '@/pages/projetos';
 import NoticiasPage from '@/pages/noticias';
-import LoginPage from '@/pages/login';
-import NotFound from '@/pages/not-found';
+import LoginPage from './pages/login';
+import GomaTokenPage from './pages/gomatoken';
+import NotFoundPage from './pages/not-found';
 import PaginaDeDoacao from '@/PaginaDeDoacao';
 import PaginaDeDoacaoEUR from '@/PaginaDeDoacaoEUR';
 import AdminLayout from '@/components/admin-layout';
@@ -98,7 +99,10 @@ function AppContent() {
         <Route path="/doacao-eur" component={PaginaDeDoacaoEUR} />
         <Route path="/transparencia" component={TransparenciaPage} />
         <Route path="/bio" component={BioPage} />
-        <Route component={NotFound} />
+        <Route path="/login" component={LoginPage} />
+        <Route path="/gomatoken" component={GomaTokenPage} />
+        <Route path="/404" component={NotFoundPage} />
+        <Route component={NotFoundPage} />
       </Switch>
     </PageLoader>
   );
