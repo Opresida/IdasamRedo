@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,7 +50,7 @@ const LoaderScreen = ({ onLoadComplete }: { onLoadComplete: () => void }) => {
     const progressInterval = setInterval(() => {
       progressValue += 2;
       setProgress(progressValue);
-      
+
       if (progressValue >= 100) {
         clearInterval(progressInterval);
         clearInterval(textInterval);
@@ -100,7 +99,7 @@ const LoaderScreen = ({ onLoadComplete }: { onLoadComplete: () => void }) => {
         <p className="text-cyan-300 text-lg font-['Orbitron'] mb-6 animate-pulse">
           {loadingText}
         </p>
-        
+
         {/* Progress bar */}
         <div className="w-full bg-slate-800 rounded-full h-2 mb-4">
           <div 
@@ -108,7 +107,7 @@ const LoaderScreen = ({ onLoadComplete }: { onLoadComplete: () => void }) => {
             style={{ width: `${progress}%` }}
           />
         </div>
-        
+
         <p className="text-slate-400 text-sm font-['Rajdhani']">
           {progress}% completo
         </p>
@@ -157,7 +156,7 @@ const NFTCollectionStatus = () => {
       if (Math.random() < 0.05) {
         setTotalMinted(prev => Math.min(500, prev + 1));
       }
-      
+
       // Small price fluctuations
       const priceChange = (Math.random() - 0.5) * 0.02;
       setFloorPrice(prev => Math.max(0.30, prev * (1 + priceChange)));
@@ -180,18 +179,18 @@ const NFTCollectionStatus = () => {
               <span className="text-xs text-green-400">Live</span>
             </div>
           </div>
-          
+
           <div className="space-y-1 lg:space-y-2">
             <div className="flex justify-between">
               <span className="text-xs text-slate-400">Vendidos:</span>
               <span className="text-xs lg:text-sm font-bold text-cyan-400">{totalMinted}/500</span>
             </div>
-            
+
             <div className="flex justify-between">
               <span className="text-xs text-slate-400">Preço Mínimo:</span>
               <span className="text-xs lg:text-sm font-bold text-green-400">{floorPrice.toFixed(2)} ETH</span>
             </div>
-            
+
             <div className="flex justify-between">
               <span className="text-xs text-slate-400">Status:</span>
               <span className="text-xs text-purple-400 font-semibold">Pré-Venda Ativa</span>
@@ -213,7 +212,7 @@ const LiveVisitorsCounter = () => {
       // Simulate visitor count changes
       const change = Math.random() > 0.5 ? 1 : -1;
       setVisitors(prev => Math.max(50, prev + change));
-      
+
       // Occasionally simulate NFT sales
       if (Math.random() < 0.1) {
         setNftSales(prev => prev + 1);
@@ -243,7 +242,7 @@ const LiveVisitorsCounter = () => {
               {visitors}
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between p-2 rounded bg-slate-700/50">
             <div className="flex items-center gap-1 lg:gap-2">
               <Crown className="w-2 h-2 lg:w-3 lg:h-3 text-purple-400" />
@@ -253,7 +252,7 @@ const LiveVisitorsCounter = () => {
               {nftSales}
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between p-2 rounded bg-slate-700/50">
             <div className="flex items-center gap-1 lg:gap-2">
               <TreePine className="w-2 h-2 lg:w-3 lg:h-3 text-cyan-400" />
@@ -283,17 +282,17 @@ const WalletConnectionModal = ({ isOpen, onClose, onConnect }) => {
 
   const handleConnect = async (wallet) => {
     setIsConnecting(true);
-    
+
     // Simulate connection delay
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     const fakeAddress = '0x' + Math.random().toString(16).substring(2, 42).padStart(40, '0');
     setConnectedWallet({
       name: wallet.name,
       address: fakeAddress,
       balance: (Math.random() * 1000 + 50).toFixed(2)
     });
-    
+
     setIsConnecting(false);
     setTimeout(() => {
       onConnect(fakeAddress);
@@ -436,7 +435,7 @@ const CicloVirtuoso = () => {
                   </p>
                 </CardContent>
               </Card>
-              
+
               {/* Step number */}
               <div className="absolute -top-3 lg:-top-4 left-1/2 transform -translate-x-1/2 w-6 h-6 lg:w-8 lg:h-8 rounded-full bg-gradient-to-r from-cyan-400 to-green-400 flex items-center justify-center text-slate-900 font-bold text-xs lg:text-sm z-10">
                 {step.id}
@@ -515,8 +514,9 @@ const NFTCards = () => {
     <section className="py-20 px-4" id="nfts">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4 drop-shadow-lg">
-            Seja um <span className="text-cyan-300 font-black bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-400/30">Patrono Fundador</span>
+          <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4 drop-shadow-lg text-center">
+            Seja um<br />
+            <span className="text-cyan-300 font-black bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-400/30">Patrono Fundador</span>
           </h2>
           <p className="text-xl text-gray-100 font-semibold max-w-3xl mx-auto drop-shadow-md bg-slate-800/20 px-6 py-3 rounded-lg border border-slate-600/30">
             Escolha seu nível de participação no futuro descentralizado da Amazônia
@@ -542,7 +542,7 @@ const NFTCards = () => {
                   0 5px 20px rgba(168,85,247,0.2),
                   inset 0 1px 0 rgba(255,255,255,0.1)
                 `;
-                
+
                 // Ativar efeito de brilho interno
                 const glowOverlay = card.querySelector('.glow-overlay') as HTMLElement;
                 if (glowOverlay) {
@@ -554,7 +554,7 @@ const NFTCards = () => {
                 card.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.6s ease-out, border-color 0.6s ease-out';
                 card.style.transform = 'translateY(0) rotateX(0deg) rotateY(0deg) scale(1)';
                 card.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
-                
+
                 // Desativar efeito de brilho interno
                 const glowOverlay = card.querySelector('.glow-overlay') as HTMLElement;
                 if (glowOverlay) {
@@ -568,17 +568,17 @@ const NFTCards = () => {
                 const y = e.clientY - rect.top;
                 const centerX = rect.width / 2;
                 const centerY = rect.height / 2;
-                
+
                 // Cálculo mais suave e responsivo
                 const rotateX = ((y - centerY) / centerY) * 15; // Máximo 15 graus
                 const rotateY = ((centerX - x) / centerX) * 15; // Máximo 15 graus
-                
+
                 // Efeito de profundidade baseado na distância do centro
                 const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
                 const maxDistance = Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerY, 2));
                 const intensity = 1 - (distance / maxDistance);
                 const scale = 1.05 + (intensity * 0.05);
-                
+
                 card.style.transform = `
                   translateY(-20px) 
                   rotateX(${rotateX}deg) 
@@ -586,7 +586,7 @@ const NFTCards = () => {
                   scale(${scale})
                   translateZ(${intensity * 10}px)
                 `;
-                
+
                 // Atualizar posição do gradiente de brilho
                 const glowOverlay = card.querySelector('.glow-overlay') as HTMLElement;
                 if (glowOverlay) {
@@ -605,7 +605,7 @@ const NFTCards = () => {
             >
               {/* Animated background effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 to-green-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
+
               {/* Interactive glow overlay */}
               <div 
                 className="glow-overlay absolute inset-0 pointer-events-none transition-opacity duration-300"
@@ -619,7 +619,7 @@ const NFTCards = () => {
                   )`
                 }}
               />
-              
+
               {/* Floating particles on hover */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
                 {[...Array(12)].map((_, i) => (
@@ -635,7 +635,7 @@ const NFTCards = () => {
                   />
                 ))}
               </div>
-              
+
               <CardHeader className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <Badge className={`bg-gradient-to-r ${nft.gradient} text-slate-900 font-semibold`}>
@@ -645,7 +645,7 @@ const NFTCards = () => {
                     {nft.icon}
                   </div>
                 </div>
-                
+
                 {/* NFT Image with Advanced Holographic Effect */}
                 <div className="mb-6 relative overflow-hidden rounded-xl group-hover:shadow-[0_0_40px_rgba(0,245,195,0.6)] transition-all duration-700">
                   <img 
@@ -659,7 +659,7 @@ const NFTCards = () => {
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent transition-opacity duration-700 group-hover:from-slate-900/40" />
-                  
+
                   {/* Enhanced Holographic overlay */}
                   <div 
                     className="absolute inset-0 opacity-0 group-hover:opacity-60 transition-all duration-700 pointer-events-none"
@@ -684,7 +684,7 @@ const NFTCards = () => {
                       animation: 'holographic 2.5s ease-in-out infinite, shimmer 4s ease-in-out infinite'
                     }}
                   />
-                  
+
                   {/* Advanced Rainbow reflection */}
                   <div 
                     className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-1000"
@@ -703,7 +703,7 @@ const NFTCards = () => {
                       animation: 'rainbow-spin 6s linear infinite'
                     }}
                   />
-                  
+
                   {/* Prismatic light streaks */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-40 transition-opacity duration-500">
                     <div 
@@ -721,7 +721,7 @@ const NFTCards = () => {
                       }}
                     />
                   </div>
-                  
+
                   {/* Floating light orbs */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-70 transition-opacity duration-700 pointer-events-none">
                     {[...Array(6)].map((_, i) => (
@@ -742,17 +742,17 @@ const NFTCards = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <CardTitle className="text-2xl font-['Orbitron'] text-white mb-2">
                   {nft.title}
                 </CardTitle>
-                
+
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">Unidades disponíveis:</span>
                     <span className="text-cyan-400 font-semibold">{nft.units}</span>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="text-3xl font-bold text-white mb-1">{nft.price}</div>
                     <div className="text-sm text-green-400">Pagamento com PIX disponível</div>
@@ -762,7 +762,7 @@ const NFTCards = () => {
 
               <CardContent className="relative z-10">
                 <Separator className="my-6 bg-slate-600" />
-                
+
                 <div className="space-y-4 mb-6">
                   <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
@@ -774,7 +774,7 @@ const NFTCards = () => {
                       <div className="text-xs text-slate-400">Multiplicador</div>
                     </div>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="text-yellow-400 font-semibold text-lg">{nft.apy} APY</div>
                     <div className="text-xs text-slate-400">Staking Rewards</div>
@@ -840,7 +840,7 @@ export default function GomaTokenPage() {
       <ParticleBackground />
       <ParticleSystem count={80} tokenRain={true} className="opacity-60" />
       <GlowingBorder />
-      
+
       {/* Web3 Components - Responsive positioning - só aparecem após carregamento */}
       {showContent && (
         <div className="hidden lg:block">
@@ -848,7 +848,7 @@ export default function GomaTokenPage() {
           <LiveVisitorsCounter />
         </div>
       )}
-      
+
       <WalletConnectionModal 
         isOpen={isWalletModalOpen} 
         onClose={() => setIsWalletModalOpen(false)}
@@ -862,7 +862,7 @@ export default function GomaTokenPage() {
             <TreePine className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-400" />
             <span className="text-lg lg:text-xl font-['Orbitron'] font-bold">Projeto Curupira</span>
           </div>
-          
+
           <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4">
             {connectedWallet ? (
               <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-cyan-400/30">
@@ -896,11 +896,11 @@ export default function GomaTokenPage() {
             <Badge className="bg-gradient-to-r from-cyan-400 to-green-400 text-slate-900 font-semibold text-xs lg:text-sm px-3 lg:px-4 py-1 lg:py-2 mb-4 lg:mb-6">
               Token $GOMA - Lançamento Oficial
             </Badge>
-            
+
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-['Orbitron'] mb-4 lg:mb-6 bg-gradient-to-r from-white via-cyan-300 to-green-400 bg-clip-text text-transparent">
               Seja um Patrono da Amazônia
             </h1>
-            
+
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-slate-300 max-w-4xl mx-auto mb-6 lg:mb-8 leading-relaxed px-4">
               Torne-se parte da revolução sustentável da Amazônia através dos 
               <span className="text-cyan-400 font-semibold"> NFTs Curupira</span> - uma coleção exclusiva 
@@ -916,7 +916,7 @@ export default function GomaTokenPage() {
               </div>
               <p className="text-slate-300 text-sm lg:text-base">500+ Famílias Beneficiadas</p>
             </div>
-            
+
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 lg:p-8 border border-green-400/30">
               <div className="flex items-center gap-3 lg:gap-4 mb-4 justify-center md:justify-start">
                 <Globe className="w-6 h-6 lg:w-7 lg:h-7 text-green-400" />
@@ -924,7 +924,7 @@ export default function GomaTokenPage() {
               </div>
               <p className="text-slate-300 text-sm lg:text-base">100% Sustentável</p>
             </div>
-            
+
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 lg:p-8 border border-purple-400/30">
               <div className="flex items-center gap-3 lg:gap-4 mb-4 justify-center md:justify-start">
                 <Zap className="w-6 h-6 lg:w-7 lg:h-7 text-purple-400" />
@@ -944,7 +944,7 @@ export default function GomaTokenPage() {
                 <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5" />
               </a>
             </Button>
-            
+
             <Button 
               size="lg" 
               variant="outline" 
@@ -1034,11 +1034,11 @@ export default function GomaTokenPage() {
             <TreePine className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-400" />
             <span className="text-lg lg:text-2xl font-['Orbitron'] font-bold">Projeto Curupira</span>
           </div>
-          
+
           <p className="text-slate-300 text-base lg:text-lg mb-4 lg:mb-6 px-4">
             Junte-se a nós e seja uma <span className="text-green-400 font-semibold">semente da mudança</span>.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 lg:gap-8 text-xs lg:text-sm text-slate-400">
             <span>Powered by IDASAM</span>
             <span className="hidden sm:inline">•</span>
@@ -1052,12 +1052,12 @@ export default function GomaTokenPage() {
       {/* Custom styles for animations */}
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
-        
+
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-10px) rotate(180deg); }
         }
-        
+
         @keyframes holographic {
           0% { background-position: 0% 0%; }
           25% { background-position: 100% 0%; }
@@ -1065,13 +1065,13 @@ export default function GomaTokenPage() {
           75% { background-position: 0% 100%; }
           100% { background-position: 0% 0%; }
         }
-        
+
         @keyframes shimmer {
           0% { background-position: 0% 0%, 0% 0%; }
           50% { background-position: 100% 100%, 100% 100%; }
           100% { background-position: 0% 0%, 0% 0%; }
         }
-        
+
         @keyframes rainbow-shift {
           0% { background-position: 0% 50%; }
           25% { background-position: 100% 50%; }
@@ -1079,13 +1079,13 @@ export default function GomaTokenPage() {
           75% { background-position: 0% 100%; }
           100% { background-position: 0% 50%; }
         }
-        
+
         @keyframes rainbow-spin {
           0% { transform: rotate(0deg) scale(1); }
           50% { transform: rotate(180deg) scale(1.1); }
           100% { transform: rotate(360deg) scale(1); }
         }
-        
+
         @keyframes card-float {
           0%, 100% { 
             transform: translateY(0px) rotateY(0deg);
@@ -1096,7 +1096,7 @@ export default function GomaTokenPage() {
             box-shadow: 0 20px 50px rgba(0,245,195,0.2);
           }
         }
-        
+
         @keyframes float-particle {
           0% { 
             transform: translateY(0px) translateX(0px) scale(0); 
@@ -1114,7 +1114,7 @@ export default function GomaTokenPage() {
             opacity: 0;
           }
         }
-        
+
         @keyframes light-sweep {
           0% { 
             transform: translateX(-100%) scaleX(0); 
@@ -1129,7 +1129,7 @@ export default function GomaTokenPage() {
             opacity: 0;
           }
         }
-        
+
         @keyframes light-sweep-reverse {
           0% { 
             transform: translateX(100%) scaleX(0); 
@@ -1144,7 +1144,7 @@ export default function GomaTokenPage() {
             opacity: 0;
           }
         }
-        
+
         @keyframes float-orb {
           0%, 100% { 
             transform: translateY(0px) translateX(0px) scale(0.8);
@@ -1159,19 +1159,19 @@ export default function GomaTokenPage() {
             opacity: 0.8;
           }
         }
-        
+
         .animate-spin-slow {
           animation: spin 3s linear infinite;
         }
-        
+
         .perspective-1000 {
           perspective: 1000px;
         }
-        
+
         .group:hover .animate-card-float {
           animation: card-float 6s ease-in-out infinite;
         }
-        
+
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
