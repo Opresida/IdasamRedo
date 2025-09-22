@@ -1,0 +1,208 @@
+PERSONA: Você é um desenvolvedor Front-end Sênior, especialista em Web3, design imersivo e animações de alta performance com JavaScript.
+
+PROJETO: Criar uma landing page interativa e futurista para o "Projeto Curupira - Token GOMA" (/gomatoken) para o site do IDASAM. A página deve ser uma experiência imersiva, completamente distinta do tom institucional do site principal.
+
+REQUISITOS GERAIS:
+
+Tema: Dark mode tecnológico. Paleta de cores com fundo escuro (ex: #0a0a1a), com detalhes em neon/ciano (ex: #00f5c3) e branco.
+
+Fonte: Utilize uma fonte futurista do Google Fonts, como 'Orbitron' ou 'Rajdhani'.
+
+Imersão: A página inteira deve ter bordas com um efeito sutil de brilho (glow) animado, criando uma moldura tecnológica.
+
+Background: Use um background com partículas animadas para simular um ambiente digital descentralizado.
+
+Etapa 1: Tela de Carregamento (Loader Imersivo)
+Crie uma tela de loading que cubra toda a página no carregamento inicial.
+
+Visual: Um spinner ou o logo do projeto (uma árvore estilizada digital) deve aparecer no centro.
+
+Animação: O spinner deve ter uma animação fluida. Após o carregamento, ele deve se transformar ou dissolver, e a tela de loading deve desaparecer com um efeito de fade out suave, revelando a página principal.
+
+Texto: Abaixo do spinner, exiba frases que mudam a cada 2 segundos para aumentar a imersão:
+
+"Conectando ao ecossistema descentralizado..."
+
+"Sincronizando com a bioeconomia da Amazônia..."
+
+"Inicializando o Ciclo Virtuoso..."
+
+Duração: O loader deve durar no mínimo 5 segundos para criar o efeito de "transição de mundos".
+
+Etapa 2: Estrutura HTML (index.html)
+Crie a estrutura semântica da página.
+
+HTML
+
+<body>
+  <div id="loader-wrapper">
+    <div class="spinner"></div>
+    <p id="loader-text">Conectando...</p>
+  </div>
+
+  <div id="page-content" style="visibility: hidden;">
+    <div class="glowing-border"></div>
+
+    <header>
+      <nav>
+        <a href="#nfts">Comprar NFT</a>
+        <a href="https://idasam.org">Voltar ao site</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="hero">
+        <h1>O Futuro da Amazônia é Descentralizado</h1>
+        <p>Conectamos a economia digital global com a agricultura familiar sustentável através do Projeto Curupira e o token $GOMA.</p>
+      </section>
+
+      <section id="ciclo-virtuoso">
+        <h2>Entenda o Ciclo Virtuoso</h2>
+        </section>
+
+      <section id="nfts">
+        <h2>Seja um Patrono Fundador</h2>
+        <div class="nft-container">
+          </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Junte-se a nós e seja uma semente da mudança.</p>
+      </footer>
+  </div>
+</body>
+Etapa 3: Estilo e Animações CSS (style.css)
+Aplique o design futurista e os efeitos visuais.
+
+Setup Básico: Importe a fonte do Google Fonts. Defina as cores base, o fundo escuro e o estilo da borda brilhante animada usando box-shadow e @keyframes.
+
+Loader: Estilize o spinner e a transição de fade out.
+
+Hero: Títulos grandes, com efeito de gradiente sutil ou text-shadow para dar um brilho neon.
+
+Seção "Ciclo Virtuoso": Crie 4 ícones ou cards representando as etapas:
+
+1. Produção Real:
+
+ Venda da goma de tapioca.
+
+2. Lucro Líquido:
+
+ 10% destinado ao token.
+
+3. Recompra: Compra de tokens $GOMA no mercado.
+
+4. Valorização: Pressão de compra e queima de tokens.
+
+Animação: Conecte os ícones com linhas de luz animadas.
+
+Cards de NFT: Crie um estilo de card com bordas neon. Ao passar o mouse (:hover), o brilho deve se intensificar e o card deve "flutuar" levemente (transform: translateY(-10px)).
+
+Etapa 4: Interatividade com JavaScript e Bibliotecas (script.js)
+Dê vida à página com animações avançadas.
+
+Bibliotecas recomendadas:
+
+Para animações complexas (estilo After Effects): GSAP (GreenSock Animation Platform).
+
+Para o fundo de partículas: tsParticles (sucessor do particles.js).
+
+Instruções para o script.js:
+
+Inicialização:
+
+Implemente a lógica do loader para esperar a página carregar e depois de um setTimeout de 5 segundos, execute a animação de fade out no #loader-wrapper e mude a visibility do #page-content para visible.
+
+Configure o tsParticles no background com partículas pequenas, ciano, com baixa densidade e linhas de conexão que aparecem quando as partículas estão próximas.
+
+Animações de Scroll (com GSAP):
+
+Hero: Anime o título e o parágrafo para surgirem com um efeito de fade/slide in quando a página carrega.
+
+Ciclo Virtuoso: À medida que o usuário rola a página até esta seção, anime cada uma das 4 etapas para aparecer em sequência, com as linhas de luz sendo "desenhadas" entre elas.
+
+NFTs: Faça cada card de NFT surgir com um leve atraso em relação ao anterior, criando um efeito cascata.
+
+Etapa 5: Conteúdo dos Cards de NFT
+Popule a seção de NFTs (#nfts) com três cards, usando as informações do whitepaper. Cada card deve ter:
+
+
+Card 1: Sementes da Amazônia 
+
+
+Unidades: 350 
+
+
+
+Valor: 0.30 ETH  (Adicione um texto: "Pagamento com PIX disponível")
+
+
+Benefícios:
+
+Airdrop Garantido de $GOMA (~5.555 tokens) 
+
+Multiplicador de Airdrop: 
+
+1x 
+
+Staking APY aumentado para 
+
+17% (Padrão é 10%) 
+
+
+Botão: "Tornar-se Semente"
+
+
+Card 2: Embaixador Curupira 
+
+
+Unidades: 100 
+
+
+Valor: 0.53 ETH  (Adicione um texto: "Pagamento com PIX disponível")
+
+Benefícios:
+
+Airdrop Garantido de $GOMA (~16.666 tokens) 
+
+Multiplicador de Airdrop: 3x
+
+Staking APY aumentado para 
+
+17% 
+
+Acesso a eventos e palestras exclusivas.
+
+30% de desconto em futuros lançamentos RWA.
+
+Botão: "Tornar-se Embaixador"
+
+
+Card 3: Guardião da Floresta 
+
+
+Unidades: 50 
+
+
+Valor: 0.90 ETH  (Adicione um texto: "Pagamento com PIX disponível")
+
+Benefícios:
+
+Airdrop Garantido de $GOMA (~27.777 tokens) 
+
+Multiplicador de Airdrop: 5x
+
+Staking APY aumentado para 
+
+17% 
+
+Todos os benefícios de Embaixador.
+
+2 visitas anuais 
+
+in loco ao projeto na Amazônia.
+
+Botão: "Tornar-se Guardião"
+
+Execute cada etapa para construir a página completa e interativa.
