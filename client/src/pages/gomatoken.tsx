@@ -406,9 +406,9 @@ const CicloVirtuoso = () => {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4">
-            Entenda o <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-green-400">Ciclo Virtuoso</span>
+            Entenda o <span className="text-cyan-400 font-extrabold">Ciclo Virtuoso</span>
           </h2>
-          <p className="text-xl text-slate-300 max-w-3xl mx-auto">
+          <p className="text-xl text-white font-medium max-w-3xl mx-auto">
             Uma economia circular que conecta a produção real com o valor digital
           </p>
         </div>
@@ -516,9 +516,9 @@ const NFTCards = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4">
-            Seja um <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-green-400">Patrono Fundador</span>
+            Seja um <span className="text-cyan-400 font-extrabold">Patrono Fundador</span>
           </h2>
-          <p className="text-xl text-slate-300 max-w-3xl mx-auto">
+          <p className="text-xl text-white font-medium max-w-3xl mx-auto">
             Escolha seu nível de participação no futuro descentralizado da Amazônia
           </p>
         </div>
