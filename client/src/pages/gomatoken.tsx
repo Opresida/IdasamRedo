@@ -232,6 +232,7 @@ const NFTCards = () => {
         'Staking APY aumentado para 17% (Padrão é 10%)'
       ],
       icon: <Leaf className="w-12 h-12" />,
+      image: 'https://i.imgur.com/bb9zNgH.jpeg',
       gradient: 'from-green-400 to-emerald-500',
       buttonText: 'Tornar-se Semente',
       tier: 'Iniciante'
@@ -251,6 +252,7 @@ const NFTCards = () => {
         '30% de desconto em futuros lançamentos RWA'
       ],
       icon: <Shield className="w-12 h-12" />,
+      image: 'https://i.imgur.com/MPWKc4u.jpeg',
       gradient: 'from-blue-400 to-cyan-500',
       buttonText: 'Tornar-se Embaixador',
       tier: 'Avançado'
@@ -270,6 +272,7 @@ const NFTCards = () => {
         '2 visitas anuais in loco ao projeto na Amazônia'
       ],
       icon: <Crown className="w-12 h-12" />,
+      image: 'https://i.imgur.com/PFqFrEG.jpeg',
       gradient: 'from-purple-400 to-pink-500',
       buttonText: 'Tornar-se Guardião',
       tier: 'Elite'
@@ -305,6 +308,17 @@ const NFTCards = () => {
                   <div className={`text-slate-400 bg-gradient-to-r ${nft.gradient} p-2 rounded-lg`}>
                     {nft.icon}
                   </div>
+                </div>
+                
+                {/* NFT Image */}
+                <div className="mb-6 relative overflow-hidden rounded-xl">
+                  <img 
+                    src={nft.image} 
+                    alt={nft.title}
+                    className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
                 </div>
                 
                 <CardTitle className="text-2xl font-['Orbitron'] text-white mb-2">
