@@ -141,7 +141,7 @@ html {
 
 @layer base {
   * {
-    @apply border-gray-200;
+    @apply border-border;
   }
 
   body {
@@ -339,7 +339,7 @@ html {
 }
 
 .news-card:hover .news-card-title {
-  color: #2A5B46;
+  @apply text-idasam-green-dark;
 }
 
 .news-card-excerpt {
@@ -366,7 +366,7 @@ html {
 }
 
 .news-card:hover .news-card-stats {
-  color: hsl(180, 100%, 25%);
+  @apply text-teal;
 }
 
 .news-card-tags {
@@ -489,8 +489,7 @@ html {
 }
 
 .news-card-preview-title {
-  @apply text-lg font-semibold mb-2;
-  color: #2A5B46;
+  @apply text-lg font-semibold text-idasam-green-dark mb-2;
 }
 
 .news-card-preview-text {
@@ -502,11 +501,6 @@ html {
 }
 
 .news-card-preview-button {
-  @apply inline-flex items-center gap-2 px-4 py-2 text-white;
-  @apply rounded-lg text-sm font-medium transition-colors;
-  background-color: hsl(180, 100%, 25%);
-}
-
-.news-card-preview-button:hover {
-  background-color: #2A5B46;
+  @apply inline-flex items-center gap-2 px-4 py-2 bg-teal text-white;
+  @apply rounded-lg text-sm font-medium transition-colors hover:bg-idasam-green-dark;
 }

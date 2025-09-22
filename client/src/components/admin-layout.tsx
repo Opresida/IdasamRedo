@@ -1,8 +1,8 @@
 import React from 'react';
 import { useLocation } from 'wouter';
-import { Button } from './ui/button';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { useAuth } from '../contexts/auth-context';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/contexts/auth-context';
 import {
   LayoutDashboard,
   Newspaper,

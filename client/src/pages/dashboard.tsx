@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
-import { Progress } from '../components/ui/progress';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import {
   LayoutDashboard,
   FileText,
@@ -21,8 +21,8 @@ import {
   Heart,
   Star
 } from 'lucide-react';
-import { formatDate } from '../lib/utils';
-import { useToast } from '../hooks/use-toast';
+import { formatDate } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
 // Interfaces para tipagem

@@ -818,13 +818,12 @@ export default function GomaTokenPage() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState(null);
 
-  // Set custom favicon and update document title for GomaToken page
+  // Set custom favicon for GomaToken page
   useEffect(() => {
     const originalFavicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
     const originalHref = originalFavicon?.href;
-    const originalTitle = document.title;
     
-    // Update favicon
+    // Create or update favicon
     let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
     if (!favicon) {
       favicon = document.createElement('link');
@@ -834,16 +833,12 @@ export default function GomaTokenPage() {
     
     favicon.href = '/gomatoken-favicon.svg';
     favicon.type = 'image/svg+xml';
-
-    // Update page title (for users browsing, social media crawlers will use static HTML)
-    document.title = 'Token $GOMA - Lançamento Oficial | Projeto Curupira';
-
-    // Cleanup - restore original favicon and title when component unmounts
+    
+    // Cleanup - restore original favicon when component unmounts
     return () => {
       if (originalHref && favicon) {
         favicon.href = originalHref;
       }
-      document.title = originalTitle;
     };
   }, []);
 
@@ -1077,7 +1072,7 @@ export default function GomaTokenPage() {
       </footer>
 
       {/* Custom styles for animations */}
-      <style jsx="true">{`
+      <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
 
         @keyframes float {
