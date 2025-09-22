@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import LumaSpin from '@/components/ui/luma-spin';
+import LumaSpin from './ui/luma-spin';
 
 interface PageLoaderProps {
   isLoading: boolean;
