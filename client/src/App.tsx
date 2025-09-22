@@ -105,6 +105,9 @@ function AppContent() {
         <Route path="/404" component={NotFoundPage} />
         <Route component={NotFoundPage} />
       </Switch>
+      
+      {/* Mostrar TelegramFloat apenas na rota /gomatoken */}
+      {location === '/gomatoken' && <TelegramFloat />}
     </PageLoader>
   );
 }
@@ -180,7 +183,6 @@ export default function App() {
               <AppContent />
             </Router>
             <Toaster />
-            <TelegramFloat />
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
