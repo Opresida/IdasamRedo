@@ -818,12 +818,13 @@ export default function GomaTokenPage() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState(null);
 
-  // Set custom favicon and social preview for GomaToken page
+  // Set custom favicon and update document title for GomaToken page
   useEffect(() => {
     const originalFavicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
     const originalHref = originalFavicon?.href;
+    const originalTitle = document.title;
     
-    // Create or update favicon
+    // Update favicon
     let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
     if (!favicon) {
       favicon = document.createElement('link');
@@ -834,107 +835,14 @@ export default function GomaTokenPage() {
     favicon.href = '/gomatoken-favicon.svg';
     favicon.type = 'image/svg+xml';
 
-    // Social Preview Meta Tags
-    const socialPreviewTags = [
-      // Open Graph
-      { property: 'og:title', content: 'Token $GOMA - Lançamento Oficial | Projeto Curupira' },
-      { property: 'og:description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira. Uma revolução sustentável que conecta Web3 e preservação ambiental. Junte-se ao futuro descentralizado da bioeconomia amazônica.' },
-      { property: 'og:image', content: `${window.location.origin}/og-gomatoken.png` },
-      { property: 'og:image:width', content: '1200' },
-      { property: 'og:image:height', content: '630' },
-      { property: 'og:image:alt', content: 'Token $GOMA - Projeto Curupira - NFTs Amazônia' },
-      { property: 'og:url', content: `${window.location.origin}/gomatoken` },
-      { property: 'og:type', content: 'website' },
-      { property: 'og:site_name', content: 'Projeto Curupira - IDASAM' },
-      
-      // Twitter Cards
-      { name: 'twitter:card', content: 'summary_large_image' },
-      { name: 'twitter:site', content: '@institutoidasam' },
-      { name: 'twitter:creator', content: '@institutoidasam' },
-      { name: 'twitter:title', content: 'Token $GOMA - Lançamento Oficial | Projeto Curupira' },
-      { name: 'twitter:description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira. Uma revolução sustentável que conecta Web3 e preservação ambiental.' },
-      { name: 'twitter:image', content: `${window.location.origin}/og-gomatoken.png` },
-      { name: 'twitter:image:alt', content: 'Token $GOMA - Projeto Curupira - NFTs Amazônia' },
-      
-      // LinkedIn
-      { property: 'linkedin:title', content: 'Token $GOMA - Lançamento Oficial | Projeto Curupira' },
-      { property: 'linkedin:description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira. Revolução sustentável Web3 + preservação ambiental.' },
-      { property: 'linkedin:image', content: `${window.location.origin}/og-gomatoken.png` },
-      
-      // WhatsApp
-      { property: 'whatsapp:title', content: 'Token $GOMA - Projeto Curupira' },
-      { property: 'whatsapp:description', content: 'NFTs que conectam Web3 e preservação da Amazônia 🌳' },
-      { property: 'whatsapp:image', content: `${window.location.origin}/og-gomatoken.png` },
-      
-      // Discord
-      { property: 'discord:title', content: 'Token $GOMA - Lançamento Oficial' },
-      { property: 'discord:description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira 🚀' },
-      { property: 'discord:image', content: `${window.location.origin}/og-gomatoken.png` },
-      
-      // General Meta Tags
-      { name: 'description', content: 'Seja um Patrono da Amazônia através dos NFTs Curupira. Uma revolução sustentável que conecta Web3 e preservação ambiental no Projeto Curupira.' },
-      { name: 'keywords', content: 'Token GOMA, NFT Curupira, Amazônia, Web3, Sustentabilidade, Blockchain, Preservação Ambiental, IDASAM' },
-      { name: 'author', content: 'IDASAM - Instituto de Desenvolvimento da Amazônia Sustentável' },
-      { name: 'robots', content: 'index, follow' },
-      
-      // Theme Color
-      { name: 'theme-color', content: '#00f5c3' },
-      { name: 'msapplication-TileColor', content: '#00f5c3' }
-    ];
-
-    // Store original meta tags to restore later
-    const originalMetaTags: Array<{element: HTMLMetaElement, originalContent: string}> = [];
-
-    // Apply social preview meta tags
-    socialPreviewTags.forEach(({ property, name, content }) => {
-      const attribute = property ? 'property' : 'name';
-      const attributeValue = property || name;
-      
-      let metaTag = document.querySelector(`meta[${attribute}="${attributeValue}"]`) as HTMLMetaElement;
-      
-      if (metaTag) {
-        // Store original content
-        originalMetaTags.push({
-          element: metaTag,
-          originalContent: metaTag.content
-        });
-        // Update content
-        metaTag.content = content;
-      } else {
-        // Create new meta tag
-        metaTag = document.createElement('meta');
-        metaTag.setAttribute(attribute, attributeValue);
-        metaTag.content = content;
-        document.head.appendChild(metaTag);
-        
-        // Mark as new so we can remove it later
-        originalMetaTags.push({
-          element: metaTag,
-          originalContent: ''
-        });
-      }
-    });
-
-    // Update page title
-    const originalTitle = document.title;
+    // Update page title (for users browsing, social media crawlers will use static HTML)
     document.title = 'Token $GOMA - Lançamento Oficial | Projeto Curupira';
 
-    // Cleanup - restore original favicon, meta tags and title when component unmounts
+    // Cleanup - restore original favicon and title when component unmounts
     return () => {
       if (originalHref && favicon) {
         favicon.href = originalHref;
       }
-      
-      // Restore original meta tags or remove new ones
-      originalMetaTags.forEach(({ element, originalContent }) => {
-        if (originalContent) {
-          element.content = originalContent;
-        } else {
-          element.remove();
-        }
-      });
-      
-      // Restore original title
       document.title = originalTitle;
     };
   }, []);
@@ -1169,7 +1077,7 @@ export default function GomaTokenPage() {
       </footer>
 
       {/* Custom styles for animations */}
-      <style jsx>{`
+      <style jsx="true">{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
 
         @keyframes float {

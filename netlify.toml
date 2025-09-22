@@ -1,7 +1,15 @@
 
+
 [build]
-  publish = "dist"
+  publish = "client/dist"
   command = "npm run build"
+
+# Configuração de redirects para SPA
+[[redirects]]
+  from = "/gomatoken"
+  to = "/gomatoken.html"
+  status = 200
+  force = false
 
 [[redirects]]
   from = "/*"
@@ -19,6 +27,13 @@
 [build.processing.js]
   bundle = true
   minify = true
+
+# Headers específicos para Open Graph
+[[headers]]
+  for = "/gomatoken"
+  [headers.values]
+    X-Robots-Tag = "index, follow"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 # Headers para imagens Open Graph
 [[headers]]
@@ -49,3 +64,4 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET,POST,PUT,DELETE,OPTIONS"
     Access-Control-Allow-Headers = "Content-Type"
+
