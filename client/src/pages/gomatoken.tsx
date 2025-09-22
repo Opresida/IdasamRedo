@@ -885,11 +885,6 @@ export default function GomaTokenPage() {
             <Button variant="outline" size="sm" className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 text-xs lg:text-sm">
               <a href="#nfts">Comprar NFT</a>
             </Button>
-            <Link href="/">
-              <Button size="sm" className="bg-slate-800 hover:bg-slate-700 text-xs lg:text-sm">
-                Voltar ao site
-              </Button>
-            </Link>
           </div>
         </nav>
       </header>
