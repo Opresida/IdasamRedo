@@ -339,7 +339,7 @@ html {
 }
 
 .news-card:hover .news-card-title {
-  @apply text-idasam-green-dark;
+  color: #2A5B46;
 }
 
 .news-card-excerpt {
@@ -366,7 +366,7 @@ html {
 }
 
 .news-card:hover .news-card-stats {
-  @apply text-teal;
+  color: hsl(180, 100%, 25%);
 }
 
 .news-card-tags {
@@ -489,7 +489,8 @@ html {
 }
 
 .news-card-preview-title {
-  @apply text-lg font-semibold text-idasam-green-dark mb-2;
+  @apply text-lg font-semibold mb-2;
+  color: #2A5B46;
 }
 
 .news-card-preview-text {
@@ -501,6 +502,11 @@ html {
 }
 
 .news-card-preview-button {
-  @apply inline-flex items-center gap-2 px-4 py-2 bg-teal text-white;
-  @apply rounded-lg text-sm font-medium transition-colors hover:bg-idasam-green-dark;
+  @apply inline-flex items-center gap-2 px-4 py-2 text-white;
+  @apply rounded-lg text-sm font-medium transition-colors;
+  background-color: hsl(180, 100%, 25%);
+}
+
+.news-card-preview-button:hover {
+  background-color: #2A5B46;
 }
