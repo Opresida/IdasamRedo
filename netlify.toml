@@ -2,7 +2,7 @@
 
 [build]
   publish = "client/dist"
-  command = "npm run build"
+  command = "npm run build:client"
 
 # Configuração de redirects para SPA
 [[redirects]]
