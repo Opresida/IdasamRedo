@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
+import { ParticleSystem } from '@/components/particle-system';
 import { 
   Leaf, 
   Coins, 
@@ -295,7 +296,27 @@ const NFTCards = () => {
           {nfts.map((nft, index) => (
             <Card 
               key={index}
-              className="bg-slate-800/30 border-2 border-cyan-400/30 hover:border-cyan-400/80 transition-all duration-500 hover:transform hover:-translate-y-4 hover:shadow-[0_20px_60px_rgba(0,245,195,0.3)] backdrop-blur-sm relative overflow-hidden group"
+              className="bg-slate-800/30 border-2 border-cyan-400/30 hover:border-cyan-400/80 transition-all duration-500 hover:transform hover:-translate-y-4 hover:rotate-y-12 hover:shadow-[0_20px_60px_rgba(0,245,195,0.3)] backdrop-blur-sm relative overflow-hidden group perspective-1000"
+              style={{
+                transformStyle: 'preserve-3d',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-16px) rotateY(8deg) rotateX(5deg)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) rotateY(0deg) rotateX(0deg)';
+              }}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (y - centerY) / 10;
+                const rotateY = (centerX - x) / 10;
+                
+                e.currentTarget.style.transform = `translateY(-16px) rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
+              }}
             >
               {/* Animated background effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 to-green-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -310,15 +331,38 @@ const NFTCards = () => {
                   </div>
                 </div>
                 
-                {/* NFT Image */}
-                <div className="mb-6 relative overflow-hidden rounded-xl">
+                {/* NFT Image with Holographic Effect */}
+                <div className="mb-6 relative overflow-hidden rounded-xl group-hover:shadow-[0_0_30px_rgba(0,245,195,0.5)]">
                   <img 
                     src={nft.image} 
                     alt={nft.title}
-                    className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-48 object-cover transition-all duration-500 group-hover:scale-110"
                     loading="lazy"
+                    style={{
+                      filter: 'contrast(1.1) saturate(1.2)',
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
+                  
+                  {/* Holographic overlay */}
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(45deg, transparent 30%, rgba(0,245,195,0.1) 40%, rgba(74,222,128,0.1) 50%, rgba(168,85,247,0.1) 60%, transparent 70%)',
+                      backgroundSize: '200% 200%',
+                      animation: 'holographic 3s ease-in-out infinite'
+                    }}
+                  />
+                  
+                  {/* Rainbow reflection */}
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-700"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,0,150,0.2), rgba(0,255,255,0.2), rgba(255,255,0,0.2), rgba(255,0,150,0.2))',
+                      backgroundSize: '400% 400%',
+                      animation: 'rainbow-shift 4s ease-in-out infinite'
+                    }}
+                  />
                 </div>
                 
                 <CardTitle className="text-2xl font-['Orbitron'] text-white mb-2">
@@ -405,6 +449,7 @@ export default function GomaTokenPage() {
     <div className="min-h-screen bg-slate-900 text-white relative overflow-x-hidden font-['Rajdhani']">
       {/* Background effects */}
       <ParticleBackground />
+      <ParticleSystem count={80} tokenRain={true} className="opacity-60" />
       <GlowingBorder />
 
       {/* Header */}
@@ -532,8 +577,41 @@ export default function GomaTokenPage() {
           50% { transform: translateY(-10px) rotate(180deg); }
         }
         
+        @keyframes holographic {
+          0% { background-position: 0% 0%; }
+          50% { background-position: 100% 100%; }
+          100% { background-position: 0% 0%; }
+        }
+        
+        @keyframes rainbow-shift {
+          0% { background-position: 0% 50%; }
+          25% { background-position: 100% 50%; }
+          50% { background-position: 100% 100%; }
+          75% { background-position: 0% 100%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes card-float {
+          0%, 100% { 
+            transform: translateY(0px) rotateY(0deg);
+            box-shadow: 0 10px 30px rgba(0,245,195,0.1);
+          }
+          50% { 
+            transform: translateY(-8px) rotateY(2deg);
+            box-shadow: 0 20px 50px rgba(0,245,195,0.2);
+          }
+        }
+        
         .animate-spin-slow {
           animation: spin 3s linear infinite;
+        }
+        
+        .perspective-1000 {
+          perspective: 1000px;
+        }
+        
+        .group:hover .animate-card-float {
+          animation: card-float 6s ease-in-out infinite;
         }
         
         @keyframes spin {
