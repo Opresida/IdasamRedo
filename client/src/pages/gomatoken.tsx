@@ -405,10 +405,10 @@ const CicloVirtuoso = () => {
     <section className="py-20 px-4" id="ciclo-virtuoso">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4">
-            Entenda o <span className="text-cyan-400 font-extrabold">Ciclo Virtuoso</span>
+          <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4 drop-shadow-lg">
+            Entenda o <span className="text-cyan-300 font-black bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-400/30">Ciclo Virtuoso</span>
           </h2>
-          <p className="text-xl text-white font-medium max-w-3xl mx-auto">
+          <p className="text-xl text-gray-100 font-semibold max-w-3xl mx-auto drop-shadow-md bg-slate-800/20 px-6 py-3 rounded-lg border border-slate-600/30">
             Uma economia circular que conecta a produção real com o valor digital
           </p>
         </div>
@@ -515,10 +515,10 @@ const NFTCards = () => {
     <section className="py-20 px-4" id="nfts">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4">
-            Seja um <span className="text-cyan-400 font-extrabold">Patrono Fundador</span>
+          <h2 className="text-4xl font-bold font-['Orbitron'] text-white mb-4 drop-shadow-lg">
+            Seja um <span className="text-cyan-300 font-black bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-400/30">Patrono Fundador</span>
           </h2>
-          <p className="text-xl text-white font-medium max-w-3xl mx-auto">
+          <p className="text-xl text-gray-100 font-semibold max-w-3xl mx-auto drop-shadow-md bg-slate-800/20 px-6 py-3 rounded-lg border border-slate-600/30">
             Escolha seu nível de participação no futuro descentralizado da Amazônia
           </p>
         </div>
