@@ -25,6 +25,7 @@ import ProjetosAdminPage from '@/pages/projetos-admin';
 import UsuariosPage from '@/pages/dashboard/usuarios';
 import TransparenciaPage from './pages/transparencia';
 import BioPage from './pages/bio';
+import TelegramFloat from '@/components/telegram-float';
 
 function AppContent() {
   const [location] = useLocation();
@@ -179,6 +180,7 @@ export default function App() {
               <AppContent />
             </Router>
             <Toaster />
+            <TelegramFloat />
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
