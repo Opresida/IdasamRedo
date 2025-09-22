@@ -1,8 +1,8 @@
 
 import React, { useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/contexts/auth-context';
-import PageLoader from '@/components/page-loader';
+import { useAuth } from '../contexts/auth-context';
+import PageLoader from './page-loader';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
