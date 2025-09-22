@@ -146,34 +146,34 @@ const GlowingBorder = () => {
   );
 };
 
-// Crypto Ticker Component
-const CryptoTicker = () => {
-  const [price, setPrice] = useState(0.0008);
-  const [change, setChange] = useState(0);
-  const [isPositive, setIsPositive] = useState(true);
+// NFT Collection Status Component
+const NFTCollectionStatus = () => {
+  const [totalMinted, setTotalMinted] = useState(67);
+  const [floorPrice, setFloorPrice] = useState(0.53);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const changePercent = (Math.random() - 0.5) * 0.1; // -5% to +5%
-      const newPrice = price * (1 + changePercent);
-      const priceChange = ((newPrice - price) / price) * 100;
+      // Simulate occasional minting
+      if (Math.random() < 0.05) {
+        setTotalMinted(prev => Math.min(500, prev + 1));
+      }
       
-      setPrice(newPrice);
-      setChange(priceChange);
-      setIsPositive(priceChange >= 0);
-    }, 3000);
+      // Small price fluctuations
+      const priceChange = (Math.random() - 0.5) * 0.02;
+      setFloorPrice(prev => Math.max(0.30, prev * (1 + priceChange)));
+    }, 8000);
 
     return () => clearInterval(interval);
-  }, [price]);
+  }, []);
 
   return (
     <div className="fixed top-6 right-6 z-30">
-      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm min-w-[200px]">
+      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm min-w-[240px]">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-gradient-to-r from-cyan-400 to-green-400 rounded-full animate-pulse" />
-              <span className="text-white font-semibold font-['Orbitron']">$GOMA</span>
+              <span className="text-white font-semibold font-['Orbitron']">Curupira NFT</span>
             </div>
             <div className="flex items-center gap-1">
               <Wifi className="w-3 h-3 text-green-400" />
@@ -181,14 +181,20 @@ const CryptoTicker = () => {
             </div>
           </div>
           
-          <div className="space-y-1">
-            <div className="text-lg font-bold text-white">
-              ${price.toFixed(6)}
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-400">Vendidos:</span>
+              <span className="text-sm font-bold text-cyan-400">{totalMinted}/500</span>
             </div>
-            <div className={`flex items-center gap-1 text-xs ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-              {isPositive ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              <span>{isPositive ? '+' : ''}{change.toFixed(2)}%</span>
-              <span className="text-slate-400">24h</span>
+            
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-400">Preço Mínimo:</span>
+              <span className="text-sm font-bold text-green-400">{floorPrice.toFixed(2)} ETH</span>
+            </div>
+            
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-400">Status:</span>
+              <span className="text-xs text-purple-400 font-semibold">Pré-Venda Ativa</span>
             </div>
           </div>
         </CardContent>
@@ -197,73 +203,66 @@ const CryptoTicker = () => {
   );
 };
 
-// Blockchain Transaction Visualization
-const BlockchainVisualization = () => {
-  const [transactions, setTransactions] = useState([]);
-
-  const transactionTypes = [
-    { type: 'Buy', color: 'text-green-400', icon: '↗' },
-    { type: 'Sell', color: 'text-red-400', icon: '↘' },
-    { type: 'Stake', color: 'text-blue-400', icon: '🔒' },
-    { type: 'Claim', color: 'text-yellow-400', icon: '💰' }
-  ];
+// Live Visitors Counter Component
+const LiveVisitorsCounter = () => {
+  const [visitors, setVisitors] = useState(127);
+  const [nftSales, setNftSales] = useState(8);
 
   useEffect(() => {
-    const addTransaction = () => {
-      const randomType = transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
-      const amount = (Math.random() * 10000 + 100).toFixed(0);
-      const hash = '0x' + Math.random().toString(16).substring(2, 10);
+    const interval = setInterval(() => {
+      // Simulate visitor count changes
+      const change = Math.random() > 0.5 ? 1 : -1;
+      setVisitors(prev => Math.max(50, prev + change));
       
-      const newTransaction = {
-        id: Date.now(),
-        ...randomType,
-        amount,
-        hash,
-        timestamp: new Date().toLocaleTimeString()
-      };
+      // Occasionally simulate NFT sales
+      if (Math.random() < 0.1) {
+        setNftSales(prev => prev + 1);
+      }
+    }, 5000 + Math.random() * 10000);
 
-      setTransactions(prev => [newTransaction, ...prev.slice(0, 4)]);
-    };
-
-    // Add initial transaction
-    addTransaction();
-
-    const interval = setInterval(addTransaction, 4000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="fixed bottom-6 left-6 z-30">
-      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm w-80">
+      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm min-w-[280px]">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-cyan-400" />
-            <CardTitle className="text-sm font-['Orbitron'] text-white">Live Blockchain</CardTitle>
+            <Users className="w-4 h-4 text-cyan-400" />
+            <CardTitle className="text-sm font-['Orbitron'] text-white">Atividade em Tempo Real</CardTitle>
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse ml-auto" />
           </div>
         </CardHeader>
-        <CardContent className="space-y-2 max-h-40 overflow-hidden">
-          {transactions.map((tx, index) => (
-            <div 
-              key={tx.id}
-              className={`flex items-center justify-between p-2 rounded bg-slate-700/50 transition-all duration-500 ${
-                index === 0 ? 'ring-1 ring-cyan-400/50 bg-cyan-400/10' : ''
-              }`}
-              style={{
-                opacity: 1 - (index * 0.2),
-                transform: `translateY(${index * 2}px)`
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-sm">{tx.icon}</span>
-                <span className={`text-xs font-semibold ${tx.color}`}>{tx.type}</span>
-                <span className="text-xs text-slate-300">{tx.amount} $GOMA</span>
-              </div>
-              <div className="text-xs text-slate-400">
-                {tx.timestamp}
-              </div>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between p-2 rounded bg-slate-700/50">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              <span className="text-xs text-slate-300">Visitantes Online</span>
             </div>
-          ))}
+            <div className="text-sm font-semibold text-green-400">
+              {visitors}
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between p-2 rounded bg-slate-700/50">
+            <div className="flex items-center gap-2">
+              <Crown className="w-3 h-3 text-purple-400" />
+              <span className="text-xs text-slate-300">NFTs Vendidos Hoje</span>
+            </div>
+            <div className="text-sm font-semibold text-purple-400">
+              {nftSales}
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between p-2 rounded bg-slate-700/50">
+            <div className="flex items-center gap-2">
+              <TreePine className="w-3 h-3 text-cyan-400" />
+              <span className="text-xs text-slate-300">Projeto Ativo</span>
+            </div>
+            <div className="text-xs text-cyan-400 font-semibold">
+              Curupira NFT
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -838,8 +837,8 @@ export default function GomaTokenPage() {
       <GlowingBorder />
       
       {/* Web3 Components */}
-      <CryptoTicker />
-      <BlockchainVisualization />
+      <NFTCollectionStatus />
+      <LiveVisitorsCounter />
       <WalletConnectionModal 
         isOpen={isWalletModalOpen} 
         onClose={() => setIsWalletModalOpen(false)}
@@ -893,13 +892,13 @@ export default function GomaTokenPage() {
             </Badge>
             
             <h1 className="text-6xl md:text-7xl font-bold font-['Orbitron'] mb-6 bg-gradient-to-r from-white via-cyan-300 to-green-400 bg-clip-text text-transparent">
-              O Futuro da Amazônia é Descentralizado
+              Seja um Patrono da Amazônia
             </h1>
             
             <p className="text-xl md:text-2xl text-slate-300 max-w-4xl mx-auto mb-8 leading-relaxed">
-              Conectamos a economia digital global com a agricultura familiar sustentável 
-              através do <span className="text-cyan-400 font-semibold">Projeto Curupira</span> e 
-              o token <span className="text-green-400 font-semibold">$GOMA</span>.
+              Torne-se parte da revolução sustentável da Amazônia através dos 
+              <span className="text-cyan-400 font-semibold"> NFTs Curupira</span> - uma coleção exclusiva 
+              que conecta <span className="text-green-400 font-semibold">Web3 e preservação ambiental</span>.
             </p>
           </div>
 
