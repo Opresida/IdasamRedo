@@ -818,6 +818,30 @@ export default function GomaTokenPage() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState(null);
 
+  // Set custom favicon for GomaToken page
+  useEffect(() => {
+    const originalFavicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+    const originalHref = originalFavicon?.href;
+    
+    // Create or update favicon
+    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      document.head.appendChild(favicon);
+    }
+    
+    favicon.href = '/gomatoken-favicon.svg';
+    favicon.type = 'image/svg+xml';
+    
+    // Cleanup - restore original favicon when component unmounts
+    return () => {
+      if (originalHref && favicon) {
+        favicon.href = originalHref;
+      }
+    };
+  }, []);
+
   const handleLoadComplete = () => {
     setIsLoading(false);
     // Pequeno delay para garantir transição suave
