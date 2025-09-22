@@ -906,29 +906,29 @@ export default function GomaTokenPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 mb-8 lg:mb-12 max-w-4xl mx-auto">
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 lg:p-6 border border-cyan-400/30">
-              <div className="flex items-center gap-2 lg:gap-3 mb-2 justify-center md:justify-start">
-                <Users className="w-5 h-5 lg:w-6 lg:h-6 text-cyan-400" />
-                <span className="text-cyan-400 font-semibold text-sm lg:text-base">Agricultura Familiar</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-8 lg:mb-12 max-w-4xl mx-auto">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 lg:p-8 border border-cyan-400/30">
+              <div className="flex items-center gap-3 lg:gap-4 mb-4 justify-center md:justify-start">
+                <Users className="w-6 h-6 lg:w-7 lg:h-7 text-cyan-400" />
+                <span className="text-cyan-400 font-semibold text-base lg:text-lg">Agricultura Familiar</span>
               </div>
-              <p className="text-slate-300 text-xs lg:text-sm">500+ Famílias Beneficiadas</p>
+              <p className="text-slate-300 text-sm lg:text-base">500+ Famílias Beneficiadas</p>
             </div>
             
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 lg:p-6 border border-green-400/30">
-              <div className="flex items-center gap-2 lg:gap-3 mb-2 justify-center md:justify-start">
-                <Globe className="w-5 h-5 lg:w-6 lg:h-6 text-green-400" />
-                <span className="text-green-400 font-semibold text-sm lg:text-base">Economia Circular</span>
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 lg:p-8 border border-green-400/30">
+              <div className="flex items-center gap-3 lg:gap-4 mb-4 justify-center md:justify-start">
+                <Globe className="w-6 h-6 lg:w-7 lg:h-7 text-green-400" />
+                <span className="text-green-400 font-semibold text-base lg:text-lg">Economia Circular</span>
               </div>
-              <p className="text-slate-300 text-xs lg:text-sm">100% Sustentável</p>
+              <p className="text-slate-300 text-sm lg:text-base">100% Sustentável</p>
             </div>
             
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 lg:p-6 border border-purple-400/30">
-              <div className="flex items-center gap-2 lg:gap-3 mb-2 justify-center md:justify-start">
-                <Zap className="w-5 h-5 lg:w-6 lg:h-6 text-purple-400" />
-                <span className="text-purple-400 font-semibold text-sm lg:text-base">Web3 Technology</span>
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 lg:p-8 border border-purple-400/30">
+              <div className="flex items-center gap-3 lg:gap-4 mb-4 justify-center md:justify-start">
+                <Zap className="w-6 h-6 lg:w-7 lg:h-7 text-purple-400" />
+                <span className="text-purple-400 font-semibold text-base lg:text-lg">Web3 Technology</span>
               </div>
-              <p className="text-slate-300 text-xs lg:text-sm">Blockchain Verified</p>
+              <p className="text-slate-300 text-sm lg:text-base">Blockchain Verified</p>
             </div>
           </div>
 
