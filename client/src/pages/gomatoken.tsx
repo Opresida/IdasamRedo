@@ -882,12 +882,7 @@ export default function GomaTokenPage() {
       {/* Header - Responsive */}
       <header className="relative z-20 p-4 lg:p-6">
         <nav className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-4 lg:gap-0">
-          <div className="flex items-center gap-3">
-            <TreePine className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-400" />
-            <span className="text-lg lg:text-xl font-['Orbitron'] font-bold">Projeto Curupira</span>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4">
+          <div className="flex items-center gap-3 lg:gap-4">
             {connectedWallet ? (
               <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-cyan-400/30">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -906,6 +901,12 @@ export default function GomaTokenPage() {
                 Connect Wallet
               </Button>
             )}
+            
+            <TreePine className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-400" />
+            <span className="text-lg lg:text-xl font-['Orbitron'] font-bold">Projeto Curupira</span>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4">
           </div>
         </nav>
       </header>
