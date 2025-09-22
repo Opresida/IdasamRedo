@@ -906,9 +906,6 @@ export default function GomaTokenPage() {
                 Connect Wallet
               </Button>
             )}
-            <Button variant="outline" size="sm" className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 text-xs lg:text-sm">
-              <a href="#nfts">Comprar NFT</a>
-            </Button>
           </div>
         </nav>
       </header>
