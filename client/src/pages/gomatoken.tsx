@@ -984,6 +984,253 @@ export default function GomaTokenPage() {
       {/* NFTs Section */}
       <NFTCards />
 
+      {/* Token Distribution Section */}
+      <section className="relative z-20 py-16 lg:py-20 px-4" id="distribuicao">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12 lg:mb-16">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-['Orbitron'] text-white mb-4 lg:mb-6 drop-shadow-lg">
+              Distribuição <span className="text-cyan-300 font-black bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-400/30">$GOMA</span>
+            </h2>
+            <p className="text-lg sm:text-xl lg:text-2xl text-gray-100 font-semibold max-w-4xl mx-auto drop-shadow-md bg-slate-800/20 px-4 lg:px-6 py-2 lg:py-3 rounded-lg border border-slate-600/30">
+              Transparência total na distribuição de 100 milhões de tokens $GOMA
+            </p>
+          </div>
+
+          {/* Distribution Chart Visual */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-12">
+            {/* Pie Chart Representation */}
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 lg:p-8 border border-cyan-400/30">
+              <h3 className="text-xl lg:text-2xl font-['Orbitron'] text-white mb-6 text-center">Distribuição Visual</h3>
+              <div className="relative w-64 h-64 lg:w-80 lg:h-80 mx-auto">
+                {/* Simplified pie chart representation using CSS */}
+                <div className="absolute inset-0 rounded-full border-8 border-green-400" 
+                     style={{background: `conic-gradient(
+                       from 0deg,
+                       #00f5c3 0deg 90deg,
+                       #4ade80 90deg 180deg,
+                       #06b6d4 180deg 252deg,
+                       #8b5cf6 252deg 306deg,
+                       #f59e0b 306deg 324deg,
+                       #ef4444 324deg 342deg,
+                       #10b981 342deg 360deg
+                     )`}}>
+                </div>
+                <div className="absolute inset-8 bg-slate-900 rounded-full flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-2xl lg:text-3xl font-bold text-cyan-400">100M</div>
+                    <div className="text-sm lg:text-base text-slate-300">Tokens $GOMA</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Key Metrics */}
+            <div className="space-y-4">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 lg:p-6 border border-cyan-400/30">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-4 h-4 bg-cyan-400 rounded-full"></div>
+                  <span className="text-cyan-400 font-semibold">Tesouraria IDASAM</span>
+                </div>
+                <div className="text-2xl lg:text-3xl font-bold text-white">25%</div>
+                <div className="text-slate-300 text-sm">25.000.000 tokens</div>
+              </div>
+
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 lg:p-6 border border-green-400/30">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-4 h-4 bg-green-400 rounded-full"></div>
+                  <span className="text-green-400 font-semibold">Fundo do Ecossistema</span>
+                </div>
+                <div className="text-2xl lg:text-3xl font-bold text-white">25%</div>
+                <div className="text-slate-300 text-sm">25.000.000 tokens</div>
+              </div>
+
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 lg:p-6 border border-blue-400/30">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-4 h-4 bg-blue-400 rounded-full"></div>
+                  <span className="text-blue-400 font-semibold">Recompensas de Staking</span>
+                </div>
+                <div className="text-2xl lg:text-3xl font-bold text-white">20%</div>
+                <div className="text-slate-300 text-sm">20.000.000 tokens</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Public Wallets Table */}
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-cyan-400/30 overflow-hidden">
+            <div className="p-6 lg:p-8 border-b border-slate-700">
+              <h3 className="text-2xl lg:text-3xl font-['Orbitron'] text-white mb-2">
+                <Shield className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-400 inline mr-3" />
+                Carteiras Públicas Verificadas
+              </h3>
+              <p className="text-slate-300 text-sm lg:text-base">
+                Todas as carteiras são públicas e auditáveis na blockchain
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm lg:text-base">
+                <thead className="bg-slate-700/50">
+                  <tr>
+                    <th className="text-left p-4 lg:p-6 text-cyan-400 font-semibold">Destino</th>
+                    <th className="text-left p-4 lg:p-6 text-cyan-400 font-semibold">Quantidade</th>
+                    <th className="text-left p-4 lg:p-6 text-cyan-400 font-semibold">%</th>
+                    <th className="text-left p-4 lg:p-6 text-cyan-400 font-semibold">Endereço</th>
+                    <th className="text-left p-4 lg:p-6 text-cyan-400 font-semibold">Propósito</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-300">
+                  <tr className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                    <td className="p-4 lg:p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-cyan-400 rounded-full"></div>
+                        <span className="font-semibold text-white">Tesouraria do IDASAM</span>
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 font-mono">25.000.000</td>
+                    <td className="p-4 lg:p-6">
+                      <Badge className="bg-cyan-400/20 text-cyan-400">25%</Badge>
+                    </td>
+                    <td className="p-4 lg:p-6">
+                      <div className="font-mono text-xs lg:text-sm bg-slate-700/50 px-2 py-1 rounded">
+                        0x9AEa81FC1c75cBd6925dA8E5054E68943c9092E7
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 text-xs lg:text-sm">Financiar operações e garantir sustentabilidade</td>
+                  </tr>
+
+                  <tr className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                    <td className="p-4 lg:p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                        <span className="font-semibold text-white">Fundo do Ecossistema</span>
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 font-mono">25.000.000</td>
+                    <td className="p-4 lg:p-6">
+                      <Badge className="bg-green-400/20 text-green-400">25%</Badge>
+                    </td>
+                    <td className="p-4 lg:p-6">
+                      <div className="font-mono text-xs lg:text-sm bg-slate-700/50 px-2 py-1 rounded">
+                        0xC634fC729d6FFc4B35A6548921FD886f0EbC7Cf8
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 text-xs lg:text-sm">Futuras necessidades estratégicas</td>
+                  </tr>
+
+                  <tr className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                    <td className="p-4 lg:p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+                        <span className="font-semibold text-white">Recompensas de Staking</span>
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 font-mono">20.000.000</td>
+                    <td className="p-4 lg:p-6">
+                      <Badge className="bg-blue-400/20 text-blue-400">20%</Badge>
+                    </td>
+                    <td className="p-4 lg:p-6">
+                      <div className="font-mono text-xs lg:text-sm bg-slate-700/50 px-2 py-1 rounded">
+                        0x715C092d4365093edDe28344Fe85b4B8Aa41504e
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 text-xs lg:text-sm">Financiar APY para usuários</td>
+                  </tr>
+
+                  <tr className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                    <td className="p-4 lg:p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
+                        <span className="font-semibold text-white">Marketing e Parcerias</span>
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 font-mono">15.000.000</td>
+                    <td className="p-4 lg:p-6">
+                      <Badge className="bg-purple-400/20 text-purple-400">15%</Badge>
+                    </td>
+                    <td className="p-4 lg:p-6">
+                      <div className="font-mono text-xs lg:text-sm bg-slate-700/50 px-2 py-1 rounded">
+                        0xa65F547bcDc3932BdaaB2EABA31083cbEE04F13C
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 text-xs lg:text-sm">Campanhas e parcerias estratégicas</td>
+                  </tr>
+
+                  <tr className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                    <td className="p-4 lg:p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                        <span className="font-semibold text-white">Time e Consultores</span>
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 font-mono">10.000.000</td>
+                    <td className="p-4 lg:p-6">
+                      <Badge className="bg-yellow-400/20 text-yellow-400">10%</Badge>
+                    </td>
+                    <td className="p-4 lg:p-6">
+                      <div className="font-mono text-xs lg:text-sm bg-slate-700/50 px-2 py-1 rounded">
+                        0x71Bc1692c002783B6dc0d9B08743c80C258CC52b
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 text-xs lg:text-sm">Recompensar equipe essencial de deslocamento físico</td>
+                  </tr>
+
+                  <tr className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                    <td className="p-4 lg:p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+                        <span className="font-semibold text-white">AirDrop</span>
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 font-mono">5.000.000</td>
+                    <td className="p-4 lg:p-6">
+                      <Badge className="bg-red-400/20 text-red-400">5%</Badge>
+                    </td>
+                    <td className="p-4 lg:p-6">
+                      <div className="font-mono text-xs lg:text-sm bg-slate-700/50 px-2 py-1 rounded">
+                        0x6Ef46C08276Eda7ca54C1557D3E141f729483247
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 text-xs lg:text-sm">Pagamento de Airdrop</td>
+                  </tr>
+
+                  <tr className="hover:bg-slate-700/30 transition-colors">
+                    <td className="p-4 lg:p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-emerald-400 rounded-full"></div>
+                        <span className="font-semibold text-white">Liquidez Inicial (DEX)</span>
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 font-mono">5.000.000</td>
+                    <td className="p-4 lg:p-6">
+                      <Badge className="bg-emerald-400/20 text-emerald-400">5%</Badge>
+                    </td>
+                    <td className="p-4 lg:p-6">
+                      <div className="font-mono text-xs lg:text-sm bg-slate-700/50 px-2 py-1 rounded">
+                        0x555...Liquidez
+                      </div>
+                    </td>
+                    <td className="p-4 lg:p-6 text-xs lg:text-sm">Criar mercado inicial na DEX</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-6 lg:p-8 bg-slate-700/30 border-t border-slate-700">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-green-400" />
+                  <span className="text-green-400 font-semibold text-sm">Auditado & Verificado</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-cyan-400" />
+                  <span className="text-slate-300 text-sm">Todas as transações são públicas e rastreáveis</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Twitter Follow Section */}
       <section className="relative z-20 py-12 lg:py-16 px-4 bg-gradient-to-r from-blue-500/20 to-sky-400/20 border-y border-cyan-400/30">
         <div className="max-w-4xl mx-auto text-center">
