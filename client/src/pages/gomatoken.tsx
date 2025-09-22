@@ -956,6 +956,71 @@ export default function GomaTokenPage() {
       {/* NFTs Section */}
       <NFTCards />
 
+      {/* Twitter Follow Section */}
+      <section className="relative z-20 py-16 px-4 bg-gradient-to-r from-blue-500/20 to-sky-400/20 border-y border-cyan-400/30">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="bg-slate-800/70 backdrop-blur-sm rounded-2xl p-8 border border-cyan-400/30 shadow-[0_0_40px_rgba(0,245,195,0.2)]">
+            <div className="flex flex-col items-center space-y-6">
+              {/* Twitter Icon */}
+              <div className="w-20 h-20 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                <svg className="w-12 h-12 text-slate-900" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </div>
+
+              {/* Title */}
+              <h2 className="text-3xl md:text-4xl font-bold font-['Orbitron'] text-white mb-4">
+                Siga-nos no <span className="text-cyan-400">Twitter</span>
+              </h2>
+
+              {/* Description */}
+              <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                Acompanhe em tempo real as últimas novidades sobre desenvolvimento sustentável na Amazônia, 
+                nossos projetos inovadores e o impacto social do <span className="text-green-400 font-semibold">Token $GOMA</span>.
+              </p>
+
+              {/* Handle */}
+              <div className="bg-slate-700/50 rounded-lg px-6 py-3 backdrop-blur-sm border border-cyan-400/30">
+                <span className="text-cyan-400 font-mono text-lg font-semibold">@institutoidasam</span>
+              </div>
+
+              {/* Follow Button */}
+              <a
+                href="https://x.com/institutoidasam"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-slate-900 font-bold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                Seguir no Twitter
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+
+              {/* Stats */}
+              <div className="flex flex-col sm:flex-row gap-6 text-slate-300 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                  <span>Atualizações em tempo real</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
+                  <span>Projetos e novidades</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+                  <span>Token $GOMA updates</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="relative z-20 py-12 px-4 border-t border-slate-700">
         <div className="max-w-6xl mx-auto text-center">
