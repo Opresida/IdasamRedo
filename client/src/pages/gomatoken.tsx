@@ -17,7 +17,15 @@ import {
   Crown,
   TreePine,
   Globe,
-  Target
+  Target,
+  Wallet,
+  Activity,
+  ChevronUp,
+  ChevronDown,
+  Copy,
+  Check,
+  Wifi,
+  X
 } from 'lucide-react';
 
 const LoaderScreen = ({ onLoadComplete }: { onLoadComplete: () => void }) => {
@@ -134,6 +142,230 @@ const GlowingBorder = () => {
   return (
     <div className="fixed inset-4 pointer-events-none z-10">
       <div className="w-full h-full border-2 border-cyan-400/30 rounded-lg animate-pulse shadow-[0_0_30px_rgba(0,245,195,0.3)]" />
+    </div>
+  );
+};
+
+// Crypto Ticker Component
+const CryptoTicker = () => {
+  const [price, setPrice] = useState(0.0008);
+  const [change, setChange] = useState(0);
+  const [isPositive, setIsPositive] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const changePercent = (Math.random() - 0.5) * 0.1; // -5% to +5%
+      const newPrice = price * (1 + changePercent);
+      const priceChange = ((newPrice - price) / price) * 100;
+      
+      setPrice(newPrice);
+      setChange(priceChange);
+      setIsPositive(priceChange >= 0);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [price]);
+
+  return (
+    <div className="fixed top-6 right-6 z-30">
+      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm min-w-[200px]">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-gradient-to-r from-cyan-400 to-green-400 rounded-full animate-pulse" />
+              <span className="text-white font-semibold font-['Orbitron']">$GOMA</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Wifi className="w-3 h-3 text-green-400" />
+              <span className="text-xs text-green-400">Live</span>
+            </div>
+          </div>
+          
+          <div className="space-y-1">
+            <div className="text-lg font-bold text-white">
+              ${price.toFixed(6)}
+            </div>
+            <div className={`flex items-center gap-1 text-xs ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+              {isPositive ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              <span>{isPositive ? '+' : ''}{change.toFixed(2)}%</span>
+              <span className="text-slate-400">24h</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Blockchain Transaction Visualization
+const BlockchainVisualization = () => {
+  const [transactions, setTransactions] = useState([]);
+
+  const transactionTypes = [
+    { type: 'Buy', color: 'text-green-400', icon: '↗' },
+    { type: 'Sell', color: 'text-red-400', icon: '↘' },
+    { type: 'Stake', color: 'text-blue-400', icon: '🔒' },
+    { type: 'Claim', color: 'text-yellow-400', icon: '💰' }
+  ];
+
+  useEffect(() => {
+    const addTransaction = () => {
+      const randomType = transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
+      const amount = (Math.random() * 10000 + 100).toFixed(0);
+      const hash = '0x' + Math.random().toString(16).substring(2, 10);
+      
+      const newTransaction = {
+        id: Date.now(),
+        ...randomType,
+        amount,
+        hash,
+        timestamp: new Date().toLocaleTimeString()
+      };
+
+      setTransactions(prev => [newTransaction, ...prev.slice(0, 4)]);
+    };
+
+    // Add initial transaction
+    addTransaction();
+
+    const interval = setInterval(addTransaction, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="fixed bottom-6 left-6 z-30">
+      <Card className="bg-slate-800/90 border-cyan-400/30 backdrop-blur-sm w-80">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-cyan-400" />
+            <CardTitle className="text-sm font-['Orbitron'] text-white">Live Blockchain</CardTitle>
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse ml-auto" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2 max-h-40 overflow-hidden">
+          {transactions.map((tx, index) => (
+            <div 
+              key={tx.id}
+              className={`flex items-center justify-between p-2 rounded bg-slate-700/50 transition-all duration-500 ${
+                index === 0 ? 'ring-1 ring-cyan-400/50 bg-cyan-400/10' : ''
+              }`}
+              style={{
+                opacity: 1 - (index * 0.2),
+                transform: `translateY(${index * 2}px)`
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm">{tx.icon}</span>
+                <span className={`text-xs font-semibold ${tx.color}`}>{tx.type}</span>
+                <span className="text-xs text-slate-300">{tx.amount} $GOMA</span>
+              </div>
+              <div className="text-xs text-slate-400">
+                {tx.timestamp}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Wallet Connection Modal
+const WalletConnectionModal = ({ isOpen, onClose, onConnect }) => {
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectedWallet, setConnectedWallet] = useState(null);
+
+  const wallets = [
+    { name: 'MetaMask', icon: '🦊', popular: true },
+    { name: 'WalletConnect', icon: '🔗', popular: true },
+    { name: 'Coinbase Wallet', icon: '🔵', popular: false },
+    { name: 'Phantom', icon: '👻', popular: false }
+  ];
+
+  const handleConnect = async (wallet) => {
+    setIsConnecting(true);
+    
+    // Simulate connection delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const fakeAddress = '0x' + Math.random().toString(16).substring(2, 42).padStart(40, '0');
+    setConnectedWallet({
+      name: wallet.name,
+      address: fakeAddress,
+      balance: (Math.random() * 1000 + 50).toFixed(2)
+    });
+    
+    setIsConnecting(false);
+    setTimeout(() => {
+      onConnect(fakeAddress);
+      onClose();
+    }, 1500);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-slate-800 border border-cyan-400/30 rounded-xl p-6 w-full max-w-md mx-4">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-['Orbitron'] text-white">Connect Wallet</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {connectedWallet ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-slate-900" />
+            </div>
+            <h4 className="text-lg font-semibold text-white mb-2">Wallet Connected!</h4>
+            <p className="text-slate-300 text-sm mb-4">{connectedWallet.name}</p>
+            <div className="bg-slate-700 rounded-lg p-3 mb-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">Address:</span>
+                <span className="text-xs text-cyan-400 font-mono">
+                  {connectedWallet.address.substring(0, 6)}...{connectedWallet.address.substring(38)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-slate-400">Balance:</span>
+                <span className="text-xs text-green-400">{connectedWallet.balance} $GOMA</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {wallets.map((wallet, index) => (
+              <button
+                key={wallet.name}
+                onClick={() => handleConnect(wallet)}
+                disabled={isConnecting}
+                className="w-full flex items-center gap-3 p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-cyan-400/30"
+              >
+                <span className="text-2xl">{wallet.icon}</span>
+                <div className="flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-medium">{wallet.name}</span>
+                    {wallet.popular && (
+                      <Badge className="bg-cyan-400/20 text-cyan-400 text-xs">Popular</Badge>
+                    )}
+                  </div>
+                </div>
+                {isConnecting && (
+                  <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 text-center">
+          <p className="text-xs text-slate-400">
+            By connecting your wallet, you agree to our Terms of Service
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -583,9 +815,15 @@ const NFTCards = () => {
 
 export default function GomaTokenPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [connectedWallet, setConnectedWallet] = useState(null);
 
   const handleLoadComplete = () => {
     setIsLoading(false);
+  };
+
+  const handleWalletConnect = (address) => {
+    setConnectedWallet(address);
   };
 
   if (isLoading) {
@@ -598,6 +836,15 @@ export default function GomaTokenPage() {
       <ParticleBackground />
       <ParticleSystem count={80} tokenRain={true} className="opacity-60" />
       <GlowingBorder />
+      
+      {/* Web3 Components */}
+      <CryptoTicker />
+      <BlockchainVisualization />
+      <WalletConnectionModal 
+        isOpen={isWalletModalOpen} 
+        onClose={() => setIsWalletModalOpen(false)}
+        onConnect={handleWalletConnect}
+      />
 
       {/* Header */}
       <header className="relative z-20 p-6">
@@ -608,6 +855,23 @@ export default function GomaTokenPage() {
           </div>
           
           <div className="flex items-center gap-4">
+            {connectedWallet ? (
+              <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2 border border-cyan-400/30">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-cyan-400 text-sm font-mono">
+                  {connectedWallet.substring(0, 6)}...{connectedWallet.substring(38)}
+                </span>
+              </div>
+            ) : (
+              <Button 
+                variant="outline" 
+                className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10"
+                onClick={() => setIsWalletModalOpen(true)}
+              >
+                <Wallet className="w-4 h-4 mr-2" />
+                Connect Wallet
+              </Button>
+            )}
             <Button variant="outline" className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10">
               <a href="#nfts">Comprar NFT</a>
             </Button>
