@@ -864,7 +864,7 @@ export default function GomaTokenPage() {
             ) : (
               <Button 
                 variant="outline" 
-                className="border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300"
+                className="border-purple-400/50 text-purple-400 hover:bg-purple-400/10 hover:text-purple-300"
                 onClick={() => setIsWalletModalOpen(true)}
               >
                 <Wallet className="w-4 h-4 mr-2" />
