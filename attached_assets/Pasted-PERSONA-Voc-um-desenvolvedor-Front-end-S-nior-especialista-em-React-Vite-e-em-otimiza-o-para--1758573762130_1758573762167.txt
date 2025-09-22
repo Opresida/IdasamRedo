@@ -1,0 +1,109 @@
+PERSONA: Você é um desenvolvedor Front-end Sênior, especialista em React, Vite e em otimização para SEO e redes sociais (Social Media Optimization).
+
+OBJETIVO PRINCIPAL: Configurar o projeto para exibir meta tags de preview dinâmicas para a rota específica /gomatoken. Queremos que, ao compartilhar o link dessa página, apareça uma imagem, título e descrição personalizados.
+
+CONTEXTO TÉCNICO:
+
+Framework: React com Vite.
+
+Estrutura: É uma Aplicação de Página Única (SPA).
+
+Arquivo Principal: client/src/main.tsx
+
+Componente da Rota Alvo: client/src/pages/gomatoken.tsx
+
+Hospedagem: O deploy é feito no Netlify e a funcionalidade de Prerendering já foi ativada.
+
+Por favor, execute as seguintes tarefas, passo a passo:
+
+PASSO 1: Instalar a dependência para gerenciar o <head>
+
+No terminal (Shell), execute o comando abaixo para instalar a biblioteca react-helmet-async, que nos permitirá gerenciar as meta tags de forma dinâmica dentro dos componentes React.
+
+Bash
+
+npm install react-helmet-async
+PASSO 2: Configurar o HelmetProvider na raiz da aplicação
+
+Modifique o arquivo client/src/main.tsx para envolver toda a aplicação com o HelmetProvider. Isso é necessário para que o Helmet funcione em qualquer lugar do projeto.
+
+Arquivo a ser modificado: client/src/main.tsx
+
+Instruções:
+
+Importe o HelmetProvider de react-helmet-async.
+
+Envolva o componente <App /> com o <HelmetProvider>.
+
+O código final deve ficar semelhante a este:
+
+TypeScript
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  </React.StrictMode>
+);
+PASSO 3: Adicionar as Meta Tags de Preview na página /gomatoken
+
+Agora, modifique o componente da página específica para incluir as tags de Open Graph e Twitter Card.
+
+Arquivo a ser modificado: client/src/pages/gomatoken.tsx
+
+Instruções:
+
+Importe o componente Helmet de react-helmet-async.
+
+Dentro do retorno do componente GomaTokenPage, adicione o bloco <Helmet> com as seguintes informações:
+
+URL da Página: https://URL_DO_SEU_SITE/gomatoken (use este como placeholder)
+
+Título: Token $GOMA - A Revolução Sustentável na Amazônia
+
+Descrição: Faça parte do futuro da bioeconomia da Amazônia. Adquira os NFTs Curupira e apoie um ecossistema que une Web3 e preservação ambiental.
+
+Imagem (URL): https://i.imgur.com/OV0eBrM.png
+
+O código a ser inserido dentro do componente deve ser este:
+
+TypeScript
+
+import { Helmet } from 'react-helmet-async';
+
+// ... dentro do seu componente GomaTokenPage
+
+return (
+  <>
+    <Helmet>
+      {/* --- Tags de Preview para Redes Sociais --- */}
+
+      {/* Título e Descrição Principal */}
+      <title>Token $GOMA - A Revolução Sustentável na Amazônia</title>
+      <meta name="description" content="Faça parte do futuro da bioeconomia da Amazônia. Adquira os NFTs Curupira e apoie um ecossistema que une Web3 e preservação ambiental." />
+
+      {/* Open Graph / Facebook / WhatsApp */}
+      <meta property="og:type" content="website" />
+      <meta property="og:url" content="https://URL_DO_SEU_SITE/gomatoken" />
+      <meta property="og:title" content="Token $GOMA - A Revolução Sustentável na Amazônia" />
+      <meta property="og:description" content="Faça parte do futuro da bioeconomia da Amazônia. Adquira os NFTs Curupira e apoie um ecossistema que une Web3 e preservação ambiental." />
+      <meta property="og:image" content="https://i.imgur.com/OV0eBrM.png" />
+
+      {/* Twitter */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta property="twitter:url" content="https://URL_DO_SEU_SITE/gomatoken" />
+      <meta name="twitter:title" content="Token $GOMA - A Revolução Sustentável na Amazônia" />
+      <meta name="twitter:description" content="Faça parte do futuro da bioeconomia da Amazônia. Adquira os NFTs Curupira e apoie um ecossistema que une Web3 e preservação ambiental." />
+      <meta name="twitter:image" content="https://i.imgur.com/OV0eBrM.png" />
+    </Helmet>
+
+    {/* ... resto do código JSX do seu componente ... */}
+  </>
+);
