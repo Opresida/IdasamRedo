@@ -12,7 +12,8 @@ const logos: Logo[] = [
   { id: "pimm", description: "PIMM", image: "https://i.imgur.com/0dAOlFa.png" },
   { id: "climento", description: "CLIMETO", image: "https://i.imgur.com/i9kbW8L.png" },
   { id: "q3", description: "Q3 QUALIDADE", image: "https://i.imgur.com/XG4LgbN.png" },
-  { id: "manausplay", description: "Manaus Play", image: "https://i.imgur.com/nBx71ZQ.png" }
+  { id: "manausplay", description: "Manaus Play", image: "https://i.imgur.com/nBx71ZQ.png" },
+  { id: "gbr-componentes", description: "GBR Componentes", image: "https://i.imgur.com/7eGkdW0.png" }
 ];
 
 export default function Logos3() {
