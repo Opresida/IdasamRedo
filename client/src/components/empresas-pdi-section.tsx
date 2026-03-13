@@ -18,7 +18,7 @@ const empresas: Empresa[] = [
     id: "gbr-componentes",
     name: "GBR Componentes",
     logo: "https://i.imgur.com/np0D8rI.png",
-    description: "A GBR Componentes (oficialmente GBR Componentes da Amazônia) é o braço industrial do Grupo Claudino responsável pela fabricação de peças e partes para as bicicletas das marcas Audax e Houston.",
+    description: "A GBR Componentes da Amazônia é uma indústria de tecnologia sediada no Distrito Industrial de Manaus, com foco na fabricação de componentes eletrônicos e equipamentos de telecomunicações.",
   },
 ];
 
