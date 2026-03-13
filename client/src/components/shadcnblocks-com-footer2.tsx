@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linkedin, Instagram, Facebook } from 'lucide-react';
+import { Linkedin, Instagram, Facebook, MapPin } from 'lucide-react';
 
 interface MenuSection {
   title: string;
@@ -36,9 +36,13 @@ export default function ShadcnblocksComFooter2() {
                 title="Idasam"
               />
             </div>
-            <p className="text-gray-300 leading-relaxed mb-6" data-testid="footer-tagline">
+            <p className="text-gray-300 leading-relaxed mb-4" data-testid="footer-tagline">
               Inovação e Tecnologia para o Desenvolvimento da Amazônia.
             </p>
+            <div className="flex items-start gap-2 text-gray-300 text-sm mb-6" data-testid="footer-address">
+              <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>Centro Empresarial Art Center, 3694, Manaus - AM, 69055-038</span>
+            </div>
             <div className="flex space-x-4" data-testid="social-links">
               <a href="#" className="text-gray-300 hover:text-white transition-colors" data-testid="link-linkedin">
                 <Linkedin className="w-6 h-6" />
