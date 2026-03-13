@@ -11,13 +11,13 @@ const empresas: Empresa[] = [
   {
     id: "audax",
     name: "Audax",
-    logo: "https://i.imgur.com/A0LdbeZ.png",
+    logo: "https://i.imgur.com/3mBGUXz.png",
     description: "A Audax é uma das principais marcas de bicicletas premium do Brasil. Ela faz parte do Grupo Claudino, um conglomerado empresarial gigante sediado em Teresina (Piauí), que também é dono da marca Houston (focada em bikes de entrada).",
   },
   {
     id: "gbr-componentes",
     name: "GBR Componentes",
-    logo: "https://i.imgur.com/7eGkdW0.png",
+    logo: "https://i.imgur.com/np0D8rI.png",
     description: "A GBR Componentes (oficialmente GBR Componentes da Amazônia) é o braço industrial do Grupo Claudino responsável pela fabricação de peças e partes para as bicicletas das marcas Audax e Houston.",
   },
 ];
