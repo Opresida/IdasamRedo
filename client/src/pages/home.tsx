@@ -10,6 +10,7 @@ import { List2 } from '@/components/ui/list-2';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import CoracaoRibeirinhoSection from '@/components/coracao-ribeirinho-section';
+import EmpresasPdiSection from '@/components/empresas-pdi-section';
 
 export default function Home() {
   return (
@@ -19,6 +20,7 @@ export default function Home() {
       <AboutSection />
       <AnimatedTestimonials />
       <CoracaoRibeirinhoSection />
+      <EmpresasPdiSection />
       <TestimonialsSection />
       <GlobeFeatureSection />
       <Logos3 />
