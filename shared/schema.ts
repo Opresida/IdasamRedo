@@ -28,12 +28,21 @@ export const courses = pgTable("courses", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   location: text("location").notNull(),
+  schedule: text("schedule"),
+  address: text("address"),
+  curriculum: text("curriculum"),
+  vacancies: integer("vacancies"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
 export const insertCourseSchema = createInsertSchema(courses).omit({
   id: true,
   createdAt: true,
+}).extend({
+  schedule: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  curriculum: z.string().optional().nullable(),
+  vacancies: z.number().int().positive().optional().nullable(),
 });
 
 export type InsertCourse = z.infer<typeof insertCourseSchema>;

@@ -1,6 +1,6 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { insertEnrollmentSchema } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -168,6 +168,48 @@ export async function registerRoutes(app: Express) {
       res.json(all);
     } catch (err) {
       res.status(500).json({ message: "Erro ao buscar cursos" });
+    }
+  });
+
+  app.post("/api/courses", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertCourseSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      }
+      const course = await storage.createCourse(parsed.data);
+      res.status(201).json(course);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao criar curso" });
+    }
+  });
+
+  app.put("/api/courses/:id", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertCourseSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      }
+      const updated = await storage.updateCourse(req.params.id, parsed.data);
+      if (!updated) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao atualizar curso" });
+    }
+  });
+
+  app.delete("/api/courses/:id", requireAdmin, async (req, res) => {
+    try {
+      const course = await storage.getCourse(req.params.id);
+      if (!course) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      await storage.deleteCourse(req.params.id);
+      res.json({ message: "Curso excluído com sucesso" });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao excluir curso" });
     }
   });
 

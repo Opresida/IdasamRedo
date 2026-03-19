@@ -18,6 +18,8 @@ export interface IStorage {
   getCourses(): Promise<Course[]>;
   getCourse(id: string): Promise<Course | undefined>;
   createCourse(course: InsertCourse): Promise<Course>;
+  updateCourse(id: string, course: Partial<InsertCourse>): Promise<Course | undefined>;
+  deleteCourse(id: string): Promise<void>;
 
   getEnrollments(): Promise<Enrollment[]>;
   getEnrollmentsByCourse(courseId: string): Promise<Enrollment[]>;
@@ -61,6 +63,19 @@ export class DatabaseStorage implements IStorage {
   async createCourse(course: InsertCourse): Promise<Course> {
     const [created] = await db.insert(courses).values(course).returning();
     return created;
+  }
+
+  async updateCourse(id: string, course: Partial<InsertCourse>): Promise<Course | undefined> {
+    const [updated] = await db
+      .update(courses)
+      .set(course)
+      .where(eq(courses.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteCourse(id: string): Promise<void> {
+    await db.delete(courses).where(eq(courses.id, id));
   }
 
   async getEnrollments(): Promise<Enrollment[]> {
