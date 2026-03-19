@@ -1,13 +1,11 @@
 
-// Clean slate - ready for new internal database schema
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, uuid, timestamp } from "drizzle-orm/pg-core";
+import { sql, relations } from "drizzle-orm";
+import { pgTable, text, varchar, uuid, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Placeholder table - will be replaced with new schema
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
@@ -20,3 +18,69 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export const courses = pgTable("courses", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  instructor: text("instructor").notNull(),
+  workload: integer("workload").notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  location: text("location").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertCourseSchema = createInsertSchema(courses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCourse = z.infer<typeof insertCourseSchema>;
+export type Course = typeof courses.$inferSelect;
+
+export const coursesRelations = relations(courses, ({ many }) => ({
+  enrollments: many(enrollments),
+}));
+
+export const enrollments = pgTable("enrollments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  courseId: uuid("course_id").notNull().references(() => courses.id),
+  fullName: text("full_name").notNull(),
+  cpf: text("cpf").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
+export type Enrollment = typeof enrollments.$inferSelect;
+
+export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
+  course: one(courses, { fields: [enrollments.courseId], references: [courses.id] }),
+  certificates: many(certificates),
+}));
+
+export const certificates = pgTable("certificates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  enrollmentId: uuid("enrollment_id").notNull().references(() => enrollments.id),
+  filePath: text("file_path").notNull(),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertCertificateSchema = createInsertSchema(certificates).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
+export type Certificate = typeof certificates.$inferSelect;
+
+export const certificatesRelations = relations(certificates, ({ one }) => ({
+  enrollment: one(enrollments, { fields: [certificates.enrollmentId], references: [enrollments.id] }),
+}));

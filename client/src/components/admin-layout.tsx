@@ -11,7 +11,8 @@ import {
   FolderKanban,
   LogOut,
   Shield,
-  Users
+  Users,
+  GraduationCap
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -63,6 +64,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: Users,
       path: '/dashboard/usuarios',
       description: 'Gerenciamento de usuários'
+    },
+    {
+      label: 'Capacitação',
+      icon: GraduationCap,
+      path: '/dashboard/capacitacao',
+      description: 'Cursos e certificados'
     }
   ];
 

@@ -58,16 +58,6 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoCredentials = (type: 'admin' | 'editor') => {
-    if (type === 'admin') {
-      setEmail('admin@idasam.org');
-      setPassword('idasam2024');
-    } else {
-      setEmail('editor@idasam.org');
-      setPassword('editor2024');
-    }
-    setError('');
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-idasam-green-light/20 via-white to-idasam-green-medium/10 flex items-center justify-center p-4">
@@ -154,33 +144,6 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-
-          {/* Credenciais de demonstração */}
-          <div className="border-t pt-4">
-            <p className="text-xs text-gray-500 text-center mb-3">
-              Credenciais de demonstração:
-            </p>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fillDemoCredentials('admin')}
-                className="w-full text-xs"
-                disabled={isLoading}
-              >
-                Admin: admin@idasam.org / idasam2024
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fillDemoCredentials('editor')}
-                className="w-full text-xs"
-                disabled={isLoading}
-              >
-                Editor: editor@idasam.org / editor2024
-              </Button>
-            </div>
-          </div>
 
           <div className="text-center">
             <p className="text-xs text-gray-500">

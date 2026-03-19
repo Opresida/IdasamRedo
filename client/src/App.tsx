@@ -23,9 +23,12 @@ import DashboardFinanceiroPage from '@/pages/dashboard/financeiro';
 import AgendaPage from '@/pages/agenda';
 import ProjetosAdminPage from '@/pages/projetos-admin';
 import UsuariosPage from '@/pages/dashboard/usuarios';
+import DashboardCapacitacaoPage from '@/pages/dashboard/capacitacao';
 import TransparenciaPage from './pages/transparencia';
 import BioPage from './pages/bio';
 import TelegramFloat from '@/components/telegram-float';
+import CapacitacaoPage from '@/pages/capacitacao';
+import MeuCertificadoPage from '@/pages/meu-certificado';
 
 function AppContent() {
   const [location] = useLocation();
@@ -96,6 +99,15 @@ function AppContent() {
             </AdminLayout>
           </ProtectedRoute>
         </Route>
+        <Route path="/dashboard/capacitacao">
+          <ProtectedRoute>
+            <AdminLayout>
+              <DashboardCapacitacaoPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/capacitacao" component={CapacitacaoPage} />
+        <Route path="/meu-certificado" component={MeuCertificadoPage} />
         <Route path="/doacao-usd" component={PaginaDeDoacao} />
         <Route path="/doacao-eur" component={PaginaDeDoacaoEUR} />
         <Route path="/transparencia" component={TransparenciaPage} />

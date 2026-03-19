@@ -1,23 +1,47 @@
 import React from 'react';
 import { Linkedin, Instagram, Facebook, MapPin } from 'lucide-react';
 
+interface MenuSectionItem {
+  label: string;
+  href: string;
+}
+
 interface MenuSection {
   title: string;
-  items: string[];
+  items: MenuSectionItem[];
 }
 
 const menuItems: MenuSection[] = [
   {
     title: "Institucional",
-    items: ["Sobre Nós", "Equipe", "Notícias", "Contato"]
+    items: [
+      { label: "Sobre Nós", href: "#quem-somos" },
+      { label: "Equipe", href: "#quem-somos" },
+      { label: "Notícias", href: "/noticias" },
+      { label: "Contato", href: "#contato" },
+    ]
   },
   {
-    title: "Atuação", 
-    items: ["Bioeconomia", "Projetos", "Governança Territorial"]
+    title: "Atuação",
+    items: [
+      { label: "Bioeconomia", href: "#" },
+      { label: "Projetos", href: "/projetos" },
+      { label: "Governança Territorial", href: "#" },
+    ]
+  },
+  {
+    title: "Capacitação",
+    items: [
+      { label: "Cursos 2026", href: "/capacitacao" },
+      { label: "Meu Certificado", href: "/meu-certificado" },
+    ]
   },
   {
     title: "Transparência",
-    items: ["Legislação", "Relatórios"]
+    items: [
+      { label: "Legislação", href: "/transparencia" },
+      { label: "Relatórios", href: "/transparencia" },
+    ]
   }
 ];
 
@@ -25,7 +49,7 @@ export default function ShadcnblocksComFooter2() {
   return (
     <footer id="contato" className="bg-forest text-white py-16 px-4" data-testid="footer">
       <div className="max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-4 gap-12 mb-12">
+        <div className="grid md:grid-cols-5 gap-12 mb-12">
           {/* Logo and description */}
           <div className="md:col-span-1">
             <div className="flex items-center mb-6" data-testid="footer-logo">
@@ -64,11 +88,11 @@ export default function ShadcnblocksComFooter2() {
                 {section.items.map((item, itemIndex) => (
                   <li key={itemIndex}>
                     <a 
-                      href="#" 
+                      href={item.href}
                       className="text-gray-300 hover:text-white transition-colors"
-                      data-testid={`footer-link-${item.toLowerCase().replace(' ', '-')}`}
+                      data-testid={`footer-link-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                     >
-                      {item}
+                      {item.label}
                     </a>
                   </li>
                 ))}

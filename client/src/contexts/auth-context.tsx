@@ -12,44 +12,36 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  adminToken: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Usuários simulados para demo (em produção, isso viria do banco interno)se)
-const DEMO_USERS = [
-  {
-    id: '1',
-    name: 'Admin IDASAM',
-    email: 'admin@idasam.org',
-    password: 'idasam2024',
-    role: 'admin'
-  },
-  {
-    id: '2',
-    name: 'Editor IDASAM',
-    email: 'editor@idasam.org',
-    password: 'editor2024',
-    role: 'editor'
-  }
-];
+function deriveDisplayInfo(email: string): { name: string; role: string } {
+  const local = email.split("@")[0] || "user";
+  const name = local.charAt(0).toUpperCase() + local.slice(1).replace(/[._-]/g, " ");
+  return { name, role: "admin" };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Verificar se há uma sessão salva ao inicializar
   useEffect(() => {
     const savedUser = localStorage.getItem('idasam_auth_user');
-    if (savedUser) {
+    const savedToken = localStorage.getItem('idasam_admin_token');
+    if (savedUser && savedToken) {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
+        setAdminToken(savedToken);
       } catch (error) {
-        console.error('Erro ao carregar usuário salvo:', error);
+        console.error('Erro ao carregar sessão:', error);
         localStorage.removeItem('idasam_auth_user');
+        localStorage.removeItem('idasam_admin_token');
       }
     }
     setIsLoading(false);
@@ -57,44 +49,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simular delay da API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Verificar credenciais
-    const foundUser = DEMO_USERS.find(
-      u => u.email === email && u.password === password
-    );
-    
-    if (foundUser) {
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        setIsLoading(false);
+        return false;
+      }
+
+      const data = await res.json();
+      const display = deriveDisplayInfo(email);
       const authUser: User = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        role: foundUser.role
+        id: email,
+        name: display.name,
+        email,
+        role: display.role,
       };
-      
+
       setUser(authUser);
+      setAdminToken(data.token);
       localStorage.setItem('idasam_auth_user', JSON.stringify(authUser));
+      localStorage.setItem('idasam_admin_token', data.token);
       setIsLoading(false);
       return true;
+    } catch (err) {
+      console.error('Erro no login:', err);
+      setIsLoading(false);
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
   const logout = () => {
+    const token = localStorage.getItem('idasam_admin_token');
+    if (token) {
+      fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
     setUser(null);
+    setAdminToken(null);
     localStorage.removeItem('idasam_auth_user');
+    localStorage.removeItem('idasam_admin_token');
   };
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!adminToken,
     isLoading,
+    adminToken,
     login,
-    logout
+    logout,
   };
 
   return (
