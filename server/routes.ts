@@ -208,7 +208,11 @@ export async function registerRoutes(app: Express) {
       }
       await storage.deleteCourse(req.params.id);
       res.json({ message: "Curso excluído com sucesso" });
-    } catch (err) {
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("foreign key") || msg.includes("violates")) {
+        return res.status(409).json({ message: "Não é possível excluir este curso pois possui registros vinculados." });
+      }
       res.status(500).json({ message: "Erro ao excluir curso" });
     }
   });

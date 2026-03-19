@@ -75,6 +75,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCourse(id: string): Promise<void> {
+    const courseEnrollments = await db
+      .select({ id: enrollments.id })
+      .from(enrollments)
+      .where(eq(enrollments.courseId, id));
+
+    if (courseEnrollments.length > 0) {
+      const enrollmentIds = courseEnrollments.map((e) => e.id);
+      await db.delete(certificates).where(inArray(certificates.enrollmentId, enrollmentIds));
+      await db.delete(enrollments).where(eq(enrollments.courseId, id));
+    }
+
     await db.delete(courses).where(eq(courses.id, id));
   }
 
