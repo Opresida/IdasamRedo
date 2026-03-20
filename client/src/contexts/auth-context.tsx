@@ -36,15 +36,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedUser && savedToken) {
       try {
         const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        setAdminToken(savedToken);
+        fetch('/api/admin/verify', {
+          headers: { Authorization: `Bearer ${savedToken}` },
+        }).then((res) => {
+          if (res.ok) {
+            setUser(parsedUser);
+            setAdminToken(savedToken);
+          } else if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('idasam_auth_user');
+            localStorage.removeItem('idasam_admin_token');
+          } else {
+            setUser(parsedUser);
+            setAdminToken(savedToken);
+          }
+          setIsLoading(false);
+        }).catch(() => {
+          setUser(parsedUser);
+          setAdminToken(savedToken);
+          setIsLoading(false);
+        });
       } catch (error) {
         console.error('Erro ao carregar sessão:', error);
         localStorage.removeItem('idasam_auth_user');
         localStorage.removeItem('idasam_admin_token');
+        setIsLoading(false);
       }
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {

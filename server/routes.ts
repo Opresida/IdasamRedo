@@ -162,6 +162,10 @@ export async function registerRoutes(app: Express) {
     res.json({ message: "Sessão encerrada" });
   });
 
+  app.get("/api/admin/verify", requireAdmin, (_req, res) => {
+    res.json({ valid: true });
+  });
+
   app.get("/api/courses", async (_req, res) => {
     try {
       const all = await storage.getCourses();

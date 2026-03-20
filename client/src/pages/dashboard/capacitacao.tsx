@@ -31,6 +31,13 @@ import {
 } from 'lucide-react';
 import type { Course, Enrollment } from '@shared/schema';
 
+class HttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
 interface EnrollmentWithCert extends Enrollment {
   hasCertificate: boolean;
@@ -262,6 +269,7 @@ function CourseFormDialog({
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { logout } = useAuth();
   const isEditing = !!editingCourse;
 
   const form = useForm<CourseFormData>({
@@ -294,7 +302,10 @@ function CourseFormDialog({
         },
         body: JSON.stringify(clean),
       });
-      if (!res.ok) throw new Error('Falha ao salvar');
+      if (res.status === 401) {
+        throw new HttpError('Sessão expirada', 401);
+      }
+      if (!res.ok) throw new HttpError('Falha ao salvar', res.status);
       return res.json();
     },
     onSuccess: () => {
@@ -305,8 +316,13 @@ function CourseFormDialog({
       qc.invalidateQueries({ queryKey: ['/api/courses'] });
       onClose();
     },
-    onError: () => {
-      toast({ title: 'Erro', description: 'Não foi possível salvar o curso.', variant: 'destructive' });
+    onError: (err: Error) => {
+      if (err instanceof HttpError && err.status === 401) {
+        toast({ title: 'Sessão expirada', description: 'Faça login novamente para continuar.', variant: 'destructive' });
+        logout();
+      } else {
+        toast({ title: 'Erro', description: 'Não foi possível salvar o curso.', variant: 'destructive' });
+      }
     },
   });
 
@@ -452,6 +468,7 @@ function DeleteCourseDialog({
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { logout } = useAuth();
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -459,7 +476,10 @@ function DeleteCourseDialog({
         method: 'DELETE',
         headers: { Authorization: `Bearer ${adminToken}` },
       });
-      if (!res.ok) throw new Error('Falha ao excluir');
+      if (res.status === 401) {
+        throw new HttpError('Sessão expirada', 401);
+      }
+      if (!res.ok) throw new HttpError('Falha ao excluir', res.status);
       return res.json();
     },
     onSuccess: () => {
@@ -467,8 +487,13 @@ function DeleteCourseDialog({
       qc.invalidateQueries({ queryKey: ['/api/courses'] });
       onClose();
     },
-    onError: () => {
-      toast({ title: 'Erro', description: 'Não foi possível excluir o curso.', variant: 'destructive' });
+    onError: (err: Error) => {
+      if (err instanceof HttpError && err.status === 401) {
+        toast({ title: 'Sessão expirada', description: 'Faça login novamente para continuar.', variant: 'destructive' });
+        logout();
+      } else {
+        toast({ title: 'Erro', description: 'Não foi possível excluir o curso.', variant: 'destructive' });
+      }
     },
   });
 
