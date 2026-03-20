@@ -243,6 +243,62 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.put("/api/enrollments/:id", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertEnrollmentSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      }
+      const updated = await storage.updateEnrollment(req.params.id, parsed.data);
+      if (!updated) {
+        return res.status(404).json({ message: "Inscrição não encontrada" });
+      }
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao atualizar inscrição" });
+    }
+  });
+
+  app.delete("/api/enrollments/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteEnrollment(req.params.id);
+      res.json({ message: "Inscrição excluída com sucesso" });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao excluir inscrição" });
+    }
+  });
+
+  app.post("/api/enrollments/bulk", requireAdmin, async (req, res) => {
+    try {
+      const { courseId, records } = req.body;
+      if (!courseId || !Array.isArray(records) || records.length === 0) {
+        return res.status(400).json({ message: "courseId e records são obrigatórios" });
+      }
+      const course = await storage.getCourse(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      const created = [];
+      const errors = [];
+      for (let i = 0; i < records.length; i++) {
+        const parsed = insertEnrollmentSchema.safeParse({ ...records[i], courseId });
+        if (!parsed.success) {
+          errors.push({ row: i + 1, errors: parsed.error.errors });
+          continue;
+        }
+        try {
+          const enrollment = await storage.createEnrollment(parsed.data);
+          created.push(enrollment);
+        } catch (e) {
+          errors.push({ row: i + 1, errors: [{ message: "Erro ao inserir" }] });
+        }
+      }
+      res.status(201).json({ created: created.length, errors });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao importar inscrições" });
+    }
+  });
+
   app.get("/api/enrollments/course/:courseId", requireAdmin, async (req, res) => {
     try {
       const list = await storage.getEnrollmentsByCourse(req.params.courseId);
