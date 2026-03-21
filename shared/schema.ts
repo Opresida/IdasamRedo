@@ -32,11 +32,13 @@ export const courses = pgTable("courses", {
   address: text("address"),
   curriculum: text("curriculum"),
   vacancies: integer("vacancies"),
+  authCode: text("auth_code"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
 export const insertCourseSchema = createInsertSchema(courses).omit({
   id: true,
+  authCode: true,
   createdAt: true,
 }).extend({
   schedule: z.string().optional().nullable(),

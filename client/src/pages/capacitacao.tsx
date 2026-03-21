@@ -27,9 +27,112 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import {
   Calendar, Clock, MapPin, User, BookOpen, CheckCircle,
-  ChevronDown, ChevronUp, AlignLeft, Users,
+  ChevronDown, ChevronUp, AlignLeft, Users, ShieldCheck, ShieldX, Search,
 } from 'lucide-react';
 import type { Course } from '@shared/schema';
+
+type VerifiedCourse = {
+  id: string;
+  title: string;
+  instructor: string;
+  workload: number;
+  startDate: string;
+  endDate: string;
+  location: string;
+  authCode: string;
+};
+
+function VerifySection() {
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<VerifiedCourse | null | 'not-found'>(null);
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch(`/api/courses/verify?code=${encodeURIComponent(code.trim().toUpperCase())}`);
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data as VerifiedCourse);
+      } else {
+        setResult('not-found');
+      }
+    } catch {
+      setResult('not-found');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="py-16 px-4 bg-white border-t border-gray-100">
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <ShieldCheck className="w-10 h-10 text-forest mx-auto mb-3" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Verificar Autenticidade do Curso</h2>
+          <p className="text-gray-600 text-sm">
+            Digite o código de autenticação do curso para confirmar sua veracidade e visualizar as informações oficiais.
+          </p>
+        </div>
+
+        <form onSubmit={handleVerify} className="flex gap-2 mb-6">
+          <Input
+            value={code}
+            onChange={(e) => { setCode(e.target.value.toUpperCase()); setResult(null); }}
+            placeholder="Ex: IDASAM-A3F7B2C1"
+            className="flex-1 font-mono tracking-wider uppercase"
+            maxLength={16}
+          />
+          <Button
+            type="submit"
+            className="bg-forest hover:bg-forest/90 text-white shrink-0"
+            disabled={loading || !code.trim()}
+          >
+            <Search className="w-4 h-4 mr-2" />
+            {loading ? 'Verificando...' : 'Verificar'}
+          </Button>
+        </form>
+
+        {result === 'not-found' && (
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <ShieldX className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-700">Código não encontrado</p>
+              <p className="text-sm text-red-600 mt-0.5">
+                Verifique se o código está correto. Os dados do curso não foram localizados na base IDASAM.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {result && result !== 'not-found' && (
+          <div className="p-5 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck className="w-6 h-6 text-green-600" />
+              <div>
+                <p className="font-semibold text-green-700">Curso verificado — Autêntico</p>
+                <p className="text-xs text-green-600">Constante na base de dados oficial do IDASAM</p>
+              </div>
+            </div>
+            <div className="space-y-2 text-sm text-gray-700">
+              <p><span className="font-medium text-gray-900">Curso:</span> {result.title}</p>
+              <p><span className="font-medium text-gray-900">Professor(a):</span> {result.instructor}</p>
+              <p><span className="font-medium text-gray-900">Carga horária:</span> {result.workload}h</p>
+              <p><span className="font-medium text-gray-900">Período:</span> {formatDate(result.startDate)} a {formatDate(result.endDate)}</p>
+              <p><span className="font-medium text-gray-900">Local:</span> {result.location}</p>
+              <p className="pt-1 border-t border-green-200 font-mono text-xs text-green-700">
+                Código: {result.authCode}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 const enrollmentSchema = z.object({
   courseId: z.string().uuid(),
@@ -286,6 +389,7 @@ export default function CapacitacaoPage() {
         </DialogContent>
       </Dialog>
 
+      <VerifySection />
       <ShadcnblocksComFooter2 />
     </div>
   );

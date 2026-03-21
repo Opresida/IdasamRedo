@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
-  Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus,
+  Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check,
 } from 'lucide-react';
 import type { Course, Enrollment } from '@shared/schema';
 
@@ -398,6 +398,24 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
               {course.address && (
                 <p className="text-xs text-gray-400 mt-0.5">{course.address}</p>
               )}
+              {course.authCode && (
+                <div className="flex items-center gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-xs text-gray-400">Cód. auth:</span>
+                  <code className="text-xs font-mono text-forest bg-forest/8 border border-forest/20 px-1.5 py-0.5 rounded">{course.authCode}</code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 w-5 p-0 text-gray-400 hover:text-forest"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(course.authCode!);
+                      toast({ title: 'Copiado!', description: 'Código de autenticação copiado.' });
+                    }}
+                  >
+                    <Clipboard className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 ml-4">
               {open && !isLoading && (
@@ -664,6 +682,27 @@ function CourseFormDialog({
             {isEditing ? 'Editar Curso' : 'Novo Curso'}
           </DialogTitle>
         </DialogHeader>
+
+        {isEditing && editingCourse?.authCode && (
+          <div className="flex items-center gap-2 px-1 py-2 bg-forest/5 border border-forest/20 rounded-lg mb-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-500 mb-0.5">Código de Autenticação (somente leitura)</p>
+              <code className="text-sm font-mono font-semibold text-forest">{editingCourse.authCode}</code>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-gray-400 hover:text-forest shrink-0"
+              onClick={() => {
+                navigator.clipboard.writeText(editingCourse!.authCode!);
+                toast({ title: 'Copiado!', description: 'Código de autenticação copiado.' });
+              }}
+            >
+              <Clipboard className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">

@@ -1,6 +1,15 @@
 import { users, courses, enrollments, certificates, contactSubmissions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission } from "@shared/schema";
 import { db } from "./db";
-import { eq, or, inArray, desc } from "drizzle-orm";
+import { eq, or, inArray, desc, isNull } from "drizzle-orm";
+
+function generateAuthCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let suffix = '';
+  for (let i = 0; i < 8; i++) {
+    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `IDASAM-${suffix}`;
+}
 
 export function normalizeIdentifier(identifier: string): string {
   const trimmed = identifier.trim();
@@ -28,9 +37,11 @@ export interface IStorage {
 
   getCourses(): Promise<Course[]>;
   getCourse(id: string): Promise<Course | undefined>;
+  getCourseByAuthCode(code: string): Promise<Course | undefined>;
   createCourse(course: InsertCourse): Promise<Course>;
   updateCourse(id: string, course: Partial<InsertCourse>): Promise<Course | undefined>;
   deleteCourse(id: string): Promise<void>;
+  backfillAuthCodes(): Promise<void>;
 
   getEnrollments(): Promise<Enrollment[]>;
   getEnrollmentsByCourse(courseId: string): Promise<Enrollment[]>;
@@ -76,9 +87,25 @@ export class DatabaseStorage implements IStorage {
     return course || undefined;
   }
 
+  async getCourseByAuthCode(code: string): Promise<Course | undefined> {
+    const [course] = await db.select().from(courses).where(eq(courses.authCode, code.toUpperCase()));
+    return course || undefined;
+  }
+
   async createCourse(course: InsertCourse): Promise<Course> {
-    const [created] = await db.insert(courses).values(course).returning();
+    const authCode = generateAuthCode();
+    const [created] = await db.insert(courses).values({ ...course, authCode }).returning();
     return created;
+  }
+
+  async backfillAuthCodes(): Promise<void> {
+    const withoutCode = await db.select().from(courses).where(isNull(courses.authCode));
+    for (const c of withoutCode) {
+      await db.update(courses).set({ authCode: generateAuthCode() }).where(eq(courses.id, c.id));
+    }
+    if (withoutCode.length > 0) {
+      console.log(`Auth codes backfilled for ${withoutCode.length} course(s).`);
+    }
   }
 
   async updateCourse(id: string, course: Partial<InsertCourse>): Promise<Course | undefined> {

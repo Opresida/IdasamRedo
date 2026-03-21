@@ -136,6 +136,7 @@ async function seedCourses() {
 
 export async function registerRoutes(app: Express) {
   await seedCourses();
+  await storage.backfillAuthCodes();
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", message: "Server is running" });
@@ -172,6 +173,31 @@ export async function registerRoutes(app: Express) {
       res.json(all);
     } catch (err) {
       res.status(500).json({ message: "Erro ao buscar cursos" });
+    }
+  });
+
+  app.get("/api/courses/verify", async (req, res) => {
+    try {
+      const { code } = req.query;
+      if (!code || typeof code !== "string" || code.trim() === "") {
+        return res.status(400).json({ message: "Código de autenticação é obrigatório" });
+      }
+      const course = await storage.getCourseByAuthCode(code.trim().toUpperCase());
+      if (!course) {
+        return res.status(404).json({ message: "Código não encontrado. Verifique se digitou corretamente." });
+      }
+      res.json({
+        id: course.id,
+        title: course.title,
+        instructor: course.instructor,
+        workload: course.workload,
+        startDate: course.startDate,
+        endDate: course.endDate,
+        location: course.location,
+        authCode: course.authCode,
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao verificar código" });
     }
   });
 
