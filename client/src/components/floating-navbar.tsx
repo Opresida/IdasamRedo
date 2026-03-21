@@ -11,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Link } from 'wouter'; // Import Link for navigation
 
 interface NavItem {
   name: string;
@@ -24,9 +23,7 @@ const navItems: NavItem[] = [
   { name: "Projetos", link: "/projetos" },
   { name: "Notícias", link: "/noticias" },
   { name: "Capacitação", link: "/capacitacao" },
-  { name: "Transparência", link: "/transparencia" },
   { name: "Parcerias", link: "#parcerias" },
-  { name: "Contato", link: "#contato" }
 ];
 
 export default function FloatingNavbar() {
@@ -147,9 +144,6 @@ export default function FloatingNavbar() {
                   {item.name}
                 </button>
               ))}
-            <Link href="/projetos" className="hover:text-teal transition-colors">
-              Projetos
-            </Link>
             </div>
             <Dialog open={showDonationModal} onOpenChange={setShowDonationModal}>
               <DialogTrigger asChild>
