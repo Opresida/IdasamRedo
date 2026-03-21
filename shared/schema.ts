@@ -55,10 +55,10 @@ export const coursesRelations = relations(courses, ({ many }) => ({
 export const enrollments = pgTable("enrollments", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   courseId: uuid("course_id").notNull().references(() => courses.id),
-  fullName: text("full_name").notNull(),
-  cpf: text("cpf").notNull(),
-  phone: text("phone").notNull(),
-  email: text("email").notNull(),
+  fullName: text("full_name"),
+  cpf: text("cpf"),
+  phone: text("phone"),
+  email: text("email"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 

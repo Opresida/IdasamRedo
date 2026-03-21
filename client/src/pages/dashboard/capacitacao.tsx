@@ -98,10 +98,10 @@ async function fetchEnrollmentsWithCerts(courseId: string, token: string): Promi
 }
 
 const enrollmentFormSchema = z.object({
-  fullName: z.string().min(2, 'Nome é obrigatório'),
-  cpf: z.string().min(1, 'CPF é obrigatório'),
-  phone: z.string().min(1, 'Telefone é obrigatório'),
-  email: z.string().email('E-mail inválido'),
+  fullName: z.string().optional(),
+  cpf: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
 });
 
 type EnrollmentFormData = z.infer<typeof enrollmentFormSchema>;
@@ -348,19 +348,19 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       const cpfIdx = header.indexOf('cpf');
       const phoneIdx = header.indexOf('telefone');
       const emailIdx = header.indexOf('email');
-      if (nameIdx < 0 || cpfIdx < 0 || phoneIdx < 0 || emailIdx < 0) {
-        toast({ title: 'Colunas inválidas', description: 'O CSV deve ter as colunas: nome, cpf, telefone, email.', variant: 'destructive' });
+      if (nameIdx < 0 && cpfIdx < 0 && phoneIdx < 0 && emailIdx < 0) {
+        toast({ title: 'Colunas inválidas', description: 'O CSV deve ter ao menos uma das colunas: nome, cpf, telefone, email.', variant: 'destructive' });
         return;
       }
       const records = lines.slice(1).map((line) => {
         const cols = line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
         return {
-          fullName: cols[nameIdx] ?? '',
-          cpf: cols[cpfIdx] ?? '',
-          phone: cols[phoneIdx] ?? '',
-          email: cols[emailIdx] ?? '',
+          fullName: nameIdx >= 0 ? (cols[nameIdx] ?? '') : '',
+          cpf: cpfIdx >= 0 ? (cols[cpfIdx] ?? '') : '',
+          phone: phoneIdx >= 0 ? (cols[phoneIdx] ?? '') : '',
+          email: emailIdx >= 0 ? (cols[emailIdx] ?? '') : '',
         };
-      }).filter((r) => r.fullName || r.cpf || r.email);
+      }).filter((r) => r.fullName || r.cpf || r.email || r.phone);
 
       const res = await fetch('/api/enrollments/bulk', {
         method: 'POST',

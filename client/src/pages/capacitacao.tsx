@@ -33,10 +33,10 @@ import type { Course } from '@shared/schema';
 
 const enrollmentSchema = z.object({
   courseId: z.string().uuid(),
-  fullName: z.string().min(3, 'Nome completo é obrigatório'),
-  cpf: z.string().min(11, 'CPF inválido').max(14, 'CPF inválido'),
-  phone: z.string().min(10, 'Telefone inválido'),
-  email: z.string().email('E-mail inválido'),
+  fullName: z.string().optional(),
+  cpf: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
 });
 
 type EnrollmentForm = z.infer<typeof enrollmentSchema>;
