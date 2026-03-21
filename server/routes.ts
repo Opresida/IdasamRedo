@@ -319,7 +319,7 @@ export async function registerRoutes(app: Express) {
     try {
       const { identifier } = req.query;
       if (!identifier || typeof identifier !== "string" || identifier.trim() === "") {
-        return res.status(400).json({ message: "CPF ou e-mail é obrigatório" });
+        return res.status(400).json({ message: "CPF, e-mail ou nome completo é obrigatório" });
       }
       const enrolls = await storage.getEnrollmentByIdentifier(identifier.trim());
       if (enrolls.length === 0) {
@@ -349,7 +349,7 @@ export async function registerRoutes(app: Express) {
     try {
       const { identifier } = req.query;
       if (!identifier || typeof identifier !== "string" || identifier.trim() === "") {
-        return res.status(400).json({ message: "CPF ou e-mail é obrigatório para baixar certificado" });
+        return res.status(400).json({ message: "CPF, e-mail ou nome completo é obrigatório para baixar certificado" });
       }
       const enrollment = await storage.getEnrollmentByIdentifier(identifier.trim());
       const match = enrollment.find((e) => e.id === req.params.enrollmentId);

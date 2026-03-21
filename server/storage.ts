@@ -13,8 +13,7 @@ export function normalizeIdentifier(identifier: string): string {
 function isName(identifier: string): boolean {
   const trimmed = identifier.trim();
   if (trimmed.includes("@")) return false;
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length >= 8) return false;
+  if (/\d{8,}/.test(trimmed)) return false;
   return /[a-zA-ZÀ-ÿ]/.test(trimmed);
 }
 
