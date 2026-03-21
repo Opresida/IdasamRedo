@@ -78,8 +78,13 @@ function VerifySection() {
           </p>
         </div>
 
-        <form onSubmit={handleVerify} className="flex gap-2 mb-6">
+        <form onSubmit={handleVerify} className="mb-6">
+          <label htmlFor="auth-code-input" className="block text-sm font-medium text-gray-700 mb-2">
+            Código de Autenticação
+          </label>
+          <div className="flex gap-2">
           <Input
+            id="auth-code-input"
             value={code}
             onChange={(e) => { setCode(e.target.value.toUpperCase()); setResult(null); }}
             placeholder="Ex: IDASAM-A3F7B2C1"
@@ -94,6 +99,7 @@ function VerifySection() {
             <Search className="w-4 h-4 mr-2" />
             {loading ? 'Verificando...' : 'Verificar'}
           </Button>
+          </div>
         </form>
 
         {result === 'not-found' && (
