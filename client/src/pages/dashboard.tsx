@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,11 +19,14 @@ import {
   RefreshCw,
   Eye,
   Heart,
-  Star
+  Star,
+  Mail
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
+import type { ContactSubmission } from '@shared/schema';
 
 // Interfaces para tipagem
 interface Article {
@@ -127,7 +130,7 @@ const MOCK_COMMENTS: Comment[] = [
 ];
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, adminToken } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -135,6 +138,18 @@ export default function DashboardPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  const { data: contactSubmissions = [], isLoading: loadingSubmissions } = useQuery<ContactSubmission[]>({
+    queryKey: ['/api/contact'],
+    enabled: !!adminToken,
+    queryFn: async () => {
+      const res = await fetch('/api/contact', {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (!res.ok) throw new Error('Erro ao buscar propostas');
+      return res.json();
+    },
+  });
 
   // Simular carregamento de dados
   useEffect(() => {
@@ -502,6 +517,54 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Propostas de Projetos Recebidas */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="w-5 h-5" />
+            Propostas de Projetos
+          </CardTitle>
+          <CardDescription>
+            Submissões recebidas pelo formulário de contato
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingSubmissions ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-idasam-green-dark"></div>
+            </div>
+          ) : contactSubmissions.length === 0 ? (
+            <p className="text-center text-gray-500 py-8">Nenhuma proposta recebida ainda.</p>
+          ) : (
+            <div className="space-y-4">
+              {contactSubmissions.map((submission) => (
+                <div key={submission.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-semibold text-gray-900">{submission.nome}</span>
+                        {submission.organizacao && (
+                          <Badge variant="outline" className="text-xs">{submission.organizacao}</Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-sm text-gray-600 mb-2">
+                        <span>{submission.email}</span>
+                        <span>•</span>
+                        <span>{submission.telefone}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 line-clamp-2">{submission.descricao}</p>
+                    </div>
+                    <div className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
+                      {submission.createdAt ? formatDate(new Date(submission.createdAt).toISOString()) : '—'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

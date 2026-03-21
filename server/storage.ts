@@ -1,6 +1,6 @@
-import { users, courses, enrollments, certificates, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission } from "@shared/schema";
 import { db } from "./db";
-import { eq, or, inArray } from "drizzle-orm";
+import { eq, or, inArray, desc } from "drizzle-orm";
 
 export function normalizeIdentifier(identifier: string): string {
   const trimmed = identifier.trim();
@@ -32,6 +32,9 @@ export interface IStorage {
   getCertificatesByEnrollmentIds(enrollmentIds: string[]): Promise<Certificate[]>;
   createCertificate(certificate: InsertCertificate): Promise<Certificate>;
   updateCertificate(enrollmentId: string, filePath: string): Promise<Certificate>;
+
+  createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission>;
+  getContactSubmissions(): Promise<ContactSubmission[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -153,6 +156,15 @@ export class DatabaseStorage implements IStorage {
     } else {
       return this.createCertificate({ enrollmentId, filePath });
     }
+  }
+
+  async createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission> {
+    const [created] = await db.insert(contactSubmissions).values(submission).returning();
+    return created;
+  }
+
+  async getContactSubmissions(): Promise<ContactSubmission[]> {
+    return db.select().from(contactSubmissions).orderBy(desc(contactSubmissions.createdAt));
   }
 }
 

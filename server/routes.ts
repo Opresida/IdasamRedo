@@ -1,6 +1,6 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { insertEnrollmentSchema, insertCourseSchema } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, insertContactSubmissionSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -402,6 +402,28 @@ export async function registerRoutes(app: Express) {
         fs.unlinkSync(req.file.path);
       }
       res.status(500).json({ message: "Erro ao fazer upload do certificado" });
+    }
+  });
+
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const parsed = insertContactSubmissionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      }
+      const submission = await storage.createContactSubmission(parsed.data);
+      res.status(201).json(submission);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao enviar proposta" });
+    }
+  });
+
+  app.get("/api/contact", requireAdmin, async (_req, res) => {
+    try {
+      const submissions = await storage.getContactSubmissions();
+      res.json(submissions);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar propostas" });
     }
   });
 

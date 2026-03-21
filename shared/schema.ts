@@ -93,3 +93,27 @@ export type Certificate = typeof certificates.$inferSelect;
 export const certificatesRelations = relations(certificates, ({ one }) => ({
   enrollment: one(enrollments, { fields: [certificates.enrollmentId], references: [enrollments.id] }),
 }));
+
+export const contactSubmissions = pgTable("contact_submissions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  nome: text("nome").notNull(),
+  telefone: text("telefone").notNull(),
+  email: text("email").notNull(),
+  organizacao: text("organizacao"),
+  descricao: text("descricao").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertContactSubmissionSchema = createInsertSchema(contactSubmissions).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  telefone: z.string().min(1, "Telefone é obrigatório"),
+  email: z.string().email("Email inválido").min(1, "Email é obrigatório"),
+  descricao: z.string().min(1, "Descrição é obrigatória"),
+  organizacao: z.string().optional().nullable(),
+});
+
+export type InsertContactSubmission = z.infer<typeof insertContactSubmissionSchema>;
+export type ContactSubmission = typeof contactSubmissions.$inferSelect;
