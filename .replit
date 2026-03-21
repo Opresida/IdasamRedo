@@ -7,9 +7,10 @@ channel = "stable-24_05"
 packages = ["lsof"]
 
 [deployment]
-deploymentTarget = "static"
+deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 publicDir = "dist"
+run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 5000
