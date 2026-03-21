@@ -93,15 +93,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCourse(course: InsertCourse): Promise<Course> {
-    const authCode = generateAuthCode();
-    const [created] = await db.insert(courses).values({ ...course, authCode }).returning();
-    return created;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const authCode = generateAuthCode();
+      try {
+        const [created] = await db.insert(courses).values({ ...course, authCode }).returning();
+        return created;
+      } catch (err: any) {
+        if (err?.code === "23505") continue;
+        throw err;
+      }
+    }
+    throw new Error("Failed to generate a unique auth code after 10 attempts");
   }
 
   async backfillAuthCodes(): Promise<void> {
     const withoutCode = await db.select().from(courses).where(isNull(courses.authCode));
     for (const c of withoutCode) {
-      await db.update(courses).set({ authCode: generateAuthCode() }).where(eq(courses.id, c.id));
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const authCode = generateAuthCode();
+        try {
+          await db.update(courses).set({ authCode }).where(eq(courses.id, c.id));
+          break;
+        } catch (err: any) {
+          if (err?.code === "23505") continue;
+          throw err;
+        }
+      }
     }
     if (withoutCode.length > 0) {
       console.log(`Auth codes backfilled for ${withoutCode.length} course(s).`);

@@ -32,7 +32,7 @@ export const courses = pgTable("courses", {
   address: text("address"),
   curriculum: text("curriculum"),
   vacancies: integer("vacancies"),
-  authCode: text("auth_code"),
+  authCode: text("auth_code").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
