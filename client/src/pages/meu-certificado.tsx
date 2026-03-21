@@ -27,7 +27,7 @@ export default function MeuCertificadoPage() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim()) {
-      toast({ title: 'Atenção', description: 'Informe seu CPF ou e-mail.', variant: 'destructive' });
+      toast({ title: 'Atenção', description: 'Informe seu CPF, e-mail ou nome completo.', variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -101,10 +101,10 @@ export default function MeuCertificadoPage() {
             <CardContent>
               <form onSubmit={handleSearch} className="space-y-4">
                 <div>
-                  <Label htmlFor="identifier">CPF ou E-mail</Label>
+                  <Label htmlFor="identifier">CPF, E-mail ou Nome Completo</Label>
                   <Input
                     id="identifier"
-                    placeholder="Digite seu CPF ou e-mail cadastrado"
+                    placeholder="Ex: 123.456.789-00, joao@email.com ou João Silva"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     className="mt-1"
@@ -130,7 +130,7 @@ export default function MeuCertificadoPage() {
                     <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                     <p className="text-gray-600 font-medium">Nenhuma inscrição encontrada</p>
                     <p className="text-sm text-gray-500 mt-1">
-                      Verifique se o CPF ou e-mail informado está correto.
+                      Verifique se o CPF, e-mail ou nome completo está correto e corresponde ao cadastrado.
                     </p>
                   </CardContent>
                 </Card>

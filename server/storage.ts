@@ -10,6 +10,18 @@ export function normalizeIdentifier(identifier: string): string {
   return trimmed.replace(/\D/g, "");
 }
 
+function isName(identifier: string): boolean {
+  const trimmed = identifier.trim();
+  if (trimmed.includes("@")) return false;
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length >= 8) return false;
+  return /[a-zA-ZÀ-ÿ]/.test(trimmed);
+}
+
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -103,8 +115,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEnrollmentByIdentifier(identifier: string): Promise<Enrollment[]> {
-    const normalized = normalizeIdentifier(identifier);
     const all = await db.select().from(enrollments);
+
+    if (isName(identifier)) {
+      const normalizedInput = normalizeName(identifier);
+      return all.filter((e) => normalizeName(e.fullName) === normalizedInput);
+    }
+
+    const normalized = normalizeIdentifier(identifier);
     return all.filter(
       (e) => normalizeIdentifier(e.cpf) === normalized || normalizeIdentifier(e.email) === normalized
     );
