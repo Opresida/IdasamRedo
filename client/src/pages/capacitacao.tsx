@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,6 +49,76 @@ type VerifiedCourse = {
   authCode: string;
 };
 
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return reduced;
+}
+
+function useInView(threshold = 0.12) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          obs.disconnect();
+        }
+      },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, inView };
+}
+
+function FadeIn({
+  children,
+  delay = 0,
+  className = '',
+  direction = 'up',
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+  direction?: 'up' | 'left' | 'right' | 'none';
+}) {
+  const { ref, inView } = useInView();
+  const reduced = useReducedMotion();
+  const translateMap = {
+    up: 'translateY(28px)',
+    left: 'translateX(-28px)',
+    right: 'translateX(28px)',
+    none: 'none',
+  };
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: inView || reduced ? 1 : 0,
+        transform: inView || reduced ? 'none' : translateMap[direction],
+        transition: reduced ? 'none' : `opacity 0.65s ease ${delay}ms, transform 0.65s ease ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function VerifySection() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,13 +147,13 @@ function VerifySection() {
   return (
     <section className="py-16 px-4 bg-white border-t border-gray-100">
       <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
+        <FadeIn className="text-center mb-8">
           <ShieldCheck className="w-10 h-10 text-forest mx-auto mb-3" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Verificar Autenticidade do Curso</h2>
           <p className="text-gray-600 text-sm">
             Digite o código de autenticação do curso para confirmar sua veracidade e visualizar as informações oficiais.
           </p>
-        </div>
+        </FadeIn>
 
         <form onSubmit={handleVerify} className="mb-6">
           <label htmlFor="auth-code-input" className="block text-sm font-medium text-gray-700 mb-2">
@@ -173,7 +243,7 @@ function CourseCard({ course, onEnroll }: { course: Course; onEnroll: (c: Course
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Card className="flex flex-col hover:shadow-lg transition-shadow border border-gray-200">
+    <Card className="flex flex-col h-full border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-forest/40 group">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2 mb-2">
           <CardTitle className="text-base font-semibold leading-snug text-forest">
@@ -289,6 +359,10 @@ const TESTIMONIALS = [
 
 function TestimonialsSection() {
   const [startIdx, setStartIdx] = useState(0);
+  const [visible, setVisible] = useState(3);
+  const reducedMotion = useReducedMotion();
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const visibleRef = useRef(visible);
 
   const getVisible = () => {
     if (typeof window === 'undefined') return 3;
@@ -297,18 +371,48 @@ function TestimonialsSection() {
     return 3;
   };
 
-  const [visible, setVisible] = React.useState(3);
-
-  React.useEffect(() => {
-    const update = () => setVisible(getVisible());
+  useEffect(() => {
+    const update = () => {
+      const v = getVisible();
+      setVisible(v);
+      visibleRef.current = v;
+    };
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
 
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  const resetTimer = useCallback(() => {
+    clearTimer();
+    if (reducedMotion) return;
+    timerRef.current = setInterval(() => {
+      setStartIdx((i) => {
+        const maxS = Math.max(0, TESTIMONIALS.length - visibleRef.current);
+        return i >= maxS ? 0 : i + 1;
+      });
+    }, 5000);
+  }, [clearTimer, reducedMotion]);
+
+  useEffect(() => {
+    resetTimer();
+    return clearTimer;
+  }, [resetTimer, clearTimer]);
+
   const maxStart = Math.max(0, TESTIMONIALS.length - visible);
-  const prev = () => setStartIdx((i) => Math.max(0, i - 1));
-  const next = () => setStartIdx((i) => Math.min(maxStart, i + 1));
+
+  const prev = useCallback(() => {
+    setStartIdx((i) => Math.max(0, i - 1));
+    resetTimer();
+  }, [resetTimer]);
+
+  const next = useCallback(() => {
+    setStartIdx((i) => Math.min(Math.max(0, TESTIMONIALS.length - visibleRef.current), i + 1));
+    resetTimer();
+  }, [resetTimer]);
 
   const cardWidthPct = 100 / visible;
   const gapPx = 24;
@@ -316,82 +420,96 @@ function TestimonialsSection() {
   return (
     <section className="py-16 px-4 bg-forest/5 border-t border-forest/10">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-10">
+        <FadeIn className="text-center mb-10">
           <Star className="w-8 h-8 text-forest mx-auto mb-3 fill-forest/20" />
           <h2 className="text-3xl font-bold text-gray-900 mb-3">O que dizem nossos alunos</h2>
           <p className="text-gray-600 max-w-xl mx-auto">
             Histórias reais de profissionais que transformaram suas carreiras com a capacitação do IDASAM.
           </p>
-        </div>
+        </FadeIn>
 
-        <div className="relative">
-          <div className="overflow-hidden">
-            <div
-              className="flex transition-transform duration-300"
-              style={{
-                gap: `${gapPx}px`,
-                transform: `translateX(calc(-${startIdx * cardWidthPct}% - ${startIdx * gapPx}px))`,
-              }}
-            >
-              {TESTIMONIALS.map((t, i) => (
-                <div
-                  key={i}
-                  className="flex-shrink-0"
-                  style={{ width: `calc(${cardWidthPct}% - ${((visible - 1) * gapPx) / visible}px)` }}
-                >
-                  <Card className="h-full border border-forest/15 bg-white shadow-sm">
-                    <CardContent className="p-6 flex flex-col h-full">
-                      <div className="flex items-center gap-3 mb-4">
-                        <img
-                          src={t.img}
-                          alt={t.name}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-forest/20"
-                        />
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
-                          <p className="text-xs text-forest flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {t.city}
-                          </p>
+        <FadeIn delay={150}>
+          <div className="relative">
+            <div className="overflow-hidden">
+              <div
+                className="flex"
+                style={{
+                  gap: `${gapPx}px`,
+                  transform: `translateX(calc(-${startIdx * cardWidthPct}% - ${startIdx * gapPx}px))`,
+                  transition: reducedMotion ? 'none' : 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                {TESTIMONIALS.map((t, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0"
+                    style={{ width: `calc(${cardWidthPct}% - ${((visible - 1) * gapPx) / visible}px)` }}
+                  >
+                    <Card className="h-full border border-forest/15 bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-forest/30">
+                      <CardContent className="p-6 flex flex-col h-full">
+                        <div className="flex items-center gap-3 mb-4">
+                          <img
+                            src={t.img}
+                            alt={t.name}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-forest/20 transition-transform duration-300 hover:scale-110"
+                          />
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
+                            <p className="text-xs text-forest flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {t.city}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex mb-3">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} className="w-4 h-4 text-amber-400 fill-amber-400" />
-                        ))}
-                      </div>
-                      <p className="text-gray-700 text-sm leading-relaxed italic flex-1">"{t.text}"</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
+                        <div className="flex mb-3">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star key={s} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                          ))}
+                        </div>
+                        <p className="text-gray-700 text-sm leading-relaxed italic flex-1">"{t.text}"</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={prev}
+                disabled={startIdx === 0}
+                className="border-forest/30 text-forest hover:bg-forest/10 transition-colors"
+              >
+                <ChevronDown className="w-4 h-4 rotate-90" />
+              </Button>
+              <div className="flex gap-1.5">
+                {Array.from({ length: maxStart + 1 }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setStartIdx(i); resetTimer(); }}
+                    className={`rounded-full transition-all duration-300 ${
+                      i === startIdx
+                        ? 'bg-forest w-4 h-2'
+                        : 'bg-forest/25 hover:bg-forest/50 w-2 h-2'
+                    }`}
+                    aria-label={`Ir para slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={next}
+                disabled={startIdx >= maxStart}
+                className="border-forest/30 text-forest hover:bg-forest/10 transition-colors"
+              >
+                <ChevronDown className="w-4 h-4 -rotate-90" />
+              </Button>
             </div>
           </div>
-
-          <div className="flex items-center justify-center gap-3 mt-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={prev}
-              disabled={startIdx === 0}
-              className="border-forest/30 text-forest hover:bg-forest/5"
-            >
-              <ChevronDown className="w-4 h-4 rotate-90" />
-            </Button>
-            <span className="text-xs text-gray-500">
-              {startIdx + 1}–{Math.min(startIdx + visible, TESTIMONIALS.length)} de {TESTIMONIALS.length}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={next}
-              disabled={startIdx >= maxStart}
-              className="border-forest/30 text-forest hover:bg-forest/5"
-            >
-              <ChevronDown className="w-4 h-4 -rotate-90" />
-            </Button>
-          </div>
-        </div>
+        </FadeIn>
       </div>
     </section>
   );
@@ -434,13 +552,13 @@ function LearningTrailSection() {
   return (
     <section className="py-16 px-4 bg-white border-t border-gray-100">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-12">
+        <FadeIn className="text-center mb-12">
           <GraduationCap className="w-8 h-8 text-forest mx-auto mb-3" />
           <h2 className="text-3xl font-bold text-gray-900 mb-3">Trilha de Aprendizado</h2>
           <p className="text-gray-600 max-w-xl mx-auto">
             Siga a progressão estruturada do IDASAM para maximizar seu desenvolvimento profissional.
           </p>
-        </div>
+        </FadeIn>
 
         <div className="relative">
           <div className="hidden md:block absolute left-1/2 top-8 bottom-8 w-0.5 bg-gray-200 -translate-x-1/2" />
@@ -450,36 +568,38 @@ function LearningTrailSection() {
               const Icon = step.icon;
               const isRight = i % 2 === 1;
               return (
-                <div key={i} className={`relative flex items-start gap-6 md:gap-0 ${isRight ? 'md:flex-row-reverse' : ''}`}>
-                  <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-10 h-10 rounded-full items-center justify-center bg-white border-2 border-gray-200 z-10">
-                    <div className={`w-4 h-4 rounded-full ${step.dot}`} />
-                  </div>
+                <FadeIn key={i} delay={i * 120} direction={isRight ? 'right' : 'left'}>
+                  <div className={`relative flex items-start gap-6 md:gap-0 ${isRight ? 'md:flex-row-reverse' : ''}`}>
+                    <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-10 h-10 rounded-full items-center justify-center bg-white border-2 border-gray-200 z-10">
+                      <div className={`w-4 h-4 rounded-full ${step.dot}`} />
+                    </div>
 
-                  <div className={`w-full md:w-5/12 ${isRight ? 'md:pl-12' : 'md:pr-12'}`}>
-                    <Card className={`border ${step.color} shadow-sm`}>
-                      <CardContent className="p-5">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className={`p-2 rounded-lg bg-white/70`}>
-                            <Icon className={`w-5 h-5 ${step.iconColor}`} />
-                          </div>
-                          <div>
-                            <span className="text-xs font-semibold opacity-60">Etapa {step.stage}</span>
-                            <h3 className="text-base font-bold leading-tight">{step.title}</h3>
-                          </div>
-                        </div>
-                        <p className="text-sm opacity-80 mb-3 leading-relaxed">{step.description}</p>
-                        <div className="space-y-1.5">
-                          {step.courses.map((c, j) => (
-                            <div key={j} className="flex items-center gap-2 text-sm">
-                              <CheckCircle className={`w-3.5 h-3.5 ${step.iconColor} flex-shrink-0`} />
-                              <span className="opacity-90">{c}</span>
+                    <div className={`w-full md:w-5/12 ${isRight ? 'md:pl-12' : 'md:pr-12'}`}>
+                      <Card className={`border ${step.color} shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1`}>
+                        <CardContent className="p-5">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 rounded-lg bg-white/70 transition-transform duration-300 group-hover:scale-110">
+                              <Icon className={`w-5 h-5 ${step.iconColor}`} />
                             </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+                            <div>
+                              <span className="text-xs font-semibold opacity-60">Etapa {step.stage}</span>
+                              <h3 className="text-base font-bold leading-tight">{step.title}</h3>
+                            </div>
+                          </div>
+                          <p className="text-sm opacity-80 mb-3 leading-relaxed">{step.description}</p>
+                          <div className="space-y-1.5">
+                            {step.courses.map((c, j) => (
+                              <div key={j} className="flex items-center gap-2 text-sm">
+                                <CheckCircle className={`w-3.5 h-3.5 ${step.iconColor} flex-shrink-0`} />
+                                <span className="opacity-90">{c}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
-                </div>
+                </FadeIn>
               );
             })}
           </div>
@@ -524,25 +644,27 @@ function FAQSection() {
   return (
     <section className="py-16 px-4 bg-gray-50 border-t border-gray-200">
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-10">
+        <FadeIn className="text-center mb-10">
           <h2 className="text-3xl font-bold text-gray-900 mb-3">Perguntas Frequentes</h2>
           <p className="text-gray-600">
             Tire suas dúvidas sobre os cursos e o processo de inscrição do IDASAM.
           </p>
-        </div>
+        </FadeIn>
 
-        <Accordion type="single" collapsible className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100 overflow-hidden">
-          {FAQ_ITEMS.map((item, i) => (
-            <AccordionItem key={i} value={`item-${i}`} className="border-0 px-4">
-              <AccordionTrigger className="text-left text-gray-900 font-medium py-4 hover:no-underline hover:text-forest transition-colors">
-                {item.q}
-              </AccordionTrigger>
-              <AccordionContent className="text-gray-600 leading-relaxed pb-4">
-                {item.a}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <FadeIn delay={100}>
+          <Accordion type="single" collapsible className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100 overflow-hidden">
+            {FAQ_ITEMS.map((item, i) => (
+              <AccordionItem key={i} value={`item-${i}`} className="border-0 px-4 transition-colors hover:bg-forest/3">
+                <AccordionTrigger className="text-left text-gray-900 font-medium py-4 hover:no-underline hover:text-forest transition-colors">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 leading-relaxed pb-4">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </FadeIn>
       </div>
     </section>
   );
@@ -572,67 +694,69 @@ function PartnersAndNotificationsSection() {
   return (
     <section className="py-16 px-4 bg-white border-t border-gray-100">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-10">
+        <FadeIn className="text-center mb-10">
           <h2 className="text-3xl font-bold text-gray-900 mb-3">Parceiros e Apoiadores</h2>
           <p className="text-gray-600 max-w-xl mx-auto">
             O IDASAM atua em parceria com organizações comprometidas com o desenvolvimento do Amazonas.
           </p>
-        </div>
+        </FadeIn>
 
-        <div className="flex justify-center mb-14">
-          <div className="flex items-center justify-center w-48 h-28 bg-gray-50 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <FadeIn delay={100} className="flex justify-center mb-14">
+          <div className="flex items-center justify-center w-48 h-28 bg-gray-50 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
             <img
               src="https://i.imgur.com/7eGkdW0.png"
               alt="GBR Componentes"
               className="max-w-full max-h-full object-contain p-4"
             />
           </div>
-        </div>
+        </FadeIn>
 
-        <div className="max-w-xl mx-auto bg-forest/5 rounded-2xl border border-forest/15 p-8">
-          <div className="text-center mb-6">
-            <Bell className="w-8 h-8 text-forest mx-auto mb-3" />
-            <h3 className="text-xl font-bold text-gray-900 mb-1">Quero ser notificado</h3>
-            <p className="text-gray-600 text-sm">
-              Cadastre seu e-mail e seja o primeiro a saber sobre novos cursos e vagas disponíveis.
-            </p>
-          </div>
-
-          {notified ? (
-            <div className="flex flex-col items-center py-4 text-center">
-              <CheckCircle className="w-12 h-12 text-green-500 mb-3" />
-              <p className="font-semibold text-gray-900">Cadastro realizado!</p>
-              <p className="text-sm text-gray-600 mt-1">Você receberá nossas próximas novidades por e-mail.</p>
+        <FadeIn delay={200}>
+          <div className="max-w-xl mx-auto bg-forest/5 rounded-2xl border border-forest/15 p-8">
+            <div className="text-center mb-6">
+              <Bell className="w-8 h-8 text-forest mx-auto mb-3" />
+              <h3 className="text-xl font-bold text-gray-900 mb-1">Quero ser notificado</h3>
+              <p className="text-gray-600 text-sm">
+                Cadastre seu e-mail e seja o primeiro a saber sobre novos cursos e vagas disponíveis.
+              </p>
             </div>
-          ) : (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome</FormLabel>
-                    <FormControl><Input placeholder="Seu nome completo" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="email" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>E-mail</FormLabel>
-                    <FormControl><Input type="email" placeholder="seu@email.com" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <Button
-                  type="submit"
-                  className="w-full bg-forest hover:bg-forest/90 text-white"
-                  disabled={mutation.isPending}
-                >
-                  <Bell className="w-4 h-4 mr-2" />
-                  {mutation.isPending ? 'Cadastrando...' : 'Quero ser notificado'}
-                </Button>
-              </form>
-            </Form>
-          )}
-        </div>
+
+            {notified ? (
+              <div className="flex flex-col items-center py-4 text-center">
+                <CheckCircle className="w-12 h-12 text-green-500 mb-3" />
+                <p className="font-semibold text-gray-900">Cadastro realizado!</p>
+                <p className="text-sm text-gray-600 mt-1">Você receberá nossas próximas novidades por e-mail.</p>
+              </div>
+            ) : (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome</FormLabel>
+                      <FormControl><Input placeholder="Seu nome completo" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="email" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>E-mail</FormLabel>
+                      <FormControl><Input type="email" placeholder="seu@email.com" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <Button
+                    type="submit"
+                    className="w-full bg-forest hover:bg-forest/90 text-white"
+                    disabled={mutation.isPending}
+                  >
+                    <Bell className="w-4 h-4 mr-2" />
+                    {mutation.isPending ? 'Cadastrando...' : 'Quero ser notificado'}
+                  </Button>
+                </form>
+              </Form>
+            )}
+          </div>
+        </FadeIn>
       </div>
     </section>
   );
@@ -676,12 +800,14 @@ export default function CapacitacaoPage() {
       {/* Hero */}
       <section className="bg-forest text-white pt-28 pb-16 px-4">
         <div className="max-w-5xl mx-auto text-center">
-          <Badge className="bg-white/20 text-white border-white/30 mb-4">IDASAM 2026</Badge>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Capacitação Profissional</h1>
-          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto">
-            Desenvolva competências para atuar no desenvolvimento sustentável da Amazônia.
-            Inscreva-se nos nossos cursos de 2026 e avance na sua carreira.
-          </p>
+          <FadeIn>
+            <Badge className="bg-white/20 text-white border-white/30 mb-4">IDASAM 2026</Badge>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Capacitação Profissional</h1>
+            <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto">
+              Desenvolva competências para atuar no desenvolvimento sustentável da Amazônia.
+              Inscreva-se nos nossos cursos de 2026 e avance na sua carreira.
+            </p>
+          </FadeIn>
         </div>
       </section>
 
@@ -691,24 +817,28 @@ export default function CapacitacaoPage() {
       {/* Courses */}
       <section className="py-16 px-4 border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-            Cursos Disponíveis — Cronograma 2026
-          </h2>
+          <FadeIn className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Cursos Disponíveis — Cronograma 2026
+            </h2>
+          </FadeIn>
 
           {isLoading ? (
             <div className="flex justify-center py-16">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest" />
             </div>
           ) : courses.length === 0 ? (
-            <div className="text-center py-16 text-gray-500">
+            <FadeIn delay={100} className="text-center py-16 text-gray-500">
               <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p className="text-lg font-medium">Nenhum curso disponível no momento</p>
               <p className="text-sm mt-1">Em breve novos cursos serão publicados.</p>
-            </div>
+            </FadeIn>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
-                <CourseCard key={course.id} course={course} onEnroll={openEnrollDialog} />
+              {courses.map((course, i) => (
+                <FadeIn key={course.id} delay={i * 80} className="h-full">
+                  <CourseCard course={course} onEnroll={openEnrollDialog} />
+                </FadeIn>
               ))}
             </div>
           )}
