@@ -575,7 +575,7 @@ function LearningTrailSection() {
                     </div>
 
                     <div className={`w-full md:w-5/12 ${isRight ? 'md:pl-12' : 'md:pr-12'}`}>
-                      <Card className={`border ${step.color} shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1`}>
+                      <Card className={`group border ${step.color} shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:ring-2 hover:ring-current hover:ring-offset-1`}>
                         <CardContent className="p-5">
                           <div className="flex items-center gap-3 mb-3">
                             <div className="p-2 rounded-lg bg-white/70 transition-transform duration-300 group-hover:scale-110">
