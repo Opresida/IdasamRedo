@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull } from "drizzle-orm";
 
@@ -57,6 +57,9 @@ export interface IStorage {
 
   createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission>;
   getContactSubmissions(): Promise<ContactSubmission[]>;
+
+  createCourseNotificationSubscription(sub: InsertCourseNotificationSubscription): Promise<CourseNotificationSubscription>;
+  getCourseNotificationSubscriptions(): Promise<CourseNotificationSubscription[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -226,6 +229,15 @@ export class DatabaseStorage implements IStorage {
 
   async getContactSubmissions(): Promise<ContactSubmission[]> {
     return db.select().from(contactSubmissions).orderBy(desc(contactSubmissions.createdAt));
+  }
+
+  async createCourseNotificationSubscription(sub: InsertCourseNotificationSubscription): Promise<CourseNotificationSubscription> {
+    const [created] = await db.insert(courseNotificationSubscriptions).values(sub).returning();
+    return created;
+  }
+
+  async getCourseNotificationSubscriptions(): Promise<CourseNotificationSubscription[]> {
+    return db.select().from(courseNotificationSubscriptions).orderBy(desc(courseNotificationSubscriptions.createdAt));
   }
 }
 

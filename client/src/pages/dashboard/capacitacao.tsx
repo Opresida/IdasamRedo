@@ -27,9 +27,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
-  Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check,
+  Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell,
 } from 'lucide-react';
-import type { Course, Enrollment } from '@shared/schema';
+import type { Course, Enrollment, CourseNotificationSubscription } from '@shared/schema';
 
 class HttpError extends Error {
   status: number;
@@ -894,8 +894,83 @@ function DeleteCourseDialog({
   );
 }
 
+function NotificationsTab({ adminToken }: { adminToken: string }) {
+  const { data: subs = [], isLoading } = useQuery<CourseNotificationSubscription[]>({
+    queryKey: ['/api/course-notifications'],
+    queryFn: async () => {
+      const res = await fetch('/api/course-notifications', {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (!res.ok) throw new Error('Erro ao buscar notificações');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Inscrições de Notificação</h2>
+          <p className="text-sm text-gray-500">Usuários que solicitaram ser notificados sobre novos cursos.</p>
+        </div>
+        {!isLoading && (
+          <Badge variant="secondary" className="text-xs">
+            <Bell className="w-3 h-3 mr-1" />
+            {subs.length} inscrito{subs.length !== 1 ? 's' : ''}
+          </Badge>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-forest" />
+        </div>
+      ) : subs.length === 0 ? (
+        <div className="text-center py-16 text-gray-500">
+          <Bell className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+          <p className="font-medium">Nenhuma inscrição de notificação ainda</p>
+          <p className="text-sm mt-1">As inscrições feitas na página /capacitacao aparecerão aqui.</p>
+        </div>
+      ) : (
+        <Card className="border border-gray-200">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Nome</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">E-mail</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Data de inscrição</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subs.map((sub) => (
+                    <tr key={sub.id} className="border-b border-gray-50 hover:bg-gray-50 last:border-0">
+                      <td className="py-3 px-4 font-medium text-gray-900">{sub.name}</td>
+                      <td className="py-3 px-4 text-gray-600">{sub.email}</td>
+                      <td className="py-3 px-4 text-gray-500">{formatDate(sub.createdAt?.toString())}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardCapacitacao() {
   const { adminToken } = useAuth();
+  const [activeTab, setActiveTab] = useState<'cursos' | 'notificacoes'>('cursos');
   const [formOpen, setFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
@@ -934,37 +1009,70 @@ export default function DashboardCapacitacao() {
             <p className="text-gray-600">Gerencie cursos, inscrições e certificados IDASAM 2026</p>
           </div>
         </div>
-        <Button
-          className="bg-forest hover:bg-forest/90 text-white"
-          onClick={() => { setEditingCourse(null); setFormOpen(true); }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Curso
-        </Button>
+        {activeTab === 'cursos' && (
+          <Button
+            className="bg-forest hover:bg-forest/90 text-white"
+            onClick={() => { setEditingCourse(null); setFormOpen(true); }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Curso
+          </Button>
+        )}
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-16">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest" />
-        </div>
-      ) : courses.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
-          <GraduationCap className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-lg font-medium">Nenhum curso cadastrado</p>
-          <p className="text-sm mt-1">Clique em "Novo Curso" para começar.</p>
-        </div>
+      <div className="flex gap-1 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('cursos')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'cursos'
+              ? 'border-forest text-forest'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          Cursos
+        </button>
+        <button
+          onClick={() => setActiveTab('notificacoes')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'notificacoes'
+              ? 'border-forest text-forest'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Bell className="w-4 h-4" />
+          Notificações
+        </button>
+      </div>
+
+      {activeTab === 'cursos' ? (
+        <>
+          {isLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest" />
+            </div>
+          ) : courses.length === 0 ? (
+            <div className="text-center py-16 text-gray-500">
+              <GraduationCap className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p className="text-lg font-medium">Nenhum curso cadastrado</p>
+              <p className="text-sm mt-1">Clique em "Novo Curso" para começar.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {courses.map((course) => (
+                <CourseEnrollments
+                  key={course.id}
+                  course={course}
+                  adminToken={adminToken}
+                  onEdit={handleEdit}
+                  onDelete={setDeletingCourse}
+                />
+              ))}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="space-y-4">
-          {courses.map((course) => (
-            <CourseEnrollments
-              key={course.id}
-              course={course}
-              adminToken={adminToken}
-              onEdit={handleEdit}
-              onDelete={setDeletingCourse}
-            />
-          ))}
-        </div>
+        <NotificationsTab adminToken={adminToken} />
       )}
 
       <CourseFormDialog
