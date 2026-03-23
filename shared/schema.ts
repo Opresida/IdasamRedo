@@ -90,13 +90,17 @@ export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
 export const certificates = pgTable("certificates", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   enrollmentId: uuid("enrollment_id").notNull().references(() => enrollments.id),
-  filePath: text("file_path").notNull(),
+  filePath: text("file_path"),
+  fileData: text("file_data"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
 export const insertCertificateSchema = createInsertSchema(certificates).omit({
   id: true,
   uploadedAt: true,
+}).extend({
+  filePath: z.string().optional().nullable(),
+  fileData: z.string().optional().nullable(),
 });
 
 export type InsertCertificate = z.infer<typeof insertCertificateSchema>;

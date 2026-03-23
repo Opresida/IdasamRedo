@@ -2,18 +2,11 @@ import { type Express, type Request, type Response, type NextFunction } from "ex
 import { storage } from "./storage";
 import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema } from "@shared/schema";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import { createServer } from "http";
 import crypto from "crypto";
 
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
 const upload = multer({
-  dest: uploadsDir,
+  storage: multer.memoryStorage(),
   fileFilter: (_req, file, cb) => {
     if (file.mimetype === "application/pdf") {
       cb(null, true);
@@ -137,6 +130,7 @@ async function seedCourses() {
 export async function registerRoutes(app: Express) {
   await seedCourses();
   await storage.backfillAuthCodes();
+  await storage.deleteOrphanedCertificates();
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", message: "Server is running" });
@@ -337,7 +331,7 @@ export async function registerRoutes(app: Express) {
       const list = await storage.getEnrollmentsByCourse(req.params.courseId);
       const enrollmentIds = list.map((e) => e.id);
       const certs = await storage.getCertificatesByEnrollmentIds(enrollmentIds);
-      const certSet = new Set(certs.map((c) => c.enrollmentId));
+      const certSet = new Set(certs.filter((c) => !!c.fileData).map((c) => c.enrollmentId));
       const enriched = list.map((e) => ({
         ...e,
         hasCertificate: certSet.has(e.id),
@@ -367,7 +361,7 @@ export async function registerRoutes(app: Express) {
             enrollmentId: e.id,
             fullName: e.fullName,
             courseTitle: course?.title ?? "Curso",
-            hasCertificate: !!cert,
+            hasCertificate: !!(cert?.fileData),
           };
         })
       );
@@ -390,14 +384,14 @@ export async function registerRoutes(app: Express) {
         return res.status(403).json({ message: "Não autorizado a baixar este certificado" });
       }
       const cert = await storage.getCertificate(req.params.enrollmentId);
-      if (!cert) {
+      if (!cert || !cert.fileData) {
         return res.status(404).json({ message: "Certificado não encontrado" });
       }
-      const filePath = path.join(process.cwd(), cert.filePath);
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: "Arquivo do certificado não encontrado" });
-      }
-      res.download(filePath, "certificado.pdf");
+      const buffer = Buffer.from(cert.fileData, "base64");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", 'attachment; filename="certificado.pdf"');
+      res.setHeader("Content-Length", buffer.length);
+      res.send(buffer);
     } catch (err) {
       res.status(500).json({ message: "Erro ao baixar certificado" });
     }
@@ -424,16 +418,12 @@ export async function registerRoutes(app: Express) {
       const enrollments = await storage.getEnrollments();
       const exists = enrollments.some((e) => e.id === req.params.enrollmentId);
       if (!exists) {
-        fs.unlinkSync(req.file.path);
         return res.status(404).json({ message: "Inscrição não encontrada" });
       }
-      const relPath = path.relative(process.cwd(), req.file.path);
-      const cert = await storage.updateCertificate(req.params.enrollmentId, relPath);
-      res.status(201).json(cert);
+      const fileData = req.file.buffer.toString("base64");
+      const cert = await storage.updateCertificate(req.params.enrollmentId, fileData);
+      res.status(201).json({ id: cert.id, enrollmentId: cert.enrollmentId, uploadedAt: cert.uploadedAt });
     } catch (err) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
       res.status(500).json({ message: "Erro ao fazer upload do certificado" });
     }
   });

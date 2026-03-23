@@ -53,7 +53,8 @@ export interface IStorage {
   getCertificate(enrollmentId: string): Promise<Certificate | undefined>;
   getCertificatesByEnrollmentIds(enrollmentIds: string[]): Promise<Certificate[]>;
   createCertificate(certificate: InsertCertificate): Promise<Certificate>;
-  updateCertificate(enrollmentId: string, filePath: string): Promise<Certificate>;
+  updateCertificate(enrollmentId: string, fileData: string): Promise<Certificate>;
+  deleteOrphanedCertificates(): Promise<void>;
 
   createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission>;
   getContactSubmissions(): Promise<ContactSubmission[]>;
@@ -208,17 +209,28 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateCertificate(enrollmentId: string, filePath: string): Promise<Certificate> {
+  async updateCertificate(enrollmentId: string, fileData: string): Promise<Certificate> {
     const existing = await this.getCertificate(enrollmentId);
     if (existing) {
       const [updated] = await db
         .update(certificates)
-        .set({ filePath })
+        .set({ fileData, filePath: null })
         .where(eq(certificates.enrollmentId, enrollmentId))
         .returning();
       return updated;
     } else {
-      return this.createCertificate({ enrollmentId, filePath });
+      return this.createCertificate({ enrollmentId, fileData });
+    }
+  }
+
+  async deleteOrphanedCertificates(): Promise<void> {
+    const allCerts = await db.select().from(certificates);
+    const orphaned = allCerts.filter((c) => !c.fileData && c.filePath);
+    for (const cert of orphaned) {
+      await db.delete(certificates).where(eq(certificates.id, cert.id));
+    }
+    if (orphaned.length > 0) {
+      console.log(`Deleted ${orphaned.length} orphaned certificate(s) with disk-only file paths.`);
     }
   }
 
