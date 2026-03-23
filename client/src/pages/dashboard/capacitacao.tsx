@@ -1124,6 +1124,7 @@ export default function DashboardCapacitacao() {
       )}
 
       <CourseFormDialog
+        key={editingCourse?.id ?? 'new'}
         open={formOpen}
         onClose={handleCloseForm}
         editingCourse={editingCourse}

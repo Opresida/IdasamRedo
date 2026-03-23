@@ -52,7 +52,12 @@ export const insertCourseSchema = createInsertSchema(courses).omit({
   status: z.enum(COURSE_STATUSES).optional().default('open'),
 });
 
+export const updateCourseSchema = insertCourseSchema.extend({
+  status: z.enum(COURSE_STATUSES).optional(),
+}).partial();
+
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
+export type UpdateCourse = z.infer<typeof updateCourseSchema>;
 export type Course = typeof courses.$inferSelect;
 
 export const coursesRelations = relations(courses, ({ many }) => ({

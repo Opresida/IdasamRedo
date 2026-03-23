@@ -1,6 +1,6 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { insertEnrollmentSchema, insertCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -216,7 +216,7 @@ export async function registerRoutes(app: Express) {
 
   app.put("/api/courses/:id", requireAdmin, async (req, res) => {
     try {
-      const parsed = insertCourseSchema.partial().safeParse(req.body);
+      const parsed = updateCourseSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
       }
