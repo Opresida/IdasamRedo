@@ -9,6 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -30,6 +37,7 @@ import {
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell,
 } from 'lucide-react';
 import type { Course, Enrollment, CourseNotificationSubscription } from '@shared/schema';
+import { COURSE_STATUSES } from '@shared/schema';
 
 class HttpError extends Error {
   status: number;
@@ -55,6 +63,7 @@ const courseFormSchema = z.object({
   address: z.string().optional().nullable(),
   curriculum: z.string().optional().nullable(),
   vacancies: z.coerce.number().int().positive().optional().nullable(),
+  status: z.enum(COURSE_STATUSES).default('open'),
 });
 
 type CourseFormData = z.infer<typeof courseFormSchema>;
@@ -71,6 +80,7 @@ const defaultValues: CourseFormData = {
   address: '',
   curriculum: '',
   vacancies: null,
+  status: 'open',
 };
 
 function courseToFormData(course: Course): CourseFormData {
@@ -86,8 +96,23 @@ function courseToFormData(course: Course): CourseFormData {
     address: course.address ?? '',
     curriculum: course.curriculum ?? '',
     vacancies: course.vacancies ?? null,
+    status: (course.status as typeof COURSE_STATUSES[number]) ?? 'open',
   };
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  open: 'Aberto',
+  closed: 'Fechado',
+  coming_soon: 'Em Breve',
+  completed: 'Concluído',
+};
+
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  open: 'bg-green-100 text-green-700 border-green-200',
+  closed: 'bg-red-100 text-red-700 border-red-200',
+  coming_soon: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  completed: 'bg-gray-100 text-gray-600 border-gray-200',
+};
 
 async function fetchEnrollmentsWithCerts(courseId: string, token: string): Promise<EnrollmentWithCert[]> {
   const res = await fetch(`/api/enrollments/course/${courseId}`, {
@@ -418,6 +443,9 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
               )}
             </div>
             <div className="flex items-center gap-2 ml-4">
+              <Badge className={`text-xs border ${STATUS_BADGE_CLASSES[course.status] ?? STATUS_BADGE_CLASSES.open}`}>
+                {STATUS_LABELS[course.status] ?? 'Aberto'}
+              </Badge>
               {open && !isLoading && (
                 <Badge variant="secondary" className="text-xs">
                   <Users className="w-3 h-3 mr-1" />
@@ -807,6 +835,26 @@ function CourseFormDialog({
                       value={field.value ?? ''}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="status" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status do Curso *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="open">Aberto</SelectItem>
+                      <SelectItem value="closed">Fechado</SelectItem>
+                      <SelectItem value="coming_soon">Em Breve</SelectItem>
+                      <SelectItem value="completed">Concluído</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )} />

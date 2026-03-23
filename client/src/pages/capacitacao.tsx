@@ -39,6 +39,20 @@ import {
 } from 'lucide-react';
 import type { Course } from '@shared/schema';
 
+const STATUS_LABELS: Record<string, string> = {
+  open: 'Aberto',
+  closed: 'Fechado',
+  coming_soon: 'Em Breve',
+  completed: 'Concluído',
+};
+
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  open: 'bg-green-100 text-green-700 border-green-200',
+  closed: 'bg-red-100 text-red-700 border-red-200',
+  coming_soon: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  completed: 'bg-gray-100 text-gray-600 border-gray-200',
+};
+
 type VerifiedCourse = {
   id: string;
   title: string;
@@ -242,6 +256,8 @@ function formatDate(dateStr: string) {
 
 function CourseCard({ course, onEnroll }: { course: Course; onEnroll: (c: Course) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const courseStatus = course.status ?? 'open';
+  const canEnroll = courseStatus === 'open';
 
   return (
     <Card className="flex flex-col h-full border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-forest/40 group">
@@ -250,12 +266,17 @@ function CourseCard({ course, onEnroll }: { course: Course; onEnroll: (c: Course
           <CardTitle className="text-base font-semibold leading-snug text-forest">
             {course.title}
           </CardTitle>
-          {course.vacancies && (
-            <Badge variant="outline" className="shrink-0 text-xs border-forest/30 text-forest">
-              <Users className="w-3 h-3 mr-1" />
-              {course.vacancies} vagas
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge className={`text-xs border ${STATUS_BADGE_CLASSES[courseStatus] ?? STATUS_BADGE_CLASSES.open}`}>
+              {STATUS_LABELS[courseStatus] ?? 'Aberto'}
             </Badge>
-          )}
+            {course.vacancies && (
+              <Badge variant="outline" className="text-xs border-forest/30 text-forest">
+                <Users className="w-3 h-3 mr-1" />
+                {course.vacancies} vagas
+              </Badge>
+            )}
+          </div>
         </div>
         <p className="text-sm text-gray-600 leading-relaxed">{course.description}</p>
       </CardHeader>
@@ -306,13 +327,26 @@ function CourseCard({ course, onEnroll }: { course: Course; onEnroll: (c: Course
         )}
 
         <div className="mt-auto">
-          <Button
-            className="w-full bg-forest hover:bg-forest/90 text-white"
-            onClick={() => onEnroll(course)}
-          >
-            <BookOpen className="w-4 h-4 mr-2" />
-            Inscrever-se
-          </Button>
+          {canEnroll ? (
+            <Button
+              className="w-full bg-forest hover:bg-forest/90 text-white"
+              onClick={() => onEnroll(course)}
+            >
+              <BookOpen className="w-4 h-4 mr-2" />
+              Inscrever-se
+            </Button>
+          ) : (
+            <Button
+              className="w-full"
+              variant="outline"
+              disabled
+            >
+              <BookOpen className="w-4 h-4 mr-2" />
+              {courseStatus === 'closed' && 'Inscrições Encerradas'}
+              {courseStatus === 'coming_soon' && 'Em Breve'}
+              {courseStatus === 'completed' && 'Curso Concluído'}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -876,6 +910,19 @@ export default function CapacitacaoPage() {
                 para baixar seu diploma.
               </p>
               <Button className="mt-6 bg-forest hover:bg-forest/90 text-white" onClick={() => setSelectedCourse(null)}>
+                Fechar
+              </Button>
+            </div>
+          ) : selectedCourse && (selectedCourse.status ?? 'open') !== 'open' ? (
+            <div className="flex flex-col items-center py-6 text-center">
+              <BookOpen className="w-12 h-12 text-gray-300 mb-4" />
+              <p className="font-medium text-gray-900 mb-1">{selectedCourse.title}</p>
+              <p className="text-sm text-gray-500 mt-2">
+                {(selectedCourse.status === 'closed') && 'As inscrições para este curso estão encerradas.'}
+                {(selectedCourse.status === 'coming_soon') && 'Este curso ainda não está disponível para inscrições.'}
+                {(selectedCourse.status === 'completed') && 'Este curso já foi concluído.'}
+              </p>
+              <Button className="mt-6" variant="outline" onClick={() => setSelectedCourse(null)}>
                 Fechar
               </Button>
             </div>

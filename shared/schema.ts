@@ -19,6 +19,9 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+export const COURSE_STATUSES = ['open', 'closed', 'coming_soon', 'completed'] as const;
+export type CourseStatus = typeof COURSE_STATUSES[number];
+
 export const courses = pgTable("courses", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -32,6 +35,7 @@ export const courses = pgTable("courses", {
   address: text("address"),
   curriculum: text("curriculum"),
   vacancies: integer("vacancies"),
+  status: text("status").notNull().default("open"),
   authCode: text("auth_code").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
@@ -45,6 +49,7 @@ export const insertCourseSchema = createInsertSchema(courses).omit({
   address: z.string().optional().nullable(),
   curriculum: z.string().optional().nullable(),
   vacancies: z.number().int().positive().optional().nullable(),
+  status: z.enum(COURSE_STATUSES).optional().default('open'),
 });
 
 export type InsertCourse = z.infer<typeof insertCourseSchema>;

@@ -253,6 +253,13 @@ export async function registerRoutes(app: Express) {
       if (!parsed.success) {
         return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
       }
+      const course = await storage.getCourse(parsed.data.courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      if (course.status !== "open") {
+        return res.status(403).json({ message: "Inscrições não estão abertas para este curso" });
+      }
       const enrollment = await storage.createEnrollment(parsed.data);
       res.status(201).json(enrollment);
     } catch (err) {
