@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import FloatingNavbar from '@/components/floating-navbar';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import WhatsAppFloat from '@/components/whatsapp-float';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -942,6 +943,7 @@ export default function CapacitacaoPage() {
 
       <VerifySection />
       <ShadcnblocksComFooter2 />
+      <WhatsAppFloat />
     </div>
   );
 }
