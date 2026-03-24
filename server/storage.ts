@@ -1,6 +1,6 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment } from "@shared/schema";
 import { db } from "./db";
-import { eq, or, inArray, desc, isNull } from "drizzle-orm";
+import { eq, or, inArray, desc, isNull, and } from "drizzle-orm";
 
 function generateAuthCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -61,6 +61,29 @@ export interface IStorage {
 
   createCourseNotificationSubscription(sub: InsertCourseNotificationSubscription): Promise<CourseNotificationSubscription>;
   getCourseNotificationSubscriptions(): Promise<CourseNotificationSubscription[]>;
+
+  getArticleCategories(): Promise<ArticleCategory[]>;
+  getArticleCategory(id: string): Promise<ArticleCategory | undefined>;
+  createArticleCategory(category: InsertArticleCategory): Promise<ArticleCategory>;
+  updateArticleCategory(id: string, category: Partial<InsertArticleCategory>): Promise<ArticleCategory | undefined>;
+  deleteArticleCategory(id: string): Promise<void>;
+
+  getArticles(publishedOnly?: boolean): Promise<(Article & { categoryName?: string | null })[]>;
+  getArticle(id: string): Promise<(Article & { categoryName?: string | null }) | undefined>;
+  createArticle(article: InsertArticle): Promise<Article>;
+  updateArticle(id: string, article: UpdateArticle): Promise<Article | undefined>;
+  deleteArticle(id: string): Promise<void>;
+  incrementArticleViews(id: string): Promise<void>;
+
+  getArticleComments(articleId: string, approvedOnly?: boolean): Promise<ArticleComment[]>;
+  getAllComments(): Promise<(ArticleComment & { articleTitle?: string | null })[]>;
+  createArticleComment(comment: InsertArticleComment): Promise<ArticleComment>;
+  approveArticleComment(id: string): Promise<ArticleComment | undefined>;
+  deleteArticleComment(id: string): Promise<void>;
+
+  getArticleReactions(articleId: string): Promise<Record<string, number>>;
+  toggleArticleReaction(articleId: string, anonymousUserId: string, reactionType: string): Promise<{ added: boolean }>;
+  getUserArticleReactions(articleId: string, anonymousUserId: string): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -166,12 +189,12 @@ export class DatabaseStorage implements IStorage {
 
     if (isName(identifier)) {
       const normalizedInput = normalizeName(identifier);
-      return all.filter((e) => normalizeName(e.fullName) === normalizedInput);
+      return all.filter((e) => normalizeName(e.fullName ?? '') === normalizedInput);
     }
 
     const normalized = normalizeIdentifier(identifier);
     return all.filter(
-      (e) => normalizeIdentifier(e.cpf) === normalized || normalizeIdentifier(e.email) === normalized
+      (e) => normalizeIdentifier(e.cpf ?? '') === normalized || normalizeIdentifier(e.email ?? '') === normalized
     );
   }
 
@@ -250,6 +273,177 @@ export class DatabaseStorage implements IStorage {
 
   async getCourseNotificationSubscriptions(): Promise<CourseNotificationSubscription[]> {
     return db.select().from(courseNotificationSubscriptions).orderBy(desc(courseNotificationSubscriptions.createdAt));
+  }
+
+  async getArticleCategories(): Promise<ArticleCategory[]> {
+    return db.select().from(articleCategories).orderBy(articleCategories.name);
+  }
+
+  async getArticleCategory(id: string): Promise<ArticleCategory | undefined> {
+    const [cat] = await db.select().from(articleCategories).where(eq(articleCategories.id, id));
+    return cat || undefined;
+  }
+
+  async createArticleCategory(category: InsertArticleCategory): Promise<ArticleCategory> {
+    const [created] = await db.insert(articleCategories).values(category).returning();
+    return created;
+  }
+
+  async updateArticleCategory(id: string, category: Partial<InsertArticleCategory>): Promise<ArticleCategory | undefined> {
+    const [updated] = await db.update(articleCategories).set(category).where(eq(articleCategories.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteArticleCategory(id: string): Promise<void> {
+    await db.delete(articleCategories).where(eq(articleCategories.id, id));
+  }
+
+  async getArticles(publishedOnly = false): Promise<(Article & { categoryName?: string | null })[]> {
+    const rows = await db.select({
+      id: articles.id,
+      title: articles.title,
+      content: articles.content,
+      excerpt: articles.excerpt,
+      image: articles.image,
+      categoryId: articles.categoryId,
+      authorName: articles.authorName,
+      tags: articles.tags,
+      published: articles.published,
+      featured: articles.featured,
+      views: articles.views,
+      readingTime: articles.readingTime,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      categoryName: articleCategories.name,
+    })
+      .from(articles)
+      .leftJoin(articleCategories, eq(articles.categoryId, articleCategories.id))
+      .orderBy(desc(articles.createdAt));
+
+    if (publishedOnly) {
+      return rows.filter(r => r.published === "true");
+    }
+    return rows;
+  }
+
+  async getArticle(id: string): Promise<(Article & { categoryName?: string | null }) | undefined> {
+    const [row] = await db.select({
+      id: articles.id,
+      title: articles.title,
+      content: articles.content,
+      excerpt: articles.excerpt,
+      image: articles.image,
+      categoryId: articles.categoryId,
+      authorName: articles.authorName,
+      tags: articles.tags,
+      published: articles.published,
+      featured: articles.featured,
+      views: articles.views,
+      readingTime: articles.readingTime,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      categoryName: articleCategories.name,
+    })
+      .from(articles)
+      .leftJoin(articleCategories, eq(articles.categoryId, articleCategories.id))
+      .where(eq(articles.id, id));
+    return row || undefined;
+  }
+
+  async createArticle(article: InsertArticle): Promise<Article> {
+    const [created] = await db.insert(articles).values(article).returning();
+    return created;
+  }
+
+  async updateArticle(id: string, article: UpdateArticle): Promise<Article | undefined> {
+    const [updated] = await db.update(articles).set({ ...article, updatedAt: new Date() }).where(eq(articles.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteArticle(id: string): Promise<void> {
+    await db.delete(articleComments).where(eq(articleComments.articleId, id));
+    await db.delete(articleReactions).where(eq(articleReactions.articleId, id));
+    await db.delete(articles).where(eq(articles.id, id));
+  }
+
+  async incrementArticleViews(id: string): Promise<void> {
+    const [art] = await db.select({ views: articles.views }).from(articles).where(eq(articles.id, id));
+    if (art) {
+      await db.update(articles).set({ views: art.views + 1 }).where(eq(articles.id, id));
+    }
+  }
+
+  async getArticleComments(articleId: string, approvedOnly = false): Promise<ArticleComment[]> {
+    const where = approvedOnly
+      ? and(eq(articleComments.articleId, articleId), eq(articleComments.isApproved, "true"))
+      : eq(articleComments.articleId, articleId);
+    return db.select().from(articleComments).where(where).orderBy(desc(articleComments.createdAt));
+  }
+
+  async getAllComments(): Promise<(ArticleComment & { articleTitle?: string | null })[]> {
+    const rows = await db.select({
+      id: articleComments.id,
+      articleId: articleComments.articleId,
+      parentCommentId: articleComments.parentCommentId,
+      authorName: articleComments.authorName,
+      authorEmail: articleComments.authorEmail,
+      content: articleComments.content,
+      isApproved: articleComments.isApproved,
+      reactionCounts: articleComments.reactionCounts,
+      createdAt: articleComments.createdAt,
+      articleTitle: articles.title,
+    })
+      .from(articleComments)
+      .leftJoin(articles, eq(articleComments.articleId, articles.id))
+      .orderBy(desc(articleComments.createdAt));
+    return rows;
+  }
+
+  async createArticleComment(comment: InsertArticleComment): Promise<ArticleComment> {
+    const [created] = await db.insert(articleComments).values(comment).returning();
+    return created;
+  }
+
+  async approveArticleComment(id: string): Promise<ArticleComment | undefined> {
+    const [updated] = await db.update(articleComments).set({ isApproved: "true" }).where(eq(articleComments.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteArticleComment(id: string): Promise<void> {
+    await db.delete(articleComments).where(eq(articleComments.id, id));
+  }
+
+  async getArticleReactions(articleId: string): Promise<Record<string, number>> {
+    const rows = await db.select({ reactionType: articleReactions.reactionType }).from(articleReactions).where(eq(articleReactions.articleId, articleId));
+    const counts: Record<string, number> = {};
+    for (const row of rows) {
+      counts[row.reactionType] = (counts[row.reactionType] || 0) + 1;
+    }
+    return counts;
+  }
+
+  async toggleArticleReaction(articleId: string, anonymousUserId: string, reactionType: string): Promise<{ added: boolean }> {
+    const [existing] = await db.select().from(articleReactions).where(
+      and(
+        eq(articleReactions.articleId, articleId),
+        eq(articleReactions.anonymousUserId, anonymousUserId),
+        eq(articleReactions.reactionType, reactionType)
+      )
+    );
+    if (existing) {
+      await db.delete(articleReactions).where(eq(articleReactions.id, existing.id));
+      return { added: false };
+    } else {
+      await db.insert(articleReactions).values({ articleId, anonymousUserId, reactionType });
+      return { added: true };
+    }
+  }
+
+  async getUserArticleReactions(articleId: string, anonymousUserId: string): Promise<string[]> {
+    const rows = await db.select({ reactionType: articleReactions.reactionType }).from(articleReactions).where(
+      and(eq(articleReactions.articleId, articleId), eq(articleReactions.anonymousUserId, anonymousUserId))
+    );
+    return rows.map(r => r.reactionType);
   }
 }
 

@@ -151,3 +151,100 @@ export const insertCourseNotificationSubscriptionSchema = createInsertSchema(cou
 
 export type InsertCourseNotificationSubscription = z.infer<typeof insertCourseNotificationSubscriptionSchema>;
 export type CourseNotificationSubscription = typeof courseNotificationSubscriptions.$inferSelect;
+
+export const articleCategories = pgTable("article_categories", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertArticleCategorySchema = createInsertSchema(articleCategories).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  name: z.string().min(1, "Nome é obrigatório"),
+  slug: z.string().min(1, "Slug é obrigatório"),
+  description: z.string().optional().nullable(),
+});
+
+export type InsertArticleCategory = z.infer<typeof insertArticleCategorySchema>;
+export type ArticleCategory = typeof articleCategories.$inferSelect;
+
+export const articles = pgTable("articles", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  excerpt: text("excerpt"),
+  image: text("image"),
+  categoryId: uuid("category_id").references(() => articleCategories.id),
+  authorName: text("author_name").notNull().default("Admin"),
+  tags: text("tags").array(),
+  published: text("published").notNull().default("false"),
+  featured: text("featured").notNull().default("false"),
+  views: integer("views").notNull().default(0),
+  readingTime: integer("reading_time").notNull().default(5),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertArticleSchema = createInsertSchema(articles).omit({
+  id: true,
+  views: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  title: z.string().min(1, "Título é obrigatório"),
+  content: z.string().min(1, "Conteúdo é obrigatório"),
+  excerpt: z.string().optional().nullable(),
+  image: z.string().optional().nullable(),
+  categoryId: z.string().optional().nullable(),
+  authorName: z.string().optional().default("Admin"),
+  tags: z.array(z.string()).optional().nullable(),
+  published: z.string().optional().default("false"),
+  featured: z.string().optional().default("false"),
+  readingTime: z.number().int().positive().optional().default(5),
+});
+
+export const updateArticleSchema = insertArticleSchema.partial();
+
+export type InsertArticle = z.infer<typeof insertArticleSchema>;
+export type UpdateArticle = z.infer<typeof updateArticleSchema>;
+export type Article = typeof articles.$inferSelect;
+
+export const articleComments = pgTable("article_comments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  articleId: uuid("article_id").notNull().references(() => articles.id),
+  parentCommentId: uuid("parent_comment_id"),
+  authorName: text("author_name").notNull(),
+  authorEmail: text("author_email").notNull(),
+  content: text("content").notNull(),
+  isApproved: text("is_approved").notNull().default("false"),
+  reactionCounts: text("reaction_counts").default("{}"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertArticleCommentSchema = createInsertSchema(articleComments).omit({
+  id: true,
+  createdAt: true,
+  isApproved: true,
+  reactionCounts: true,
+}).extend({
+  articleId: z.string().min(1, "ID do artigo é obrigatório"),
+  parentCommentId: z.string().optional().nullable(),
+  authorName: z.string().min(1, "Nome é obrigatório"),
+  authorEmail: z.string().email("Email inválido").min(1, "Email é obrigatório"),
+  content: z.string().min(1, "Comentário é obrigatório"),
+});
+
+export type InsertArticleComment = z.infer<typeof insertArticleCommentSchema>;
+export type ArticleComment = typeof articleComments.$inferSelect;
+
+export const articleReactions = pgTable("article_reactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  articleId: uuid("article_id").notNull().references(() => articles.id),
+  anonymousUserId: text("anonymous_user_id").notNull(),
+  reactionType: text("reaction_type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});

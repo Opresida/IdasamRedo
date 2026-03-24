@@ -1,6 +1,6 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema } from "@shared/schema";
 import multer from "multer";
 import { createServer } from "http";
 import crypto from "crypto";
@@ -65,6 +65,7 @@ const INITIAL_COURSES = [
     startDate: "2026-03-02",
     endDate: "2026-03-06",
     location: "Manaus – AM (Presencial)",
+    status: "completed" as const,
   },
   {
     title: "Transformação Digital",
@@ -74,6 +75,7 @@ const INITIAL_COURSES = [
     startDate: "2026-03-09",
     endDate: "2026-03-13",
     location: "Manaus – AM (Presencial)",
+    status: "completed" as const,
   },
   {
     title: "Lean Manufacturing aplicada à Indústria 4.0",
@@ -83,6 +85,7 @@ const INITIAL_COURSES = [
     startDate: "2026-03-16",
     endDate: "2026-03-18",
     location: "Manaus – AM (Presencial)",
+    status: "completed" as const,
   },
   {
     title: "Inovação Tecnológica na Indústria",
@@ -92,6 +95,7 @@ const INITIAL_COURSES = [
     startDate: "2026-03-19",
     endDate: "2026-03-20",
     location: "Manaus – AM (Presencial)",
+    status: "completed" as const,
   },
   {
     title: "Processos avaliativos da maturidade da indústria 4.0",
@@ -101,6 +105,7 @@ const INITIAL_COURSES = [
     startDate: "2026-03-23",
     endDate: "2026-03-27",
     location: "Manaus – AM (Presencial)",
+    status: "open" as const,
   },
   {
     title: "Logística e Cadeia de Suprimentos",
@@ -110,6 +115,7 @@ const INITIAL_COURSES = [
     startDate: "2026-03-30",
     endDate: "2026-03-31",
     location: "Manaus – AM (Presencial)",
+    status: "coming_soon" as const,
   },
 ];
 
@@ -127,13 +133,177 @@ async function seedCourses() {
   }
 }
 
+const INITIAL_ARTICLE_CATEGORIES = [
+  { name: 'Bioeconomia', slug: 'bioeconomia', description: 'Projetos de bioeconomia e desenvolvimento sustentável' },
+  { name: 'Tecnologia', slug: 'tecnologia', description: 'Inovação e tecnologia verde' },
+  { name: 'Educação', slug: 'educacao', description: 'Programas educacionais e capacitação' },
+  { name: 'Sustentabilidade', slug: 'sustentabilidade', description: 'Iniciativas sustentáveis e meio ambiente' },
+  { name: 'Pesquisa', slug: 'pesquisa', description: 'Projetos de pesquisa científica' },
+];
+
+const INITIAL_ARTICLES = [
+  {
+    title: 'IDASAM Lança Revolucionário Projeto de Bioeconomia Circular na Amazônia',
+    excerpt: 'Iniciativa inovadora promove transformação de resíduos florestais em produtos de alto valor agregado, gerando renda sustentável para comunidades tradicionais.',
+    content: `O Instituto de Desenvolvimento Sustentável da Amazônia (IDASAM) anunciou o lançamento de seu mais ambicioso projeto: a implementação de um sistema de bioeconomia circular que transformará resíduos florestais em produtos de alto valor agregado.
+
+O projeto, desenvolvido em parceria com universidades nacionais e internacionais, utilizará tecnologias avançadas de biotecnologia para converter biomassa residual da floresta amazônica em bioprodutos como bioplásticos, cosméticos naturais e compostos farmacêuticos.
+
+"Esta iniciativa representa um marco na nossa missão de conciliar conservação ambiental com desenvolvimento econômico", explicou a Dra. Maria Silva, diretora científica do IDASAM. "Estamos criando uma nova economia baseada na floresta em pé."
+
+O projeto beneficiará diretamente mais de 500 famílias em 12 comunidades ribeirinhas, oferecendo capacitação técnica e oportunidades de trabalho sustentável.`,
+    image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=2071&q=80',
+    authorName: 'Dr. Maria Silva',
+    categorySlug: 'bioeconomia',
+    tags: ['bioeconomia', 'sustentabilidade', 'amazônia', 'comunidades'],
+    published: 'true',
+    featured: 'true',
+    readingTime: 5,
+  },
+  {
+    title: 'Tecnologia Verde: IDASAM Desenvolve Sistema de Monitoramento Florestal por IA',
+    excerpt: 'Inovador sistema utiliza inteligência artificial e sensores IoT para detectar desmatamento e queimadas em tempo real.',
+    content: `O IDASAM apresentou seu mais recente desenvolvimento tecnológico: um sistema integrado de monitoramento florestal que combina inteligência artificial, sensores IoT e imagens de satélite para detectar atividades de desmatamento em tempo real.
+
+O sistema, batizado de "GuardianForest", utiliza algoritmos de machine learning treinados com mais de 10 anos de dados florestais para identificar padrões anômalos na cobertura vegetal com precisão superior a 95%.
+
+"Nossa tecnologia pode identificar uma área desmatada de apenas 0,1 hectare em menos de 2 horas", explica o engenheiro João Santos, líder da equipe de desenvolvimento.
+
+O GuardianForest já está sendo testado em uma área de 50.000 hectares na região de Tefé, com resultados promissores.`,
+    image: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=2025&q=80',
+    authorName: 'Eng. João Santos',
+    categorySlug: 'tecnologia',
+    tags: ['tecnologia', 'monitoramento', 'ia', 'floresta'],
+    published: 'true',
+    featured: 'false',
+    readingTime: 4,
+  },
+  {
+    title: 'Educação Transformadora: Programa de Capacitação Técnica Forma 150 Jovens',
+    excerpt: 'Iniciativa do IDASAM capacita jovens amazônicos em tecnologias sustentáveis e empreendedorismo verde.',
+    content: `O programa "Jovens Amazônicos do Futuro", desenvolvido pelo IDASAM, celebra a formatura de sua terceira turma, totalizando 150 jovens capacitados em tecnologias sustentáveis e empreendedorismo verde nos últimos 18 meses.
+
+O programa oferece formação técnica em áreas como aquicultura sustentável, manejo florestal, energias renováveis e biotecnologia aplicada.
+
+"Ver esses jovens desenvolvendo projetos inovadores e criando suas próprias empresas sustentáveis é extremamente gratificante", comenta Ana Costa, coordenadora do programa.
+
+A taxa de empregabilidade dos egressos supera 85%.`,
+    image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=2070&q=80',
+    authorName: 'Ana Costa',
+    categorySlug: 'educacao',
+    tags: ['educação', 'jovens', 'capacitação', 'sustentabilidade'],
+    published: 'true',
+    featured: 'false',
+    readingTime: 3,
+  },
+  {
+    title: 'Parceria Internacional: IDASAM e Universidade de Oxford Desenvolvem Pesquisa Pioneira',
+    excerpt: 'Colaboração científica resultará em banco de dados genético da biodiversidade amazônica.',
+    content: `O IDASAM firmou parceria estratégica com a Universidade de Oxford para desenvolvimento de pesquisa pioneira sobre a biodiversidade amazônica. O projeto criará o maior banco de dados genético da flora e fauna amazônica já desenvolvido.
+
+A pesquisa utilizará técnicas de sequenciamento genético de última geração para catalogar e preservar digitalmente o patrimônio genético de espécies amazônicas.
+
+"Esta parceria representa uma oportunidade única de preservar o conhecimento genético da Amazônia para as futuras gerações", destaca o Dr. Carlos Mendes.`,
+    image: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=2070&q=80',
+    authorName: 'Dr. Carlos Mendes',
+    categorySlug: 'pesquisa',
+    tags: ['pesquisa', 'biodiversidade', 'genética', 'parceria'],
+    published: 'true',
+    featured: 'false',
+    readingTime: 6,
+  },
+  {
+    title: 'Agricultura Regenerativa: Técnicas Ancestrais Aliadas à Ciência Moderna',
+    excerpt: 'IDASAM resgata conhecimentos tradicionais e os combina com tecnologias modernas para revolucionar a agricultura amazônica.',
+    content: `Um projeto inovador do IDASAM está resgatando técnicas ancestrais de agricultura indígena e combinando-as com tecnologias modernas para desenvolver um sistema de agricultura regenerativa.
+
+O projeto "Terra Viva" trabalha diretamente com cinco etnias indígenas para documentar e aprimorar práticas agrícolas tradicionais que mantém a fertilidade do solo por décadas sem uso de agroquímicos.
+
+Os resultados mostram aumento de 40% na produtividade e melhoria significativa na qualidade nutricional dos alimentos. Quinze comunidades já adotaram as técnicas.`,
+    image: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=2025&q=80',
+    authorName: 'Dra. Isabel Ribeiro',
+    categorySlug: 'sustentabilidade',
+    tags: ['agricultura', 'indígenas', 'regenerativa', 'tradicional'],
+    published: 'true',
+    featured: 'false',
+    readingTime: 5,
+  },
+];
+
+async function seedArticles() {
+  try {
+    const existingCats = await storage.getArticleCategories();
+    if (existingCats.length === 0) {
+      for (const cat of INITIAL_ARTICLE_CATEGORIES) {
+        await storage.createArticleCategory(cat);
+      }
+      console.log("Categorias de artigos inseridas com sucesso.");
+    }
+
+    const existingArts = await storage.getArticles();
+    if (existingArts.length === 0) {
+      const cats = await storage.getArticleCategories();
+      const catMap = Object.fromEntries(cats.map(c => [c.slug, c.id]));
+      for (const art of INITIAL_ARTICLES) {
+        const { categorySlug, ...rest } = art;
+        await storage.createArticle({ ...rest, categoryId: catMap[categorySlug] || null });
+      }
+      console.log("Artigos iniciais inseridos com sucesso.");
+    }
+  } catch (err) {
+    console.error("Erro ao popular artigos:", err);
+  }
+}
+
 export async function registerRoutes(app: Express) {
   await seedCourses();
+  await seedArticles();
   await storage.backfillAuthCodes();
   await storage.deleteOrphanedCertificates();
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", message: "Server is running" });
+  });
+
+  const injectArticleOgTags = async (req: any, res: any, next: any, articleId: string) => {
+    try {
+      const art = await storage.getArticle(articleId);
+      if (!art) return next();
+      const ogTitle = art.title.replace(/"/g, '&quot;');
+      const ogDesc = (art.excerpt || art.content.substring(0, 160)).replace(/"/g, '&quot;');
+      const ogImage = art.image || 'https://i.imgur.com/i74pvbH.jpeg';
+      const ogUrl = `${req.protocol}://${req.get('host')}/noticias?artigo=${art.id}`;
+      const { resolve } = await import('path');
+      const htmlPath = resolve(process.cwd(), 'client/index.html');
+      const { promises: fsp } = await import('fs');
+      let html = await fsp.readFile(htmlPath, 'utf-8').catch(() => '');
+      if (!html) return next();
+      const ogTags = `
+    <meta property="og:title" content="${ogTitle}" />
+    <meta property="og:description" content="${ogDesc}" />
+    <meta property="og:image" content="${ogImage}" />
+    <meta property="og:url" content="${ogUrl}" />
+    <meta property="og:type" content="article" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${ogTitle}" />
+    <meta name="twitter:description" content="${ogDesc}" />
+    <meta name="twitter:image" content="${ogImage}" />`;
+      html = html.replace('</head>', `${ogTags}\n  </head>`);
+      return res.set('Content-Type', 'text/html').send(html);
+    } catch (e) {
+      return next();
+    }
+  };
+
+  app.get("/noticias", async (req, res, next) => {
+    const artigo = req.query.artigo as string;
+    if (!artigo) return next();
+    return injectArticleOgTags(req, res, next, artigo);
+  });
+
+  app.get("/noticias/:id", async (req, res, next) => {
+    const { id } = req.params;
+    return injectArticleOgTags(req, res, next, id);
   });
 
   app.post("/api/admin/login", (req, res) => {
@@ -479,6 +649,218 @@ export async function registerRoutes(app: Express) {
       res.json(subs);
     } catch (err) {
       res.status(500).json({ message: "Erro ao buscar inscrições de notificação" });
+    }
+  });
+
+  app.get("/api/article-categories", async (_req, res) => {
+    try {
+      const cats = await storage.getArticleCategories();
+      res.json(cats);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar categorias" });
+    }
+  });
+
+  app.post("/api/article-categories", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertArticleCategorySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const cat = await storage.createArticleCategory(parsed.data);
+      res.status(201).json(cat);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao criar categoria" });
+    }
+  });
+
+  app.put("/api/article-categories/:id", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertArticleCategorySchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const cat = await storage.updateArticleCategory(req.params.id, parsed.data);
+      if (!cat) return res.status(404).json({ message: "Categoria não encontrada" });
+      res.json(cat);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao atualizar categoria" });
+    }
+  });
+
+  app.delete("/api/article-categories/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteArticleCategory(req.params.id);
+      res.json({ message: "Categoria excluída com sucesso" });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao excluir categoria" });
+    }
+  });
+
+  app.get("/api/articles", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const isAdmin = authHeader?.startsWith("Bearer ") && (() => {
+        const token = authHeader.slice(7);
+        const session = adminSessions.get(token);
+        if (!session || session.expiresAt < Date.now()) {
+          adminSessions.delete(token);
+          return false;
+        }
+        return true;
+      })();
+      const arts = await storage.getArticles(!isAdmin);
+      res.json(arts);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar artigos" });
+    }
+  });
+
+  app.get("/api/articles/:id", async (req, res) => {
+    try {
+      const art = await storage.getArticle(req.params.id);
+      if (!art) return res.status(404).json({ message: "Artigo não encontrado" });
+      res.json(art);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar artigo" });
+    }
+  });
+
+  app.get("/api/articles/:id/og", async (req, res) => {
+    try {
+      const art = await storage.getArticle(req.params.id);
+      if (!art) return res.status(404).json({ message: "Artigo não encontrado" });
+      res.json({
+        title: art.title,
+        description: art.excerpt || art.content.substring(0, 160),
+        image: art.image || "https://i.imgur.com/i74pvbH.jpeg",
+        url: `${req.protocol}://${req.get('host')}/noticias?artigo=${art.id}`,
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar OG do artigo" });
+    }
+  });
+
+  app.post("/api/articles", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertArticleSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const art = await storage.createArticle(parsed.data);
+      res.status(201).json(art);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao criar artigo" });
+    }
+  });
+
+  app.put("/api/articles/:id", requireAdmin, async (req, res) => {
+    try {
+      const parsed = updateArticleSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const art = await storage.updateArticle(req.params.id, parsed.data);
+      if (!art) return res.status(404).json({ message: "Artigo não encontrado" });
+      res.json(art);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao atualizar artigo" });
+    }
+  });
+
+  app.delete("/api/articles/:id", requireAdmin, async (req, res) => {
+    try {
+      const art = await storage.getArticle(req.params.id);
+      if (!art) return res.status(404).json({ message: "Artigo não encontrado" });
+      await storage.deleteArticle(req.params.id);
+      res.json({ message: "Artigo excluído com sucesso" });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao excluir artigo" });
+    }
+  });
+
+  app.post("/api/articles/:id/views", async (req, res) => {
+    try {
+      await storage.incrementArticleViews(req.params.id);
+      res.json({ message: "Visualização registrada" });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao registrar visualização" });
+    }
+  });
+
+  app.get("/api/articles/:id/reactions", async (req, res) => {
+    try {
+      const counts = await storage.getArticleReactions(req.params.id);
+      const userId = req.query.userId as string || "";
+      const userReactions = userId ? await storage.getUserArticleReactions(req.params.id, userId) : [];
+      res.json({ counts, userReactions });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar reações" });
+    }
+  });
+
+  app.post("/api/articles/:id/reactions", async (req, res) => {
+    try {
+      const { reactionType, anonymousUserId } = req.body;
+      if (!reactionType || !anonymousUserId) {
+        return res.status(400).json({ message: "reactionType e anonymousUserId são obrigatórios" });
+      }
+      const result = await storage.toggleArticleReaction(req.params.id, anonymousUserId, reactionType);
+      const counts = await storage.getArticleReactions(req.params.id);
+      const userReactions = await storage.getUserArticleReactions(req.params.id, anonymousUserId);
+      res.json({ ...result, counts, userReactions });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao reagir ao artigo" });
+    }
+  });
+
+  app.get("/api/articles/:id/comments", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const isAdmin = authHeader?.startsWith("Bearer ") && (() => {
+        const token = authHeader.slice(7);
+        const session = adminSessions.get(token);
+        if (!session || session.expiresAt < Date.now()) {
+          adminSessions.delete(token);
+          return false;
+        }
+        return true;
+      })();
+      const comments = await storage.getArticleComments(req.params.id, !isAdmin);
+      res.json(comments);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar comentários" });
+    }
+  });
+
+  app.post("/api/articles/:id/comments", async (req, res) => {
+    try {
+      const parsed = insertArticleCommentSchema.safeParse({ ...req.body, articleId: req.params.id });
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const comment = await storage.createArticleComment(parsed.data);
+      res.status(201).json(comment);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao criar comentário" });
+    }
+  });
+
+  app.get("/api/admin/comments", requireAdmin, async (_req, res) => {
+    try {
+      const comments = await storage.getAllComments();
+      res.json(comments);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar comentários" });
+    }
+  });
+
+  app.put("/api/admin/comments/:id/approve", requireAdmin, async (req, res) => {
+    try {
+      const comment = await storage.approveArticleComment(req.params.id);
+      if (!comment) return res.status(404).json({ message: "Comentário não encontrado" });
+      res.json(comment);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao aprovar comentário" });
+    }
+  });
+
+  app.delete("/api/admin/comments/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteArticleComment(req.params.id);
+      res.json({ message: "Comentário excluído com sucesso" });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao excluir comentário" });
     }
   });
 

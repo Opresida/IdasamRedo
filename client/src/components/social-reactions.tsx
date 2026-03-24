@@ -61,38 +61,21 @@ export default function SocialReactions({
   };
 
   const handleReaction = useCallback(async (type: ReactionType) => {
-    if (!user) {
-      toast({
-        title: 'Login necessário',
-        description: 'Faça login para reagir aos artigos',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const newReactions = { ...reactions };
-    const currentCount = newReactions[type] || 0;
     const userAlreadyReacted = userReactions.includes(type);
-
-    if (userAlreadyReacted) {
-      newReactions[type] = currentCount - 1;
-    } else {
-      newReactions[type] = currentCount + 1;
-    }
 
     setAnimatingReaction(type);
     await onReactionToggle(type);
 
-    trackEvent('reaction_clicked', 'engagement', 'reaction_toggle', type, {
+    trackEvent('reaction_clicked', {
+      action: 'reaction_toggle',
       reactionType: type,
       targetId,
       targetType,
       userReacted: userAlreadyReacted,
-      newCount: newReactions[type],
     });
 
     setTimeout(() => setAnimatingReaction(null), 300);
-  }, [user, targetId, targetType, reactions, userReactions, onReactionToggle, toast]);
+  }, [targetId, targetType, userReactions, onReactionToggle, trackEvent]);
 
 
   return (

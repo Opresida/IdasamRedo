@@ -49,6 +49,7 @@ function AppContent() {
         <Route path="/" component={Home} />
         <Route path="/projetos" component={Projetos} />
         <Route path="/noticias" component={NoticiasPage} />
+        <Route path="/noticias/:id" component={NoticiasPage} />
         <Route path="/admin" component={LoginPage} />
         <Route path="/dashboard">
           <ProtectedRoute>
