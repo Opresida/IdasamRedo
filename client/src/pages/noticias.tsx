@@ -351,10 +351,10 @@ export default function NoticiasPage() {
 
       {/* Hero Section */}
       <div
-        className="relative h-[300px] sm:h-[420px] md:h-[600px] bg-cover bg-center flex items-end"
+        className="relative min-h-[480px] sm:h-[420px] md:h-[600px] bg-cover bg-center flex items-center sm:items-end"
         style={{ backgroundImage: "linear-gradient(to bottom, rgba(42,91,70,0.3) 0%, rgba(42,91,70,0.85) 100%), url('https://i.imgur.com/9FFKkFD.jpeg')" }}
       >
-        <div className="container mx-auto px-4 pb-16">
+        <div className="container mx-auto px-4 pb-8 sm:pb-16">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 bg-amber-400/90 text-amber-900 px-4 py-2 rounded-full text-sm font-semibold mb-6">
               <Newspaper className="w-4 h-4" />
