@@ -251,7 +251,17 @@ export async function registerRoutes(app: Express) {
       if (!course) {
         return res.status(404).json({ message: "Curso não encontrado" });
       }
-      if (course.status !== "open") {
+      const authHeader = req.headers.authorization;
+      const isAdmin = authHeader?.startsWith("Bearer ") && (() => {
+        const token = authHeader.slice(7);
+        const session = adminSessions.get(token);
+        if (!session || session.expiresAt < Date.now()) {
+          adminSessions.delete(token);
+          return false;
+        }
+        return true;
+      })();
+      if (!isAdmin && course.status !== "open") {
         return res.status(403).json({ message: "Inscrições não estão abertas para este curso" });
       }
       const enrollment = await storage.createEnrollment(parsed.data);
