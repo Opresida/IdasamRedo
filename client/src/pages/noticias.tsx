@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import { useParams } from 'wouter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,12 +39,12 @@ import { useToast } from '@/hooks/use-toast';
 interface Article {
   id: string;
   title: string;
-  content: string;
+  content: string | null;
   excerpt?: string | null;
   image?: string | null;
   createdAt: string;
   updatedAt: string;
-  authorName: string;
+  authorName: string | null;
   categoryId?: string | null;
   categoryName?: string | null;
   tags?: string[] | null;
@@ -199,6 +199,33 @@ function ArticleCardSkeleton() {
   );
 }
 
+class ArticleModalErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <Newspaper className="w-12 h-12 text-gray-400 mb-4" />
+          <p className="text-lg font-semibold text-gray-700">Não foi possível exibir este artigo</p>
+          <p className="text-sm text-gray-500 mt-1">Tente novamente ou acesse a lista de notícias.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function NoticiasPage() {
   const { trackEvent, trackPageView } = useAnalytics();
   const { toast } = useToast();
@@ -255,18 +282,43 @@ export default function NoticiasPage() {
   }, [trackPageView]);
 
   useEffect(() => {
-    if (!deepLinkHandled.current && articles.length > 0) {
-      const params = new URLSearchParams(window.location.search);
-      const artigoId = params.get('artigo') || routeParams?.id;
-      if (artigoId) {
-        const found = articles.find((a: Article) => a.id === artigoId);
-        if (found) {
-          deepLinkHandled.current = true;
-          handleArticleClick(found);
-        }
-      }
+    if (deepLinkHandled.current || articlesLoading) return;
+    const params = new URLSearchParams(window.location.search);
+    const artigoId = params.get('artigo') || routeParams?.id;
+    if (!artigoId) return;
+
+    deepLinkHandled.current = true;
+
+    const found = articles.find((a: Article) => a.id === artigoId);
+    if (found) {
+      handleArticleClick(found);
+      return;
     }
-  }, [articles, routeParams?.id]);
+
+    fetch(`/api/articles/${artigoId}`)
+      .then(res => {
+        if (!res.ok) throw new Error('not_found');
+        return res.json();
+      })
+      .then((article: Article) => {
+        if (article.published !== 'true') {
+          toast({
+            title: 'Artigo não disponível',
+            description: 'Este artigo não está publicado.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        handleArticleClick(article);
+      })
+      .catch(() => {
+        toast({
+          title: 'Artigo não encontrado',
+          description: 'Este artigo não existe ou não está mais disponível.',
+          variant: 'destructive',
+        });
+      });
+  }, [articles, articlesLoading, routeParams?.id]);
 
   const publishedArticles = articles.filter(a => a.published === 'true');
 
@@ -275,7 +327,7 @@ export default function NoticiasPage() {
       const matchesSearch =
         article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (article.content && article.content.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        article.authorName.toLowerCase().includes(searchTerm.toLowerCase());
+        (article.authorName || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory =
         selectedCategory === 'all' || article.categoryId === selectedCategory || article.categoryName === selectedCategory;
       return matchesSearch && matchesCategory;
@@ -477,7 +529,7 @@ export default function NoticiasPage() {
                     <div className="flex items-center gap-4 text-white/70 text-sm mb-6">
                       <div className="flex items-center gap-1">
                         <User className="w-4 h-4" />
-                        <span>{featuredArticle.authorName}</span>
+                        <span>{featuredArticle.authorName || 'Autor desconhecido'}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
@@ -625,9 +677,9 @@ export default function NoticiasPage() {
                           <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-50">
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full bg-[#2A5B46]/10 flex items-center justify-center text-[#2A5B46] font-bold text-xs">
-                                {article.authorName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                {(article.authorName || 'A').split(' ').map((n: string) => n[0]).filter(Boolean).join('').slice(0, 2) || 'A'}
                               </div>
-                              <span className="text-sm font-medium text-gray-700 truncate max-w-[100px]">{article.authorName}</span>
+                              <span className="text-sm font-medium text-gray-700 truncate max-w-[100px]">{article.authorName || 'Autor desconhecido'}</span>
                             </div>
                             <div className="flex items-center gap-3 text-sm text-gray-500">
                               <div className="flex items-center gap-1">
@@ -694,6 +746,7 @@ export default function NoticiasPage() {
       {/* Article Modal */}
       <Dialog open={selectedArticle !== null} onOpenChange={(open) => { if (!open) handleArticleClose(); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <ArticleModalErrorBoundary key={selectedArticle?.id ?? 'empty'}>
           {selectedArticle && (
             <>
               <DialogHeader>
@@ -735,16 +788,16 @@ export default function NoticiasPage() {
 
                 <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
                   <div className="w-10 h-10 rounded-full bg-[#2A5B46]/10 flex items-center justify-center text-[#2A5B46] font-bold text-sm">
-                    {selectedArticle.authorName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    {(selectedArticle.authorName || 'A').split(' ').map((n: string) => n[0]).filter(Boolean).join('').slice(0, 2) || 'A'}
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900">{selectedArticle.authorName}</div>
+                    <div className="font-semibold text-gray-900">{selectedArticle.authorName || 'Autor desconhecido'}</div>
                     <div className="text-sm text-gray-500">Autor</div>
                   </div>
                 </div>
 
                 <div className="prose prose-lg max-w-none prose-headings:text-[#2A5B46] prose-a:text-[#2A5B46]">
-                  {selectedArticle.content.split('\n\n').map((paragraph, i) => (
+                  {(selectedArticle.content || '').split('\n\n').map((paragraph, i) => (
                     <p key={i} className="text-gray-700 leading-relaxed mb-4">{paragraph}</p>
                   ))}
                 </div>
@@ -789,6 +842,7 @@ export default function NoticiasPage() {
               </div>
             </>
           )}
+          </ArticleModalErrorBoundary>
         </DialogContent>
       </Dialog>
     </div>
