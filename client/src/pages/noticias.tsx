@@ -23,6 +23,10 @@ import {
   ArrowRight,
   Leaf,
   Star,
+  Users,
+  MapPin,
+  GraduationCap,
+  Store,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useAnalytics } from '@/hooks/use-analytics';
@@ -102,6 +106,76 @@ function AnimatedCard({ children, delay = 0 }: { children: React.ReactNode; dela
       className={`transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}
     >
       {children}
+    </div>
+  );
+}
+
+function useCountUp(target: number, suffix: string, duration = 1600) {
+  const [display, setDisplay] = useState(`0${suffix}`);
+  const ref = useRef<HTMLDivElement>(null);
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) {
+      setDisplay(`${target}${suffix}`);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimated.current) {
+          hasAnimated.current = true;
+          const startTime = performance.now();
+          const tick = (now: number) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const ease = 1 - Math.pow(1 - progress, 3);
+            const current = Math.round(ease * target);
+            setDisplay(`${current}${suffix}`);
+            if (progress < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }
+      },
+      { threshold: 0.4 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [target, suffix, duration]);
+
+  return { display, ref };
+}
+
+function StatCard({
+  value,
+  suffix,
+  label,
+  Icon,
+  isLast,
+}: {
+  value: number;
+  suffix: string;
+  label: string;
+  Icon: React.ElementType;
+  isLast: boolean;
+}) {
+  const { display, ref } = useCountUp(value, suffix);
+  return (
+    <div
+      ref={ref}
+      className={`flex-1 flex flex-col items-center justify-center text-center px-6 py-10 md:py-12 ${
+        !isLast ? 'border-b md:border-b-0 md:border-r border-white/15' : ''
+      }`}
+    >
+      <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mb-5 ring-1 ring-white/20">
+        <Icon className="w-7 h-7 text-amber-400" />
+      </div>
+      <div className="text-5xl font-extrabold text-amber-400 tracking-tight leading-none mb-3">
+        {display}
+      </div>
+      <div className="text-sm text-white/65 font-medium tracking-widest uppercase">
+        {label}
+      </div>
     </div>
   );
 }
@@ -266,10 +340,10 @@ export default function NoticiasPage() {
   };
 
   const impactStats = [
-    { value: '500+', label: 'Famílias beneficiadas', icon: '🏡' },
-    { value: '12', label: 'Comunidades atendidas', icon: '🌿' },
-    { value: '150', label: 'Jovens capacitados', icon: '📚' },
-    { value: '25', label: 'Microempresas apoiadas', icon: '🌱' },
+    { value: 500, suffix: '+', label: 'Famílias beneficiadas', Icon: Users },
+    { value: 12, suffix: '', label: 'Comunidades atendidas', Icon: MapPin },
+    { value: 150, suffix: '', label: 'Jovens capacitados', Icon: GraduationCap },
+    { value: 25, suffix: '', label: 'Microempresas apoiadas', Icon: Store },
   ];
 
   return (
@@ -308,15 +382,18 @@ export default function NoticiasPage() {
       </div>
 
       {/* Impact Stats */}
-      <div className="bg-[#2A5B46] py-8">
+      <div className="bg-[#2A5B46]">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="flex flex-col md:flex-row">
             {impactStats.map((stat, i) => (
-              <div key={i} className="text-center text-white">
-                <div className="text-2xl mb-1">{stat.icon}</div>
-                <div className="text-3xl font-bold text-amber-400">{stat.value}</div>
-                <div className="text-sm text-white/80 mt-1">{stat.label}</div>
-              </div>
+              <StatCard
+                key={i}
+                value={stat.value}
+                suffix={stat.suffix}
+                label={stat.label}
+                Icon={stat.Icon}
+                isLast={i === impactStats.length - 1}
+              />
             ))}
           </div>
         </div>
