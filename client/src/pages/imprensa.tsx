@@ -99,7 +99,7 @@ export default function ImprensaPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
 
-  const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+  const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('idasam_admin_token') : null);
   const authFetch = async (method: string, url: string, body?: unknown): Promise<Response> => {
     const token = getToken();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
