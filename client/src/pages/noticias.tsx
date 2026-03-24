@@ -277,8 +277,8 @@ export default function NoticiasPage() {
 
       {/* Hero Section */}
       <div
-        className="relative h-[500px] md:h-[600px] bg-cover bg-center flex items-end"
-        style={{ backgroundImage: "linear-gradient(to bottom, rgba(42,91,70,0.3) 0%, rgba(42,91,70,0.85) 100%), url('https://i.imgur.com/SxJV1TT.jpeg')" }}
+        className="relative h-[300px] sm:h-[420px] md:h-[600px] bg-cover bg-center flex items-end"
+        style={{ backgroundImage: "linear-gradient(to bottom, rgba(42,91,70,0.3) 0%, rgba(42,91,70,0.85) 100%), url('https://i.imgur.com/9FFKkFD.jpeg')" }}
       >
         <div className="container mx-auto px-4 pb-16">
           <div className="max-w-3xl">
