@@ -36,6 +36,9 @@ import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell,
 } from 'lucide-react';
+import { PDFDocument, rgb } from 'pdf-lib';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import type { Course, Enrollment, CourseNotificationSubscription } from '@shared/schema';
 import { COURSE_STATUSES } from '@shared/schema';
 
@@ -1016,9 +1019,249 @@ function NotificationsTab({ adminToken }: { adminToken: string }) {
   );
 }
 
+interface FieldCoords {
+  x: number;
+  y: number;
+}
+
+interface CertCoords {
+  nome: FieldCoords;
+  descricao: FieldCoords;
+  ementa: FieldCoords;
+  instrutor: FieldCoords;
+  dataEmissao: FieldCoords;
+  codAutenticacao: FieldCoords;
+}
+
+const DEFAULT_COORDS: CertCoords = {
+  nome: { x: 100, y: 400 },
+  descricao: { x: 100, y: 350 },
+  ementa: { x: 100, y: 300 },
+  instrutor: { x: 100, y: 250 },
+  dataEmissao: { x: 100, y: 200 },
+  codAutenticacao: { x: 100, y: 150 },
+};
+
+const COORD_LABELS: Record<keyof CertCoords, string> = {
+  nome: 'Nome do Aluno',
+  descricao: 'Texto Descritivo',
+  ementa: 'Ementa',
+  instrutor: 'Instrutor(a)',
+  dataEmissao: 'Data de Emissão',
+  codAutenticacao: 'Código de Autenticação',
+};
+
+function CoordInput({ label, value, onChange }: {
+  label: string;
+  value: FieldCoords;
+  onChange: (v: FieldCoords) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+      <span className="text-sm text-gray-700 w-44 shrink-0">{label}</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-gray-400">X</span>
+        <Input
+          type="number"
+          className="w-20 h-8 text-xs"
+          value={value.x}
+          onChange={(e) => onChange({ ...value, x: Number(e.target.value) })}
+        />
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-gray-400">Y</span>
+        <Input
+          type="number"
+          className="w-20 h-8 text-xs"
+          value={value.y}
+          onChange={(e) => onChange({ ...value, y: Number(e.target.value) })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Course[] }) {
+  const { toast } = useToast();
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [coords, setCoords] = useState<CertCoords>(DEFAULT_COORDS);
+  const [generating, setGenerating] = useState(false);
+  const templateInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
+
+  const { data: enrollments = [], isLoading: loadingEnrollments } = useQuery<EnrollmentWithCert[]>({
+    queryKey: ['/api/enrollments/course', selectedCourseId],
+    queryFn: () => fetchEnrollmentsWithCerts(selectedCourseId, adminToken),
+    enabled: !!selectedCourseId && !!adminToken,
+  });
+
+  const updateCoord = (field: keyof CertCoords) => (v: FieldCoords) => {
+    setCoords((prev) => ({ ...prev, [field]: v }));
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedCourse) {
+      toast({ title: 'Selecione um curso', variant: 'destructive' });
+      return;
+    }
+    if (!templateFile) {
+      toast({ title: 'Selecione o PDF template', variant: 'destructive' });
+      return;
+    }
+    if (enrollments.length === 0) {
+      toast({ title: 'Nenhum aluno inscrito neste curso', variant: 'destructive' });
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const templateBytes = await templateFile.arrayBuffer();
+      const zip = new JSZip();
+      const today = new Date().toLocaleDateString('pt-BR');
+
+      for (const enrollment of enrollments) {
+        const pdfDoc = await PDFDocument.load(templateBytes);
+        const pages = pdfDoc.getPages();
+        const page = pages[0];
+        const { height } = page.getSize();
+
+        const drawText = (text: string, field: FieldCoords, size = 12) => {
+          page.drawText(text, {
+            x: field.x,
+            y: height - field.y,
+            size,
+            color: rgb(0, 0, 0),
+          });
+        };
+
+        drawText(enrollment.fullName ?? '', coords.nome, 14);
+        drawText(selectedCourse.description ?? '', coords.descricao, 12);
+        drawText(selectedCourse.curriculum ?? '', coords.ementa, 11);
+        drawText(selectedCourse.instructor ?? '', coords.instrutor, 12);
+        drawText(today, coords.dataEmissao, 11);
+        drawText(selectedCourse.authCode ?? '', coords.codAutenticacao, 10);
+
+        const pdfBytes = await pdfDoc.save();
+        const safeName = (enrollment.fullName ?? `aluno-${enrollment.id}`)
+          .replace(/[^a-z0-9]/gi, '_')
+          .toLowerCase();
+        zip.file(`${safeName}.pdf`, pdfBytes);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipName = `certificados-${selectedCourse.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.zip`;
+      saveAs(zipBlob, zipName);
+      toast({ title: 'Certificados gerados!', description: `${enrollments.length} PDF(s) compactados em ${zipName}.` });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao gerar certificados', description: 'Verifique o template e tente novamente.', variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Gerar Certificados em Lote</h2>
+        <p className="text-sm text-gray-500">Selecione um curso, faça upload do template PDF e ajuste as coordenadas dos campos antes de gerar o ZIP.</p>
+      </div>
+
+      <Card className="border border-gray-200">
+        <CardContent className="pt-5 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Curso</label>
+              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um curso" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedCourseId && (
+                <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                  <Users className="w-3 h-3" />
+                  {loadingEnrollments ? 'Carregando...' : `${enrollments.length} aluno(s) inscrito(s)`}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Template PDF</label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10"
+                  onClick={() => templateInputRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {templateFile ? templateFile.name : 'Selecionar PDF'}
+                </Button>
+                {templateFile && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs text-gray-400 hover:text-red-500"
+                    onClick={() => setTemplateFile(null)}
+                  >
+                    Remover
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={templateInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setTemplateFile(file);
+                  if (templateInputRef.current) templateInputRef.current.value = '';
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Coordenadas dos Campos (px)</p>
+            <p className="text-xs text-gray-400 mb-3">O eixo Y é contado a partir do topo da página.</p>
+            <div className="rounded-lg border border-gray-100 px-3 divide-y divide-gray-100">
+              {(Object.keys(COORD_LABELS) as Array<keyof CertCoords>).map((field) => (
+                <CoordInput
+                  key={field}
+                  label={COORD_LABELS[field]}
+                  value={coords[field]}
+                  onChange={updateCoord(field)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <Button
+            className="bg-forest hover:bg-forest/90 text-white w-full md:w-auto"
+            disabled={generating || !selectedCourseId || !templateFile}
+            onClick={handleGenerate}
+          >
+            <FileDown className="w-4 h-4 mr-2" />
+            {generating ? 'Gerando...' : 'Gerar e Baixar Certificados (ZIP)'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function DashboardCapacitacao() {
   const { adminToken } = useAuth();
-  const [activeTab, setActiveTab] = useState<'cursos' | 'notificacoes'>('cursos');
+  const [activeTab, setActiveTab] = useState<'cursos' | 'notificacoes' | 'gerar-pdfs'>('cursos');
   const [formOpen, setFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
@@ -1091,6 +1334,17 @@ export default function DashboardCapacitacao() {
           <Bell className="w-4 h-4" />
           Notificações
         </button>
+        <button
+          onClick={() => setActiveTab('gerar-pdfs')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'gerar-pdfs'
+              ? 'border-forest text-forest'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <FileDown className="w-4 h-4" />
+          Gerar PDFs
+        </button>
       </div>
 
       {activeTab === 'cursos' ? (
@@ -1119,8 +1373,10 @@ export default function DashboardCapacitacao() {
             </div>
           )}
         </>
-      ) : (
+      ) : activeTab === 'notificacoes' ? (
         <NotificationsTab adminToken={adminToken} />
+      ) : (
+        <GerarPdfsTab adminToken={adminToken} courses={courses} />
       )}
 
       <CourseFormDialog
