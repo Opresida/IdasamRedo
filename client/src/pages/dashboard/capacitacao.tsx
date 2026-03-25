@@ -39,7 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
-  Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell,
+  Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell, Eye,
 } from 'lucide-react';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
@@ -1328,6 +1328,29 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     }
   };
 
+  const handlePreview = async () => {
+    if (!templateFile) {
+      toast({ title: 'Selecione o PDF template', variant: 'destructive' });
+      return;
+    }
+    try {
+      const [alexBrushBytes, poppinsRegBytes] = await Promise.all([
+        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
+      ]);
+      const templateBytes = await templateFile.arrayBuffer();
+      const block = blocks[0];
+      const pdfBytes = await generateCertificatePdf(
+        templateBytes, block, scaleFactor, 'Nome do Aluno', alexBrushBytes, poppinsRegBytes
+      );
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      saveAs(blob, 'previa-certificado.pdf');
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao gerar prévia', description: 'Verifique o template e tente novamente.', variant: 'destructive' });
+    }
+  };
+
   const handleDispatch = async () => {
     if (!selectedCourse) {
       toast({ title: 'Selecione um curso', variant: 'destructive' });
@@ -1480,6 +1503,15 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                   >
                     <FileDown className="w-4 h-4 mr-2" />
                     {generating ? 'Gerando...' : 'Baixar ZIP'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-sm"
+                    disabled={dispatching || !templateFile}
+                    onClick={handlePreview}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Baixar Prévia
                   </Button>
                   <Button
                     variant="outline"
