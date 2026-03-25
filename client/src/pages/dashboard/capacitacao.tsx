@@ -183,10 +183,11 @@ async function generateCertificatePdf(
   const pageIndex = block.page - 1;
   const page = pages[pageIndex] ?? pages[0];
   const { height: pH } = page.getSize();
-  const resolvedText = parseVariables(block.text, realValues);
+  let resolvedText = parseVariables(block.text, realValues);
+  resolvedText = resolvedText.replace(/\{\s*aluno\s*\}/gi, studentName);
   const xPdf = block.x;
   const yPdf = pH - block.y - block.size;
-  page.drawText(resolvedText ?? '', {
+  page.drawText(resolvedText || studentName || 'Nome do Aluno', {
     x: xPdf,
     y: yPdf,
     size: block.size,
@@ -1182,7 +1183,10 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   const [numPages, setNumPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [scaleX, setScaleX] = useState<number>(1);
+  const [scaleY, setScaleY] = useState<number>(1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pdfWrapperRef = useRef<HTMLDivElement>(null);
   const templateInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
@@ -1220,16 +1224,20 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         setTemplateFile(null);
         setBlocks(DEFAULT_BLOCKS);
         setScaleFactor(1);
+        setScaleX(1);
+        setScaleY(1);
       }
     } else {
       setTemplateFile(null);
       setBlocks(DEFAULT_BLOCKS);
       setScaleFactor(1);
+      setScaleX(1);
+      setScaleY(1);
     }
-  }, [selectedCourseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedCourseId, courses]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
-    if (!templateFile) { setPdfUrl(null); return; }
+    if (!templateFile) { setPdfUrl(null); setScaleX(1); setScaleY(1); return; }
     const url = URL.createObjectURL(templateFile);
     setPdfUrl(url);
     setCurrentPage(1);
@@ -1243,17 +1251,26 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   }, []);
 
   const handleRenderSuccess = useCallback((page: PDFPageProxy) => {
-    if (containerRef.current) {
-      const renderedWidth = containerRef.current.getBoundingClientRect().width;
-      setContainerWidth(renderedWidth);
-      const pdfWidthPts = page.getViewport({ scale: 1 }).width;
-      setScaleFactor(pdfWidthPts / renderedWidth);
+    const wrapper = pdfWrapperRef.current ?? containerRef.current;
+    if (wrapper) {
+      const rect = wrapper.getBoundingClientRect();
+      const domW = rect.width;
+      const domH = rect.height;
+      setContainerWidth(domW);
+      const viewport = page.getViewport({ scale: 1 });
+      const pdfW = viewport.width;
+      const pdfH = viewport.height;
+      const sx = pdfW / domW;
+      const sy = pdfH / domH;
+      setScaleX(sx);
+      setScaleY(sy);
+      setScaleFactor(sx);
     }
   }, []);
 
   const handleDragStop = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
-    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: data.x * scaleFactor, y: data.y * scaleFactor } : b));
-  }, [scaleFactor]);
+    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: data.x * scaleX, y: data.y * scaleY } : b));
+  }, [scaleX, scaleY]);
 
   const updateBlock = useCallback((key: BlockKey, patch: Partial<TextBlock>) => {
     setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, ...patch } : b));
@@ -1632,7 +1649,10 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
               <div className="border border-gray-200 rounded-lg overflow-auto" style={{ maxHeight: '75vh' }}>
                 <div
-                  ref={containerRef}
+                  ref={(el) => {
+                    (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+                    (pdfWrapperRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+                  }}
                   className="relative inline-block w-full"
                   style={{ userSelect: 'none' }}
                 >
@@ -1661,7 +1681,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                     return (
                       <Draggable
                         key={block.key}
-                        position={{ x: block.x / scaleFactor, y: block.y / scaleFactor }}
+                        position={{ x: block.x / scaleX, y: block.y / scaleY }}
                         bounds="parent"
                         onStop={(e, data) => handleDragStop(block.key, e, data)}
                       >
@@ -1670,7 +1690,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                           style={{
                             zIndex: 10,
                             cursor: 'grab',
-                            fontSize: `${Math.max(8, block.size / scaleFactor)}px`,
+                            fontSize: `${Math.max(8, block.size / scaleX)}px`,
                             fontWeight: 400,
                             fontStyle: 'normal',
                             fontFamily: block.font === 'alexbrush' ? '"Alex Brush", cursive' : 'Poppins, sans-serif',
