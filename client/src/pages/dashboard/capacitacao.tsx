@@ -172,25 +172,65 @@ async function generateCertificatePdf(
   studentName: string,
   alexBrushBytes: ArrayBuffer,
   poppinsBytes: ArrayBuffer,
+  domScaleX: number = 1,
+  domScaleY: number = 1,
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.load(templateBytes);
   pdfDoc.registerFontkit(fontkit);
   const fAlexBrush = await pdfDoc.embedFont(alexBrushBytes);
   const fPoppins = await pdfDoc.embedFont(poppinsBytes);
   const embedFont = block.font === 'alexbrush' ? fAlexBrush : fPoppins;
-  const realValues: Record<string, string> = { aluno: studentName };
+  const realValues: Record<string, string> = {
+    aluno: studentName || 'Nome do Aluno',
+    curso: 'Curso',
+    carga: '—',
+    data: new Date().toLocaleDateString('pt-BR'),
+  };
   const pages = pdfDoc.getPages();
   const pageIndex = block.page - 1;
   const page = pages[pageIndex] ?? pages[0];
-  const { height: pH } = page.getSize();
+  const { width: pdfWidth, height: pdfHeight } = page.getSize();
+
+  const safeScaleX = isFinite(domScaleX) && domScaleX > 0 ? domScaleX : 1;
+  const safeScaleY = isFinite(domScaleY) && domScaleY > 0 ? domScaleY : 1;
+  const safeX = isFinite(block.x) ? block.x : 100;
+  const safeY = isFinite(block.y) ? block.y : 400;
+  const safeSize = isFinite(block.size) && block.size > 0 ? block.size : 24;
+
+  const finalX = safeX * safeScaleX;
+  const finalSize = safeSize * safeScaleX;
+  const finalY = pdfHeight - (safeY * safeScaleY) - finalSize;
+
   let resolvedText = parseVariables(block.text, realValues);
-  resolvedText = resolvedText.replace(/\{\s*aluno\s*\}/gi, studentName);
-  const xPdf = block.x;
-  const yPdf = pH - block.y - block.size;
-  page.drawText(resolvedText || studentName || 'Nome do Aluno', {
-    x: xPdf,
-    y: yPdf,
-    size: block.size,
+  resolvedText = resolvedText.replace(/\{\s*aluno\s*\}/gi, studentName || 'Nome do Aluno');
+  resolvedText = resolvedText.replace(/\{\s*curso\s*\}/gi, realValues.curso);
+  resolvedText = resolvedText.replace(/\{\s*carga\s*\}/gi, realValues.carga);
+  resolvedText = resolvedText.replace(/\{\s*data\s*\}/gi, realValues.data);
+  const textToDraw = resolvedText.trim() || studentName || 'Nome do Aluno';
+
+  console.log('[DEBUG PDF]', {
+    studentName,
+    blockX: block.x,
+    blockY: block.y,
+    blockSize: block.size,
+    domScaleX,
+    domScaleY,
+    safeScaleX,
+    safeScaleY,
+    domWidth: safeScaleX > 0 ? pdfWidth / safeScaleX : 0,
+    domHeight: safeScaleY > 0 ? pdfHeight / safeScaleY : 0,
+    finalX,
+    finalY,
+    finalSize,
+    pdfWidth,
+    pdfHeight,
+    textToDraw,
+  });
+
+  page.drawText(textToDraw, {
+    x: Math.max(0, Math.min(finalX, pdfWidth - 10)),
+    y: Math.max(0, Math.min(finalY, pdfHeight - finalSize)),
+    size: Math.max(6, finalSize),
     font: embedFont,
     color: rgb(0, 0, 0),
   });
@@ -500,9 +540,22 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       const config = JSON.parse(course.certBlockConfig!);
       const sf: number = config.scaleFactor ?? 1;
       const rawBlock: TextBlock = config.block;
-      const block: TextBlock = (!config.version || config.version < 2)
-        ? { ...rawBlock, x: rawBlock.x * sf, y: rawBlock.y * sf }
-        : rawBlock;
+      let block: TextBlock;
+      let dispatchScaleX = 1;
+      let dispatchScaleY = 1;
+      if (!config.version || config.version < 2) {
+        block = { ...rawBlock, x: rawBlock.x * sf, y: rawBlock.y * sf };
+        dispatchScaleX = 1;
+        dispatchScaleY = 1;
+      } else if (config.version === 2) {
+        block = rawBlock;
+        dispatchScaleX = 1;
+        dispatchScaleY = 1;
+      } else {
+        block = rawBlock;
+        dispatchScaleX = isFinite(config.scaleX) && config.scaleX > 0 ? config.scaleX : 1;
+        dispatchScaleY = isFinite(config.scaleY) && config.scaleY > 0 ? config.scaleY : 1;
+      }
       const templateBytes = Uint8Array.from(atob(course.certTemplate!), (c) => c.charCodeAt(0)).buffer;
       const [alexBrushBytes, poppinsBytes] = await Promise.all([
         fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
@@ -513,7 +566,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       for (const enrollment of courseEnrollments) {
         try {
           const pdfBytes = await generateCertificatePdf(
-            templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
+            templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes, dispatchScaleX, dispatchScaleY
           );
           const base64 = btoa(
             new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -1188,6 +1241,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfWrapperRef = useRef<HTMLDivElement>(null);
   const templateInputRef = useRef<HTMLInputElement>(null);
+  const blocksInPdfCoordsRef = useRef<boolean>(false);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
 
@@ -1202,22 +1256,60 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   });
 
   React.useEffect(() => {
-    if (selectedCourse?.certTemplate && selectedCourse?.certBlockConfig) {
+    if (!selectedCourseId) {
+      setTemplateFile(null);
+      setBlocks(DEFAULT_BLOCKS);
+      setScaleFactor(1);
+      setScaleX(1);
+      setScaleY(1);
+      blocksInPdfCoordsRef.current = false;
+      return;
+    }
+
+    const localKey = `cert_config_${selectedCourseId}`;
+    const localRaw = localStorage.getItem(localKey);
+    if (localRaw) {
       try {
-        const binaryStr = atob(selectedCourse.certTemplate);
+        const localConfig = JSON.parse(localRaw);
+        if (localConfig.block) {
+          setBlocks([localConfig.block]);
+          blocksInPdfCoordsRef.current = false;
+        }
+        if (localConfig.templateBase64) {
+          const binaryStr = atob(localConfig.templateBase64);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+          const blob = new Blob([bytes], { type: 'application/pdf' });
+          setTemplateFile(new File([blob], 'template.pdf', { type: 'application/pdf' }));
+        }
+        return;
+      } catch {
+        localStorage.removeItem(localKey);
+      }
+    }
+
+    const course = courses.find((c) => c.id === selectedCourseId);
+    if (course?.certTemplate && course?.certBlockConfig) {
+      try {
+        const binaryStr = atob(course.certTemplate);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
         const blob = new Blob([bytes], { type: 'application/pdf' });
         const file = new File([blob], 'template.pdf', { type: 'application/pdf' });
         setTemplateFile(file);
-        const config = JSON.parse(selectedCourse.certBlockConfig);
+        const config = JSON.parse(course.certBlockConfig);
         if (config.block) {
           const savedBlock = config.block;
           if (!config.version || config.version < 2) {
             const savedScaleFactor = config.scaleFactor ?? 1;
             setBlocks([{ ...savedBlock, x: savedBlock.x * savedScaleFactor, y: savedBlock.y * savedScaleFactor }]);
+            blocksInPdfCoordsRef.current = true;
+          } else if (config.version === 2) {
+            setBlocks([savedBlock]);
+            blocksInPdfCoordsRef.current = true;
           } else {
             setBlocks([savedBlock]);
+            blocksInPdfCoordsRef.current = false;
           }
         }
       } catch {
@@ -1226,6 +1318,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         setScaleFactor(1);
         setScaleX(1);
         setScaleY(1);
+        blocksInPdfCoordsRef.current = false;
       }
     } else {
       setTemplateFile(null);
@@ -1233,6 +1326,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       setScaleFactor(1);
       setScaleX(1);
       setScaleY(1);
+      blocksInPdfCoordsRef.current = false;
     }
   }, [selectedCourseId, courses]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1253,24 +1347,35 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   const handleRenderSuccess = useCallback((page: PDFPageProxy) => {
     const wrapper = pdfWrapperRef.current ?? containerRef.current;
     if (wrapper) {
-      const rect = wrapper.getBoundingClientRect();
-      const domW = rect.width;
-      const domH = rect.height;
-      setContainerWidth(domW);
+      const domW = wrapper.clientWidth || wrapper.getBoundingClientRect().width;
       const viewport = page.getViewport({ scale: 1 });
       const pdfW = viewport.width;
       const pdfH = viewport.height;
-      const sx = pdfW / domW;
-      const sy = pdfH / domH;
-      setScaleX(sx);
-      setScaleY(sy);
-      setScaleFactor(sx);
+      if (domW > 0) {
+        const renderScale = domW / pdfW;
+        const domH = pdfH * renderScale;
+        setContainerWidth(domW);
+        const sx = pdfW / domW;
+        const sy = pdfH / domH;
+        setScaleX(sx);
+        setScaleY(sy);
+        setScaleFactor(sx);
+
+        if (blocksInPdfCoordsRef.current) {
+          blocksInPdfCoordsRef.current = false;
+          setBlocks((prev) => prev.map((b) => ({
+            ...b,
+            x: isFinite(b.x) ? b.x / sx : b.x,
+            y: isFinite(b.y) ? b.y / sy : b.y,
+          })));
+        }
+      }
     }
   }, []);
 
   const handleDragStop = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
-    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: data.x * scaleX, y: data.y * scaleY } : b));
-  }, [scaleX, scaleY]);
+    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: data.x, y: data.y } : b));
+  }, []);
 
   const updateBlock = useCallback((key: BlockKey, patch: Partial<TextBlock>) => {
     setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, ...patch } : b));
@@ -1291,7 +1396,15 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       const base64Template = btoa(
         new Uint8Array(templateBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
       );
-      const blockConfig = JSON.stringify({ block: blocks[0], scaleFactor, version: 2 });
+      const blockConfig = JSON.stringify({ block: blocks[0], scaleFactor, scaleX, scaleY, version: 3 });
+
+      const localKey = `cert_config_${selectedCourse.id}`;
+      try {
+        localStorage.setItem(localKey, JSON.stringify({ block: blocks[0], templateBase64: base64Template, scaleX, scaleY, version: 3 }));
+      } catch {
+        // localStorage quota exceeded, ignore
+      }
+
       const res = await fetch(`/api/courses/${selectedCourse.id}/cert-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
@@ -1307,6 +1420,20 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       setSavingConfig(false);
     }
   };
+
+  const getEffectiveScales = useCallback((): { sx: number; sy: number } => {
+    const wrapper = pdfWrapperRef.current ?? containerRef.current;
+    if (wrapper) {
+      const domW = wrapper.clientWidth || wrapper.getBoundingClientRect().width;
+      if (domW > 0 && isFinite(scaleX) && scaleX > 0) {
+        return { sx: scaleX, sy: scaleY };
+      }
+    }
+    return {
+      sx: isFinite(scaleX) && scaleX > 0 ? scaleX : 1,
+      sy: isFinite(scaleY) && scaleY > 0 ? scaleY : 1,
+    };
+  }, [scaleX, scaleY]);
 
   const handleGenerate = async () => {
     if (!selectedCourse) {
@@ -1324,6 +1451,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
     setGenerating(true);
     try {
+      const { sx: genScaleX, sy: genScaleY } = getEffectiveScales();
       const [alexBrushBytes, poppinsBytes] = await Promise.all([
         fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
         fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
@@ -1334,7 +1462,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       for (const enrollment of enrollments) {
         const block = blocks[0];
         const pdfBytes = await generateCertificatePdf(
-          templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
+          templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes, genScaleX, genScaleY
         );
         const safeName = (enrollment.fullName ?? `aluno-${enrollment.id}`)
           .replace(/[^a-z0-9]/gi, '_')
@@ -1360,6 +1488,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       return;
     }
     try {
+      const { sx: prevScaleX, sy: prevScaleY } = getEffectiveScales();
       const [alexBrushBytes, poppinsBytes] = await Promise.all([
         fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
         fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
@@ -1367,7 +1496,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       const templateBytes = await templateFile.arrayBuffer();
       const block = blocks[0];
       const pdfBytes = await generateCertificatePdf(
-        templateBytes, block, 'Nome do Aluno', alexBrushBytes, poppinsBytes
+        templateBytes, block, 'Nome do Aluno', alexBrushBytes, poppinsBytes, prevScaleX, prevScaleY
       );
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       saveAs(blob, 'previa-certificado.pdf');
@@ -1394,6 +1523,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     setDispatching(true);
     setDispatchProgress({ done: 0, total: enrollments.length });
     try {
+      const { sx: dispScaleX, sy: dispScaleY } = getEffectiveScales();
       const [alexBrushBytes, poppinsBytes] = await Promise.all([
         fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
         fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
@@ -1405,7 +1535,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         try {
           const block = blocks[0];
           const pdfBytes = await generateCertificatePdf(
-            templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
+            templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes, dispScaleX, dispScaleY
           );
           const base64 = btoa(
             new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -1681,7 +1811,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                     return (
                       <Draggable
                         key={block.key}
-                        position={{ x: block.x / scaleX, y: block.y / scaleY }}
+                        position={{ x: block.x, y: block.y }}
                         bounds="parent"
                         onStop={(e, data) => handleDragStop(block.key, e, data)}
                       >
@@ -1690,7 +1820,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                           style={{
                             zIndex: 10,
                             cursor: 'grab',
-                            fontSize: `${Math.max(8, block.size / scaleX)}px`,
+                            fontSize: `${Math.max(8, block.size)}px`,
                             fontWeight: 400,
                             fontStyle: 'normal',
                             fontFamily: block.font === 'alexbrush' ? '"Alex Brush", cursive' : 'Poppins, sans-serif',
