@@ -1,0 +1,250 @@
+Atue como um Desenvolvedor Front-end Sênior especialista em React, TypeScript e Tailwind CSS.
+
+Temos um arquivo existente chamado client/src/pages/dashboard/capacitacao.tsx que gerencia a área de cursos, alunos e certificados do sistema IDASAM.
+
+Objetivo: Adicionar uma nova aba chamada "Gerar PDFs" no painel, que permita ao administrador fazer upload de um arquivo PDF base (template em branco), selecionar um curso e, usando a biblioteca pdf-lib, gerar um arquivo .zip (usando jszip e file-saver) contendo todos os certificados preenchidos individualmente para os alunos inscritos naquele curso.
+
+Siga rigorosamente o passo a passo abaixo para implementar a funcionalidade sem quebrar o código existente:
+
+PASSO 1: Instalação de Dependências
+Execute no terminal o comando para instalar as bibliotecas necessárias para manipulação de PDFs e arquivos ZIP:
+
+Bash
+npm install pdf-lib jszip file-saver
+npm install -D @types/file-saver
+PASSO 2: Importações Necessárias
+No topo do arquivo client/src/pages/dashboard/capacitacao.tsx, adicione as seguintes importações:
+
+TypeScript
+import { PDFDocument, rgb } from 'pdf-lib';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+(Verifique se FileDown já está importado de lucide-react. Se não, adicione à lista).
+
+PASSO 3: Atualização do Estado das Abas
+Na função principal DashboardCapacitacao, encontre o estado activeTab. Ele deve ser atualizado para suportar a nova aba:
+
+TypeScript
+// Altere de:
+// const [activeTab, setActiveTab] = useState<'cursos' | 'notificacoes'>('cursos');
+// Para:
+const [activeTab, setActiveTab] = useState<'cursos' | 'notificacoes' | 'gerar-pdfs'>('cursos');
+PASSO 4: Criar o Componente GerarPdfsTab
+Crie este novo componente fora da função DashboardCapacitacao (pode ser logo acima dela). Ele contém a lógica de carimbar os dados no PDF:
+
+TypeScript
+function GerarPdfsTab({ courses, adminToken }: { courses: Course[], adminToken: string }) {
+  const { toast } = useToast();
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [pdfTemplate, setPdfTemplate] = useState<File | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Coordenadas para ajuste fino na tela (X = Esquerda/Direita | Y = Baixo/Cima)
+  const [coords, setCoords] = useState({
+    nomeX: 50, nomeY: 400, nomeSize: 28,
+    textoX: 50, textoY: 330, textoSize: 12,
+    ementaX: 50, ementaY: 700, ementaSize: 10,
+    instrutorX: 150, instrutorY: 150, instrutorSize: 12,
+    emissaoX: 150, emissaoY: 120, emissaoSize: 12,
+    authCodeX: 250, authCodeY: 90, authCodeSize: 10
+  });
+
+  const { data: enrollments = [] } = useQuery<EnrollmentWithCert[]>({
+    queryKey: ['/api/enrollments/course', selectedCourseId],
+    queryFn: () => fetchEnrollmentsWithCerts(selectedCourseId, adminToken),
+    enabled: !!selectedCourseId && !!adminToken,
+  });
+
+  const handleGenerate = async () => {
+    if (!pdfTemplate || enrollments.length === 0 || !selectedCourseId) return;
+    
+    setIsGenerating(true);
+    try {
+      const course = courses.find(c => c.id === selectedCourseId);
+      const templateArrayBuffer = await pdfTemplate.arrayBuffer();
+      const zip = new JSZip();
+      
+      const dataEmissao = new Date().toLocaleDateString('pt-BR');
+
+      // Texto descritivo dinâmico para a página 1
+      const textoDescritivo = `O Instituto de Desenvolvimento Ambiental e Social da Amazônia - IDASAM, em parceria com a\nempresa GBR Componentes da Amazônia, CERTIFICA que o(a) aluno(a) acima,\nconcluiu o curso de ${course?.title}, promovido pelo Programa de Capacitação\nem Indústria 4.0 e Inovação, no período de ${course?.startDate} a ${course?.endDate},\ncom carga horária total de ${course?.workload} horas.`;
+
+      for (const student of enrollments) {
+        const pdfDoc = await PDFDocument.load(templateArrayBuffer);
+        const pages = pdfDoc.getPages();
+        const frontPage = pages;
+        const backPage = pages; 
+
+        // --- PREENCHENDO A FRENTE ---
+        frontPage.drawText(student.fullName.toUpperCase(), {
+          x: coords.nomeX,
+          y: coords.nomeY,
+          size: coords.nomeSize,
+          color: rgb(0, 0, 0),
+        });
+
+        frontPage.drawText(textoDescritivo, {
+          x: coords.textoX,
+          y: coords.textoY,
+          size: coords.textoSize,
+          color: rgb(0, 0, 0),
+          lineHeight: coords.textoSize * 1.5,
+        });
+
+        // --- PREENCHENDO O VERSO ---
+        if (backPage && course) {
+          backPage.drawText(course.curriculum || '', {
+            x: coords.ementaX,
+            y: coords.ementaY,
+            size: coords.ementaSize,
+            color: rgb(0, 0, 0),
+            maxWidth: 500,
+            lineHeight: coords.ementaSize * 1.2,
+          });
+
+          backPage.drawText(course.instructor || '', {
+            x: coords.instrutorX,
+            y: coords.instrutorY,
+            size: coords.instrutorSize,
+            color: rgb(0, 0, 0),
+          });
+
+          backPage.drawText(dataEmissao, {
+            x: coords.emissaoX,
+            y: coords.emissaoY,
+            size: coords.emissaoSize,
+            color: rgb(0, 0, 0),
+          });
+
+          backPage.drawText(course.authCode || 'N/A', {
+            x: coords.authCodeX,
+            y: coords.authCodeY,
+            size: coords.authCodeSize,
+            color: rgb(0, 0, 0),
+          });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        zip.file(`Certificado_${student.fullName.replace(/[^a-z0-9]/gi, '_')}.pdf`, pdfBytes);
+      }
+
+      const zipContent = await zip.generateAsync({ type: 'blob' });
+      saveAs(zipContent, `Certificados_${course?.title?.replace(/[^a-z0-9]/gi, '_')}.zip`);
+
+      toast({ title: 'Sucesso!', description: `${enrollments.length} certificados gerados e baixados.` });
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Erro', description: 'Ocorreu um erro ao gerar os PDFs.', variant: 'destructive' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <Card className="border border-gray-200">
+      <CardHeader>
+        <CardTitle className="text-forest">Gerador de Certificados em Lote</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium">1. Selecione o Curso</label>
+            <Select onValueChange={setSelectedCourseId} value={selectedCourseId}>
+              <SelectTrigger><SelectValue placeholder="Escolha um curso..." /></SelectTrigger>
+              <SelectContent>
+                {courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {selectedCourseId && <p className="text-xs text-gray-500 mt-1">{enrollments.length} alunos inscritos.</p>}
+          </div>
+          <div>
+            <label className="text-sm font-medium">2. Envie o PDF Molde (Frente e Verso)</label>
+            <Input type="file" accept="application/pdf" onChange={(e) => setPdfTemplate(e.target.files?. || null)} />
+          </div>
+        </div>
+
+        <div className="p-4 bg-gray-50 rounded-lg border space-y-4">
+          <p className="text-sm font-semibold text-gray-700">Ajuste de Posições (X = Esquerda/Direita | Y = Baixo/Cima)</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs text-gray-500 font-bold">Frente: Nome (X/Y)</label>
+              <div className="flex gap-1 mt-1">
+                <Input type="number" value={coords.nomeX} onChange={e => setCoords({...coords, nomeX: +e.target.value})} className="h-8 text-xs" />
+                <Input type="number" value={coords.nomeY} onChange={e => setCoords({...coords, nomeY: +e.target.value})} className="h-8 text-xs" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-bold">Frente: Texto (X/Y)</label>
+              <div className="flex gap-1 mt-1">
+                <Input type="number" value={coords.textoX} onChange={e => setCoords({...coords, textoX: +e.target.value})} className="h-8 text-xs" />
+                <Input type="number" value={coords.textoY} onChange={e => setCoords({...coords, textoY: +e.target.value})} className="h-8 text-xs" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-bold">Verso: Ementa (X/Y)</label>
+              <div className="flex gap-1 mt-1">
+                <Input type="number" value={coords.ementaX} onChange={e => setCoords({...coords, ementaX: +e.target.value})} className="h-8 text-xs" />
+                <Input type="number" value={coords.ementaY} onChange={e => setCoords({...coords, ementaY: +e.target.value})} className="h-8 text-xs" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-bold">Verso: Instrutor (X/Y)</label>
+              <div className="flex gap-1 mt-1">
+                <Input type="number" value={coords.instrutorX} onChange={e => setCoords({...coords, instrutorX: +e.target.value})} className="h-8 text-xs" />
+                <Input type="number" value={coords.instrutorY} onChange={e => setCoords({...coords, instrutorY: +e.target.value})} className="h-8 text-xs" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-bold">Verso: Emissão (X/Y)</label>
+              <div className="flex gap-1 mt-1">
+                <Input type="number" value={coords.emissaoX} onChange={e => setCoords({...coords, emissaoX: +e.target.value})} className="h-8 text-xs" />
+                <Input type="number" value={coords.emissaoY} onChange={e => setCoords({...coords, emissaoY: +e.target.value})} className="h-8 text-xs" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-bold">Verso: Código Aut. (X/Y)</label>
+              <div className="flex gap-1 mt-1">
+                <Input type="number" value={coords.authCodeX} onChange={e => setCoords({...coords, authCodeX: +e.target.value})} className="h-8 text-xs" />
+                <Input type="number" value={coords.authCodeY} onChange={e => setCoords({...coords, authCodeY: +e.target.value})} className="h-8 text-xs" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <Button 
+          className="bg-forest hover:bg-forest/90 text-white w-full h-12 text-lg" 
+          disabled={!pdfTemplate || enrollments.length === 0 || isGenerating}
+          onClick={handleGenerate}
+        >
+          {isGenerating ? 'Processando PDFs...' : 'Gerar e Baixar Certificados (ZIP)'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+PASSO 5: Renderização dos Botões e Abas
+Dentro de DashboardCapacitacao, no menu de abas (<div className="flex gap-1 border-b border-gray-200">), adicione o botão da nova aba ao lado de "Notificações":
+
+TypeScript
+        <button
+          onClick={() => setActiveTab('gerar-pdfs')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'gerar-pdfs'
+              ? 'border-forest text-forest'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <FileDown className="w-4 h-4" />
+          Gerar PDFs
+        </button>
+Mais abaixo, no render condicional das abas ({activeTab === 'cursos' ? (...) : (...)}), atualize para suportar a 3ª opção:
+
+TypeScript
+      {activeTab === 'cursos' ? (
+        // ... (código existente da listagem de cursos permanece intacto) ...
+      ) : activeTab === 'notificacoes' ? (
+        <NotificationsTab adminToken={adminToken} />
+      ) : (
+        <GerarPdfsTab courses={courses} adminToken={adminToken} />
+      )}
+ATENÇÃO: Garanta que nenhuma funcionalidade das abas antigas seja apagada. Faça apenas as adições listadas acima.
