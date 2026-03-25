@@ -41,7 +41,7 @@ import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell, Eye,
 } from 'lucide-react';
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { Progress } from '@/components/ui/progress';
 import JSZip from 'jszip';
@@ -162,8 +162,7 @@ function parseVariables(text: string, values: Record<string, string>): string {
 }
 
 const FONT_URLS = {
-  alexbrushRegular: 'https://fonts.gstatic.com/s/alexbrush/v22/SZc83FzrJKuqFbwMKk6EtUL57DtOmCc.ttf',
-  poppinsRegular: 'https://fonts.gstatic.com/s/poppins/v21/pxiEyp8kv8JHgFVrJJfecg.ttf',
+  alexbrushRegular: '/fonts/alexbrush.ttf',
 };
 
 async function generateCertificatePdf(
@@ -172,13 +171,12 @@ async function generateCertificatePdf(
   scaleFactor: number,
   studentName: string,
   alexBrushBytes: ArrayBuffer,
-  poppinsRegBytes: ArrayBuffer,
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.load(templateBytes);
   pdfDoc.registerFontkit(fontkit);
   const fAlexBrush = await pdfDoc.embedFont(alexBrushBytes);
-  const fPoppins = await pdfDoc.embedFont(poppinsRegBytes);
-  const embedFont = block.font === 'alexbrush' ? fAlexBrush : fPoppins;
+  const fHelvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const embedFont = block.font === 'alexbrush' ? fAlexBrush : fHelvetica;
   const realValues: Record<string, string> = { aluno: studentName };
   const pages = pdfDoc.getPages();
   const pageIndex = block.page - 1;
@@ -501,16 +499,13 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       const block: TextBlock = config.block;
       const sf: number = config.scaleFactor ?? 1;
       const templateBytes = Uint8Array.from(atob(course.certTemplate!), (c) => c.charCodeAt(0)).buffer;
-      const [alexBrushBytes, poppinsRegBytes] = await Promise.all([
-        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
-        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
-      ]);
+      const alexBrushBytes = await fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer());
       let done = 0;
       let errors = 0;
       for (const enrollment of courseEnrollments) {
         try {
           const pdfBytes = await generateCertificatePdf(
-            templateBytes, block, sf, enrollment.fullName ?? '', alexBrushBytes, poppinsRegBytes
+            templateBytes, block, sf, enrollment.fullName ?? '', alexBrushBytes
           );
           const base64 = btoa(
             new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -1297,18 +1292,14 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
     setGenerating(true);
     try {
-      const [alexBrushBytes, poppinsRegBytes] = await Promise.all([
-        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
-        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
-      ]);
-
+      const alexBrushBytes = await fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer());
       const templateBytes = await templateFile.arrayBuffer();
       const zip = new JSZip();
 
       for (const enrollment of enrollments) {
         const block = blocks[0];
         const pdfBytes = await generateCertificatePdf(
-          templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes, poppinsRegBytes
+          templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes
         );
         const safeName = (enrollment.fullName ?? `aluno-${enrollment.id}`)
           .replace(/[^a-z0-9]/gi, '_')
@@ -1334,20 +1325,17 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       return;
     }
     try {
-      const [alexBrushBytes, poppinsRegBytes] = await Promise.all([
-        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
-        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
-      ]);
+      const alexBrushBytes = await fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer());
       const templateBytes = await templateFile.arrayBuffer();
       const block = blocks[0];
       const pdfBytes = await generateCertificatePdf(
-        templateBytes, block, scaleFactor, 'Nome do Aluno', alexBrushBytes, poppinsRegBytes
+        templateBytes, block, scaleFactor, 'Nome do Aluno', alexBrushBytes
       );
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       saveAs(blob, 'previa-certificado.pdf');
     } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao gerar prévia', description: 'Verifique o template e tente novamente.', variant: 'destructive' });
+      console.error('Preview error:', err instanceof Error ? err.message : err);
+      toast({ title: 'Erro ao gerar prévia', description: err instanceof Error ? err.message : 'Verifique o template e tente novamente.', variant: 'destructive' });
     }
   };
 
@@ -1368,10 +1356,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     setDispatching(true);
     setDispatchProgress({ done: 0, total: enrollments.length });
     try {
-      const [alexBrushBytes, poppinsRegBytes] = await Promise.all([
-        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
-        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
-      ]);
+      const alexBrushBytes = await fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer());
       const templateBytes = await templateFile.arrayBuffer();
       let done = 0;
       let errors = 0;
@@ -1379,7 +1364,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         try {
           const block = blocks[0];
           const pdfBytes = await generateCertificatePdf(
-            templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes, poppinsRegBytes
+            templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes
           );
           const base64 = btoa(
             new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
