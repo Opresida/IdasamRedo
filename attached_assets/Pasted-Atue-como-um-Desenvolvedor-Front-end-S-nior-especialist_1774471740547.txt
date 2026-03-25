@@ -1,0 +1,59 @@
+Atue como um Desenvolvedor Front-end Sênior especialista em React, TypeScript e na criação de interfaces visuais interativas.
+
+Estamos trabalhando no arquivo client/src/pages/dashboard/capacitacao.tsx, especificamente na funcionalidade da aba "Gerar PDFs" (o componente GerarPdfsTab que você criou/entende).
+
+O PROBLEMA:
+Atualmente, a definição de onde os textos (Nome, Ementa, etc.) vão ficar no PDF está sendo feita através de Inputs numéricos manuais (digitando X e Y). A experiência do usuário está ruim.
+
+O OBJETIVO:
+Substituir os inputs numéricos por um Editor Visual "Arrastar e Soltar" (Drag & Drop). O usuário fará o upload do PDF Base, e o sistema renderizará esse PDF na tela. Por cima do PDF, os campos de texto aparecerão como "blocos arrastáveis". O usuário irá arrastar o bloco com o mouse até o local desejado, e o sistema capturará as coordenadas automaticamente para usar no pdf-lib.
+
+PASSO A PASSO DA IMPLEMENTAÇÃO:
+
+1. Instalação de Dependências Adicionais:
+Instale as bibliotecas necessárias para renderizar o PDF e arrastar os elementos. Execute no terminal:
+
+Bash
+npm install react-draggable react-pdf
+npm install -D @types/react-pdf
+(Nota: Configure o worker do react-pdf corretamente usando a abordagem padrão do Vite/Webpack, ex: pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString(); no topo do arquivo).
+
+2. Refatoração do GerarPdfsTab:
+A interface do componente deve mudar para o seguinte fluxo:
+
+Área de Configuração: Seleção do Curso e Upload do PDF Template.
+
+Área do Editor Visual (Só aparece se o PDF for enviado):
+
+Um toggle/botão para alternar a visualização entre Página 1 (Frente) e Página 2 (Verso).
+
+A renderização da página do PDF (<Document> e <Page> do react-pdf).
+
+Blocos interativos (<Draggable> do react-draggable) sobrepostos ao PDF usando position: absolute.
+
+Campos da Página 1: "NOME DO ALUNO" e "TEXTO DESCRITIVO".
+
+Campos da Página 2: "EMENTA DO CURSO", "INSTRUTOR", "DATA DE EMISSÃO", "CÓD. AUTENTICAÇÃO".
+
+3. O Desafio da Escala (Crucial para o pdf-lib):
+O PDF renderizado na tela do navegador será menor do que as dimensões reais do PDF interno (geralmente em pontos - pt).
+
+Você DEVE calcular o scaleFactor. Se a página real do PDF tem 842 de largura (A4 paisagem) e na tela ela está renderizando com 600px de largura, o fator de conversão de X e Y do mouse para o pdf-lib deve ser aplicado.
+
+O pdf-lib usa o plano cartesiano onde o Y = 0 fica na parte inferior (bottom) da página, enquanto no HTML/DOM o Y = 0 fica na parte superior (top). Sua função handleGenerate precisa obrigatoriamente inverter o eixo Y capturado pelo Drag & Drop ao usar page.drawText(). Formula base: yPdf = pdfHeight - (yDom * scaleFactor) - fontSize.
+
+4. Comportamento do Draggable:
+Ao arrastar cada elemento (onStop do react-draggable), atualize o estado de coordenadas (coords) com os novos valores de X e Y relativos à caixa/container do PDF. Use marcações visuais bonitas (ex: borda tracejada vermelha, fundo semitransparente, cursor de 'move') para que os elementos de texto arrastáveis se destaquem sobre o PDF de fundo.
+
+5. Geração e Download (Mantido):
+Ao clicar em "Gerar e Baixar ZIP", o sistema varre os alunos (enrollments), usa o pdf-lib (já existente no arquivo), aplica a matemática de escala e inversão do eixo Y discutida acima, carimba os textos e baixa o .zip usando jszip e file-saver.
+
+REGRAS RÍGIDAS:
+
+NÃO quebre ou altere o código das outras abas (Cursos e Notificações).
+
+Mantenha o estilo visual coeso com o Tailwind (usando as cores forest, fundos cinza, etc.).
+
+Certifique-se de que o texto grande da "Ementa" continue com quebra automática de linha (maxWidth) e o texto descritivo também.
+
+Por favor, escreva o código completo e atualizado para substituir a funcionalidade no arquivo client/src/pages/dashboard/capacitacao.tsx.
