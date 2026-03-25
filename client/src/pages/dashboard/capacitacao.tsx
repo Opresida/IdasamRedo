@@ -40,7 +40,6 @@ import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell,
-  Bold, Italic,
 } from 'lucide-react';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
@@ -133,6 +132,69 @@ async function fetchEnrollmentsWithCerts(courseId: string, token: string): Promi
   });
   if (!res.ok) return [];
   return res.json();
+}
+
+type BlockKey = 'aluno';
+
+interface TextBlock {
+  key: BlockKey;
+  label: string;
+  text: string;
+  x: number;
+  y: number;
+  size: number;
+  font: 'poppins' | 'alexbrush';
+  bold: boolean;
+  italic: boolean;
+  page: 1 | 2;
+}
+
+const EXAMPLE_VALUES: Record<string, string> = {
+  aluno: 'Nome de Exemplo',
+};
+
+const DEFAULT_BLOCKS: TextBlock[] = [
+  { key: 'aluno', label: 'Nome do Aluno', text: '{aluno}', x: 100, y: 400, size: 24, font: 'alexbrush', bold: false, italic: false, page: 1 },
+];
+
+function parseVariables(text: string, values: Record<string, string>): string {
+  return text.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? `{${key}}`);
+}
+
+const FONT_URLS = {
+  alexbrushRegular: 'https://fonts.gstatic.com/s/alexbrush/v22/SZc83FzrJKuqFbwMKk6EtUL57DtOmCc.ttf',
+  poppinsRegular: 'https://fonts.gstatic.com/s/poppins/v21/pxiEyp8kv8JHgFVrJJfecg.ttf',
+};
+
+async function generateCertificatePdf(
+  templateBytes: ArrayBuffer,
+  block: TextBlock,
+  scaleFactor: number,
+  studentName: string,
+  alexBrushBytes: ArrayBuffer,
+  poppinsRegBytes: ArrayBuffer,
+): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  pdfDoc.registerFontkit(fontkit);
+  const fAlexBrush = await pdfDoc.embedFont(alexBrushBytes);
+  const fPoppins = await pdfDoc.embedFont(poppinsRegBytes);
+  const embedFont = block.font === 'alexbrush' ? fAlexBrush : fPoppins;
+  const realValues: Record<string, string> = { aluno: studentName };
+  const pages = pdfDoc.getPages();
+  const pageIndex = block.page - 1;
+  const page = pages[pageIndex] ?? pages[0];
+  const { height: pH } = page.getSize();
+  const resolvedText = parseVariables(block.text, realValues);
+  const xPdf = block.x * scaleFactor;
+  const yPdf = pH - (block.y * scaleFactor) - block.size;
+  page.drawText(resolvedText ?? '', {
+    x: xPdf,
+    y: yPdf,
+    size: block.size,
+    font: embedFont,
+    color: rgb(0, 0, 0),
+  });
+  return pdfDoc.save();
 }
 
 const enrollmentFormSchema = z.object({
@@ -328,7 +390,10 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
   const [editingEnrollment, setEditingEnrollment] = useState<EnrollmentWithCert | null>(null);
   const [deletingEnrollment, setDeletingEnrollment] = useState<EnrollmentWithCert | null>(null);
   const [importing, setImporting] = useState(false);
+  const [dispatching, setDispatching] = useState(false);
+  const [dispatchProgress, setDispatchProgress] = useState<{ done: number; total: number } | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const hasCertConfig = !!(course.certTemplate && course.certBlockConfig);
 
   const { data: enrollments = [], isLoading } = useQuery<EnrollmentWithCert[]>({
     queryKey: ['/api/enrollments/course', course.id],
@@ -421,6 +486,62 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
     }
   };
 
+  const handleDispatchFromCourse = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!hasCertConfig) return;
+    const courseEnrollments = await fetchEnrollmentsWithCerts(course.id, adminToken);
+    if (courseEnrollments.length === 0) {
+      toast({ title: 'Nenhum aluno inscrito neste curso', variant: 'destructive' });
+      return;
+    }
+    setDispatching(true);
+    setDispatchProgress({ done: 0, total: courseEnrollments.length });
+    try {
+      const config = JSON.parse(course.certBlockConfig!);
+      const block: TextBlock = config.block;
+      const sf: number = config.scaleFactor ?? 1;
+      const templateBytes = Uint8Array.from(atob(course.certTemplate!), (c) => c.charCodeAt(0)).buffer;
+      const [alexBrushBytes, poppinsRegBytes] = await Promise.all([
+        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
+      ]);
+      let done = 0;
+      let errors = 0;
+      for (const enrollment of courseEnrollments) {
+        try {
+          const pdfBytes = await generateCertificatePdf(
+            templateBytes, block, sf, enrollment.fullName ?? '', alexBrushBytes, poppinsRegBytes
+          );
+          const base64 = btoa(
+            new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          );
+          const res = await fetch(`/api/certificates/upload-base64/${enrollment.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+            body: JSON.stringify({ fileData: base64 }),
+          });
+          if (!res.ok) errors++;
+        } catch {
+          errors++;
+        }
+        done++;
+        setDispatchProgress({ done, total: courseEnrollments.length });
+      }
+      qc.invalidateQueries({ queryKey: ['/api/enrollments/course', course.id] });
+      if (errors === 0) {
+        toast({ title: 'Certificados disparados!', description: `${courseEnrollments.length} certificado(s) enviados com sucesso.` });
+      } else {
+        toast({ title: 'Disparo concluído com avisos', description: `${done - errors} enviados, ${errors} com erro.`, variant: 'destructive' });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao disparar certificados', variant: 'destructive' });
+    } finally {
+      setDispatching(false);
+      setDispatchProgress(null);
+    }
+  };
+
   return (
     <>
       <Card className="border border-gray-200">
@@ -455,7 +576,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 ml-4">
+            <div className="flex items-center gap-2 ml-4 flex-wrap justify-end">
               <Badge className={`text-xs border ${STATUS_BADGE_CLASSES[course.status] ?? STATUS_BADGE_CLASSES.open}`}>
                 {STATUS_LABELS[course.status] ?? 'Aberto'}
               </Badge>
@@ -469,6 +590,20 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                 <Badge variant="outline" className="text-xs">
                   {course.vacancies} vagas
                 </Badge>
+              )}
+              {hasCertConfig && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs text-forest border-forest/40 hover:bg-forest/10"
+                  disabled={dispatching}
+                  onClick={handleDispatchFromCourse}
+                >
+                  <Upload className="w-3 h-3 mr-1" />
+                  {dispatching
+                    ? (dispatchProgress ? `${dispatchProgress.done}/${dispatchProgress.total}` : '...')
+                    : 'Disparar Certificados'}
+                </Button>
               )}
               <Button
                 size="sm"
@@ -1029,60 +1164,17 @@ function NotificationsTab({ adminToken }: { adminToken: string }) {
   );
 }
 
-type BlockKey = 'aluno' | 'descricao' | 'ementa' | 'instrutor' | 'data' | 'codigo';
-
-interface TextBlock {
-  key: BlockKey;
-  label: string;
-  text: string;
-  x: number;
-  y: number;
-  size: number;
-  font: 'poppins' | 'alexbrush';
-  bold: boolean;
-  italic: boolean;
-  page: 1 | 2;
-}
-
-const EXAMPLE_VALUES: Record<string, string> = {
-  aluno: 'Nome de Exemplo',
-  descricao: 'Descrição do curso com texto explicativo sobre o conteúdo.',
-  curso: 'Curso de Exemplo',
-  carga: '40 horas',
-  ementa: 'Conteúdo programático do curso com tópicos relevantes.',
-  instrutor: 'Prof. Fulano de Tal',
-  data: new Date().toLocaleDateString('pt-BR'),
-  codigo: 'CERT-2026-0001',
-};
-
-const DEFAULT_BLOCKS: TextBlock[] = [
-  { key: 'aluno', label: 'Nome do Aluno', text: '{aluno}', x: 100, y: 400, size: 24, font: 'alexbrush', bold: false, italic: false, page: 1 },
-  { key: 'descricao', label: 'Texto Descritivo', text: '{descricao}', x: 100, y: 350, size: 12, font: 'poppins', bold: false, italic: false, page: 1 },
-  { key: 'ementa', label: 'Ementa', text: '{ementa}', x: 100, y: 270, size: 11, font: 'poppins', bold: false, italic: false, page: 2 },
-  { key: 'instrutor', label: 'Instrutor(a)', text: '{instrutor}', x: 100, y: 220, size: 12, font: 'poppins', bold: false, italic: true, page: 2 },
-  { key: 'data', label: 'Data de Emissão', text: '{data}', x: 100, y: 180, size: 11, font: 'poppins', bold: false, italic: false, page: 2 },
-  { key: 'codigo', label: 'Código de Autenticação', text: '{codigo}', x: 100, y: 140, size: 10, font: 'poppins', bold: false, italic: false, page: 2 },
-];
-
-function parseVariables(text: string, values: Record<string, string>): string {
-  return text.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? `{${key}}`);
-}
-
-const FONT_URLS = {
-  alexbrushRegular: 'https://fonts.gstatic.com/s/alexbrush/v22/SZc83FzrJKuqFbwMKk6EtUL57DtOmCc.ttf',
-  poppinsRegular: 'https://fonts.gstatic.com/s/poppins/v21/pxiEyp8kv8JHgFVrJJfecg.ttf',
-  poppinsBold: 'https://fonts.gstatic.com/s/poppins/v21/pxiByp8kv8JHgFVrLCz7Z1xlFQ.ttf',
-  poppinsItalic: 'https://fonts.gstatic.com/s/poppins/v21/pxiGyp8kv8JHgFVrJJLed3FBGg.ttf',
-  poppinsBoldItalic: 'https://fonts.gstatic.com/s/poppins/v21/pxiDyp8kv8JHgFVrJJLmr19VF9eO.ttf',
-};
-
 function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Course[] }) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [blocks, setBlocks] = useState<TextBlock[]>(DEFAULT_BLOCKS);
   const [scaleFactor, setScaleFactor] = useState<number>(1);
   const [generating, setGenerating] = useState(false);
+  const [dispatching, setDispatching] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [dispatchProgress, setDispatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [loadProgress, setLoadProgress] = useState<number>(0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(1);
@@ -1095,14 +1187,6 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
   const previewValues: Record<string, string> = {
     ...EXAMPLE_VALUES,
-    ...(selectedCourse ? {
-      curso: selectedCourse.title ?? EXAMPLE_VALUES.curso,
-      carga: selectedCourse.workload ? `${selectedCourse.workload} horas` : EXAMPLE_VALUES.carga,
-      descricao: selectedCourse.description ?? EXAMPLE_VALUES.descricao,
-      ementa: selectedCourse.curriculum ?? EXAMPLE_VALUES.ementa,
-      instrutor: selectedCourse.instructor ?? EXAMPLE_VALUES.instrutor,
-      codigo: selectedCourse.authCode ?? EXAMPLE_VALUES.codigo,
-    } : {}),
   };
 
   const { data: enrollments = [], isLoading: loadingEnrollments } = useQuery<EnrollmentWithCert[]>({
@@ -1110,6 +1194,30 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     queryFn: () => fetchEnrollmentsWithCerts(selectedCourseId, adminToken),
     enabled: !!selectedCourseId && !!adminToken,
   });
+
+  React.useEffect(() => {
+    if (selectedCourse?.certTemplate && selectedCourse?.certBlockConfig) {
+      try {
+        const binaryStr = atob(selectedCourse.certTemplate);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const file = new File([blob], 'template.pdf', { type: 'application/pdf' });
+        setTemplateFile(file);
+        const config = JSON.parse(selectedCourse.certBlockConfig);
+        if (config.block) setBlocks([config.block]);
+        if (config.scaleFactor) setScaleFactor(config.scaleFactor);
+      } catch {
+        setTemplateFile(null);
+        setBlocks(DEFAULT_BLOCKS);
+        setScaleFactor(1);
+      }
+    } else {
+      setTemplateFile(null);
+      setBlocks(DEFAULT_BLOCKS);
+      setScaleFactor(1);
+    }
+  }, [selectedCourseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     if (!templateFile) { setPdfUrl(null); return; }
@@ -1142,6 +1250,37 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, ...patch } : b));
   }, []);
 
+  const handleSaveConfig = async () => {
+    if (!selectedCourse) {
+      toast({ title: 'Selecione um curso', variant: 'destructive' });
+      return;
+    }
+    if (!templateFile) {
+      toast({ title: 'Selecione o PDF template', variant: 'destructive' });
+      return;
+    }
+    setSavingConfig(true);
+    try {
+      const templateBytes = await templateFile.arrayBuffer();
+      const base64Template = btoa(
+        new Uint8Array(templateBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      const blockConfig = JSON.stringify({ block: blocks[0], scaleFactor });
+      const res = await fetch(`/api/courses/${selectedCourse.id}/cert-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ certTemplate: base64Template, certBlockConfig: blockConfig }),
+      });
+      if (!res.ok) throw new Error('Falha ao salvar');
+      qc.invalidateQueries({ queryKey: ['/api/courses'] });
+      toast({ title: 'Configuração salva!', description: 'Template e posição do bloco salvos para este curso.' });
+    } catch {
+      toast({ title: 'Erro', description: 'Não foi possível salvar a configuração.', variant: 'destructive' });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!selectedCourse) {
       toast({ title: 'Selecione um curso', variant: 'destructive' });
@@ -1158,79 +1297,19 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
     setGenerating(true);
     try {
-      const [
-        alexBrushBytes,
-        poppinsRegBytes,
-        poppinsBoldBytes,
-        poppinsItalicBytes,
-        poppinsBoldItalicBytes,
-      ] = await Promise.all([
+      const [alexBrushBytes, poppinsRegBytes] = await Promise.all([
         fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
         fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
-        fetch(FONT_URLS.poppinsBold).then((r) => r.arrayBuffer()),
-        fetch(FONT_URLS.poppinsItalic).then((r) => r.arrayBuffer()),
-        fetch(FONT_URLS.poppinsBoldItalic).then((r) => r.arrayBuffer()),
       ]);
 
       const templateBytes = await templateFile.arrayBuffer();
       const zip = new JSZip();
-      const today = new Date().toLocaleDateString('pt-BR');
 
       for (const enrollment of enrollments) {
-        const pdfDoc = await PDFDocument.load(templateBytes);
-        pdfDoc.registerFontkit(fontkit);
-
-        const fAlexBrush = await pdfDoc.embedFont(alexBrushBytes);
-        const fPoppins = await pdfDoc.embedFont(poppinsRegBytes);
-        const fPoppinsBold = await pdfDoc.embedFont(poppinsBoldBytes);
-        const fPoppinsItalic = await pdfDoc.embedFont(poppinsItalicBytes);
-        const fPoppinsBoldItalic = await pdfDoc.embedFont(poppinsBoldItalicBytes);
-
-        const getFontForBlock = (block: TextBlock) => {
-          if (block.font === 'alexbrush') return fAlexBrush;
-          if (block.bold && block.italic) return fPoppinsBoldItalic;
-          if (block.bold) return fPoppinsBold;
-          if (block.italic) return fPoppinsItalic;
-          return fPoppins;
-        };
-
-        const realValues: Record<string, string> = {
-          aluno: enrollment.fullName ?? '',
-          descricao: selectedCourse.description ?? '',
-          curso: selectedCourse.title ?? '',
-          carga: selectedCourse.workload ? `${selectedCourse.workload} horas` : '',
-          ementa: selectedCourse.curriculum ?? '',
-          instrutor: selectedCourse.instructor ?? '',
-          data: today,
-          codigo: selectedCourse.authCode ?? '',
-        };
-
-        const pages = pdfDoc.getPages();
-
-        for (const block of blocks) {
-          const pageIndex = block.page - 1;
-          const page = pages[pageIndex] ?? pages[0];
-          const { height: pH } = page.getSize();
-          const resolvedText = parseVariables(block.text, realValues);
-          const xPdf = block.x * scaleFactor;
-          const yPdf = pH - (block.y * scaleFactor) - block.size;
-          const embedFont = getFontForBlock(block);
-          const isLong = block.key === 'ementa' || block.key === 'descricao';
-          const drawOpts: Parameters<typeof page.drawText>[1] = {
-            x: xPdf,
-            y: yPdf,
-            size: block.size,
-            font: embedFont,
-            color: rgb(0, 0, 0),
-          };
-          if (isLong) {
-            const { width: pW } = page.getSize();
-            drawOpts.maxWidth = pW * 0.7;
-          }
-          page.drawText(resolvedText ?? '', drawOpts);
-        }
-
-        const pdfBytes = await pdfDoc.save();
+        const block = blocks[0];
+        const pdfBytes = await generateCertificatePdf(
+          templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes, poppinsRegBytes
+        );
         const safeName = (enrollment.fullName ?? `aluno-${enrollment.id}`)
           .replace(/[^a-z0-9]/gi, '_')
           .toLowerCase();
@@ -1249,11 +1328,73 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     }
   };
 
+  const handleDispatch = async () => {
+    if (!selectedCourse) {
+      toast({ title: 'Selecione um curso', variant: 'destructive' });
+      return;
+    }
+    if (!templateFile) {
+      toast({ title: 'Selecione o PDF template', variant: 'destructive' });
+      return;
+    }
+    if (enrollments.length === 0) {
+      toast({ title: 'Nenhum aluno inscrito neste curso', variant: 'destructive' });
+      return;
+    }
+
+    setDispatching(true);
+    setDispatchProgress({ done: 0, total: enrollments.length });
+    try {
+      const [alexBrushBytes, poppinsRegBytes] = await Promise.all([
+        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
+      ]);
+      const templateBytes = await templateFile.arrayBuffer();
+      let done = 0;
+      let errors = 0;
+      for (const enrollment of enrollments) {
+        try {
+          const block = blocks[0];
+          const pdfBytes = await generateCertificatePdf(
+            templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes, poppinsRegBytes
+          );
+          const base64 = btoa(
+            new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          );
+          const res = await fetch(`/api/certificates/upload-base64/${enrollment.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+            body: JSON.stringify({ fileData: base64 }),
+          });
+          if (!res.ok) errors++;
+        } catch {
+          errors++;
+        }
+        done++;
+        setDispatchProgress({ done, total: enrollments.length });
+      }
+      qc.invalidateQueries({ queryKey: ['/api/enrollments/course', selectedCourseId] });
+      if (errors === 0) {
+        toast({ title: 'Certificados disparados!', description: `${enrollments.length} certificado(s) enviados com sucesso.` });
+      } else {
+        toast({ title: 'Disparo concluído com avisos', description: `${done - errors} enviados, ${errors} com erro.`, variant: 'destructive' });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao disparar certificados', variant: 'destructive' });
+    } finally {
+      setDispatching(false);
+      setDispatchProgress(null);
+    }
+  };
+
+  const alunoBlock = blocks[0];
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Gerar Certificados em Lote</h2>
-        <p className="text-sm text-gray-500">Selecione um curso, faça upload do PDF template, configure os blocos e posicione-os arrastando no preview.</p>
+        <p className="text-sm text-gray-500">Selecione um curso, faça upload do PDF template, posicione o bloco do nome e dispare os certificados para todos os alunos.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1318,96 +1459,87 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                 />
               </div>
 
-              <Button
-                className="bg-forest hover:bg-forest/90 text-white w-full"
-                disabled={generating || !selectedCourseId || !templateFile}
-                onClick={handleGenerate}
-              >
-                <FileDown className="w-4 h-4 mr-2" />
-                {generating ? 'Gerando...' : 'Gerar e Baixar ZIP'}
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  className="bg-forest hover:bg-forest/90 text-white w-full"
+                  disabled={dispatching || savingConfig || !selectedCourseId || !templateFile}
+                  onClick={handleDispatch}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {dispatching ? (dispatchProgress ? `Disparando... ${dispatchProgress.done}/${dispatchProgress.total}` : 'Disparando...') : 'Disparar Certificados'}
+                </Button>
+                {dispatchProgress && (
+                  <Progress value={(dispatchProgress.done / dispatchProgress.total) * 100} className="h-1.5" />
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-sm"
+                    disabled={generating || dispatching || !selectedCourseId || !templateFile}
+                    onClick={handleGenerate}
+                  >
+                    <FileDown className="w-4 h-4 mr-2" />
+                    {generating ? 'Gerando...' : 'Baixar ZIP'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-sm"
+                    disabled={savingConfig || dispatching || !selectedCourseId || !templateFile}
+                    onClick={handleSaveConfig}
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    {savingConfig ? 'Salvando...' : 'Salvar Config'}
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Block control cards */}
+          {/* Block control: only Nome do Aluno */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-700">Blocos de Texto</p>
-            {blocks.map((block) => (
-              <Card key={block.key} className="border border-gray-200">
-                <CardContent className="pt-4 pb-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{block.label}</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => updateBlock(block.key, { bold: !block.bold })}
-                        className={`p-1.5 rounded border text-xs transition-colors ${
-                          block.bold
-                            ? 'bg-gray-800 text-white border-gray-800'
-                            : 'bg-white text-gray-500 border-gray-300 hover:border-gray-500'
-                        }`}
-                        title="Negrito"
-                      >
-                        <Bold className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateBlock(block.key, { italic: !block.italic })}
-                        className={`p-1.5 rounded border text-xs transition-colors ${
-                          block.italic
-                            ? 'bg-gray-800 text-white border-gray-800'
-                            : 'bg-white text-gray-500 border-gray-300 hover:border-gray-500'
-                        }`}
-                        title="Itálico"
-                      >
-                        <Italic className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+            <p className="text-sm font-medium text-gray-700">Bloco de Texto</p>
+            <Card className="border border-gray-200">
+              <CardContent className="pt-4 pb-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{alunoBlock.label}</span>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs text-gray-500 whitespace-nowrap">Tamanho:</label>
+                    <input
+                      type="number"
+                      min={6}
+                      max={120}
+                      value={alunoBlock.size}
+                      onChange={(e) => updateBlock(alunoBlock.key, { size: Number(e.target.value) })}
+                      className="w-16 h-7 text-xs border border-gray-300 rounded px-2 focus:outline-none focus:ring-1 focus:ring-forest"
+                    />
                   </div>
-                  <Textarea
-                    className="text-xs min-h-[52px] resize-none"
-                    value={block.text}
-                    onChange={(e) => updateBlock(block.key, { text: e.target.value })}
-                    placeholder={`Texto para ${block.label}`}
-                  />
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-xs text-gray-500 whitespace-nowrap">Tamanho:</label>
-                      <input
-                        type="number"
-                        min={6}
-                        max={72}
-                        value={block.size}
-                        onChange={(e) => updateBlock(block.key, { size: Number(e.target.value) })}
-                        className="w-16 h-7 text-xs border border-gray-300 rounded px-2 focus:outline-none focus:ring-1 focus:ring-forest"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-xs text-gray-500 whitespace-nowrap">Fonte:</label>
-                      <select
-                        value={block.font}
-                        onChange={(e) => updateBlock(block.key, { font: e.target.value as 'poppins' | 'alexbrush' })}
-                        className="h-7 text-xs border border-gray-300 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-forest"
-                      >
-                        <option value="poppins">Poppins</option>
-                        <option value="alexbrush">Alex Brush</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-xs text-gray-500 whitespace-nowrap">Página:</label>
-                      <select
-                        value={block.page}
-                        onChange={(e) => updateBlock(block.key, { page: Number(e.target.value) as 1 | 2 })}
-                        className="h-7 text-xs border border-gray-300 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-forest"
-                      >
-                        <option value={1}>Página 1</option>
-                        <option value={2}>Página 2</option>
-                      </select>
-                    </div>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs text-gray-500 whitespace-nowrap">Fonte:</label>
+                    <select
+                      value={alunoBlock.font}
+                      onChange={(e) => updateBlock(alunoBlock.key, { font: e.target.value as 'poppins' | 'alexbrush' })}
+                      className="h-7 text-xs border border-gray-300 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-forest"
+                    >
+                      <option value="alexbrush">Alex Brush</option>
+                      <option value="poppins">Poppins</option>
+                    </select>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs text-gray-500 whitespace-nowrap">Página:</label>
+                    <select
+                      value={alunoBlock.page}
+                      onChange={(e) => updateBlock(alunoBlock.key, { page: Number(e.target.value) as 1 | 2 })}
+                      className="h-7 text-xs border border-gray-300 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-forest"
+                    >
+                      <option value={1}>Página 1</option>
+                      <option value={2}>Página 2</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
@@ -1418,7 +1550,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
           {!templateFile ? (
             <div className="rounded-lg border border-dashed border-gray-200 p-12 text-center text-gray-400">
               <FileDown className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-              <p className="text-sm">Faça upload do PDF template para posicionar os blocos visualmente</p>
+              <p className="text-sm">Faça upload do PDF template para posicionar o bloco do nome visualmente</p>
             </div>
           ) : (
             <>
@@ -1454,7 +1586,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
               )}
 
               <p className="text-xs text-gray-400">
-                Arraste os blocos coloridos para a posição desejada. As coordenadas são capturadas automaticamente.
+                Arraste o bloco do nome para a posição desejada. As coordenadas são capturadas automaticamente.
               </p>
 
               <div className="border border-gray-200 rounded-lg overflow-auto" style={{ maxHeight: '75vh' }}>
@@ -1498,8 +1630,8 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                             zIndex: 10,
                             cursor: 'grab',
                             fontSize: `${Math.max(8, block.size / scaleFactor)}px`,
-                            fontWeight: block.bold ? 700 : 400,
-                            fontStyle: block.italic ? 'italic' : 'normal',
+                            fontWeight: 400,
+                            fontStyle: 'normal',
                             fontFamily: block.font === 'alexbrush' ? '"Alex Brush", cursive' : 'Poppins, sans-serif',
                             borderColor: 'rgba(100,100,200,0.5)',
                           }}

@@ -42,6 +42,8 @@ export interface IStorage {
   updateCourse(id: string, course: Partial<InsertCourse>): Promise<Course | undefined>;
   deleteCourse(id: string): Promise<void>;
   backfillAuthCodes(): Promise<void>;
+  saveCertConfig(courseId: string, certTemplate: string, certBlockConfig: string): Promise<Course | undefined>;
+  getCertConfig(courseId: string): Promise<{ certTemplate: string | null; certBlockConfig: string | null } | undefined>;
 
   getEnrollments(): Promise<Enrollment[]>;
   getEnrollmentsByCourse(courseId: string): Promise<Enrollment[]>;
@@ -131,6 +133,23 @@ export class DatabaseStorage implements IStorage {
       }
     }
     throw new Error("Failed to generate a unique auth code after 10 attempts");
+  }
+
+  async saveCertConfig(courseId: string, certTemplate: string, certBlockConfig: string): Promise<Course | undefined> {
+    const [updated] = await db
+      .update(courses)
+      .set({ certTemplate, certBlockConfig })
+      .where(eq(courses.id, courseId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getCertConfig(courseId: string): Promise<{ certTemplate: string | null; certBlockConfig: string | null } | undefined> {
+    const [course] = await db
+      .select({ certTemplate: courses.certTemplate, certBlockConfig: courses.certBlockConfig })
+      .from(courses)
+      .where(eq(courses.id, courseId));
+    return course || undefined;
   }
 
   async backfillAuthCodes(): Promise<void> {

@@ -394,6 +394,34 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/courses/:id/cert-config", requireAdmin, async (req, res) => {
+    try {
+      const config = await storage.getCertConfig(req.params.id);
+      if (!config) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      res.json(config);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar configuração de certificado" });
+    }
+  });
+
+  app.post("/api/courses/:id/cert-config", requireAdmin, async (req, res) => {
+    try {
+      const { certTemplate, certBlockConfig } = req.body;
+      if (!certTemplate || !certBlockConfig) {
+        return res.status(400).json({ message: "certTemplate e certBlockConfig são obrigatórios" });
+      }
+      const updated = await storage.saveCertConfig(req.params.id, certTemplate, certBlockConfig);
+      if (!updated) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      res.json({ message: "Configuração salva com sucesso" });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao salvar configuração de certificado" });
+    }
+  });
+
   app.delete("/api/courses/:id", requireAdmin, async (req, res) => {
     try {
       const course = await storage.getCourse(req.params.id);
@@ -574,6 +602,24 @@ export async function registerRoutes(app: Express) {
       res.send(buffer);
     } catch (err) {
       res.status(500).json({ message: "Erro ao baixar certificado" });
+    }
+  });
+
+  app.post("/api/certificates/upload-base64/:enrollmentId", requireAdmin, async (req, res) => {
+    try {
+      const { fileData } = req.body;
+      if (!fileData) {
+        return res.status(400).json({ message: "fileData (base64) é obrigatório" });
+      }
+      const allEnrollments = await storage.getEnrollments();
+      const exists = allEnrollments.some((e) => e.id === req.params.enrollmentId);
+      if (!exists) {
+        return res.status(404).json({ message: "Inscrição não encontrada" });
+      }
+      const cert = await storage.updateCertificate(req.params.enrollmentId, fileData);
+      res.status(201).json({ id: cert.id, enrollmentId: cert.enrollmentId, uploadedAt: cert.uploadedAt });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao fazer upload do certificado" });
     }
   });
 

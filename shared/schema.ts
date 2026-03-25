@@ -37,6 +37,8 @@ export const courses = pgTable("courses", {
   vacancies: integer("vacancies"),
   status: text("status").notNull().default("open"),
   authCode: text("auth_code").unique(),
+  certTemplate: text("cert_template"),
+  certBlockConfig: text("cert_block_config"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
