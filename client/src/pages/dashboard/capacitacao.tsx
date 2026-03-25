@@ -41,7 +41,7 @@ import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell, Eye,
 } from 'lucide-react';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { Progress } from '@/components/ui/progress';
 import JSZip from 'jszip';
@@ -163,6 +163,7 @@ function parseVariables(text: string, values: Record<string, string>): string {
 
 const FONT_URLS = {
   alexbrushRegular: '/fonts/alexbrush.ttf',
+  poppinsRegular: '/fonts/poppins-regular.ttf',
 };
 
 async function generateCertificatePdf(
@@ -171,12 +172,13 @@ async function generateCertificatePdf(
   scaleFactor: number,
   studentName: string,
   alexBrushBytes: ArrayBuffer,
+  poppinsBytes: ArrayBuffer,
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.load(templateBytes);
   pdfDoc.registerFontkit(fontkit);
   const fAlexBrush = await pdfDoc.embedFont(alexBrushBytes);
-  const fHelvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const embedFont = block.font === 'alexbrush' ? fAlexBrush : fHelvetica;
+  const fPoppins = await pdfDoc.embedFont(poppinsBytes);
+  const embedFont = block.font === 'alexbrush' ? fAlexBrush : fPoppins;
   const realValues: Record<string, string> = { aluno: studentName };
   const pages = pdfDoc.getPages();
   const pageIndex = block.page - 1;
@@ -499,13 +501,16 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       const block: TextBlock = config.block;
       const sf: number = config.scaleFactor ?? 1;
       const templateBytes = Uint8Array.from(atob(course.certTemplate!), (c) => c.charCodeAt(0)).buffer;
-      const alexBrushBytes = await fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer());
+      const [alexBrushBytes, poppinsBytes] = await Promise.all([
+        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
+      ]);
       let done = 0;
       let errors = 0;
       for (const enrollment of courseEnrollments) {
         try {
           const pdfBytes = await generateCertificatePdf(
-            templateBytes, block, sf, enrollment.fullName ?? '', alexBrushBytes
+            templateBytes, block, sf, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
           );
           const base64 = btoa(
             new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -529,8 +534,8 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
         toast({ title: 'Disparo concluído com avisos', description: `${done - errors} enviados, ${errors} com erro.`, variant: 'destructive' });
       }
     } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao disparar certificados', variant: 'destructive' });
+      console.error('Dispatch error:', err instanceof Error ? err.message : err);
+      toast({ title: 'Erro ao disparar certificados', description: err instanceof Error ? err.message : 'Tente novamente.', variant: 'destructive' });
     } finally {
       setDispatching(false);
       setDispatchProgress(null);
@@ -1269,8 +1274,9 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       if (!res.ok) throw new Error('Falha ao salvar');
       qc.invalidateQueries({ queryKey: ['/api/courses'] });
       toast({ title: 'Configuração salva!', description: 'Template e posição do bloco salvos para este curso.' });
-    } catch {
-      toast({ title: 'Erro', description: 'Não foi possível salvar a configuração.', variant: 'destructive' });
+    } catch (err) {
+      console.error('SaveConfig error:', err instanceof Error ? err.message : err);
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Não foi possível salvar a configuração.', variant: 'destructive' });
     } finally {
       setSavingConfig(false);
     }
@@ -1292,14 +1298,17 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
     setGenerating(true);
     try {
-      const alexBrushBytes = await fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer());
+      const [alexBrushBytes, poppinsBytes] = await Promise.all([
+        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
+      ]);
       const templateBytes = await templateFile.arrayBuffer();
       const zip = new JSZip();
 
       for (const enrollment of enrollments) {
         const block = blocks[0];
         const pdfBytes = await generateCertificatePdf(
-          templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes
+          templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
         );
         const safeName = (enrollment.fullName ?? `aluno-${enrollment.id}`)
           .replace(/[^a-z0-9]/gi, '_')
@@ -1312,8 +1321,8 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       saveAs(zipBlob, zipName);
       toast({ title: 'Certificados gerados!', description: `${enrollments.length} PDF(s) compactados em ${zipName}.` });
     } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao gerar certificados', description: 'Verifique o template e tente novamente.', variant: 'destructive' });
+      console.error('Generate error:', err instanceof Error ? err.message : err);
+      toast({ title: 'Erro ao gerar certificados', description: err instanceof Error ? err.message : 'Verifique o template e tente novamente.', variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
@@ -1325,11 +1334,14 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       return;
     }
     try {
-      const alexBrushBytes = await fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer());
+      const [alexBrushBytes, poppinsBytes] = await Promise.all([
+        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
+      ]);
       const templateBytes = await templateFile.arrayBuffer();
       const block = blocks[0];
       const pdfBytes = await generateCertificatePdf(
-        templateBytes, block, scaleFactor, 'Nome do Aluno', alexBrushBytes
+        templateBytes, block, scaleFactor, 'Nome do Aluno', alexBrushBytes, poppinsBytes
       );
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       saveAs(blob, 'previa-certificado.pdf');
@@ -1356,7 +1368,10 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     setDispatching(true);
     setDispatchProgress({ done: 0, total: enrollments.length });
     try {
-      const alexBrushBytes = await fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer());
+      const [alexBrushBytes, poppinsBytes] = await Promise.all([
+        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
+      ]);
       const templateBytes = await templateFile.arrayBuffer();
       let done = 0;
       let errors = 0;
@@ -1364,7 +1379,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         try {
           const block = blocks[0];
           const pdfBytes = await generateCertificatePdf(
-            templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes
+            templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
           );
           const base64 = btoa(
             new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -1388,8 +1403,8 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         toast({ title: 'Disparo concluído com avisos', description: `${done - errors} enviados, ${errors} com erro.`, variant: 'destructive' });
       }
     } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao disparar certificados', variant: 'destructive' });
+      console.error('Dispatch error:', err instanceof Error ? err.message : err);
+      toast({ title: 'Erro ao disparar certificados', description: err instanceof Error ? err.message : 'Tente novamente.', variant: 'destructive' });
     } finally {
       setDispatching(false);
       setDispatchProgress(null);
