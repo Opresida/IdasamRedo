@@ -45,8 +45,11 @@ import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell,
+  Bold, Italic,
 } from 'lucide-react';
 import { PDFDocument, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import { Progress } from '@/components/ui/progress';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import type { Course, Enrollment, CourseNotificationSubscription } from '@shared/schema';
@@ -1029,205 +1032,118 @@ function NotificationsTab({ adminToken }: { adminToken: string }) {
   );
 }
 
-interface FieldCoords {
+type BlockKey = 'aluno' | 'descricao' | 'ementa' | 'instrutor' | 'data' | 'codigo';
+
+interface TextBlock {
+  key: BlockKey;
+  label: string;
+  text: string;
   x: number;
   y: number;
+  size: number;
+  font: 'poppins' | 'alexbrush';
+  bold: boolean;
+  italic: boolean;
+  page: 1 | 2;
 }
 
-interface CertCoords {
-  nome: FieldCoords;
-  descricao: FieldCoords;
-  ementa: FieldCoords;
-  instrutor: FieldCoords;
-  dataEmissao: FieldCoords;
-  codAutenticacao: FieldCoords;
-}
-
-const DEFAULT_COORDS: CertCoords = {
-  nome: { x: 100, y: 400 },
-  descricao: { x: 100, y: 350 },
-  ementa: { x: 100, y: 300 },
-  instrutor: { x: 100, y: 250 },
-  dataEmissao: { x: 100, y: 200 },
-  codAutenticacao: { x: 100, y: 150 },
+const EXAMPLE_VALUES: Record<string, string> = {
+  aluno: 'Nome de Exemplo',
+  descricao: 'Descrição do curso com texto explicativo sobre o conteúdo.',
+  curso: 'Curso de Exemplo',
+  carga: '40 horas',
+  ementa: 'Conteúdo programático do curso com tópicos relevantes.',
+  instrutor: 'Prof. Fulano de Tal',
+  data: new Date().toLocaleDateString('pt-BR'),
+  codigo: 'CERT-2026-0001',
 };
 
-const COORD_LABELS: Record<keyof CertCoords, string> = {
-  nome: 'Nome do Aluno',
-  descricao: 'Texto Descritivo',
-  ementa: 'Ementa',
-  instrutor: 'Instrutor(a)',
-  dataEmissao: 'Data de Emissão',
-  codAutenticacao: 'Código de Autenticação',
-};
+const DEFAULT_BLOCKS: TextBlock[] = [
+  { key: 'aluno', label: 'Nome do Aluno', text: '{aluno}', x: 100, y: 400, size: 24, font: 'alexbrush', bold: false, italic: false, page: 1 },
+  { key: 'descricao', label: 'Texto Descritivo', text: '{descricao}', x: 100, y: 350, size: 12, font: 'poppins', bold: false, italic: false, page: 1 },
+  { key: 'ementa', label: 'Ementa', text: '{ementa}', x: 100, y: 270, size: 11, font: 'poppins', bold: false, italic: false, page: 2 },
+  { key: 'instrutor', label: 'Instrutor(a)', text: '{instrutor}', x: 100, y: 220, size: 12, font: 'poppins', bold: false, italic: true, page: 2 },
+  { key: 'data', label: 'Data de Emissão', text: '{data}', x: 100, y: 180, size: 11, font: 'poppins', bold: false, italic: false, page: 2 },
+  { key: 'codigo', label: 'Código de Autenticação', text: '{codigo}', x: 100, y: 140, size: 10, font: 'poppins', bold: false, italic: false, page: 2 },
+];
 
-const PAGE1_FIELDS: Array<keyof CertCoords> = ['nome', 'descricao'];
-const PAGE2_FIELDS: Array<keyof CertCoords> = ['ementa', 'instrutor', 'dataEmissao', 'codAutenticacao'];
-
-const FIELD_COLORS: Record<keyof CertCoords, string> = {
-  nome: 'bg-blue-500/20 border-blue-500 text-blue-800',
-  descricao: 'bg-purple-500/20 border-purple-500 text-purple-800',
-  ementa: 'bg-green-500/20 border-green-500 text-green-800',
-  instrutor: 'bg-orange-500/20 border-orange-500 text-orange-800',
-  dataEmissao: 'bg-pink-500/20 border-pink-500 text-pink-800',
-  codAutenticacao: 'bg-yellow-500/20 border-yellow-500 text-yellow-800',
-};
-
-interface PdfDragEditorProps {
-  templateFile: File;
-  coords: CertCoords;
-  onCoordsChange: (coords: CertCoords) => void;
-  scaleFactor: number;
-  onScaleFactorChange: (sf: number) => void;
+function parseVariables(text: string, values: Record<string, string>): string {
+  return text.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? `{${key}}`);
 }
 
-function PdfDragEditor({ templateFile, coords, onCoordsChange, onScaleFactorChange }: PdfDragEditorProps) {
-  const [currentPage, setCurrentPage] = useState<1 | 2>(1);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [numPages, setNumPages] = useState<number>(1);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const url = URL.createObjectURL(templateFile);
-    setPdfUrl(url);
-    setCurrentPage(1);
-    return () => URL.revokeObjectURL(url);
-  }, [templateFile]);
-
-  const handleLoadSuccess = useCallback(({ numPages: n }: { numPages: number }) => {
-    setNumPages(n);
-    if (currentPage > n) setCurrentPage(1);
-  }, [currentPage]);
-
-  const handleRenderSuccess = useCallback((page: PDFPageProxy) => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const renderedWidth = rect.width;
-      setContainerWidth(renderedWidth);
-      const pdfWidthPts = page.view[2];
-      const sf = pdfWidthPts / renderedWidth;
-      onScaleFactorChange(sf);
-    }
-  }, [onScaleFactorChange]);
-
-  const handleDragStop = (field: keyof CertCoords, _e: unknown, data: { x: number; y: number }) => {
-    onCoordsChange({ ...coords, [field]: { x: data.x, y: data.y } });
-  };
-
-  const activeFields = currentPage === 1 ? PAGE1_FIELDS : PAGE2_FIELDS;
-  const hasMultiplePages = numPages > 1;
-
-  if (!pdfUrl) return null;
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-gray-700">Página:</span>
-        <button
-          type="button"
-          onClick={() => setCurrentPage(1)}
-          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            currentPage === 1
-              ? 'bg-forest text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Frente (Página 1)
-        </button>
-        {hasMultiplePages && (
-          <button
-            type="button"
-            onClick={() => setCurrentPage(2)}
-            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-              currentPage === 2
-                ? 'bg-forest text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Verso (Página 2)
-          </button>
-        )}
-      </div>
-
-      <p className="text-xs text-gray-400">
-        Arraste os campos coloridos para a posição desejada no PDF. As coordenadas são capturadas automaticamente.
-      </p>
-
-      <div className="border border-gray-200 rounded-lg overflow-auto" style={{ maxHeight: '70vh' }}>
-        <div
-          ref={containerRef}
-          className="relative inline-block"
-          style={{ userSelect: 'none' }}
-        >
-          <Document
-            file={pdfUrl}
-            onLoadSuccess={handleLoadSuccess}
-            loading={
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" />
-              </div>
-            }
-          >
-            <Page
-              pageNumber={currentPage}
-              width={containerRef.current?.parentElement?.clientWidth ? Math.min(containerRef.current.parentElement.clientWidth - 2, 900) : 800}
-              onRenderSuccess={handleRenderSuccess}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-            />
-          </Document>
-
-          {containerWidth > 0 && activeFields.map((field) => {
-            const pos = coords[field];
-            return (
-              <Draggable
-                key={field}
-                position={{ x: pos.x, y: pos.y }}
-                bounds="parent"
-                onStop={(e, data) => handleDragStop(field, e, data)}
-              >
-                <div
-                  className={`absolute cursor-grab active:cursor-grabbing px-2 py-1 rounded border border-dashed text-xs font-semibold select-none ${FIELD_COLORS[field]}`}
-                  style={{ zIndex: 10 }}
-                  title={`${COORD_LABELS[field]} — X: ${Math.round(pos.x)}, Y: ${Math.round(pos.y)}`}
-                >
-                  {COORD_LABELS[field]}
-                </div>
-              </Draggable>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {activeFields.map((field) => (
-          <div key={field} className={`flex items-center gap-1 px-2 py-0.5 rounded border border-dashed text-xs ${FIELD_COLORS[field]}`}>
-            <span className="font-medium">{COORD_LABELS[field]}</span>
-            <span className="text-gray-500">X:{Math.round(coords[field].x)} Y:{Math.round(coords[field].y)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+const FONT_URLS = {
+  alexbrushRegular: 'https://fonts.gstatic.com/s/alexbrush/v22/SZc83FzrJKuqFbwMKk6EtUL57DtOmCc.ttf',
+  poppinsRegular: 'https://fonts.gstatic.com/s/poppins/v21/pxiEyp8kv8JHgFVrJJfecg.ttf',
+  poppinsBold: 'https://fonts.gstatic.com/s/poppins/v21/pxiByp8kv8JHgFVrLCz7Z1xlFQ.ttf',
+  poppinsItalic: 'https://fonts.gstatic.com/s/poppins/v21/pxiGyp8kv8JHgFVrJJLed3FBGg.ttf',
+  poppinsBoldItalic: 'https://fonts.gstatic.com/s/poppins/v21/pxiDyp8kv8JHgFVrJJLmr19VF9eO.ttf',
+};
 
 function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Course[] }) {
   const { toast } = useToast();
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [templateFile, setTemplateFile] = useState<File | null>(null);
-  const [coords, setCoords] = useState<CertCoords>(DEFAULT_COORDS);
+  const [blocks, setBlocks] = useState<TextBlock[]>(DEFAULT_BLOCKS);
   const [scaleFactor, setScaleFactor] = useState<number>(1);
   const [generating, setGenerating] = useState(false);
+  const [loadProgress, setLoadProgress] = useState<number>(0);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState<1 | 2>(1);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
   const templateInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
+
+  const previewValues: Record<string, string> = {
+    ...EXAMPLE_VALUES,
+    ...(selectedCourse ? {
+      curso: selectedCourse.title ?? EXAMPLE_VALUES.curso,
+      carga: selectedCourse.workload ? `${selectedCourse.workload} horas` : EXAMPLE_VALUES.carga,
+      descricao: selectedCourse.description ?? EXAMPLE_VALUES.descricao,
+      ementa: selectedCourse.curriculum ?? EXAMPLE_VALUES.ementa,
+      instrutor: selectedCourse.instructor ?? EXAMPLE_VALUES.instrutor,
+      codigo: selectedCourse.authCode ?? EXAMPLE_VALUES.codigo,
+    } : {}),
+  };
 
   const { data: enrollments = [], isLoading: loadingEnrollments } = useQuery<EnrollmentWithCert[]>({
     queryKey: ['/api/enrollments/course', selectedCourseId],
     queryFn: () => fetchEnrollmentsWithCerts(selectedCourseId, adminToken),
     enabled: !!selectedCourseId && !!adminToken,
   });
+
+  React.useEffect(() => {
+    if (!templateFile) { setPdfUrl(null); return; }
+    const url = URL.createObjectURL(templateFile);
+    setPdfUrl(url);
+    setCurrentPage(1);
+    setLoadProgress(0);
+    return () => URL.revokeObjectURL(url);
+  }, [templateFile]);
+
+  const handleLoadSuccess = useCallback(({ numPages: n }: { numPages: number }) => {
+    setNumPages(n);
+    setLoadProgress(100);
+  }, []);
+
+  const handleRenderSuccess = useCallback((page: PDFPageProxy) => {
+    if (containerRef.current) {
+      const renderedWidth = containerRef.current.getBoundingClientRect().width;
+      setContainerWidth(renderedWidth);
+      const pdfWidthPts = page.view[2];
+      setScaleFactor(pdfWidthPts / renderedWidth);
+    }
+  }, []);
+
+  const handleDragStop = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
+    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: data.x, y: data.y } : b));
+  }, []);
+
+  const updateBlock = useCallback((key: BlockKey, patch: Partial<TextBlock>) => {
+    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, ...patch } : b));
+  }, []);
 
   const handleGenerate = async () => {
     if (!selectedCourse) {
@@ -1245,53 +1161,76 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
     setGenerating(true);
     try {
+      const [
+        alexBrushBytes,
+        poppinsRegBytes,
+        poppinsBoldBytes,
+        poppinsItalicBytes,
+        poppinsBoldItalicBytes,
+      ] = await Promise.all([
+        fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsRegular).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsBold).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsItalic).then((r) => r.arrayBuffer()),
+        fetch(FONT_URLS.poppinsBoldItalic).then((r) => r.arrayBuffer()),
+      ]);
+
       const templateBytes = await templateFile.arrayBuffer();
       const zip = new JSZip();
       const today = new Date().toLocaleDateString('pt-BR');
 
       for (const enrollment of enrollments) {
         const pdfDoc = await PDFDocument.load(templateBytes);
-        const pages = pdfDoc.getPages();
-        const page1 = pages[0];
-        const { width: w1, height: h1 } = page1.getSize();
+        pdfDoc.registerFontkit(fontkit);
 
-        const drawOnPage = (
-          page: ReturnType<typeof pdfDoc.getPages>[number],
-          pdfHeight: number,
-          text: string,
-          domCoords: FieldCoords,
-          size: number,
-          maxWidth?: number,
-        ) => {
-          const xPdf = domCoords.x * scaleFactor;
-          const yPdf = pdfHeight - (domCoords.y * scaleFactor) - size;
-          const opts: Parameters<typeof page.drawText>[1] = {
-            x: xPdf,
-            y: yPdf,
-            size,
-            color: rgb(0, 0, 0),
-          };
-          if (maxWidth !== undefined) {
-            opts.maxWidth = maxWidth;
-          }
-          page.drawText(text ?? '', opts);
+        const fAlexBrush = await pdfDoc.embedFont(alexBrushBytes);
+        const fPoppins = await pdfDoc.embedFont(poppinsRegBytes);
+        const fPoppinsBold = await pdfDoc.embedFont(poppinsBoldBytes);
+        const fPoppinsItalic = await pdfDoc.embedFont(poppinsItalicBytes);
+        const fPoppinsBoldItalic = await pdfDoc.embedFont(poppinsBoldItalicBytes);
+
+        const getFontForBlock = (block: TextBlock) => {
+          if (block.font === 'alexbrush') return fAlexBrush;
+          if (block.bold && block.italic) return fPoppinsBoldItalic;
+          if (block.bold) return fPoppinsBold;
+          if (block.italic) return fPoppinsItalic;
+          return fPoppins;
         };
 
-        drawOnPage(page1, h1, enrollment.fullName ?? '', coords.nome, 14);
-        drawOnPage(page1, h1, selectedCourse.description ?? '', coords.descricao, 12, w1 * 0.7);
+        const realValues: Record<string, string> = {
+          aluno: enrollment.fullName ?? '',
+          descricao: selectedCourse.description ?? '',
+          curso: selectedCourse.title ?? '',
+          carga: selectedCourse.workload ? `${selectedCourse.workload} horas` : '',
+          ementa: selectedCourse.curriculum ?? '',
+          instrutor: selectedCourse.instructor ?? '',
+          data: today,
+          codigo: selectedCourse.authCode ?? '',
+        };
 
-        if (pages.length > 1) {
-          const page2 = pages[1];
-          const { width: w2, height: h2 } = page2.getSize();
-          drawOnPage(page2, h2, selectedCourse.curriculum ?? '', coords.ementa, 11, w2 * 0.7);
-          drawOnPage(page2, h2, selectedCourse.instructor ?? '', coords.instrutor, 12);
-          drawOnPage(page2, h2, today, coords.dataEmissao, 11);
-          drawOnPage(page2, h2, selectedCourse.authCode ?? '', coords.codAutenticacao, 10);
-        } else {
-          drawOnPage(page1, h1, selectedCourse.curriculum ?? '', coords.ementa, 11, w1 * 0.7);
-          drawOnPage(page1, h1, selectedCourse.instructor ?? '', coords.instrutor, 12);
-          drawOnPage(page1, h1, today, coords.dataEmissao, 11);
-          drawOnPage(page1, h1, selectedCourse.authCode ?? '', coords.codAutenticacao, 10);
+        const pages = pdfDoc.getPages();
+
+        for (const block of blocks) {
+          const pageIndex = block.page - 1;
+          const page = pages[pageIndex] ?? pages[0];
+          const { height: pH } = page.getSize();
+          const resolvedText = parseVariables(block.text, realValues);
+          const xPdf = block.x * scaleFactor;
+          const yPdf = pH - (block.y * scaleFactor) - block.size;
+          const embedFont = getFontForBlock(block);
+          const isLong = block.key === 'ementa' || block.key === 'descricao';
+          const drawOpts: Parameters<typeof page.drawText>[1] = {
+            x: xPdf,
+            y: yPdf,
+            size: block.size,
+            font: embedFont,
+            color: rgb(0, 0, 0),
+          };
+          if (isLong) {
+            const { width: pW } = page.getSize();
+            drawOpts.maxWidth = pW * 0.7;
+          }
+          page.drawText(resolvedText ?? '', drawOpts);
         }
 
         const pdfBytes = await pdfDoc.save();
@@ -1317,98 +1256,269 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Gerar Certificados em Lote</h2>
-        <p className="text-sm text-gray-500">Selecione um curso, faça upload do PDF template e posicione os campos arrastando-os sobre o documento.</p>
+        <p className="text-sm text-gray-500">Selecione um curso, faça upload do PDF template, configure os blocos e posicione-os arrastando no preview.</p>
       </div>
 
-      <Card className="border border-gray-200">
-        <CardContent className="pt-5 space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Curso</label>
-              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um curso" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedCourseId && (
-                <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                  <Users className="w-3 h-3" />
-                  {loadingEnrollments ? 'Carregando...' : `${enrollments.length} aluno(s) inscrito(s)`}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Template PDF</label>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10"
-                  onClick={() => templateInputRef.current?.click()}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  {templateFile ? templateFile.name : 'Selecionar PDF'}
-                </Button>
-                {templateFile && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs text-gray-400 hover:text-red-500"
-                    onClick={() => { setTemplateFile(null); setCoords(DEFAULT_COORDS); setScaleFactor(1); }}
-                  >
-                    Remover
-                  </Button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left panel: controls */}
+        <div className="space-y-4">
+          <Card className="border border-gray-200">
+            <CardContent className="pt-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Curso</label>
+                <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um curso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedCourseId && (
+                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                    <Users className="w-3 h-3" />
+                    {loadingEnrollments ? 'Carregando...' : `${enrollments.length} aluno(s) inscrito(s)`}
+                  </p>
                 )}
               </div>
-              <input
-                ref={templateInputRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) { setTemplateFile(file); setCoords(DEFAULT_COORDS); setScaleFactor(1); }
-                  if (templateInputRef.current) templateInputRef.current.value = '';
-                }}
-              />
-            </div>
-          </div>
 
-          {templateFile ? (
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-3">Editor Visual de Posicionamento</p>
-              <PdfDragEditor
-                templateFile={templateFile}
-                coords={coords}
-                onCoordsChange={setCoords}
-                scaleFactor={scaleFactor}
-                onScaleFactorChange={setScaleFactor}
-              />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Template PDF</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10"
+                    onClick={() => templateInputRef.current?.click()}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {templateFile ? templateFile.name : 'Selecionar PDF'}
+                  </Button>
+                  {templateFile && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs text-gray-400 hover:text-red-500"
+                      onClick={() => { setTemplateFile(null); setBlocks(DEFAULT_BLOCKS); setScaleFactor(1); }}
+                    >
+                      Remover
+                    </Button>
+                  )}
+                </div>
+                <input
+                  ref={templateInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) { setTemplateFile(file); setBlocks(DEFAULT_BLOCKS); setScaleFactor(1); }
+                    if (templateInputRef.current) templateInputRef.current.value = '';
+                  }}
+                />
+              </div>
+
+              <Button
+                className="bg-forest hover:bg-forest/90 text-white w-full"
+                disabled={generating || !selectedCourseId || !templateFile}
+                onClick={handleGenerate}
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                {generating ? 'Gerando...' : 'Gerar e Baixar ZIP'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Block control cards */}
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-gray-700">Blocos de Texto</p>
+            {blocks.map((block) => (
+              <Card key={block.key} className="border border-gray-200">
+                <CardContent className="pt-4 pb-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{block.label}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => updateBlock(block.key, { bold: !block.bold })}
+                        className={`p-1.5 rounded border text-xs transition-colors ${
+                          block.bold
+                            ? 'bg-gray-800 text-white border-gray-800'
+                            : 'bg-white text-gray-500 border-gray-300 hover:border-gray-500'
+                        }`}
+                        title="Negrito"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateBlock(block.key, { italic: !block.italic })}
+                        className={`p-1.5 rounded border text-xs transition-colors ${
+                          block.italic
+                            ? 'bg-gray-800 text-white border-gray-800'
+                            : 'bg-white text-gray-500 border-gray-300 hover:border-gray-500'
+                        }`}
+                        title="Itálico"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <Textarea
+                    className="text-xs min-h-[52px] resize-none"
+                    value={block.text}
+                    onChange={(e) => updateBlock(block.key, { text: e.target.value })}
+                    placeholder={`Texto para ${block.label}`}
+                  />
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-gray-500 whitespace-nowrap">Tamanho:</label>
+                      <input
+                        type="number"
+                        min={6}
+                        max={72}
+                        value={block.size}
+                        onChange={(e) => updateBlock(block.key, { size: Number(e.target.value) })}
+                        className="w-16 h-7 text-xs border border-gray-300 rounded px-2 focus:outline-none focus:ring-1 focus:ring-forest"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-gray-500 whitespace-nowrap">Fonte:</label>
+                      <select
+                        value={block.font}
+                        onChange={(e) => updateBlock(block.key, { font: e.target.value as 'poppins' | 'alexbrush' })}
+                        className="h-7 text-xs border border-gray-300 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-forest"
+                      >
+                        <option value="poppins">Poppins</option>
+                        <option value="alexbrush">Alex Brush</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-gray-500 whitespace-nowrap">Página:</label>
+                      <select
+                        value={block.page}
+                        onChange={(e) => updateBlock(block.key, { page: Number(e.target.value) as 1 | 2 })}
+                        className="h-7 text-xs border border-gray-300 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-forest"
+                      >
+                        <option value={1}>Página 1</option>
+                        <option value={2}>Página 2</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Right panel: PDF preview with drag & drop */}
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-gray-700">Preview do PDF</p>
+
+          {!templateFile ? (
+            <div className="rounded-lg border border-dashed border-gray-200 p-12 text-center text-gray-400">
+              <FileDown className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">Faça upload do PDF template para posicionar os blocos visualmente</p>
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center text-gray-400">
-              <FileDown className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-              <p className="text-sm">Faça upload do PDF template para posicionar os campos visualmente</p>
-            </div>
-          )}
+            <>
+              {loadProgress > 0 && loadProgress < 100 && (
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-400">Carregando PDF...</p>
+                  <Progress value={loadProgress} className="h-1.5" />
+                </div>
+              )}
 
-          <Button
-            className="bg-forest hover:bg-forest/90 text-white w-full md:w-auto"
-            disabled={generating || !selectedCourseId || !templateFile}
-            onClick={handleGenerate}
-          >
-            <FileDown className="w-4 h-4 mr-2" />
-            {generating ? 'Gerando...' : 'Gerar e Baixar ZIP'}
-          </Button>
-        </CardContent>
-      </Card>
+              {numPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Página:</span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(1)}
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                      currentPage === 1 ? 'bg-forest text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Página 1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(2)}
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                      currentPage === 2 ? 'bg-forest text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Página 2
+                  </button>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-400">
+                Arraste os blocos coloridos para a posição desejada. As coordenadas são capturadas automaticamente.
+              </p>
+
+              <div className="border border-gray-200 rounded-lg overflow-auto" style={{ maxHeight: '75vh' }}>
+                <div
+                  ref={containerRef}
+                  className="relative inline-block w-full"
+                  style={{ userSelect: 'none' }}
+                >
+                  <Document
+                    file={pdfUrl}
+                    onLoadSuccess={handleLoadSuccess}
+                    onLoadProgress={({ loaded, total }) => setLoadProgress(total ? Math.round((loaded / total) * 100) : 50)}
+                    loading={
+                      <div className="p-8 space-y-2">
+                        <p className="text-xs text-center text-gray-400">Carregando PDF...</p>
+                        <Progress value={loadProgress} className="h-1.5" />
+                      </div>
+                    }
+                  >
+                    <Page
+                      pageNumber={currentPage}
+                      width={containerRef.current?.clientWidth || 600}
+                      onRenderSuccess={handleRenderSuccess}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                    />
+                  </Document>
+
+                  {containerWidth > 0 && blocks.filter((b) => b.page === currentPage).map((block) => {
+                    const displayText = parseVariables(block.text, previewValues);
+                    return (
+                      <Draggable
+                        key={block.key}
+                        position={{ x: block.x, y: block.y }}
+                        bounds="parent"
+                        onStop={(e, data) => handleDragStop(block.key, e, data)}
+                      >
+                        <div
+                          className="absolute select-none px-2 py-1 rounded border border-dashed bg-white/70 backdrop-blur-sm text-gray-800 hover:bg-white/90 hover:border-gray-600 transition-colors"
+                          style={{
+                            zIndex: 10,
+                            cursor: 'grab',
+                            fontSize: `${Math.max(8, block.size / scaleFactor)}px`,
+                            fontWeight: block.bold ? 700 : 400,
+                            fontStyle: block.italic ? 'italic' : 'normal',
+                            fontFamily: block.font === 'alexbrush' ? '"Alex Brush", cursive' : 'Poppins, sans-serif',
+                            borderColor: 'rgba(100,100,200,0.5)',
+                          }}
+                          title={`${block.label} — X: ${Math.round(block.x)}, Y: ${Math.round(block.y)}`}
+                        >
+                          {displayText || block.label}
+                        </div>
+                      </Draggable>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
