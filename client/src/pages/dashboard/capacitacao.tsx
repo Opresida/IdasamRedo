@@ -1216,7 +1216,6 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
             setBlocks([savedBlock]);
           }
         }
-        if (config.scaleFactor) setScaleFactor(config.scaleFactor);
       } catch {
         setTemplateFile(null);
         setBlocks(DEFAULT_BLOCKS);
@@ -1247,7 +1246,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     if (containerRef.current) {
       const renderedWidth = containerRef.current.getBoundingClientRect().width;
       setContainerWidth(renderedWidth);
-      const pdfWidthPts = page.view[2];
+      const pdfWidthPts = page.getViewport({ scale: 1 }).width;
       setScaleFactor(pdfWidthPts / renderedWidth);
     }
   }, []);
