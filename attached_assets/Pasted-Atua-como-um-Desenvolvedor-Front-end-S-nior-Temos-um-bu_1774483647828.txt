@@ -1,0 +1,89 @@
+Atua como um Desenvolvedor Front-end Sénior.
+Temos um bug crítico no componente GerarPdfsTab do ficheiro client/src/pages/dashboard/capacitacao.tsx.
+
+SINTOMAS:
+
+Ao clicar em "Salvar Config", as configurações de blocos (texto, posições X/Y arrastadas) não estão a ser retidas para as gerações subsequentes.
+
+Ao gerar a prévia ou baixar o ZIP, os PDFs saem em branco (as variáveis não aparecem). O texto está a ser desenhado fora dos limites visíveis do PDF (coordenadas incorretas ou NaN).
+
+CHECKLIST DE VERIFICAÇÃO OBRIGATÓRIA (O QUE DEVES GARANTIR):
+
+[ ] O pdfWrapperRef está anexado EXATAMENTE à <div> que envolve a <Page> do react-pdf, e essa div tem as mesmas dimensões visuais da página renderizada.
+
+[ ] O estado blocks está a guardar números reais e válidos para x e y.
+
+[ ] A função page.drawText() está a receber coordenadas dentro dos limites (ex: 0 a 842).
+
+PASSO A PASSO PARA CORREÇÃO RÍGOROSA:
+
+1. Implementar Persistência Real ("Salvar Config"):
+O botão <Button>Salvar Config</Button> deve persistir o estado blocks associado ao selectedCourseId no localStorage.
+
+Cria a função handleSaveConfig: localStorage.setItem(\cert_config_${selectedCourseId}`, JSON.stringify(blocks))` e exibe um Toast de sucesso.
+
+Adiciona um useEffect que observa a mudança do selectedCourseId: se houver um curso selecionado, tenta buscar a configuração guardada com localStorage.getItem(). Se existir, faz setBlocks(JSON.parse(saved)). Caso contrário, carrega o estado blocks predefinido/default.
+
+2. Corrigir a Matemática de Escala e Inversão de Eixo (Crucial para o pdf-lib):
+O texto está invisível porque o plano cartesiano do DOM é (0,0) no Top-Left, mas no PDF-LIB é (0,0) no Bottom-Left. Se a referência falhar, a escala vira NaN.
+Dentro do handleGenerate (no loop onde faz o drawText), APLIQUE ESTA LÓGICA EXATA (COM PROTEÇÕES) PARA CADA BLOCO:
+
+// Passo A: Obter dimensões REAIS da página do PDF
+const { width: pdfWidth, height: pdfHeight } = page.getSize();
+
+// Passo B: Obter as dimensões do container do DOM onde o react-pdf está a ser exibido.
+const domWidth = pdfWrapperRef.current?.clientWidth || 800; // Fallback seguro para evitar divisão por 0
+const domHeight = pdfWrapperRef.current?.clientHeight || 600; // Fallback seguro
+
+// Passo C: Calcular o fator de escala de conversão (Tela -> PDF Real)
+const scaleX = pdfWidth / domWidth;
+const scaleY = pdfHeight / domHeight;
+
+// Passo D: Para CADA bloco de texto a desenhar, aplica a conversão:
+// Garante que os valores não são NaN, assumindo 0 como fallback
+const safeX = isNaN(block.x) ? 0 : block.x;
+const safeY = isNaN(block.y) ? 0 : block.y;
+const safeSize = isNaN(block.size) ? 12 : block.size;
+
+const finalSize = safeSize * scaleY; // Ajusta o tamanho da fonte proporcionalmente
+const finalX = safeX * scaleX;
+// INVERSÃO DO EIXO Y: A altura real do PDF menos a posição Y escalada, menos o tamanho da fonte
+const finalY = pdfHeight - (safeY * scaleY) - finalSize; 
+
+// DIAGNÓSTICO (Obrigatório manter este console.log para debug):
+console.log(`[DEBUG PDF] Desenhando bloco:`, {
+  texto: textoProcessado,
+  domX: safeX, domY: safeY,
+  finalX, finalY, finalSize,
+  pdfWidth, pdfHeight, domWidth, domHeight
+});
+
+// Desenha no PDF com as coordenadas convertidas
+page.drawText(textoProcessado, {
+  x: finalX,
+  y: finalY,
+  size: finalSize,
+  font: fontSelecionada,
+  color: rgb(0,0,0),
+  maxWidth: 800 // Previne vazamento horizontal severo
+});
+
+
+3. Substituição Correta das Variáveis (Parser):
+Certifica-te de que antes do page.drawText(), o texto passe por uma substituição garantida usando Regex simples, validando se as variáveis existem:
+
+let textoProcessado = block.text;
+textoProcessado = textoProcessado.replace(/{aluno}/gi, student?.fullName || 'Nome Indisponível');
+textoProcessado = textoProcessado.replace(/{curso}/gi, course?.title || 'Curso Indisponível');
+textoProcessado = textoProcessado.replace(/{carga}/gi, course?.workload?.toString() || '--');
+textoProcessado = textoProcessado.replace(/{data}/gi, dataEmissao);
+// Adiciona outras variáveis se necessário
+
+
+INSTRUÇÕES FINAIS AO AGENTE:
+
+Modifica o GerarPdfsTab para garantir que a div com ref={pdfWrapperRef} encapsule DIRETAMENTE o elemento <Page> do react-pdf (isso garante que as proporções estejam idênticas).
+
+Atualiza o evento de arrastar (Drag onStop) para gravar x e y puramente relativos a esse pdfWrapperRef principal (não use o evento da janela inteira).
+
+Mantenha o console.log instruído acima; ele é vital para resolver o problema caso o texto continue oculto.
