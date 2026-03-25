@@ -5,11 +5,6 @@ import type { PDFPageProxy } from 'pdfjs-dist';
 import Draggable from 'react-draggable';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -54,6 +49,8 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import type { Course, Enrollment, CourseNotificationSubscription } from '@shared/schema';
 import { COURSE_STATUSES } from '@shared/schema';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 class HttpError extends Error {
   status: number;
