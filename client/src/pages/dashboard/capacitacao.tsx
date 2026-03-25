@@ -1,5 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Document, Page, pdfjs } from 'react-pdf';
+import type { PDFPageProxy } from 'pdfjs-dist';
+import Draggable from 'react-draggable';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -1051,31 +1061,152 @@ const COORD_LABELS: Record<keyof CertCoords, string> = {
   codAutenticacao: 'Código de Autenticação',
 };
 
-function CoordInput({ label, value, onChange }: {
-  label: string;
-  value: FieldCoords;
-  onChange: (v: FieldCoords) => void;
-}) {
+const PAGE1_FIELDS: Array<keyof CertCoords> = ['nome', 'descricao'];
+const PAGE2_FIELDS: Array<keyof CertCoords> = ['ementa', 'instrutor', 'dataEmissao', 'codAutenticacao'];
+
+const FIELD_COLORS: Record<keyof CertCoords, string> = {
+  nome: 'bg-blue-500/20 border-blue-500 text-blue-800',
+  descricao: 'bg-purple-500/20 border-purple-500 text-purple-800',
+  ementa: 'bg-green-500/20 border-green-500 text-green-800',
+  instrutor: 'bg-orange-500/20 border-orange-500 text-orange-800',
+  dataEmissao: 'bg-pink-500/20 border-pink-500 text-pink-800',
+  codAutenticacao: 'bg-yellow-500/20 border-yellow-500 text-yellow-800',
+};
+
+interface PdfDragEditorProps {
+  templateFile: File;
+  coords: CertCoords;
+  onCoordsChange: (coords: CertCoords) => void;
+  scaleFactor: number;
+  onScaleFactorChange: (sf: number) => void;
+}
+
+function PdfDragEditor({ templateFile, coords, onCoordsChange, onScaleFactorChange }: PdfDragEditorProps) {
+  const [currentPage, setCurrentPage] = useState<1 | 2>(1);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [numPages, setNumPages] = useState<number>(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const url = URL.createObjectURL(templateFile);
+    setPdfUrl(url);
+    setCurrentPage(1);
+    return () => URL.revokeObjectURL(url);
+  }, [templateFile]);
+
+  const handleLoadSuccess = useCallback(({ numPages: n }: { numPages: number }) => {
+    setNumPages(n);
+    if (currentPage > n) setCurrentPage(1);
+  }, [currentPage]);
+
+  const handleRenderSuccess = useCallback((page: PDFPageProxy) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const renderedWidth = rect.width;
+      setContainerWidth(renderedWidth);
+      const pdfWidthPts = page.view[2];
+      const sf = pdfWidthPts / renderedWidth;
+      onScaleFactorChange(sf);
+    }
+  }, [onScaleFactorChange]);
+
+  const handleDragStop = (field: keyof CertCoords, _e: unknown, data: { x: number; y: number }) => {
+    onCoordsChange({ ...coords, [field]: { x: data.x, y: data.y } });
+  };
+
+  const activeFields = currentPage === 1 ? PAGE1_FIELDS : PAGE2_FIELDS;
+  const hasMultiplePages = numPages > 1;
+
+  if (!pdfUrl) return null;
+
   return (
-    <div className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
-      <span className="text-sm text-gray-700 w-44 shrink-0">{label}</span>
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs text-gray-400">X</span>
-        <Input
-          type="number"
-          className="w-20 h-8 text-xs"
-          value={value.x}
-          onChange={(e) => onChange({ ...value, x: Number(e.target.value) })}
-        />
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-gray-700">Página:</span>
+        <button
+          type="button"
+          onClick={() => setCurrentPage(1)}
+          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+            currentPage === 1
+              ? 'bg-forest text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Frente (Página 1)
+        </button>
+        {hasMultiplePages && (
+          <button
+            type="button"
+            onClick={() => setCurrentPage(2)}
+            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+              currentPage === 2
+                ? 'bg-forest text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Verso (Página 2)
+          </button>
+        )}
       </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs text-gray-400">Y</span>
-        <Input
-          type="number"
-          className="w-20 h-8 text-xs"
-          value={value.y}
-          onChange={(e) => onChange({ ...value, y: Number(e.target.value) })}
-        />
+
+      <p className="text-xs text-gray-400">
+        Arraste os campos coloridos para a posição desejada no PDF. As coordenadas são capturadas automaticamente.
+      </p>
+
+      <div className="border border-gray-200 rounded-lg overflow-auto" style={{ maxHeight: '70vh' }}>
+        <div
+          ref={containerRef}
+          className="relative inline-block"
+          style={{ userSelect: 'none' }}
+        >
+          <Document
+            file={pdfUrl}
+            onLoadSuccess={handleLoadSuccess}
+            loading={
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" />
+              </div>
+            }
+          >
+            <Page
+              pageNumber={currentPage}
+              width={containerRef.current?.parentElement?.clientWidth ? Math.min(containerRef.current.parentElement.clientWidth - 2, 900) : 800}
+              onRenderSuccess={handleRenderSuccess}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+            />
+          </Document>
+
+          {containerWidth > 0 && activeFields.map((field) => {
+            const pos = coords[field];
+            return (
+              <Draggable
+                key={field}
+                position={{ x: pos.x, y: pos.y }}
+                bounds="parent"
+                onStop={(e, data) => handleDragStop(field, e, data)}
+              >
+                <div
+                  className={`absolute cursor-grab active:cursor-grabbing px-2 py-1 rounded border border-dashed text-xs font-semibold select-none ${FIELD_COLORS[field]}`}
+                  style={{ zIndex: 10 }}
+                  title={`${COORD_LABELS[field]} — X: ${Math.round(pos.x)}, Y: ${Math.round(pos.y)}`}
+                >
+                  {COORD_LABELS[field]}
+                </div>
+              </Draggable>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {activeFields.map((field) => (
+          <div key={field} className={`flex items-center gap-1 px-2 py-0.5 rounded border border-dashed text-xs ${FIELD_COLORS[field]}`}>
+            <span className="font-medium">{COORD_LABELS[field]}</span>
+            <span className="text-gray-500">X:{Math.round(coords[field].x)} Y:{Math.round(coords[field].y)}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1086,6 +1217,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [coords, setCoords] = useState<CertCoords>(DEFAULT_COORDS);
+  const [scaleFactor, setScaleFactor] = useState<number>(1);
   const [generating, setGenerating] = useState(false);
   const templateInputRef = useRef<HTMLInputElement>(null);
 
@@ -1096,10 +1228,6 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     queryFn: () => fetchEnrollmentsWithCerts(selectedCourseId, adminToken),
     enabled: !!selectedCourseId && !!adminToken,
   });
-
-  const updateCoord = (field: keyof CertCoords) => (v: FieldCoords) => {
-    setCoords((prev) => ({ ...prev, [field]: v }));
-  };
 
   const handleGenerate = async () => {
     if (!selectedCourse) {
@@ -1124,24 +1252,47 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       for (const enrollment of enrollments) {
         const pdfDoc = await PDFDocument.load(templateBytes);
         const pages = pdfDoc.getPages();
-        const page = pages[0];
-        const { height } = page.getSize();
+        const page1 = pages[0];
+        const { width: w1, height: h1 } = page1.getSize();
 
-        const drawText = (text: string, field: FieldCoords, size = 12) => {
-          page.drawText(text, {
-            x: field.x,
-            y: height - field.y,
+        const drawOnPage = (
+          page: ReturnType<typeof pdfDoc.getPages>[number],
+          pdfHeight: number,
+          text: string,
+          domCoords: FieldCoords,
+          size: number,
+          maxWidth?: number,
+        ) => {
+          const xPdf = domCoords.x * scaleFactor;
+          const yPdf = pdfHeight - (domCoords.y * scaleFactor) - size;
+          const opts: Parameters<typeof page.drawText>[1] = {
+            x: xPdf,
+            y: yPdf,
             size,
             color: rgb(0, 0, 0),
-          });
+          };
+          if (maxWidth !== undefined) {
+            opts.maxWidth = maxWidth;
+          }
+          page.drawText(text ?? '', opts);
         };
 
-        drawText(enrollment.fullName ?? '', coords.nome, 14);
-        drawText(selectedCourse.description ?? '', coords.descricao, 12);
-        drawText(selectedCourse.curriculum ?? '', coords.ementa, 11);
-        drawText(selectedCourse.instructor ?? '', coords.instrutor, 12);
-        drawText(today, coords.dataEmissao, 11);
-        drawText(selectedCourse.authCode ?? '', coords.codAutenticacao, 10);
+        drawOnPage(page1, h1, enrollment.fullName ?? '', coords.nome, 14);
+        drawOnPage(page1, h1, selectedCourse.description ?? '', coords.descricao, 12, w1 * 0.7);
+
+        if (pages.length > 1) {
+          const page2 = pages[1];
+          const { width: w2, height: h2 } = page2.getSize();
+          drawOnPage(page2, h2, selectedCourse.curriculum ?? '', coords.ementa, 11, w2 * 0.7);
+          drawOnPage(page2, h2, selectedCourse.instructor ?? '', coords.instrutor, 12);
+          drawOnPage(page2, h2, today, coords.dataEmissao, 11);
+          drawOnPage(page2, h2, selectedCourse.authCode ?? '', coords.codAutenticacao, 10);
+        } else {
+          drawOnPage(page1, h1, selectedCourse.curriculum ?? '', coords.ementa, 11, w1 * 0.7);
+          drawOnPage(page1, h1, selectedCourse.instructor ?? '', coords.instrutor, 12);
+          drawOnPage(page1, h1, today, coords.dataEmissao, 11);
+          drawOnPage(page1, h1, selectedCourse.authCode ?? '', coords.codAutenticacao, 10);
+        }
 
         const pdfBytes = await pdfDoc.save();
         const safeName = (enrollment.fullName ?? `aluno-${enrollment.id}`)
@@ -1166,7 +1317,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Gerar Certificados em Lote</h2>
-        <p className="text-sm text-gray-500">Selecione um curso, faça upload do template PDF e ajuste as coordenadas dos campos antes de gerar o ZIP.</p>
+        <p className="text-sm text-gray-500">Selecione um curso, faça upload do PDF template e posicione os campos arrastando-os sobre o documento.</p>
       </div>
 
       <Card className="border border-gray-200">
@@ -1210,7 +1361,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                     variant="ghost"
                     size="sm"
                     className="h-8 text-xs text-gray-400 hover:text-red-500"
-                    onClick={() => setTemplateFile(null)}
+                    onClick={() => { setTemplateFile(null); setCoords(DEFAULT_COORDS); setScaleFactor(1); }}
                   >
                     Remover
                   </Button>
@@ -1223,27 +1374,30 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) setTemplateFile(file);
+                  if (file) { setTemplateFile(file); setCoords(DEFAULT_COORDS); setScaleFactor(1); }
                   if (templateInputRef.current) templateInputRef.current.value = '';
                 }}
               />
             </div>
           </div>
 
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Coordenadas dos Campos (px)</p>
-            <p className="text-xs text-gray-400 mb-3">O eixo Y é contado a partir do topo da página.</p>
-            <div className="rounded-lg border border-gray-100 px-3 divide-y divide-gray-100">
-              {(Object.keys(COORD_LABELS) as Array<keyof CertCoords>).map((field) => (
-                <CoordInput
-                  key={field}
-                  label={COORD_LABELS[field]}
-                  value={coords[field]}
-                  onChange={updateCoord(field)}
-                />
-              ))}
+          {templateFile ? (
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-3">Editor Visual de Posicionamento</p>
+              <PdfDragEditor
+                templateFile={templateFile}
+                coords={coords}
+                onCoordsChange={setCoords}
+                scaleFactor={scaleFactor}
+                onScaleFactorChange={setScaleFactor}
+              />
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center text-gray-400">
+              <FileDown className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">Faça upload do PDF template para posicionar os campos visualmente</p>
+            </div>
+          )}
 
           <Button
             className="bg-forest hover:bg-forest/90 text-white w-full md:w-auto"
@@ -1251,7 +1405,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
             onClick={handleGenerate}
           >
             <FileDown className="w-4 h-4 mr-2" />
-            {generating ? 'Gerando...' : 'Gerar e Baixar Certificados (ZIP)'}
+            {generating ? 'Gerando...' : 'Gerar e Baixar ZIP'}
           </Button>
         </CardContent>
       </Card>
