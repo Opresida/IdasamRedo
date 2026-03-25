@@ -169,7 +169,6 @@ const FONT_URLS = {
 async function generateCertificatePdf(
   templateBytes: ArrayBuffer,
   block: TextBlock,
-  scaleFactor: number,
   studentName: string,
   alexBrushBytes: ArrayBuffer,
   poppinsBytes: ArrayBuffer,
@@ -185,8 +184,8 @@ async function generateCertificatePdf(
   const page = pages[pageIndex] ?? pages[0];
   const { height: pH } = page.getSize();
   const resolvedText = parseVariables(block.text, realValues);
-  const xPdf = block.x * scaleFactor;
-  const yPdf = pH - (block.y * scaleFactor) - block.size;
+  const xPdf = block.x;
+  const yPdf = pH - block.y - block.size;
   page.drawText(resolvedText ?? '', {
     x: xPdf,
     y: yPdf,
@@ -498,8 +497,11 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
     setDispatchProgress({ done: 0, total: courseEnrollments.length });
     try {
       const config = JSON.parse(course.certBlockConfig!);
-      const block: TextBlock = config.block;
       const sf: number = config.scaleFactor ?? 1;
+      const rawBlock: TextBlock = config.block;
+      const block: TextBlock = (!config.version || config.version < 2)
+        ? { ...rawBlock, x: rawBlock.x * sf, y: rawBlock.y * sf }
+        : rawBlock;
       const templateBytes = Uint8Array.from(atob(course.certTemplate!), (c) => c.charCodeAt(0)).buffer;
       const [alexBrushBytes, poppinsBytes] = await Promise.all([
         fetch(FONT_URLS.alexbrushRegular).then((r) => r.arrayBuffer()),
@@ -510,7 +512,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       for (const enrollment of courseEnrollments) {
         try {
           const pdfBytes = await generateCertificatePdf(
-            templateBytes, block, sf, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
+            templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
           );
           const base64 = btoa(
             new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -1205,7 +1207,15 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         const file = new File([blob], 'template.pdf', { type: 'application/pdf' });
         setTemplateFile(file);
         const config = JSON.parse(selectedCourse.certBlockConfig);
-        if (config.block) setBlocks([config.block]);
+        if (config.block) {
+          const savedBlock = config.block;
+          if (!config.version || config.version < 2) {
+            const savedScaleFactor = config.scaleFactor ?? 1;
+            setBlocks([{ ...savedBlock, x: savedBlock.x * savedScaleFactor, y: savedBlock.y * savedScaleFactor }]);
+          } else {
+            setBlocks([savedBlock]);
+          }
+        }
         if (config.scaleFactor) setScaleFactor(config.scaleFactor);
       } catch {
         setTemplateFile(null);
@@ -1243,8 +1253,8 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   }, []);
 
   const handleDragStop = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
-    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: data.x, y: data.y } : b));
-  }, []);
+    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: data.x * scaleFactor, y: data.y * scaleFactor } : b));
+  }, [scaleFactor]);
 
   const updateBlock = useCallback((key: BlockKey, patch: Partial<TextBlock>) => {
     setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, ...patch } : b));
@@ -1265,7 +1275,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       const base64Template = btoa(
         new Uint8Array(templateBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
       );
-      const blockConfig = JSON.stringify({ block: blocks[0], scaleFactor });
+      const blockConfig = JSON.stringify({ block: blocks[0], scaleFactor, version: 2 });
       const res = await fetch(`/api/courses/${selectedCourse.id}/cert-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
@@ -1308,7 +1318,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       for (const enrollment of enrollments) {
         const block = blocks[0];
         const pdfBytes = await generateCertificatePdf(
-          templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
+          templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
         );
         const safeName = (enrollment.fullName ?? `aluno-${enrollment.id}`)
           .replace(/[^a-z0-9]/gi, '_')
@@ -1341,7 +1351,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       const templateBytes = await templateFile.arrayBuffer();
       const block = blocks[0];
       const pdfBytes = await generateCertificatePdf(
-        templateBytes, block, scaleFactor, 'Nome do Aluno', alexBrushBytes, poppinsBytes
+        templateBytes, block, 'Nome do Aluno', alexBrushBytes, poppinsBytes
       );
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       saveAs(blob, 'previa-certificado.pdf');
@@ -1379,7 +1389,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         try {
           const block = blocks[0];
           const pdfBytes = await generateCertificatePdf(
-            templateBytes, block, scaleFactor, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
+            templateBytes, block, enrollment.fullName ?? '', alexBrushBytes, poppinsBytes
           );
           const base64 = btoa(
             new Uint8Array(pdfBytes).reduce((data, byte) => data + String.fromCharCode(byte), '')
@@ -1652,7 +1662,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                     return (
                       <Draggable
                         key={block.key}
-                        position={{ x: block.x, y: block.y }}
+                        position={{ x: block.x / scaleFactor, y: block.y / scaleFactor }}
                         bounds="parent"
                         onStop={(e, data) => handleDragStop(block.key, e, data)}
                       >
