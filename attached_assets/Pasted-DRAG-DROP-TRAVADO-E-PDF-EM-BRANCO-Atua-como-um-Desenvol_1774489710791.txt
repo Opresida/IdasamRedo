@@ -1,0 +1,110 @@
+DRAG & DROP TRAVADO E PDF EM BRANCO
+
+Atua como um Desenvolvedor Front-end Sénior especialista em React 18.
+Temos dois bugs críticos no componente GerarPdfsTab do ficheiro client/src/pages/dashboard/capacitacao.tsx que precisam de resolução imediata.
+
+OS BUGS:
+
+Os blocos de texto estão "congelados" e não arrastam. O react-draggable não está a conseguir mover as divs livremente pela tela.
+
+O PDF gerado sai em branco. O texto está a ser carimbado fora das dimensões visíveis da página real.
+
+PASSO A PASSO DA CORREÇÃO OBRIGATÓRIA:
+
+1. RESOLVER O TRAVAMENTO DO DRAG & DROP (react-draggable no React 18)
+
+A biblioteca react-draggable exige o uso da prop nodeRef no Strict Mode do React 18, caso contrário, o arrastar falha e lança erros de findDOMNode.
+
+Passo 1A: Cria um mapa de referências para os blocos usando useRef.
+
+// Cria um ref dinâmico para cada bloco
+const nodeRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
+
+// Função auxiliar para obter a ref de cada bloco
+const getNodeRef = (key: string) => {
+  if (!nodeRefs.current[key]) {
+    nodeRefs.current[key] = React.createRef();
+  }
+  return nodeRefs.current[key];
+};
+
+
+Passo 1B: Aplica o nodeRef no Draggable e a ref na <div> filha:
+
+{Object.entries(blocks).map(([key, block]) => {
+  const nodeRef = getNodeRef(key);
+  return (
+    <Draggable
+      key={key}
+      nodeRef={nodeRef} // OBRIGATÓRIO PARA NÃO TRAVAR
+      position={{ x: block.x, y: block.y }}
+      onStop={(e, data) => handleDragStop(key, data.x, data.y)}
+      bounds="parent" // Garante que não sai da área do PDF
+    >
+      <div 
+        ref={nodeRef} // OBRIGATÓRIO, TEM DE SER A MESMA REF
+        className="absolute cursor-grab active:cursor-grabbing ..."
+        style={{ /* estilos... */ }}
+      >
+        {textoMapeado}
+      </div>
+    </Draggable>
+  );
+})}
+
+
+Passo 1C: A <div> que envolve a imagem/documento do PDF (o contêiner pai) TEM ABSOLUTAMENTE DE TER a class relative (position: relative) do Tailwind, e dimensões exatas.
+
+Passo 1D: Atualiza o estado APENAS no evento onStop do Draggable. Não uses onDrag para atualizar estado, pois causa re-renders e solta o clique do rato.
+
+2. RESOLVER A GERAÇÃO DO PDF EM BRANCO (MATEMÁTICA DE ESCALA)
+
+O texto sai em branco pois a coordenada (0,0) do DOM é no topo (Top-Left), e no pdf-lib é no fundo (Bottom-Left).
+Na tua função handleGenerate, tens de extrair as dimensões DOM reais onde o utilizador arrastou o item.
+
+Passo 2A: Coloca uma ref na <div> pai do react-pdf.
+
+const pdfWrapperRef = useRef<HTMLDivElement>(null);
+
+
+Passo 2B: Usa esta matemática EXATA no loop que desenha cada block:
+
+// Dimensões REAIS do PDF internamente (ex: 842 x 595)
+const { width: pdfWidth, height: pdfHeight } = page.getSize();
+
+// Dimensões do elemento VISUAL onde o utilizador arrastou (DOM)
+const domWidth = pdfWrapperRef.current?.clientWidth || 800;
+const domHeight = pdfWrapperRef.current?.clientHeight || 600;
+
+// Fator de proporção (Tela visual vs Tamanho Real do PDF)
+const scaleX = pdfWidth / domWidth;
+const scaleY = pdfHeight / domHeight;
+
+// Valores seguros
+const safeX = isNaN(block.x) ? 0 : block.x;
+const safeY = isNaN(block.y) ? 0 : block.y;
+const safeSize = isNaN(block.size) ? 12 : block.size;
+
+// Conversão X e Y
+const finalSize = safeSize * scaleY;
+const finalX = safeX * scaleX;
+// Y DO PDF-LIB É DE BAIXO PARA CIMA! Precisamos inverter o Y do DOM.
+const finalY = pdfHeight - (safeY * scaleY) - finalSize;
+
+// DIAGNÓSTICO (Obrigatório manter)
+console.log(`Desenhando [${key}]: Tela(${safeX}, ${safeY}) -> PDF(${finalX}, ${finalY})`);
+
+page.drawText(textoProcessado, {
+  x: finalX,
+  y: finalY,
+  size: finalSize,
+  font: fontSelecionada,
+  color: rgb(0,0,0)
+});
+
+
+INSTRUÇÕES FINAIS:
+
+Implementa todas as lógicas referidas acima sem alterar a interface das abas "Cursos" ou "Notificações".
+
+O teu objetivo principal é fazer os blocos arrastarem de forma suave (usando nodeRef) e garantir que a conversão matemática imprima o texto dentro da página A4 do PDF.
