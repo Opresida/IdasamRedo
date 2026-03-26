@@ -1244,7 +1244,10 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
         if (width > 0 && height > 0) {
-          setDomContainerSize({ width, height });
+          setDomContainerSize((prev) => {
+            if (prev && Math.round(prev.width) === Math.round(width) && Math.round(prev.height) === Math.round(height)) return prev;
+            return { width, height };
+          });
         }
       }
     });
