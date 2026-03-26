@@ -227,13 +227,15 @@ async function generateCertificatePdf(
   if (wrappedLines.length === 0) wrappedLines.push(textToDraw);
 
   const clampedFinalY = Math.max(0, Math.min(finalY, pdfHeight - safeDrawSize));
+  const lineWidths = wrappedLines.map((line) => embedFont.widthOfTextAtSize(line, safeDrawSize));
+  const actualBoxWidth = Math.max(...lineWidths, 0);
   wrappedLines.forEach((line, index) => {
-    const lineWidth = embedFont.widthOfTextAtSize(line, safeDrawSize);
+    const lineWidth = lineWidths[index];
     let lineX: number;
     if (align === 'center') {
-      lineX = finalX + (maxWidth - lineWidth) / 2;
+      lineX = finalX + (actualBoxWidth - lineWidth) / 2;
     } else if (align === 'right') {
-      lineX = finalX + (maxWidth - lineWidth);
+      lineX = finalX + (actualBoxWidth - lineWidth);
     } else {
       lineX = finalX;
     }
