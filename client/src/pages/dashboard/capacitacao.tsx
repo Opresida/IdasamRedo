@@ -1339,12 +1339,18 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                 const tempPages = pdfDocTemp.getPages();
                 const tempPage = tempPages[(savedBlock.page ?? 1) - 1] ?? tempPages[0];
                 const { width: tW, height: tH } = tempPage.getSize();
-                setBlocks([{
-                  ...savedBlock,
-                  pctX: tW > 0 ? Math.max(0, Math.min(1, absX / tW)) : 0.5,
-                  pctY: tH > 0 ? Math.max(0, Math.min(1, absY / tH)) : 0.5,
-                  baseSize: legacySize,
-                } as TextBlock]);
+                const migratedPctX = tW > 0 ? absX / tW : 0.5;
+                const migratedPctY = tH > 0 ? absY / tH : 0.5;
+                if (migratedPctX < 0 || migratedPctX > 1 || migratedPctY < 0 || migratedPctY > 1 || !isFinite(migratedPctX) || !isFinite(migratedPctY)) {
+                  setBlocks(DEFAULT_BLOCKS);
+                } else {
+                  setBlocks([{
+                    ...savedBlock,
+                    pctX: migratedPctX,
+                    pctY: migratedPctY,
+                    baseSize: legacySize,
+                  } as TextBlock]);
+                }
               } catch {
                 setBlocks(DEFAULT_BLOCKS);
               }
@@ -1381,13 +1387,6 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   const handlePageLoadSuccess = useCallback((page: PDFPageProxy) => {
     const viewport = page.getViewport({ scale: 1 });
     setPdfOriginalSize({ width: viewport.width, height: viewport.height });
-    const wrapper = pdfWrapperRef.current;
-    if (wrapper) {
-      const rect = wrapper.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        setDomContainerSize({ width: rect.width, height: rect.height });
-      }
-    }
   }, []);
 
   const handleDragStop = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
@@ -1803,7 +1802,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                   >
                     <Page
                       pageNumber={currentPage}
-                      width={pdfWrapperRef.current?.clientWidth || 600}
+                      width={domContainerSize?.width || pdfWrapperRef.current?.clientWidth || 600}
                       onLoadSuccess={handlePageLoadSuccess}
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
@@ -1825,7 +1824,6 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                         key={block.key}
                         nodeRef={nodeRef}
                         position={{ x: visualX, y: visualY }}
-                        bounds="parent"
                         onStop={(e, data) => handleDragStop(block.key, e, data)}
                       >
                         <div
