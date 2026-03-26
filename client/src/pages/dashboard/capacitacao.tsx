@@ -1399,7 +1399,14 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     setPdfOriginalSize({ width: viewport.width, height: viewport.height });
   }, []);
 
+  const [liveDragPos, setLiveDragPos] = useState<{ key: BlockKey; x: number; y: number } | null>(null);
+
+  const handleDrag = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
+    setLiveDragPos({ key, x: data.x, y: data.y });
+  }, []);
+
   const handleDragStop = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
+    setLiveDragPos(null);
     setBlocks((prev) => prev.map((b) => {
       if (b.key !== key) return b;
       const domW = domContainerSize?.width ?? 1;
@@ -1825,8 +1832,9 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                     const pdfW = pdfOriginalSize.width;
                     const pdfH = pdfOriginalSize.height;
                     const visualFontSize = Math.max(8, block.baseSize * (domW / pdfW));
-                    const visualX = block.pctX * domW;
-                    const visualY = block.pctY * domH;
+                    const isBeingDragged = liveDragPos?.key === block.key;
+                    const visualX = isBeingDragged ? liveDragPos!.x : block.pctX * domW;
+                    const visualY = isBeingDragged ? liveDragPos!.y : block.pctY * domH;
                     const displayText = parseVariables(block.text, previewValues);
                     const nodeRef = getNodeRef(block.key);
                     return (
@@ -1835,6 +1843,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                         nodeRef={nodeRef}
                         bounds="parent"
                         position={{ x: visualX, y: visualY }}
+                        onDrag={(e, data) => handleDrag(block.key, e, data)}
                         onStop={(e, data) => handleDragStop(block.key, e, data)}
                       >
                         <div
