@@ -1,0 +1,44 @@
+### PROMPT DE CORREÇÃO: ALINHAMENTO DESLOCADO NO PDF (TEXTO MUITO À DIREITA)
+
+**Atua como um Desenvolvedor Front-end Sénior.**
+O novo recurso de alinhamento funciona perfeitamente na interface (DOM), mas quando o PDF é gerado, os textos com alinhamento `center` ou `right` são empurrados excessivamente para a direita, saindo da posição configurada na pré-visualização.
+
+**A CAUSA RAIZ:**
+Na função `generateCertificatePdf`, a matemática do eixo X para `center` e `right` está a usar a variável global `maxWidth` (que representa o limite máximo da página) como referência de largura da caixa. No entanto, no DOM, a `div` nativa (`NativeDraggableBlock`) assume o tamanho exato do texto (shrink-wrapped). Isso gera um desalinhamento massivo entre a tela e a "impressão".
+
+**A SOLUÇÃO (MATEMÁTICA CORRIGIDA):**
+O alinhamento no PDF deve ser calculado com base na linha mais larga do próprio texto, criando uma "bounding box" virtual exata.
+
+No arquivo `client/src/pages/dashboard/capacitacao.tsx`, dentro da função `generateCertificatePdf` (onde iteras sobre as linhas geradas pelo Word-Wrap para desenhar), SUBSTITUI a lógica de desenho de X por isto:
+
+```javascript
+// 1. Presumo que já tens a variável 'lines' (o array de linhas do texto)
+// 2. Calcula a largura exata de CADA linha
+const lineWidths = lines.map(line => embedFont.widthOfTextAtSize(line, safeSize));
+
+// 3. A LARGURA REAL da caixa de texto (bounding box) é a linha mais longa!
+const actualBoxWidth = Math.max(...lineWidths);
+
+// 4. Desenha as linhas com base nesta largura real
+lines.forEach((line, index) => {
+  const lineWidth = lineWidths[index];
+  
+  // Padrão (Left) - Começa exatamente na coordenada finalX arrastada
+  let lineX = finalX; 
+
+  if (block.align === 'center') {
+    lineX = finalX + (actualBoxWidth - lineWidth) / 2;
+  } else if (block.align === 'right') {
+    lineX = finalX + (actualBoxWidth - lineWidth);
+  }
+
+  const lineY = finalY - (index * safeSize * 1.2);
+
+  page.drawText(line, {
+    x: Math.max(0, Math.min(lineX, pdfWidth - 10)),
+    y: Math.max(0, Math.min(lineY, pdfHeight - safeSize)),
+    size: Math.max(6, safeSize),
+    font: embedFont,
+    color: rgb(0, 0, 0),
+  });
+});
