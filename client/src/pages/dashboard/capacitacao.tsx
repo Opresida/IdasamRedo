@@ -39,6 +39,7 @@ import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell, Eye,
+  AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
@@ -146,6 +147,7 @@ interface TextBlock {
   bold: boolean;
   italic: boolean;
   page: 1 | 2;
+  align: 'left' | 'center' | 'right';
 }
 
 const EXAMPLE_VALUES: Record<string, string> = {
@@ -153,7 +155,7 @@ const EXAMPLE_VALUES: Record<string, string> = {
 };
 
 const DEFAULT_BLOCKS: TextBlock[] = [
-  { key: 'aluno', label: 'Nome do Aluno', text: '{aluno}', pctX: 0.5, pctY: 0.5, baseSize: 24, font: 'alexbrush', bold: false, italic: false, page: 1 },
+  { key: 'aluno', label: 'Nome do Aluno', text: '{aluno}', pctX: 0.5, pctY: 0.5, baseSize: 24, font: 'alexbrush', bold: false, italic: false, page: 1, align: 'left' },
 ];
 
 function parseVariables(text: string, values: Record<string, string>): string {
@@ -191,9 +193,11 @@ async function generateCertificatePdf(
   const safePctX = isFinite(block.pctX) ? Math.max(0, Math.min(1, block.pctX)) : 0.5;
   const safePctY = isFinite(block.pctY) ? Math.max(0, Math.min(1, block.pctY)) : 0.5;
   const safeSize = isFinite(block.baseSize) && block.baseSize > 0 ? block.baseSize : 24;
+  const align = block.align ?? 'left';
 
   const finalX = safePctX * pdfWidth;
   const finalY = pdfHeight - (safePctY * pdfHeight) - (safeSize * 0.8);
+  const maxWidth = pdfWidth * 0.8;
 
   let resolvedText = parseVariables(block.text, realValues);
   resolvedText = resolvedText.replace(/\{\s*aluno\s*\}/gi, studentName || 'Nome do Aluno');
@@ -201,14 +205,46 @@ async function generateCertificatePdf(
   resolvedText = resolvedText.replace(/\{\s*carga\s*\}/gi, realValues.carga);
   resolvedText = resolvedText.replace(/\{\s*data\s*\}/gi, realValues.data);
   const textToDraw = resolvedText.trim() || studentName || 'Nome do Aluno';
+  const safeDrawSize = Math.max(6, safeSize);
+  const lineHeight = safeDrawSize * 1.2;
 
-  page.drawText(textToDraw, {
-    x: Math.max(0, Math.min(finalX, pdfWidth - 10)),
-    y: Math.max(0, Math.min(finalY, pdfHeight - safeSize)),
-    size: Math.max(6, safeSize),
-    font: embedFont,
-    color: rgb(0, 0, 0),
-    maxWidth: pdfWidth * 0.8,
+  const rawLines = textToDraw.split('\n');
+  const wrappedLines: string[] = [];
+  for (const rawLine of rawLines) {
+    const words = rawLine.split(' ');
+    let current = '';
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (embedFont.widthOfTextAtSize(candidate, safeDrawSize) <= maxWidth) {
+        current = candidate;
+      } else {
+        if (current) wrappedLines.push(current);
+        current = word;
+      }
+    }
+    if (current) wrappedLines.push(current);
+  }
+  if (wrappedLines.length === 0) wrappedLines.push(textToDraw);
+
+  const clampedFinalY = Math.max(0, Math.min(finalY, pdfHeight - safeDrawSize));
+  wrappedLines.forEach((line, index) => {
+    const lineWidth = embedFont.widthOfTextAtSize(line, safeDrawSize);
+    let lineX: number;
+    if (align === 'center') {
+      lineX = finalX + (maxWidth - lineWidth) / 2;
+    } else if (align === 'right') {
+      lineX = finalX + (maxWidth - lineWidth);
+    } else {
+      lineX = finalX;
+    }
+    const lineY = clampedFinalY - index * lineHeight;
+    page.drawText(line, {
+      x: Math.max(0, Math.min(lineX, pdfWidth - lineWidth - 1)),
+      y: Math.max(0, lineY),
+      size: safeDrawSize,
+      font: embedFont,
+      color: rgb(0, 0, 0),
+    });
   });
   return pdfDoc.save();
 }
@@ -544,6 +580,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
           pctX: tW > 0 ? absX / tW : 0.5,
           pctY: tH > 0 ? absY / tH : 0.5,
           baseSize: legacySize,
+          align: rawBlock.align ?? 'left',
         } as TextBlock;
       }
       const templateBytes = Uint8Array.from(atob(course.certTemplate!), (c) => c.charCodeAt(0)).buffer;
@@ -1361,6 +1398,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                     pctX: migratedPctX,
                     pctY: migratedPctY,
                     baseSize: legacySize,
+                    align: savedBlock.align ?? 'left',
                   } as TextBlock]);
                 }
               } catch {
@@ -1860,6 +1898,30 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                       <option value={2}>Página 2</option>
                     </select>
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs text-gray-500 whitespace-nowrap">Alinhamento:</label>
+                    <div className="flex items-center gap-0.5">
+                      {(['left', 'center', 'right'] as const).map((a) => {
+                        const Icon = a === 'left' ? AlignLeft : a === 'center' ? AlignCenter : AlignRight;
+                        const isActive = (alunoBlock.align ?? 'left') === a;
+                        return (
+                          <button
+                            key={a}
+                            type="button"
+                            title={a === 'left' ? 'Esquerda' : a === 'center' ? 'Centro' : 'Direita'}
+                            onClick={() => updateBlock(alunoBlock.key, { align: a })}
+                            className={`h-7 w-7 flex items-center justify-center rounded border text-xs transition-colors ${
+                              isActive
+                                ? 'bg-forest text-white border-forest'
+                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1958,6 +2020,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                           fontWeight: 400,
                           fontStyle: 'normal',
                           fontFamily: block.font === 'alexbrush' ? '"Alex Brush", cursive' : 'Poppins, sans-serif',
+                          textAlign: block.align ?? 'left',
                           borderColor: 'rgba(100,100,200,0.5)',
                           left: `${visualX}px`,
                           top: `${visualY}px`,
