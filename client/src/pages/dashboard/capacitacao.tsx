@@ -1237,23 +1237,30 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     return nodeRefs.current[key];
   };
 
-  useEffect(() => {
-    const el = pdfWrapperRef.current;
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  const pdfWrapperCallbackRef = React.useCallback((el: HTMLDivElement | null) => {
+    (pdfWrapperRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
+        const clientWidth = (entry.target as HTMLDivElement).clientWidth;
+        const clientHeight = (entry.target as HTMLDivElement).clientHeight;
+        if (clientWidth > 0 && clientHeight > 0) {
           setDomContainerSize((prev) => {
-            if (prev && Math.round(prev.width) === Math.round(width) && Math.round(prev.height) === Math.round(height)) return prev;
-            return { width, height };
+            if (prev && Math.abs(prev.width - clientWidth) <= 2 && Math.abs(prev.height - clientHeight) <= 2) return prev;
+            return { width: clientWidth, height: clientHeight };
           });
         }
       }
     });
     observer.observe(el);
-    return () => observer.disconnect();
-  }, [pdfUrl]);
+    resizeObserverRef.current = observer;
+  }, []);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
 
@@ -1788,7 +1795,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
               <div className="border border-gray-200 rounded-lg overflow-auto" style={{ maxHeight: '75vh' }}>
                 <div
-                  ref={pdfWrapperRef}
+                  ref={pdfWrapperCallbackRef}
                   className="relative inline-block w-full"
                   style={{ userSelect: 'none' }}
                 >
@@ -1812,7 +1819,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                     />
                   </Document>
 
-                  {domContainerSize && pdfOriginalSize && blocks.filter((b) => b.page === currentPage).map((block) => {
+                  {domContainerSize && domContainerSize.width > 0 && loadProgress === 100 && pdfOriginalSize && blocks.filter((b) => b.page === currentPage).map((block) => {
                     const domW = domContainerSize.width;
                     const domH = domContainerSize.height;
                     const pdfW = pdfOriginalSize.width;
@@ -1826,6 +1833,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                       <Draggable
                         key={block.key}
                         nodeRef={nodeRef}
+                        bounds="parent"
                         position={{ x: visualX, y: visualY }}
                         onStop={(e, data) => handleDragStop(block.key, e, data)}
                       >
