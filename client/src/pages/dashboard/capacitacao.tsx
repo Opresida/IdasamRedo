@@ -198,7 +198,7 @@ async function generateCertificatePdf(
   const safeSize = isFinite(block.size) && block.size > 0 ? block.size : 24;
 
   const finalX = safeX * safeScaleX;
-  const finalSize = safeSize * safeScaleX;
+  const finalSize = safeSize * safeScaleY;
   const finalY = pdfHeight - (safeY * safeScaleY) - finalSize;
 
   let resolvedText = parseVariables(block.text, realValues);
@@ -1242,6 +1242,13 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   const pdfWrapperRef = useRef<HTMLDivElement>(null);
   const templateInputRef = useRef<HTMLInputElement>(null);
   const blocksInPdfCoordsRef = useRef<boolean>(false);
+  const nodeRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
+  const getNodeRef = (key: string): React.RefObject<HTMLDivElement> => {
+    if (!nodeRefs.current[key]) {
+      nodeRefs.current[key] = React.createRef<HTMLDivElement>();
+    }
+    return nodeRefs.current[key];
+  };
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? null;
 
@@ -1814,14 +1821,17 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
                   {containerWidth > 0 && blocks.filter((b) => b.page === currentPage).map((block) => {
                     const displayText = parseVariables(block.text, previewValues);
+                    const nodeRef = getNodeRef(block.key);
                     return (
                       <Draggable
                         key={block.key}
+                        nodeRef={nodeRef}
                         position={{ x: block.x, y: block.y }}
                         bounds="parent"
                         onStop={(e, data) => handleDragStop(block.key, e, data)}
                       >
                         <div
+                          ref={nodeRef}
                           className="absolute select-none px-2 py-1 rounded border border-dashed bg-white/70 backdrop-blur-sm text-gray-800 hover:bg-white/90 hover:border-gray-600 transition-colors"
                           style={{
                             zIndex: 10,
