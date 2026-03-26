@@ -154,7 +154,7 @@ const EXAMPLE_VALUES: Record<string, string> = {
 };
 
 const DEFAULT_BLOCKS: TextBlock[] = [
-  { key: 'aluno', label: 'Nome do Aluno', text: '{aluno}', x: 100, y: 400, size: 24, font: 'alexbrush', bold: false, italic: false, page: 1 },
+  { key: 'aluno', label: 'Nome do Aluno', text: '{aluno}', x: 100, y: 150, size: 24, font: 'alexbrush', bold: false, italic: false, page: 1 },
 ];
 
 function parseVariables(text: string, values: Record<string, string>): string {
@@ -1272,17 +1272,22 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
       try {
         const localConfig = JSON.parse(localRaw);
         if (localConfig.block) {
-          setBlocks([localConfig.block]);
-          blocksInPdfCoordsRef.current = false;
+          const b = localConfig.block;
+          if ((b.x ?? 0) < 0 || (b.y ?? 0) < 0) {
+            localStorage.removeItem(localKey);
+          } else {
+            setBlocks([{ ...b, x: Math.max(0, b.x ?? 0), y: Math.max(0, b.y ?? 0) }]);
+            blocksInPdfCoordsRef.current = false;
+            if (localConfig.templateBase64) {
+              const binaryStr = atob(localConfig.templateBase64);
+              const bytes = new Uint8Array(binaryStr.length);
+              for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+              const blob = new Blob([bytes], { type: 'application/pdf' });
+              setTemplateFile(new File([blob], 'template.pdf', { type: 'application/pdf' }));
+            }
+            return;
+          }
         }
-        if (localConfig.templateBase64) {
-          const binaryStr = atob(localConfig.templateBase64);
-          const bytes = new Uint8Array(binaryStr.length);
-          for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-          const blob = new Blob([bytes], { type: 'application/pdf' });
-          setTemplateFile(new File([blob], 'template.pdf', { type: 'application/pdf' }));
-        }
-        return;
       } catch {
         localStorage.removeItem(localKey);
       }
@@ -1300,15 +1305,16 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         const config = JSON.parse(course.certBlockConfig);
         if (config.block) {
           const savedBlock = config.block;
+          const clampBlock = (b: TextBlock) => ({ ...b, x: Math.max(0, b.x ?? 0), y: Math.max(0, b.y ?? 0) });
           if (!config.version || config.version < 2) {
             const savedScaleFactor = config.scaleFactor ?? 1;
-            setBlocks([{ ...savedBlock, x: savedBlock.x * savedScaleFactor, y: savedBlock.y * savedScaleFactor }]);
+            setBlocks([clampBlock({ ...savedBlock, x: savedBlock.x * savedScaleFactor, y: savedBlock.y * savedScaleFactor })]);
             blocksInPdfCoordsRef.current = true;
           } else if (config.version === 2) {
-            setBlocks([savedBlock]);
+            setBlocks([clampBlock(savedBlock)]);
             blocksInPdfCoordsRef.current = true;
           } else {
-            setBlocks([savedBlock]);
+            setBlocks([clampBlock(savedBlock)]);
             blocksInPdfCoordsRef.current = false;
           }
         }
@@ -1365,8 +1371,8 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
           blocksInPdfCoordsRef.current = false;
           setBlocks((prev) => prev.map((b) => ({
             ...b,
-            x: isFinite(b.x) ? b.x / sx : b.x,
-            y: isFinite(b.y) ? b.y / sy : b.y,
+            x: Math.max(0, isFinite(b.x) ? b.x / sx : 0),
+            y: Math.max(0, isFinite(b.y) ? b.y / sy : 0),
           })));
         }
       }
@@ -1374,7 +1380,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   }, []);
 
   const handleDragStop = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
-    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: data.x, y: data.y } : b));
+    setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, x: Math.max(0, data.x), y: Math.max(0, data.y) } : b));
   }, []);
 
   const updateBlock = useCallback((key: BlockKey, patch: Partial<TextBlock>) => {
