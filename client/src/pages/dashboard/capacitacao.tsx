@@ -553,7 +553,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       const rawBlock = config.block;
       let block: TextBlock;
       if (config.version >= 4 && isFinite(rawBlock.pctX) && isFinite(rawBlock.pctY)) {
-        block = rawBlock as TextBlock;
+        block = { ...rawBlock, align: rawBlock.align ?? 'left' } as TextBlock;
       } else {
         const sf: number = config.scaleFactor ?? 1;
         const legacyX = isFinite(rawBlock.x) ? rawBlock.x : 100;
@@ -1330,7 +1330,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         if (localConfig.block) {
           const b = localConfig.block;
           if (localConfig.version >= 4 && isFinite(b.pctX) && isFinite(b.pctY)) {
-            setBlocks([{ ...b, pctX: Math.max(0, Math.min(1, b.pctX)), pctY: Math.max(0, Math.min(1, b.pctY)) }]);
+            setBlocks([{ ...b, pctX: Math.max(0, Math.min(1, b.pctX)), pctY: Math.max(0, Math.min(1, b.pctY)), align: b.align ?? 'left' }]);
             if (localConfig.templateBase64) {
               const binaryStr = atob(localConfig.templateBase64);
               const bytes = new Uint8Array(binaryStr.length);
@@ -1365,6 +1365,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                 ...savedBlock,
                 pctX: Math.max(0, Math.min(1, savedBlock.pctX)),
                 pctY: Math.max(0, Math.min(1, savedBlock.pctY)),
+                align: savedBlock.align ?? 'left',
               }]);
             } else {
               try {
