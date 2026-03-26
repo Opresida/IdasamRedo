@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Document, Page, pdfjs } from 'react-pdf';
 import type { PDFPageProxy } from 'pdfjs-dist';
-import Draggable from 'react-draggable';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { useForm } from 'react-hook-form';
@@ -1229,13 +1228,15 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   const [domContainerSize, setDomContainerSize] = useState<{ width: number; height: number } | null>(null);
   const pdfWrapperRef = useRef<HTMLDivElement>(null);
   const templateInputRef = useRef<HTMLInputElement>(null);
-  const nodeRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
-  const getNodeRef = (key: string): React.RefObject<HTMLDivElement> => {
-    if (!nodeRefs.current[key]) {
-      nodeRefs.current[key] = React.createRef<HTMLDivElement>();
-    }
-    return nodeRefs.current[key];
-  };
+  const blockRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const dragStateRef = useRef<{
+    key: BlockKey;
+    startMouseX: number;
+    startMouseY: number;
+    startPctX: number;
+    startPctY: number;
+  } | null>(null);
+  const domContainerSizeRef = useRef<{ width: number; height: number } | null>(null);
 
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
@@ -1251,6 +1252,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         const clientWidth = (entry.target as HTMLDivElement).clientWidth;
         const clientHeight = (entry.target as HTMLDivElement).clientHeight;
         if (clientWidth > 0 && clientHeight > 0) {
+          domContainerSizeRef.current = { width: clientWidth, height: clientHeight };
           setDomContainerSize((prev) => {
             if (prev && Math.abs(prev.width - clientWidth) <= 2 && Math.abs(prev.height - clientHeight) <= 2) return prev;
             return { width: clientWidth, height: clientHeight };
@@ -1399,23 +1401,133 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
     setPdfOriginalSize({ width: viewport.width, height: viewport.height });
   }, []);
 
-  const [liveDragPos, setLiveDragPos] = useState<{ key: BlockKey; x: number; y: number } | null>(null);
+  const handleBlockMouseDown = useCallback((key: BlockKey, e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const block = blocks.find((b) => b.key === key);
+    if (!block) return;
+    dragStateRef.current = {
+      key,
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startPctX: block.pctX,
+      startPctY: block.pctY,
+    };
 
-  const handleDrag = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
-    setLiveDragPos({ key, x: data.x, y: data.y });
+    const onMouseMove = (ev: MouseEvent) => {
+      const ds = dragStateRef.current;
+      if (!ds) return;
+      const container = domContainerSizeRef.current;
+      if (!container) return;
+      const el = blockRefs.current[ds.key];
+      if (!el) return;
+      const domW = container.width;
+      const domH = container.height;
+      const dx = ev.clientX - ds.startMouseX;
+      const dy = ev.clientY - ds.startMouseY;
+      const rawX = ds.startPctX * domW + dx;
+      const rawY = ds.startPctY * domH + dy;
+      const clampedX = Math.max(0, Math.min(domW - el.offsetWidth, rawX));
+      const clampedY = Math.max(0, Math.min(domH - el.offsetHeight, rawY));
+      el.style.left = `${clampedX}px`;
+      el.style.top = `${clampedY}px`;
+    };
+
+    const onMouseUp = (ev: MouseEvent) => {
+      const ds = dragStateRef.current;
+      if (!ds) return;
+      const container = domContainerSizeRef.current;
+      dragStateRef.current = null;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      if (!container) return;
+      const el = blockRefs.current[ds.key];
+      if (!el) return;
+      const domW = container.width;
+      const domH = container.height;
+      const dx = ev.clientX - ds.startMouseX;
+      const dy = ev.clientY - ds.startMouseY;
+      const rawX = ds.startPctX * domW + dx;
+      const rawY = ds.startPctY * domH + dy;
+      const clampedX = Math.max(0, Math.min(domW - el.offsetWidth, rawX));
+      const clampedY = Math.max(0, Math.min(domH - el.offsetHeight, rawY));
+      const pctX = clampedX / domW;
+      const pctY = clampedY / domH;
+      setBlocks((prev) => prev.map((b) => b.key === ds.key ? { ...b, pctX, pctY } : b));
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [blocks]);
+
+  const handleBlockTouchStart = useCallback((key: BlockKey, e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const block = blocks.find((b) => b.key === key);
+    if (!block) return;
+    const touch = e.touches[0];
+    dragStateRef.current = {
+      key,
+      startMouseX: touch.clientX,
+      startMouseY: touch.clientY,
+      startPctX: block.pctX,
+      startPctY: block.pctY,
+    };
+
+    const onTouchMove = (ev: TouchEvent) => {
+      ev.preventDefault();
+      const ds = dragStateRef.current;
+      if (!ds) return;
+      const container = domContainerSizeRef.current;
+      if (!container) return;
+      const el = blockRefs.current[ds.key];
+      if (!el) return;
+      const t = ev.touches[0];
+      const domW = container.width;
+      const domH = container.height;
+      const dx = t.clientX - ds.startMouseX;
+      const dy = t.clientY - ds.startMouseY;
+      const rawX = ds.startPctX * domW + dx;
+      const rawY = ds.startPctY * domH + dy;
+      const clampedX = Math.max(0, Math.min(domW - el.offsetWidth, rawX));
+      const clampedY = Math.max(0, Math.min(domH - el.offsetHeight, rawY));
+      el.style.left = `${clampedX}px`;
+      el.style.top = `${clampedY}px`;
+    };
+
+    const onTouchEnd = (ev: TouchEvent) => {
+      const ds = dragStateRef.current;
+      if (!ds) return;
+      const container = domContainerSizeRef.current;
+      dragStateRef.current = null;
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+      if (!container) return;
+      const el = blockRefs.current[ds.key];
+      if (!el) return;
+      const t = ev.changedTouches[0];
+      const domW = container.width;
+      const domH = container.height;
+      const dx = t.clientX - ds.startMouseX;
+      const dy = t.clientY - ds.startMouseY;
+      const rawX = ds.startPctX * domW + dx;
+      const rawY = ds.startPctY * domH + dy;
+      const clampedX = Math.max(0, Math.min(domW - el.offsetWidth, rawX));
+      const clampedY = Math.max(0, Math.min(domH - el.offsetHeight, rawY));
+      const pctX = clampedX / domW;
+      const pctY = clampedY / domH;
+      setBlocks((prev) => prev.map((b) => b.key === ds.key ? { ...b, pctX, pctY } : b));
+    };
+
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('touchcancel', onTouchEnd);
+  }, [blocks]);
+
+  useEffect(() => {
+    return () => {
+      dragStateRef.current = null;
+    };
   }, []);
-
-  const handleDragStop = useCallback((key: BlockKey, _e: unknown, data: { x: number; y: number }) => {
-    setLiveDragPos(null);
-    setBlocks((prev) => prev.map((b) => {
-      if (b.key !== key) return b;
-      const domW = domContainerSize?.width ?? 1;
-      const domH = domContainerSize?.height ?? 1;
-      const pctX = Math.max(0, Math.min(1, data.x / domW));
-      const pctY = Math.max(0, Math.min(1, data.y / domH));
-      return { ...b, pctX, pctY };
-    }));
-  }, [domContainerSize]);
 
   const updateBlock = useCallback((key: BlockKey, patch: Partial<TextBlock>) => {
     setBlocks((prev) => prev.map((b) => b.key === key ? { ...b, ...patch } : b));
@@ -1830,39 +1942,32 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                     const domW = domContainerSize.width;
                     const domH = domContainerSize.height;
                     const pdfW = pdfOriginalSize.width;
-                    const pdfH = pdfOriginalSize.height;
                     const visualFontSize = Math.max(8, block.baseSize * (domW / pdfW));
-                    const isBeingDragged = liveDragPos?.key === block.key;
-                    const visualX = isBeingDragged ? liveDragPos!.x : block.pctX * domW;
-                    const visualY = isBeingDragged ? liveDragPos!.y : block.pctY * domH;
+                    const visualX = block.pctX * domW;
+                    const visualY = block.pctY * domH;
                     const displayText = parseVariables(block.text, previewValues);
-                    const nodeRef = getNodeRef(block.key);
                     return (
-                      <Draggable
+                      <div
                         key={block.key}
-                        nodeRef={nodeRef}
-                        bounds="parent"
-                        position={{ x: visualX, y: visualY }}
-                        onDrag={(e, data) => handleDrag(block.key, e, data)}
-                        onStop={(e, data) => handleDragStop(block.key, e, data)}
+                        ref={(el) => { blockRefs.current[block.key] = el; }}
+                        className="absolute select-none px-2 py-1 rounded border border-dashed bg-white/70 backdrop-blur-sm text-gray-800 hover:bg-white/90 hover:border-gray-600 transition-colors"
+                        style={{
+                          zIndex: 10,
+                          cursor: 'grab',
+                          fontSize: `${visualFontSize}px`,
+                          fontWeight: 400,
+                          fontStyle: 'normal',
+                          fontFamily: block.font === 'alexbrush' ? '"Alex Brush", cursive' : 'Poppins, sans-serif',
+                          borderColor: 'rgba(100,100,200,0.5)',
+                          left: `${visualX}px`,
+                          top: `${visualY}px`,
+                        }}
+                        title={`${block.label} — X: ${(block.pctX * 100).toFixed(1)}%, Y: ${(block.pctY * 100).toFixed(1)}%`}
+                        onMouseDown={(e) => handleBlockMouseDown(block.key, e)}
+                        onTouchStart={(e) => handleBlockTouchStart(block.key, e)}
                       >
-                        <div
-                          ref={nodeRef}
-                          className="absolute select-none px-2 py-1 rounded border border-dashed bg-white/70 backdrop-blur-sm text-gray-800 hover:bg-white/90 hover:border-gray-600 transition-colors"
-                          style={{
-                            zIndex: 10,
-                            cursor: 'grab',
-                            fontSize: `${visualFontSize}px`,
-                            fontWeight: 400,
-                            fontStyle: 'normal',
-                            fontFamily: block.font === 'alexbrush' ? '"Alex Brush", cursive' : 'Poppins, sans-serif',
-                            borderColor: 'rgba(100,100,200,0.5)',
-                          }}
-                          title={`${block.label} — X: ${(block.pctX * 100).toFixed(1)}%, Y: ${(block.pctY * 100).toFixed(1)}%`}
-                        >
-                          {displayText || block.label}
-                        </div>
-                      </Draggable>
+                        {displayText || block.label}
+                      </div>
                     );
                   })}
                 </div>
