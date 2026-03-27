@@ -33,9 +33,9 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Users, Pencil, Trash2, Plus, Send, Search, X, FileText, Zap } from 'lucide-react';
-import type { EmailAudience, AudienceLead, EmailTemplate } from '@shared/schema';
-import { EMAIL_TRIGGER_TYPES } from '@shared/schema';
+import { Mail, Users, Pencil, Trash2, Plus, Send, Search, X, FileText, Zap, Bell, BookOpen, Code2, Eye } from 'lucide-react';
+import type { EmailAudience, AudienceLead, EmailTemplate, Course, CourseNotificationSubscription, CustomHtmlTemplate } from '@shared/schema';
+import { EMAIL_TRIGGER_TYPES, COURSE_STATUSES } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
 
 type AudienceWithCount = EmailAudience & { leadCount: number };
@@ -47,7 +47,23 @@ const TRIGGER_LABELS: Record<string, string> = {
   course_notification: 'Notificação de Curso',
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  open: 'Aberto',
+  closed: 'Fechado',
+  coming_soon: 'Em Breve',
+  completed: 'Concluído',
+};
+
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  open: 'bg-green-100 text-green-700 border-green-200',
+  closed: 'bg-red-100 text-red-700 border-red-200',
+  coming_soon: 'bg-blue-100 text-blue-700 border-blue-200',
+  completed: 'bg-gray-100 text-gray-600 border-gray-200',
+};
+
 // ─── Audiences Tab ────────────────────────────────────────────────────────────
+
+type LeadSearchMode = 'text' | 'course';
 
 function AudiencesTab({ adminToken }: { adminToken: string }) {
   const { toast } = useToast();
@@ -56,6 +72,8 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
   const [createName, setCreateName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<LeadSearchMode>('text');
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: audiences = [], isLoading: loadingAudiences } = useQuery<AudienceWithCount[]>({
@@ -86,7 +104,37 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
       if (!res.ok) throw new Error('Erro');
       return res.json();
     },
-    enabled: debouncedQuery.length > 1 && !!adminToken,
+    enabled: searchMode === 'text' && debouncedQuery.length > 1 && !!adminToken,
+  });
+
+  const { data: allCourses = [] } = useQuery<Course[]>({
+    queryKey: ['/api/courses'],
+    queryFn: async () => {
+      const res = await fetch('/api/courses');
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+  });
+
+  const { data: courseLeads = [], isLoading: loadingCourseLeads } = useQuery<{ name: string; email: string; source: string; courseTitle: string }[]>({
+    queryKey: ['/api/marketing/leads/by-course', selectedCourseIds.join(',')],
+    queryFn: async () => {
+      if (selectedCourseIds.length === 0) return [];
+      const res = await fetch(`/api/marketing/leads/by-course?courseIds=${selectedCourseIds.join(',')}`, { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: searchMode === 'course' && selectedCourseIds.length > 0 && !!adminToken,
+  });
+
+  const { data: notificationSubs = [], isLoading: loadingNotifSubs } = useQuery<CourseNotificationSubscription[]>({
+    queryKey: ['/api/marketing/notification-subscriptions'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/notification-subscriptions', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
   });
 
   useEffect(() => {
@@ -161,103 +209,175 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
 
   const selectedAudience = audiences.find(a => a.id === selectedAudienceId);
 
+  const toggleCourse = (courseId: string) => {
+    setSelectedCourseIds(prev =>
+      prev.includes(courseId) ? prev.filter(id => id !== courseId) : [...prev, courseId]
+    );
+  };
+
+  const activeResults = searchMode === 'course' ? courseLeads : (debouncedQuery.length > 1 ? searchResults : []);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left: Audience list + create */}
-      <div className="space-y-4">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Nome da nova audiência..."
-            value={createName}
-            onChange={e => setCreateName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && createName.trim()) createAudience.mutate(); }}
-          />
-          <Button
-            className="bg-forest hover:bg-forest/90 text-white shrink-0"
-            disabled={!createName.trim() || createAudience.isPending}
-            onClick={() => createAudience.mutate()}
-          >
-            <Plus className="w-4 h-4 mr-1" /> Criar
-          </Button>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Audience list + create */}
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nome da nova audiência..."
+              value={createName}
+              onChange={e => setCreateName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && createName.trim()) createAudience.mutate(); }}
+            />
+            <Button
+              className="bg-forest hover:bg-forest/90 text-white shrink-0"
+              disabled={!createName.trim() || createAudience.isPending}
+              onClick={() => createAudience.mutate()}
+            >
+              <Plus className="w-4 h-4 mr-1" /> Criar
+            </Button>
+          </div>
+
+          {loadingAudiences ? (
+            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>
+          ) : audiences.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">
+              <Users className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+              <p className="font-medium">Nenhuma audiência criada</p>
+              <p className="text-sm">Crie uma audiência para começar.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {audiences.map(a => (
+                <div
+                  key={a.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${selectedAudienceId === a.id ? 'border-forest bg-forest/5' : 'border-gray-200 hover:border-gray-300'}`}
+                  onClick={() => setSelectedAudienceId(a.id)}
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{a.name}</p>
+                    <p className="text-xs text-gray-500">{a.leadCount} lead{a.leadCount !== 1 ? 's' : ''}</p>
+                  </div>
+                  <Button
+                    size="sm" variant="ghost"
+                    className="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
+                    onClick={e => { e.stopPropagation(); deleteAudience.mutate(a.id); }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {loadingAudiences ? (
-          <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>
-        ) : audiences.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">
-            <Users className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-            <p className="font-medium">Nenhuma audiência criada</p>
-            <p className="text-sm">Crie uma audiência para começar.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {audiences.map(a => (
-              <div
-                key={a.id}
-                className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${selectedAudienceId === a.id ? 'border-forest bg-forest/5' : 'border-gray-200 hover:border-gray-300'}`}
-                onClick={() => setSelectedAudienceId(a.id)}
-              >
-                <div>
-                  <p className="font-medium text-gray-900">{a.name}</p>
-                  <p className="text-xs text-gray-500">{a.leadCount} lead{a.leadCount !== 1 ? 's' : ''}</p>
-                </div>
+        {/* Right: Leads for selected audience */}
+        <div className="space-y-4">
+          {!selectedAudience ? (
+            <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
+              <Users className="w-10 h-10 mx-auto mb-2" />
+              <p className="font-medium">Selecione uma audiência</p>
+              <p className="text-sm">para gerenciar seus leads</p>
+            </div>
+          ) : (
+            <>
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-1">{selectedAudience.name}</h3>
+                <p className="text-sm text-gray-500">Busque e adicione leads por nome, e-mail ou curso</p>
+              </div>
+
+              {/* Search mode toggle */}
+              <div className="flex gap-2">
                 <Button
-                  size="sm" variant="ghost"
-                  className="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
-                  onClick={e => { e.stopPropagation(); deleteAudience.mutate(a.id); }}
+                  size="sm"
+                  variant={searchMode === 'text' ? 'default' : 'outline'}
+                  className={searchMode === 'text' ? 'bg-forest hover:bg-forest/90 text-white' : ''}
+                  onClick={() => setSearchMode('text')}
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Search className="w-3 h-3 mr-1" /> Por Nome/E-mail
+                </Button>
+                <Button
+                  size="sm"
+                  variant={searchMode === 'course' ? 'default' : 'outline'}
+                  className={searchMode === 'course' ? 'bg-forest hover:bg-forest/90 text-white' : ''}
+                  onClick={() => setSearchMode('course')}
+                >
+                  <BookOpen className="w-3 h-3 mr-1" /> Por Curso
                 </Button>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Right: Leads for selected audience */}
-      <div className="space-y-4">
-        {!selectedAudience ? (
-          <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
-            <Users className="w-10 h-10 mx-auto mb-2" />
-            <p className="font-medium">Selecione uma audiência</p>
-            <p className="text-sm">para gerenciar seus leads</p>
-          </div>
-        ) : (
-          <>
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-1">{selectedAudience.name}</h3>
-              <p className="text-sm text-gray-500">Busque e adicione leads de matrículas e notificações</p>
-            </div>
+              {/* Text search */}
+              {searchMode === 'text' && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <Input
+                      placeholder="Buscar por nome ou e-mail..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400">Pesquise por nome completo ou endereço de e-mail</p>
+                </div>
+              )}
 
-            {/* Search leads */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              <Input
-                placeholder="Buscar por nome ou e-mail..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+              {/* Course filter */}
+              {searchMode === 'course' && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500 font-medium">Selecione um ou mais cursos:</p>
+                  <div className="max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2">
+                    {allCourses.map(c => (
+                      <label
+                        key={c.id}
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-gray-50 transition-colors ${selectedCourseIds.includes(c.id) ? 'bg-forest/5 border border-forest/20' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCourseIds.includes(c.id)}
+                          onChange={() => toggleCourse(c.id)}
+                          className="rounded text-forest"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{c.title}</p>
+                        </div>
+                        <Badge className={`text-xs shrink-0 ${STATUS_BADGE_CLASSES[c.status] ?? ''}`}>
+                          {STATUS_LABELS[c.status] ?? c.status}
+                        </Badge>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedCourseIds.length > 0 && (
+                    <Button size="sm" variant="ghost" className="text-xs text-gray-500" onClick={() => setSelectedCourseIds([])}>
+                      <X className="w-3 h-3 mr-1" /> Limpar seleção
+                    </Button>
+                  )}
+                </div>
+              )}
 
-            {debouncedQuery.length > 1 && (
-              <Card className="border border-gray-200">
-                <CardContent className="p-2">
-                  {searchResults.length === 0 ? (
-                    <p className="text-sm text-gray-400 p-2">Nenhum resultado encontrado</p>
-                  ) : (
+              {/* Search / course results */}
+              {activeResults.length > 0 && (
+                <Card className="border border-gray-200">
+                  <CardContent className="p-2">
                     <div className="space-y-1">
-                      {searchResults.map((r, i) => {
+                      {activeResults.map((r, i) => {
                         const alreadyAdded = leads.some(l => l.email.toLowerCase() === r.email.toLowerCase());
                         return (
                           <div key={i} className="flex items-center justify-between p-2 rounded hover:bg-gray-50">
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium">{r.name}</p>
-                              <p className="text-xs text-gray-500">{r.email} · <span className="text-forest">{r.source}</span></p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {r.email}
+                                {' · '}
+                                <span className="text-forest">{r.source}</span>
+                                {'courseTitle' in r && r.courseTitle && (
+                                  <> · <span className="text-gray-400 truncate">{r.courseTitle}</span></>
+                                )}
+                              </p>
                             </div>
                             <Button
                               size="sm" variant="outline"
-                              className="h-7 text-xs"
+                              className="h-7 text-xs shrink-0 ml-2"
                               disabled={alreadyAdded || addLead.isPending}
                               onClick={() => addLead.mutate({ name: r.name, email: r.email })}
                             >
@@ -267,40 +387,104 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
                         );
                       })}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              )}
 
-            {/* Leads list */}
-            {loadingLeads ? (
-              <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>
-            ) : leads.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                <p className="text-sm">Nenhum lead na audiência. Use a busca acima.</p>
-              </div>
-            ) : (
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {leads.map(l => (
-                  <div key={l.id} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50 border border-transparent hover:border-gray-100">
-                    <div>
-                      <p className="text-sm font-medium">{l.name}</p>
-                      <p className="text-xs text-gray-500">{l.email}</p>
+              {searchMode === 'text' && debouncedQuery.length > 1 && searchResults.length === 0 && (
+                <Card className="border border-gray-200">
+                  <CardContent className="p-4">
+                    <p className="text-sm text-gray-400">Nenhum resultado encontrado</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {searchMode === 'course' && selectedCourseIds.length > 0 && !loadingCourseLeads && courseLeads.length === 0 && (
+                <Card className="border border-gray-200">
+                  <CardContent className="p-4">
+                    <p className="text-sm text-gray-400">Nenhum aluno matriculado nos cursos selecionados</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Leads list */}
+              {loadingLeads ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>
+              ) : leads.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-sm">Nenhum lead na audiência. Use a busca acima.</p>
+                </div>
+              ) : (
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                  {leads.map(l => (
+                    <div key={l.id} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50 border border-transparent hover:border-gray-100">
+                      <div>
+                        <p className="text-sm font-medium">{l.name}</p>
+                        <p className="text-xs text-gray-500">{l.email}</p>
+                      </div>
+                      <Button
+                        size="sm" variant="ghost"
+                        className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
+                        onClick={() => removeLead.mutate(l.id)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
                     </div>
-                    <Button
-                      size="sm" variant="ghost"
-                      className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
-                      onClick={() => removeLead.mutate(l.id)}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Notification Subscriptions Panel */}
+      <Card className="border border-gray-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="w-4 h-4 text-forest" />
+            Notificações de Curso
+            <Badge variant="secondary" className="text-xs">{notificationSubs.length}</Badge>
+          </CardTitle>
+          <p className="text-sm text-gray-500">Leads que solicitaram notificações sobre novos cursos</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loadingNotifSubs ? (
+            <div className="flex justify-center py-4"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-forest" /></div>
+          ) : notificationSubs.length === 0 ? (
+            <p className="text-sm text-gray-400 py-2">Nenhuma inscrição de notificação encontrada.</p>
+          ) : (
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {notificationSubs.map(sub => (
+                <div key={sub.id} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50 border border-transparent hover:border-gray-100">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{sub.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-500">{sub.email}</p>
+                      {sub.createdAt && (
+                        <p className="text-xs text-gray-400">· {new Date(sub.createdAt).toLocaleDateString('pt-BR')}</p>
+                      )}
+                    </div>
+                  </div>
+                  {selectedAudienceId && (
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-7 text-xs shrink-0 ml-2"
+                      disabled={leads.some(l => l.email.toLowerCase() === sub.email.toLowerCase()) || addLead.isPending}
+                      onClick={() => addLead.mutate({ name: sub.name, email: sub.email })}
+                    >
+                      {leads.some(l => l.email.toLowerCase() === sub.email.toLowerCase()) ? 'Adicionado' : 'Adicionar'}
+                    </Button>
+                  )}
+                  {!selectedAudienceId && (
+                    <span className="text-xs text-gray-400 italic">Selecione uma audiência</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -402,7 +586,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Templates de E-mail</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Templates de E-mail (Markdown)</h2>
           <p className="text-sm text-gray-500">Escreva em Markdown e visualize em tempo real</p>
         </div>
         <Button className="bg-forest hover:bg-forest/90 text-white" onClick={() => handleOpen()}>
@@ -530,12 +714,279 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
   );
 }
 
+// ─── Custom HTML Templates Tab ────────────────────────────────────────────────
+
+const htmlTemplateFormSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório'),
+  htmlContent: z.string().min(1, 'Conteúdo HTML é obrigatório'),
+  campaignIds: z.array(z.string()).optional().nullable(),
+});
+type HtmlTemplateFormData = z.infer<typeof htmlTemplateFormSchema>;
+
+function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [editingTemplate, setEditingTemplate] = useState<CustomHtmlTemplate | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
+
+  const { data: templates = [], isLoading } = useQuery<CustomHtmlTemplate[]>({
+    queryKey: ['/api/marketing/html-templates'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/html-templates', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const { data: campaigns = [] } = useQuery<{ id: string; audienceId: string; templateId: string; customHtmlTemplateId?: string | null; sentAt?: string | null; sentCount: number }[]>({
+    queryKey: ['/api/marketing/campaigns'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/campaigns', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const form = useForm<HtmlTemplateFormData>({
+    resolver: zodResolver(htmlTemplateFormSchema),
+    defaultValues: { name: '', htmlContent: '' },
+  });
+
+  React.useEffect(() => {
+    if (dialogOpen) {
+      if (editingTemplate) {
+        form.reset({ name: editingTemplate.name, htmlContent: editingTemplate.htmlContent, campaignIds: editingTemplate.campaignIds ?? [] });
+        setPreviewHtml(editingTemplate.htmlContent);
+        setSelectedCampaignIds(editingTemplate.campaignIds ?? []);
+      } else {
+        form.reset({ name: '', htmlContent: '', campaignIds: [] });
+        setPreviewHtml('');
+        setSelectedCampaignIds([]);
+      }
+      setShowPreview(false);
+    }
+  }, [dialogOpen, editingTemplate]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: HtmlTemplateFormData) => {
+      const url = editingTemplate ? `/api/marketing/html-templates/${editingTemplate.id}` : '/api/marketing/html-templates';
+      const method = editingTemplate ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ ...data, campaignIds: selectedCampaignIds }),
+      });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: editingTemplate ? 'Template HTML atualizado!' : 'Template HTML salvo!' });
+      qc.invalidateQueries({ queryKey: ['/api/marketing/html-templates'] });
+      setDialogOpen(false);
+      setEditingTemplate(null);
+    },
+    onError: () => toast({ title: 'Erro ao salvar template HTML', variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/marketing/html-templates/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+    },
+    onSuccess: () => {
+      toast({ title: 'Template HTML removido' });
+      qc.invalidateQueries({ queryKey: ['/api/marketing/html-templates'] });
+    },
+    onError: () => toast({ title: 'Erro ao remover template HTML', variant: 'destructive' }),
+  });
+
+  const handleOpen = (tpl?: CustomHtmlTemplate) => {
+    setEditingTemplate(tpl ?? null);
+    setDialogOpen(true);
+  };
+
+  const getUsageCount = (templateId: string) => {
+    return campaigns.filter(c => c.customHtmlTemplateId === templateId).length;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">HTML Personalizado</h2>
+          <p className="text-sm text-gray-500">Crie templates em HTML puro com preview ao vivo</p>
+        </div>
+        <Button className="bg-forest hover:bg-forest/90 text-white" onClick={() => handleOpen()}>
+          <Plus className="w-4 h-4 mr-2" /> Novo Template HTML
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>
+      ) : templates.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <Code2 className="w-10 h-10 mx-auto mb-2" />
+          <p className="font-medium">Nenhum template HTML criado</p>
+          <p className="text-sm">Clique em "Novo Template HTML" para começar.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {templates.map(tpl => {
+            const usageCount = getUsageCount(tpl.id);
+            return (
+              <Card key={tpl.id} className="border border-gray-200">
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900">{tpl.name}</p>
+                      <Badge variant="secondary" className="text-xs">
+                        <Code2 className="w-2.5 h-2.5 mr-1" />
+                        HTML
+                      </Badge>
+                      {usageCount > 0 && (
+                        <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                          {usageCount} campanha{usageCount !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {tpl.htmlContent.length} caracteres · criado em {tpl.createdAt ? new Date(tpl.createdAt).toLocaleDateString('pt-BR') : '—'}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 ml-4 shrink-0">
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-blue-500 hover:bg-blue-50" onClick={() => handleOpen(tpl)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:bg-red-50" onClick={() => deleteMutation.mutate(tpl.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={v => { if (!v) { setDialogOpen(false); setEditingTemplate(null); } }}>
+        <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-forest flex items-center gap-2">
+              <Code2 className="w-5 h-5" />
+              {editingTemplate ? 'Editar Template HTML' : 'Novo Template HTML'}
+            </DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(d => saveMutation.mutate(d))} className="flex flex-col flex-1 overflow-hidden gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="name" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Template</FormLabel>
+                    <FormControl><Input placeholder="Ex: Newsletter Março 2026" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Campanhas Associadas <span className="text-gray-400 font-normal text-xs">(opcional)</span></p>
+                  {campaigns.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">Nenhuma campanha criada ainda</p>
+                  ) : (
+                    <div className="max-h-24 overflow-y-auto space-y-1 border rounded-md p-2 bg-gray-50">
+                      {campaigns.map(c => (
+                        <label key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-white rounded px-1 py-0.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedCampaignIds.includes(c.id)}
+                            onChange={() => setSelectedCampaignIds(prev =>
+                              prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id]
+                            )}
+                            className="rounded text-forest"
+                          />
+                          <span className="text-xs text-gray-700">
+                            {new Date(c.sentAt ?? '').toLocaleDateString('pt-BR')} — {c.sentCount} enviado{c.sentCount !== 1 ? 's' : ''}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={!showPreview ? 'default' : 'outline'}
+                  className={!showPreview ? 'bg-forest hover:bg-forest/90 text-white' : ''}
+                  onClick={() => setShowPreview(false)}
+                >
+                  <Code2 className="w-3 h-3 mr-1" /> Editor HTML
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showPreview ? 'default' : 'outline'}
+                  className={showPreview ? 'bg-forest hover:bg-forest/90 text-white' : ''}
+                  onClick={() => setShowPreview(true)}
+                >
+                  <Eye className="w-3 h-3 mr-1" /> Preview
+                </Button>
+              </div>
+
+              <FormField control={form.control} name="htmlContent" render={({ field }) => (
+                <FormItem className="flex flex-col flex-1 min-h-0">
+                  {!showPreview ? (
+                    <>
+                      <FormControl>
+                        <Textarea
+                          className="flex-1 font-mono text-sm resize-none min-h-[380px]"
+                          placeholder="<!DOCTYPE html><html>...</html>"
+                          {...field}
+                          onChange={e => { field.onChange(e); setPreviewHtml(e.target.value); }}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-gray-400">HTML puro — use &#123;&#123;nome&#125;&#125; e &#123;&#123;email&#125;&#125; como variáveis</p>
+                    </>
+                  ) : (
+                    <div className="flex-1 border border-gray-200 rounded-md overflow-hidden min-h-[380px] bg-white">
+                      <iframe
+                        srcDoc={previewHtml || field.value || '<p style="color:#aaa;padding:16px">Nenhum conteúdo ainda...</p>'}
+                        className="w-full h-full min-h-[380px]"
+                        sandbox="allow-same-origin"
+                        title="Preview HTML"
+                      />
+                    </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setEditingTemplate(null); }}>Cancelar</Button>
+                <Button type="submit" className="bg-forest hover:bg-forest/90 text-white" disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? 'Salvando...' : 'Salvar Template HTML'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ─── Campaign Tab ─────────────────────────────────────────────────────────────
 
 interface EmailCampaignRecord {
   id: string;
   audienceId: string;
   templateId: string;
+  customHtmlTemplateId?: string | null;
   sentAt: string | null;
   sentCount: number;
 }
@@ -545,6 +996,7 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
   const qc = useQueryClient();
   const [selectedAudienceId, setSelectedAudienceId] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedHtmlTemplateId, setSelectedHtmlTemplateId] = useState('__none__');
   const [sending, setSending] = useState(false);
 
   const { data: audiences = [] } = useQuery<AudienceWithCount[]>({
@@ -561,6 +1013,16 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
     queryKey: ['/api/marketing/templates'],
     queryFn: async () => {
       const res = await fetch('/api/marketing/templates', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const { data: htmlTemplates = [] } = useQuery<CustomHtmlTemplate[]>({
+    queryKey: ['/api/marketing/html-templates'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/html-templates', { headers: { Authorization: `Bearer ${adminToken}` } });
       if (!res.ok) throw new Error('Erro');
       return res.json();
     },
@@ -591,6 +1053,8 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
 
   const selectedAudience = audiences.find(a => a.id === selectedAudienceId);
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+  const effectiveHtmlTemplateId = selectedHtmlTemplateId === '__none__' ? null : selectedHtmlTemplateId;
+  const selectedHtmlTemplate = htmlTemplates.find(t => t.id === effectiveHtmlTemplateId);
 
   const handleSend = async () => {
     if (!selectedAudienceId || !selectedTemplateId) return;
@@ -599,7 +1063,11 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
       const res = await fetch('/api/marketing/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
-        body: JSON.stringify({ audienceId: selectedAudienceId, templateId: selectedTemplateId }),
+        body: JSON.stringify({
+          audienceId: selectedAudienceId,
+          templateId: selectedTemplateId,
+          customHtmlTemplateId: effectiveHtmlTemplateId,
+        }),
       });
       const result = await res.json();
       if (!res.ok) {
@@ -617,12 +1085,13 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
 
   const audienceMap = Object.fromEntries(audiences.map(a => [a.id, a.name]));
   const templateMap = Object.fromEntries(templates.map(t => [t.id, t.name]));
+  const htmlTemplateMap = Object.fromEntries(htmlTemplates.map(t => [t.id, t.name]));
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Disparar Campanha</h2>
-        <p className="text-sm text-gray-500">Selecione uma audiência e um template para enviar a campanha.</p>
+        <p className="text-sm text-gray-500">Selecione uma audiência, um template e opcionalmente um template HTML personalizado.</p>
       </div>
 
       <Card className="border border-gray-200 max-w-xl">
@@ -642,7 +1111,7 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Template</label>
+            <label className="text-sm font-medium text-gray-700">Template (Markdown)</label>
             <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um template..." />
@@ -653,6 +1122,32 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-400">O assunto do template Markdown será usado para o e-mail</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Template HTML Personalizado <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <Select value={selectedHtmlTemplateId} onValueChange={setSelectedHtmlTemplateId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sem template HTML (usa o Markdown)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nenhum — usar corpo Markdown</SelectItem>
+                {htmlTemplates.map(t => (
+                  <SelectItem key={t.id} value={t.id}>
+                    <div className="flex items-center gap-2">
+                      <Code2 className="w-3 h-3" />
+                      {t.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {effectiveHtmlTemplateId && (
+              <p className="text-xs text-green-600">Template HTML "{selectedHtmlTemplate?.name}" será usado como corpo do e-mail</p>
+            )}
           </div>
 
           {selectedAudience && selectedTemplate && (
@@ -660,6 +1155,9 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
               <p><span className="text-gray-500">Audiência:</span> <strong>{selectedAudience.name}</strong> ({selectedAudience.leadCount} destinatário{selectedAudience.leadCount !== 1 ? 's' : ''})</p>
               <p><span className="text-gray-500">Template:</span> <strong>{selectedTemplate.name}</strong></p>
               <p><span className="text-gray-500">Assunto:</span> {selectedTemplate.subject}</p>
+              {selectedHtmlTemplate && (
+                <p><span className="text-gray-500">HTML:</span> <strong>{selectedHtmlTemplate.name}</strong></p>
+              )}
             </div>
           )}
 
@@ -684,6 +1182,7 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Audiência</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Template</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">HTML</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Enviados</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Data</th>
                     <th className="py-3 px-4"></th>
@@ -694,6 +1193,15 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
                     <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                       <td className="py-3 px-4">{audienceMap[c.audienceId] ?? c.audienceId.slice(0, 8)}</td>
                       <td className="py-3 px-4">{templateMap[c.templateId] ?? c.templateId.slice(0, 8)}</td>
+                      <td className="py-3 px-4">
+                        {c.customHtmlTemplateId ? (
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
+                            {htmlTemplateMap[c.customHtmlTemplateId] ?? 'HTML'}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4">
                         <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">{c.sentCount} enviado{c.sentCount !== 1 ? 's' : ''}</Badge>
                       </td>
@@ -754,6 +1262,9 @@ export default function MarketingPage() {
           <TabsTrigger value="studio" className="flex items-center gap-2">
             <FileText className="w-4 h-4" /> Estúdio de Templates
           </TabsTrigger>
+          <TabsTrigger value="html" className="flex items-center gap-2">
+            <Code2 className="w-4 h-4" /> HTML Personalizado
+          </TabsTrigger>
           <TabsTrigger value="campanha" className="flex items-center gap-2">
             <Send className="w-4 h-4" /> Disparar Campanha
           </TabsTrigger>
@@ -763,6 +1274,9 @@ export default function MarketingPage() {
         </TabsContent>
         <TabsContent value="studio">
           <TemplatesTab adminToken={adminToken} />
+        </TabsContent>
+        <TabsContent value="html">
+          <HtmlTemplatesTab adminToken={adminToken} />
         </TabsContent>
         <TabsContent value="campanha">
           <CampaignTab adminToken={adminToken} />

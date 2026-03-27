@@ -1,6 +1,6 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema } from "@shared/schema";
 import multer from "multer";
 import { createServer } from "http";
 import crypto from "crypto";
@@ -1135,6 +1135,69 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/marketing/leads/by-course", requireAdmin, async (req, res) => {
+    try {
+      const courseIds = req.query.courseIds as string | undefined;
+      if (!courseIds) return res.json([]);
+      const ids = courseIds.split(',').filter(Boolean);
+      const results = await storage.getLeadsByCourseIds(ids);
+      res.json(results);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar leads por curso" });
+    }
+  });
+
+  app.get("/api/marketing/notification-subscriptions", requireAdmin, async (_req, res) => {
+    try {
+      const subs = await storage.getCourseNotificationSubscriptions();
+      res.json(subs);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar inscrições de notificação" });
+    }
+  });
+
+  // Marketing: Custom HTML Templates
+  app.get("/api/marketing/html-templates", requireAdmin, async (_req, res) => {
+    try {
+      const templates = await storage.getCustomHtmlTemplates();
+      res.json(templates);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar templates HTML" });
+    }
+  });
+
+  app.post("/api/marketing/html-templates", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertCustomHtmlTemplateSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const tpl = await storage.createCustomHtmlTemplate(parsed.data);
+      res.status(201).json(tpl);
+    } catch {
+      res.status(500).json({ message: "Erro ao criar template HTML" });
+    }
+  });
+
+  app.put("/api/marketing/html-templates/:id", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertCustomHtmlTemplateSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const tpl = await storage.updateCustomHtmlTemplate(req.params.id, parsed.data);
+      if (!tpl) return res.status(404).json({ message: "Template HTML não encontrado" });
+      res.json(tpl);
+    } catch {
+      res.status(500).json({ message: "Erro ao atualizar template HTML" });
+    }
+  });
+
+  app.delete("/api/marketing/html-templates/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteCustomHtmlTemplate(req.params.id);
+      res.json({ message: "Template HTML removido" });
+    } catch {
+      res.status(500).json({ message: "Erro ao remover template HTML" });
+    }
+  });
+
   // Marketing: Templates
   app.get("/api/marketing/templates", requireAdmin, async (req, res) => {
     try {
@@ -1235,7 +1298,7 @@ export async function registerRoutes(app: Express) {
   // Marketing: Send campaign
   app.post("/api/marketing/send", requireAdmin, async (req, res) => {
     try {
-      const { audienceId, templateId } = req.body;
+      const { audienceId, templateId, customHtmlTemplateId } = req.body;
       if (!audienceId || !templateId) return res.status(400).json({ message: "audienceId e templateId são obrigatórios" });
       const [tpl, leads] = await Promise.all([
         storage.getEmailTemplate(templateId),
@@ -1245,13 +1308,19 @@ export async function registerRoutes(app: Express) {
       if (leads.length === 0) return res.status(400).json({ message: "Audiência sem leads" });
       let sent = 0;
       let failed = 0;
-      const html = await markdownToHtml(tpl.body);
+      let htmlBody: string;
+      if (customHtmlTemplateId) {
+        const htmlTpl = await storage.getCustomHtmlTemplate(customHtmlTemplateId);
+        htmlBody = htmlTpl ? htmlTpl.htmlContent : await markdownToHtml(tpl.body);
+      } else {
+        htmlBody = await markdownToHtml(tpl.body);
+      }
       for (const lead of leads) {
-        const rendered = renderTemplate(html, { nome: lead.name, email: lead.email });
+        const rendered = renderTemplate(htmlBody, { nome: lead.name, email: lead.email });
         const ok = await sendEmailViaResend(lead.email, tpl.subject, rendered);
         if (ok) sent++; else failed++;
       }
-      await storage.createEmailCampaign({ audienceId, templateId, sentCount: sent });
+      await storage.createEmailCampaign({ audienceId, templateId, customHtmlTemplateId: customHtmlTemplateId ?? null, sentCount: sent });
       res.json({ message: "Campanha disparada", sent, failed });
     } catch {
       res.status(500).json({ message: "Erro ao disparar campanha" });

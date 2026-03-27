@@ -304,6 +304,7 @@ export const emailCampaigns = pgTable("email_campaigns", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   audienceId: uuid("audience_id").notNull().references(() => emailAudiences.id),
   templateId: uuid("template_id").notNull().references(() => emailTemplates.id),
+  customHtmlTemplateId: uuid("custom_html_template_id"),
   sentAt: timestamp("sent_at", { withTimezone: true }).default(sql`NOW()`),
   sentCount: integer("sent_count").notNull().default(0),
 });
@@ -311,6 +312,23 @@ export const emailCampaigns = pgTable("email_campaigns", {
 export const insertEmailCampaignSchema = createInsertSchema(emailCampaigns).omit({ id: true, sentAt: true }).extend({
   audienceId: z.string().min(1, "Audiência é obrigatória"),
   templateId: z.string().min(1, "Template é obrigatório"),
+  customHtmlTemplateId: z.string().optional().nullable(),
 });
 export type InsertEmailCampaign = z.infer<typeof insertEmailCampaignSchema>;
 export type EmailCampaign = typeof emailCampaigns.$inferSelect;
+
+export const customHtmlTemplates = pgTable("custom_html_templates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  htmlContent: text("html_content").notNull(),
+  campaignIds: text("campaign_ids").array(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertCustomHtmlTemplateSchema = createInsertSchema(customHtmlTemplates).omit({ id: true, createdAt: true }).extend({
+  name: z.string().min(1, "Nome é obrigatório"),
+  htmlContent: z.string().min(1, "Conteúdo HTML é obrigatório"),
+  campaignIds: z.array(z.string()).optional().nullable(),
+});
+export type InsertCustomHtmlTemplate = z.infer<typeof insertCustomHtmlTemplateSchema>;
+export type CustomHtmlTemplate = typeof customHtmlTemplates.$inferSelect;

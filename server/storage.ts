@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and } from "drizzle-orm";
 
@@ -123,6 +123,13 @@ export interface IStorage {
   deleteEmailCampaign(id: string): Promise<void>;
 
   searchLeads(query: string): Promise<{ name: string; email: string; source: string }[]>;
+  getLeadsByCourseIds(courseIds: string[]): Promise<{ name: string; email: string; source: string; courseTitle: string }[]>;
+
+  getCustomHtmlTemplates(): Promise<CustomHtmlTemplate[]>;
+  getCustomHtmlTemplate(id: string): Promise<CustomHtmlTemplate | undefined>;
+  createCustomHtmlTemplate(template: InsertCustomHtmlTemplate): Promise<CustomHtmlTemplate>;
+  updateCustomHtmlTemplate(id: string, template: Partial<InsertCustomHtmlTemplate>): Promise<CustomHtmlTemplate | undefined>;
+  deleteCustomHtmlTemplate(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -672,6 +679,47 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return results.slice(0, 20);
+  }
+
+  async getLeadsByCourseIds(courseIds: string[]): Promise<{ name: string; email: string; source: string; courseTitle: string }[]> {
+    if (courseIds.length === 0) return [];
+    const enrAll = await db.select().from(enrollments).where(inArray(enrollments.courseId, courseIds));
+    const courseList = await db.select({ id: courses.id, title: courses.title }).from(courses).where(inArray(courses.id, courseIds));
+    const courseMap = Object.fromEntries(courseList.map(c => [c.id, c.title]));
+    const results: { name: string; email: string; source: string; courseTitle: string }[] = [];
+    const seen = new Set<string>();
+    for (const e of enrAll) {
+      if (!e.email) continue;
+      const key = e.email.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        results.push({ name: e.fullName ?? e.email, email: e.email, source: 'Matrículas', courseTitle: courseMap[e.courseId] ?? '' });
+      }
+    }
+    return results;
+  }
+
+  async getCustomHtmlTemplates(): Promise<CustomHtmlTemplate[]> {
+    return db.select().from(customHtmlTemplates).orderBy(desc(customHtmlTemplates.createdAt));
+  }
+
+  async getCustomHtmlTemplate(id: string): Promise<CustomHtmlTemplate | undefined> {
+    const [t] = await db.select().from(customHtmlTemplates).where(eq(customHtmlTemplates.id, id));
+    return t || undefined;
+  }
+
+  async createCustomHtmlTemplate(template: InsertCustomHtmlTemplate): Promise<CustomHtmlTemplate> {
+    const [created] = await db.insert(customHtmlTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateCustomHtmlTemplate(id: string, template: Partial<InsertCustomHtmlTemplate>): Promise<CustomHtmlTemplate | undefined> {
+    const [updated] = await db.update(customHtmlTemplates).set(template).where(eq(customHtmlTemplates.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteCustomHtmlTemplate(id: string): Promise<void> {
+    await db.delete(customHtmlTemplates).where(eq(customHtmlTemplates.id, id));
   }
 
   async deduplicateEnrollments(): Promise<number> {
