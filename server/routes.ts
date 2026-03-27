@@ -464,7 +464,10 @@ export async function registerRoutes(app: Express) {
       }
       const enrollment = await storage.createEnrollment(parsed.data);
       res.status(201).json(enrollment);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message === "DUPLICATE_ENROLLMENT") {
+        return res.status(409).json({ message: "Aluno já está matriculado neste curso. Verifique CPF ou e-mail." });
+      }
       res.status(500).json({ message: "Erro ao criar inscrição" });
     }
   });
@@ -515,20 +518,43 @@ export async function registerRoutes(app: Express) {
       }
       const created = [];
       const errors = [];
+      let skipped = 0;
+      const seenCpfs = new Set<string>();
+      const seenEmails = new Set<string>();
       for (let i = 0; i < records.length; i++) {
         const parsed = insertEnrollmentSchema.safeParse({ ...records[i], courseId });
         if (!parsed.success) {
           errors.push({ row: i + 1, errors: parsed.error.errors });
           continue;
         }
+        const { cpf, email } = parsed.data;
+        const normalizedCpf = cpf ? cpf.trim().replace(/\D/g, "") : null;
+        const normalizedEmail = email ? email.trim().toLowerCase() : null;
+        const dupInBatch = (normalizedCpf && normalizedCpf.length > 0 && seenCpfs.has(normalizedCpf))
+          || (normalizedEmail && normalizedEmail.length > 0 && seenEmails.has(normalizedEmail));
+        if (dupInBatch) {
+          skipped++;
+          continue;
+        }
+        const dupInDb = await storage.findEnrollmentDuplicate(courseId, cpf, email);
+        if (dupInDb) {
+          skipped++;
+          continue;
+        }
+        if (normalizedCpf && normalizedCpf.length > 0) seenCpfs.add(normalizedCpf);
+        if (normalizedEmail && normalizedEmail.length > 0) seenEmails.add(normalizedEmail);
         try {
           const enrollment = await storage.createEnrollment(parsed.data);
           created.push(enrollment);
-        } catch (e) {
-          errors.push({ row: i + 1, errors: [{ message: "Erro ao inserir" }] });
+        } catch (e: any) {
+          if (e?.message === "DUPLICATE_ENROLLMENT") {
+            skipped++;
+          } else {
+            errors.push({ row: i + 1, errors: [{ message: "Erro ao inserir" }] });
+          }
         }
       }
-      res.status(201).json({ created: created.length, errors });
+      res.status(201).json({ created: created.length, skipped, errors });
     } catch (err) {
       res.status(500).json({ message: "Erro ao importar inscrições" });
     }

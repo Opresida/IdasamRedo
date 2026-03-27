@@ -48,6 +48,7 @@ export interface IStorage {
   getEnrollments(): Promise<Enrollment[]>;
   getEnrollmentsByCourse(courseId: string): Promise<Enrollment[]>;
   getEnrollmentByIdentifier(identifier: string): Promise<Enrollment[]>;
+  findEnrollmentDuplicate(courseId: string, cpf?: string | null, email?: string | null): Promise<Enrollment | undefined>;
   createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment>;
   updateEnrollment(id: string, enrollment: Partial<InsertEnrollment>): Promise<Enrollment | undefined>;
   deleteEnrollment(id: string): Promise<void>;
@@ -217,7 +218,36 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async findEnrollmentDuplicate(courseId: string, cpf?: string | null, email?: string | null): Promise<Enrollment | undefined> {
+    const normalizedCpf = cpf ? normalizeIdentifier(cpf) : null;
+    const normalizedEmail = email ? normalizeIdentifier(email) : null;
+    const hasCpf = !!(normalizedCpf && normalizedCpf.length > 0);
+    const hasEmail = !!(normalizedEmail && normalizedEmail.length > 0);
+    if (!hasCpf && !hasEmail) return undefined;
+    const conditions = [];
+    if (hasCpf) conditions.push(eq(enrollments.cpf, normalizedCpf!));
+    if (hasEmail) conditions.push(eq(enrollments.email, normalizedEmail!));
+    const candidates = await db.select().from(enrollments).where(
+      and(eq(enrollments.courseId, courseId), or(...conditions))
+    );
+    return candidates.find((e) => {
+      if (hasCpf) {
+        const eCpf = e.cpf ? normalizeIdentifier(e.cpf) : null;
+        if (eCpf && eCpf === normalizedCpf) return true;
+      }
+      if (hasEmail) {
+        const eEmail = e.email ? normalizeIdentifier(e.email) : null;
+        if (eEmail && eEmail === normalizedEmail) return true;
+      }
+      return false;
+    });
+  }
+
   async createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment> {
+    const duplicate = await this.findEnrollmentDuplicate(enrollment.courseId, enrollment.cpf, enrollment.email);
+    if (duplicate) {
+      throw new Error("DUPLICATE_ENROLLMENT");
+    }
     const [created] = await db.insert(enrollments).values(enrollment).returning();
     return created;
   }

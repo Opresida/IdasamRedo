@@ -306,7 +306,11 @@ function EnrollmentFormDialog({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Falha ao salvar');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const err = new HttpError(errorData.message || 'Falha ao salvar', res.status);
+        throw err;
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -314,8 +318,12 @@ function EnrollmentFormDialog({
       qc.invalidateQueries({ queryKey: ['/api/enrollments/course', courseId] });
       onClose();
     },
-    onError: () => {
-      toast({ title: 'Erro', description: 'Não foi possível salvar o aluno.', variant: 'destructive' });
+    onError: (err: unknown) => {
+      if (err instanceof HttpError && err.status === 409) {
+        toast({ title: 'Aluno já matriculado', description: err.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Erro', description: 'Não foi possível salvar o aluno.', variant: 'destructive' });
+      }
     },
   });
 
@@ -529,8 +537,12 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
         return;
       }
       qc.invalidateQueries({ queryKey: ['/api/enrollments/course', course.id] });
-      const errMsg = result.errors?.length ? ` (${result.errors.length} linha(s) com erro)` : '';
-      toast({ title: 'Importação concluída!', description: `${result.created} aluno(s) adicionado(s)${errMsg}.` });
+      const skipped = result.skipped ?? 0;
+      const errCount = result.errors?.length ?? 0;
+      toast({
+        title: 'Importação concluída!',
+        description: `${result.created} adicionado(s) · ${skipped} duplicado(s) ignorado(s) · ${errCount} com erro`,
+      });
     } catch {
       toast({ title: 'Erro', description: 'Falha ao processar o arquivo CSV.', variant: 'destructive' });
     } finally {
