@@ -1,0 +1,35 @@
+Atue como um Desenvolvedor Full-Stack Sênior. Quero construir um módulo nativo de E-mail Marketing (estilo Brevo) dentro do meu dashboard, utilizando React, Tailwind, Shadcn UI para o frontend e Node.js com o SDK do 'resend' para disparos de e-mail. O banco de dados já existe (Supabase/Drizzle).
+
+**OBJETIVO DO MVP:**
+Criar uma plataforma onde administradores podem gerenciar leads, criar listas (audiências), montar modelos de e-mail com editor em tempo real e disparar campanhas. Além disso, teremos automações de envio.
+
+**ETAPA 1: BANCO DE DADOS (Schema Drizzle)**
+Crie as definições de schema (Tabelas) para:
+1. `email_audiences`: id, name, created_at.
+2. `audience_leads`: audience_id, user_id (relação muitos-para-muitos).
+3. `email_templates`: id, name, subject, markdown_content, html_content, trigger_type (enum: manual, course_signup, certificate_ready, course_notification).
+4. `email_campaigns`: id, name, template_id, audience_id, status.
+
+**ETAPA 2: FRONTEND (Telas em /dashboard/marketing)**
+1. **Tela de Audiências:** Uma interface para criar uma audiência. Deve conter um filtro/pesquisa em tempo real para buscar usuários cadastrados (leads) por nome/e-mail e adicioná-los à audiência.
+2. **Tela de Estúdio (Criador de Templates):** O ponto alto. Uma tela dividida. Na esquerda, um `<textarea>` para escrever em formato Markdown. Na direita, um painel de Preview (Visualização) que converte o Markdown em HTML em tempo real e aplica estilos profissionais básicos (cores neutras, tipografia limpa). Deve ter opções de salvar com nome, assunto e tipo de gatilho (trigger). Precisaremos de bibliotecas de parse de Markdown.
+3. **Tela de Disparo:** Selecionar uma Audiência, selecionar um Template salvo e um botão "Disparar Campanha".
+
+**ETAPA 3: ATALHOS NAS ROTAS EXISTENTES**
+Nas telas de Gestão de Capacitação (`/dashboard/capacitacao`):
+1. **Notificações:** Adicionar um campo Select para escolher qual Template HTML salvo (do tipo course_notification) será enviado para avisar sobre turmas abertas.
+2. **Cursos:** Adicionar botões de atalho rápido nos cards/tabelas de curso: "Enviar E-mail para Turma" (massa) e "E-mail Individual".
+3. **Certificados:** Ao emitir um certificado, ter um Select para escolher o Template (tipo certificate_ready) para disparo.
+
+**ETAPA 4: BACKEND E INTEGRAÇÃO RESEND**
+1. Crie os endpoints de API (`/api/marketing/...`) para CRUD de templates, audiências e envio.
+2. Crie uma função de disparo utilizando o pacote `resend`.
+3. **Automação obrigatória:** Crie um webhook ou função que simule: Toda vez que um usuário se cadastra na rota `/capacitacao`, o sistema busca o template tipo `course_signup`, substitui variáveis (como {{nome}} e {{curso}}) no HTML e dispara o e-mail via Resend automaticamente.
+
+**REGRAS DE OURO:**
+- Use componentes do Shadcn UI (Cards, Inputs, Buttons, Select, Dialog/Modal para os atalhos).
+- O código deve ser modular.
+- O e-mail final disparado deve embrulhar o HTML gerado pelo Markdown em uma estrutura de tabela HTML básica para garantir compatibilidade com provedores de e-mail (Gmail, Outlook).
+- Não se preocupe em implementar as rotas de cursos do zero se elas já existirem mentalmente, foque em criar os componentes genéricos (Dropdowns e modais) que serão injetados nessas telas de Capacitação.
+
+Comece criando o esquema de banco de dados e a interface do Estúdio de Templates (Markdown + Preview).
