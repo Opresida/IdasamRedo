@@ -39,7 +39,7 @@ import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell, Eye,
-  AlignLeft, AlignCenter, AlignRight,
+  AlignLeft, AlignCenter, AlignRight, Search,
 } from 'lucide-react';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
@@ -446,6 +446,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [addingStudent, setAddingStudent] = useState(false);
   const [editingEnrollment, setEditingEnrollment] = useState<EnrollmentWithCert | null>(null);
@@ -461,6 +462,13 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
     queryFn: () => fetchEnrollmentsWithCerts(course.id, adminToken),
     enabled: open && !!adminToken,
   });
+
+  const normalize = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  const filteredEnrollments = searchTerm.trim()
+    ? enrollments.filter((e) => normalize(e.fullName ?? '').includes(normalize(searchTerm)))
+    : enrollments;
 
   const handleUpload = async (enrollmentId: string, file: File) => {
     setUploadingId(enrollmentId);
@@ -780,6 +788,16 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
             ) : enrollments.length === 0 ? (
               <p className="text-sm text-gray-500 py-4 text-center">Nenhuma inscrição neste curso.</p>
             ) : (
+              <>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <Input
+                    placeholder="Buscar aluno pelo nome..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -793,7 +811,13 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                     </tr>
                   </thead>
                   <tbody>
-                    {enrollments.map((e) => (
+                    {filteredEnrollments.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-sm text-gray-500">
+                          Nenhum aluno encontrado para "{searchTerm}".
+                        </td>
+                      </tr>
+                    ) : filteredEnrollments.map((e) => (
                       <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
                         <td className="py-2 pr-4">{e.fullName}</td>
                         <td className="py-2 pr-4 font-mono text-xs">{e.cpf}</td>
@@ -852,6 +876,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </CardContent>
         )}
