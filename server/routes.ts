@@ -1,9 +1,66 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema } from "@shared/schema";
 import multer from "multer";
 import { createServer } from "http";
 import crypto from "crypto";
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const EMAIL_FROM = process.env.EMAIL_FROM || "IDASAM <onboarding@resend.dev>";
+
+function wrapEmailHtml(body: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px">
+      <tr><td style="background:#1a5c38;padding:24px 32px">
+        <p style="margin:0;color:#ffffff;font-size:20px;font-weight:bold">IDASAM</p>
+      </td></tr>
+      <tr><td style="padding:32px;color:#333333;font-size:15px;line-height:1.6">
+        ${body}
+      </td></tr>
+      <tr><td style="background:#f8f8f8;padding:16px 32px;text-align:center">
+        <p style="margin:0;color:#999999;font-size:12px">Instituto de Desenvolvimento da Amazônia</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
+async function sendEmailViaResend(to: string, subject: string, htmlBody: string): Promise<boolean> {
+  if (!RESEND_API_KEY) {
+    console.warn("RESEND_API_KEY not set, skipping email send");
+    return false;
+  }
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(RESEND_API_KEY);
+    const result = await resend.emails.send({
+      from: EMAIL_FROM,
+      to,
+      subject,
+      html: wrapEmailHtml(htmlBody),
+    });
+    return !result.error;
+  } catch (e) {
+    console.error("Error sending email via Resend:", e);
+    return false;
+  }
+}
+
+function renderTemplate(body: string, vars: Record<string, string>): string {
+  return body.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`);
+}
+
+async function markdownToHtml(md: string): Promise<string> {
+  const { marked } = await import("marked");
+  return marked.parse(md) as string;
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -497,6 +554,25 @@ export async function registerRoutes(app: Express) {
       }
       const enrollment = await storage.createEnrollment(parsed.data);
       res.status(201).json(enrollment);
+
+      // Automation: send course_signup email if template exists
+      if (enrollment.email) {
+        try {
+          const templates = await storage.getEmailTemplatesByTrigger("course_signup");
+          if (templates.length > 0) {
+            const tpl = templates[0];
+            const vars: Record<string, string> = {
+              nome: enrollment.fullName ?? enrollment.email,
+              curso: course.title,
+            };
+            const rendered = renderTemplate(tpl.body, vars);
+            const html = await markdownToHtml(rendered);
+            await sendEmailViaResend(enrollment.email, tpl.subject, html);
+          }
+        } catch (emailErr) {
+          console.error("Error sending course_signup email:", emailErr);
+        }
+      }
     } catch (err: any) {
       if (err?.message === "DUPLICATE_ENROLLMENT") {
         return res.status(409).json({ message: "Aluno já está matriculado neste curso. Verifique CPF, e-mail ou nome." });
@@ -983,6 +1059,223 @@ export async function registerRoutes(app: Express) {
       res.json({ message: "Comentário excluído com sucesso" });
     } catch (err) {
       res.status(500).json({ message: "Erro ao excluir comentário" });
+    }
+  });
+
+  // Marketing: Audiences
+  app.get("/api/marketing/audiences", requireAdmin, async (_req, res) => {
+    try {
+      const audiences = await storage.getEmailAudiences();
+      const result = await Promise.all(audiences.map(async (a) => {
+        const leads = await storage.getAudienceLeads(a.id);
+        return { ...a, leadCount: leads.length };
+      }));
+      res.json(result);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar audiências" });
+    }
+  });
+
+  app.post("/api/marketing/audiences", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertEmailAudienceSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const audience = await storage.createEmailAudience(parsed.data);
+      res.status(201).json(audience);
+    } catch {
+      res.status(500).json({ message: "Erro ao criar audiência" });
+    }
+  });
+
+  app.delete("/api/marketing/audiences/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteEmailAudience(req.params.id);
+      res.json({ message: "Audiência removida" });
+    } catch {
+      res.status(500).json({ message: "Erro ao remover audiência" });
+    }
+  });
+
+  app.get("/api/marketing/audiences/:id/leads", requireAdmin, async (req, res) => {
+    try {
+      const leads = await storage.getAudienceLeads(req.params.id);
+      res.json(leads);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar leads" });
+    }
+  });
+
+  app.post("/api/marketing/audiences/:id/leads", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertAudienceLeadSchema.safeParse({ ...req.body, audienceId: req.params.id });
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const lead = await storage.addAudienceLead(parsed.data);
+      res.status(201).json(lead);
+    } catch {
+      res.status(500).json({ message: "Erro ao adicionar lead" });
+    }
+  });
+
+  app.delete("/api/marketing/leads/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.removeAudienceLead(req.params.id);
+      res.json({ message: "Lead removido" });
+    } catch {
+      res.status(500).json({ message: "Erro ao remover lead" });
+    }
+  });
+
+  app.get("/api/marketing/leads/search", requireAdmin, async (req, res) => {
+    try {
+      const q = (req.query.q as string) || "";
+      const results = await storage.searchLeads(q);
+      res.json(results);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar leads" });
+    }
+  });
+
+  // Marketing: Templates
+  app.get("/api/marketing/templates", requireAdmin, async (req, res) => {
+    try {
+      const trigger = req.query.trigger as string | undefined;
+      const templates = trigger
+        ? await storage.getEmailTemplatesByTrigger(trigger)
+        : await storage.getEmailTemplates();
+      res.json(templates);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar templates" });
+    }
+  });
+
+  app.post("/api/marketing/templates", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertEmailTemplateSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const tpl = await storage.createEmailTemplate(parsed.data);
+      res.status(201).json(tpl);
+    } catch {
+      res.status(500).json({ message: "Erro ao criar template" });
+    }
+  });
+
+  app.put("/api/marketing/templates/:id", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertEmailTemplateSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const tpl = await storage.updateEmailTemplate(req.params.id, parsed.data);
+      if (!tpl) return res.status(404).json({ message: "Template não encontrado" });
+      res.json(tpl);
+    } catch {
+      res.status(500).json({ message: "Erro ao atualizar template" });
+    }
+  });
+
+  app.delete("/api/marketing/templates/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteEmailTemplate(req.params.id);
+      res.json({ message: "Template removido" });
+    } catch {
+      res.status(500).json({ message: "Erro ao remover template" });
+    }
+  });
+
+  // Marketing: Campaigns CRUD
+  app.get("/api/marketing/campaigns", requireAdmin, async (req, res) => {
+    try {
+      const campaigns = await storage.getEmailCampaigns();
+      res.json(campaigns);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar campanhas" });
+    }
+  });
+
+  app.get("/api/marketing/campaigns/:id", requireAdmin, async (req, res) => {
+    try {
+      const campaign = await storage.getEmailCampaign(req.params.id);
+      if (!campaign) return res.status(404).json({ message: "Campanha não encontrada" });
+      res.json(campaign);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar campanha" });
+    }
+  });
+
+  app.post("/api/marketing/campaigns", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertEmailCampaignSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const campaign = await storage.createEmailCampaign(parsed.data);
+      res.status(201).json(campaign);
+    } catch {
+      res.status(500).json({ message: "Erro ao criar campanha" });
+    }
+  });
+
+  app.put("/api/marketing/campaigns/:id", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertEmailCampaignSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+      const campaign = await storage.updateEmailCampaign(req.params.id, parsed.data);
+      if (!campaign) return res.status(404).json({ message: "Campanha não encontrada" });
+      res.json(campaign);
+    } catch {
+      res.status(500).json({ message: "Erro ao atualizar campanha" });
+    }
+  });
+
+  app.delete("/api/marketing/campaigns/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteEmailCampaign(req.params.id);
+      res.json({ message: "Campanha removida" });
+    } catch {
+      res.status(500).json({ message: "Erro ao remover campanha" });
+    }
+  });
+
+  // Marketing: Send campaign
+  app.post("/api/marketing/send", requireAdmin, async (req, res) => {
+    try {
+      const { audienceId, templateId } = req.body;
+      if (!audienceId || !templateId) return res.status(400).json({ message: "audienceId e templateId são obrigatórios" });
+      const [tpl, leads] = await Promise.all([
+        storage.getEmailTemplate(templateId),
+        storage.getAudienceLeads(audienceId),
+      ]);
+      if (!tpl) return res.status(404).json({ message: "Template não encontrado" });
+      if (leads.length === 0) return res.status(400).json({ message: "Audiência sem leads" });
+      let sent = 0;
+      let failed = 0;
+      const html = await markdownToHtml(tpl.body);
+      for (const lead of leads) {
+        const rendered = renderTemplate(html, { nome: lead.name, email: lead.email });
+        const ok = await sendEmailViaResend(lead.email, tpl.subject, rendered);
+        if (ok) sent++; else failed++;
+      }
+      await storage.createEmailCampaign({ audienceId, templateId, sentCount: sent });
+      res.json({ message: "Campanha disparada", sent, failed });
+    } catch {
+      res.status(500).json({ message: "Erro ao disparar campanha" });
+    }
+  });
+
+  // Marketing: Send individual/bulk email for capacitacao integration
+  app.post("/api/marketing/send-direct", requireAdmin, async (req, res) => {
+    try {
+      const { emails, templateId, vars } = req.body as { emails: string[]; templateId: string; vars?: Record<string, string> };
+      if (!emails?.length || !templateId) return res.status(400).json({ message: "emails e templateId são obrigatórios" });
+      const tpl = await storage.getEmailTemplate(templateId);
+      if (!tpl) return res.status(404).json({ message: "Template não encontrado" });
+      const htmlBody = await markdownToHtml(tpl.body);
+      let sent = 0;
+      let failed = 0;
+      for (const email of emails) {
+        const rendered = renderTemplate(htmlBody, { email, nome: email, ...(vars ?? {}) });
+        const ok = await sendEmailViaResend(email, tpl.subject, rendered);
+        if (ok) sent++; else failed++;
+      }
+      res.json({ message: "E-mails enviados", sent, failed });
+    } catch {
+      res.status(500).json({ message: "Erro ao enviar e-mails" });
     }
   });
 

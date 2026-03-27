@@ -250,3 +250,67 @@ export const articleReactions = pgTable("article_reactions", {
   reactionType: text("reaction_type").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
+
+export const EMAIL_TRIGGER_TYPES = ['manual', 'course_signup', 'certificate_ready', 'course_notification'] as const;
+export type EmailTriggerType = typeof EMAIL_TRIGGER_TYPES[number];
+
+export const emailAudiences = pgTable("email_audiences", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertEmailAudienceSchema = createInsertSchema(emailAudiences).omit({ id: true, createdAt: true }).extend({
+  name: z.string().min(1, "Nome é obrigatório"),
+});
+export type InsertEmailAudience = z.infer<typeof insertEmailAudienceSchema>;
+export type EmailAudience = typeof emailAudiences.$inferSelect;
+
+export const audienceLeads = pgTable("audience_leads", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  audienceId: uuid("audience_id").notNull().references(() => emailAudiences.id),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertAudienceLeadSchema = createInsertSchema(audienceLeads).omit({ id: true, createdAt: true }).extend({
+  audienceId: z.string().min(1, "Audiência é obrigatória"),
+  name: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("E-mail inválido"),
+});
+export type InsertAudienceLead = z.infer<typeof insertAudienceLeadSchema>;
+export type AudienceLead = typeof audienceLeads.$inferSelect;
+
+export const emailTemplates = pgTable("email_templates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  trigger: text("trigger").notNull().default("manual"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit({ id: true, createdAt: true }).extend({
+  name: z.string().min(1, "Nome é obrigatório"),
+  subject: z.string().min(1, "Assunto é obrigatório"),
+  body: z.string().min(1, "Corpo é obrigatório"),
+  trigger: z.enum(EMAIL_TRIGGER_TYPES).default("manual"),
+});
+export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+
+export const emailCampaigns = pgTable("email_campaigns", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  audienceId: uuid("audience_id").notNull().references(() => emailAudiences.id),
+  templateId: uuid("template_id").notNull().references(() => emailTemplates.id),
+  sentAt: timestamp("sent_at", { withTimezone: true }).default(sql`NOW()`),
+  sentCount: integer("sent_count").notNull().default(0),
+});
+
+export const insertEmailCampaignSchema = createInsertSchema(emailCampaigns).omit({ id: true, sentAt: true }).extend({
+  audienceId: z.string().min(1, "Audiência é obrigatória"),
+  templateId: z.string().min(1, "Template é obrigatório"),
+});
+export type InsertEmailCampaign = z.infer<typeof insertEmailCampaignSchema>;
+export type EmailCampaign = typeof emailCampaigns.$inferSelect;

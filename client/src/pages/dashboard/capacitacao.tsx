@@ -39,7 +39,7 @@ import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell, Eye,
-  AlignLeft, AlignCenter, AlignRight, Search,
+  AlignLeft, AlignCenter, AlignRight, Search, Mail,
 } from 'lucide-react';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
@@ -454,8 +454,64 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
   const [importing, setImporting] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [dispatchProgress, setDispatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [emailDialogTarget, setEmailDialogTarget] = useState<'turma' | EnrollmentWithCert | null>(null);
+  const [emailTemplateId, setEmailTemplateId] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const hasCertConfig = !!(course.certTemplate && course.certBlockConfig);
+
+  const { data: emailTemplates = [] } = useQuery<{ id: string; name: string; subject: string; trigger?: string }[]>({
+    queryKey: ['/api/marketing/templates', 'course_notification_manual'],
+    queryFn: async () => {
+      const [r1, r2] = await Promise.all([
+        fetch('/api/marketing/templates?trigger=course_notification', { headers: { Authorization: `Bearer ${adminToken}` } }),
+        fetch('/api/marketing/templates?trigger=manual', { headers: { Authorization: `Bearer ${adminToken}` } }),
+      ]);
+      const courseNotif = r1.ok ? await r1.json() : [];
+      const manual = r2.ok ? await r2.json() : [];
+      return [...courseNotif, ...manual];
+    },
+    enabled: open && !!adminToken,
+  });
+
+  const handleSendEmail = async () => {
+    if (!emailTemplateId || !emailDialogTarget) return;
+    setSendingEmail(true);
+    try {
+      let emails: string[] = [];
+      if (emailDialogTarget === 'turma') {
+        emails = enrollments.map(e => e.email ?? '').filter(Boolean);
+      } else {
+        if (emailDialogTarget.email) emails = [emailDialogTarget.email];
+      }
+      if (emails.length === 0) {
+        toast({ title: 'Nenhum e-mail disponível', variant: 'destructive' });
+        setSendingEmail(false);
+        return;
+      }
+      const vars: Record<string, string> = {
+        curso: course.title,
+        ...(emailDialogTarget !== 'turma' ? { nome: emailDialogTarget.fullName ?? emailDialogTarget.email ?? '' } : {}),
+      };
+      const res = await fetch('/api/marketing/send-direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ emails, templateId: emailTemplateId, vars }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        toast({ title: 'E-mail(s) enviados!', description: `${result.sent} enviado(s).` });
+        setEmailDialogTarget(null);
+        setEmailTemplateId('');
+      } else {
+        toast({ title: 'Erro ao enviar', description: result.message, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Erro inesperado', variant: 'destructive' });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const { data: enrollments = [], isLoading } = useQuery<EnrollmentWithCert[]>({
     queryKey: ['/api/enrollments/course', course.id],
@@ -769,6 +825,17 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                 <FileDown className="w-3 h-3 mr-1" />
                 Exportar CSV
               </Button>
+              {emailTemplates.length > 0 && enrollments.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs text-blue-600 border-blue-300 hover:bg-blue-50"
+                  onClick={() => { setEmailTemplateId(emailTemplates[0]?.id ?? ''); setEmailDialogTarget('turma'); }}
+                >
+                  <Mail className="w-3 h-3 mr-1" />
+                  E-mail Turma
+                </Button>
+              )}
               <input
                 ref={csvInputRef}
                 type="file"
@@ -853,6 +920,17 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                         </td>
                         <td className="py-2">
                           <div className="flex items-center gap-1">
+                            {emailTemplates.length > 0 && e.email && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => { setEmailTemplateId(emailTemplates[0]?.id ?? ''); setEmailDialogTarget(e); }}
+                                title="E-mail Individual"
+                              >
+                                <Mail className="w-3 h-3" />
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="ghost"
@@ -896,6 +974,46 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
         adminToken={adminToken}
         onClose={() => setDeletingEnrollment(null)}
       />
+
+      <Dialog open={!!emailDialogTarget} onOpenChange={v => { if (!v) { setEmailDialogTarget(null); setEmailTemplateId(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-700">
+              <Mail className="w-5 h-5" />
+              {emailDialogTarget === 'turma' ? `E-mail para Turma (${enrollments.length} alunos)` : `E-mail para ${(emailDialogTarget as EnrollmentWithCert)?.fullName}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Selecione o template de e-mail</label>
+              <Select value={emailTemplateId} onValueChange={setEmailTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha um template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {emailTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name} — {t.subject}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {emailDialogTarget && emailDialogTarget !== 'turma' && (emailDialogTarget as EnrollmentWithCert).email && (
+              <p className="text-sm text-gray-500">Destinatário: <strong>{(emailDialogTarget as EnrollmentWithCert).email}</strong></p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setEmailDialogTarget(null); setEmailTemplateId(''); }}>Cancelar</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={!emailTemplateId || sendingEmail}
+              onClick={handleSendEmail}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              {sendingEmail ? 'Enviando...' : 'Enviar E-mail'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -1212,6 +1330,7 @@ function DeleteCourseDialog({
 }
 
 function NotificationsTab({ adminToken }: { adminToken: string }) {
+  const { toast } = useToast();
   const { data: subs = [], isLoading } = useQuery<CourseNotificationSubscription[]>({
     queryKey: ['/api/course-notifications'],
     queryFn: async () => {
@@ -1224,6 +1343,42 @@ function NotificationsTab({ adminToken }: { adminToken: string }) {
     enabled: !!adminToken,
   });
 
+  const { data: notifTemplates = [] } = useQuery<{ id: string; name: string; subject: string }[]>({
+    queryKey: ['/api/marketing/templates', 'course_notification'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/templates?trigger=course_notification', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const [selectedNotifTemplateId, setSelectedNotifTemplateId] = React.useState('');
+  const [sendingNotif, setSendingNotif] = React.useState(false);
+
+  const handleSendNotification = async () => {
+    if (!selectedNotifTemplateId || subs.length === 0) return;
+    setSendingNotif(true);
+    try {
+      const emails = subs.map(s => s.email).filter(Boolean);
+      const res = await fetch('/api/marketing/send-direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ emails, templateId: selectedNotifTemplateId }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        toast({ title: 'Notificações enviadas!', description: `${result.sent} e-mail(s) enviados.` });
+      } else {
+        toast({ title: 'Erro ao enviar', description: result.message, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Erro inesperado', variant: 'destructive' });
+    } finally {
+      setSendingNotif(false);
+    }
+  };
+
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
@@ -1232,7 +1387,7 @@ function NotificationsTab({ adminToken }: { adminToken: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Inscrições de Notificação</h2>
           <p className="text-sm text-gray-500">Usuários que solicitaram ser notificados sobre novos cursos.</p>
@@ -1244,6 +1399,35 @@ function NotificationsTab({ adminToken }: { adminToken: string }) {
           </Badge>
         )}
       </div>
+
+      {notifTemplates.length > 0 && (
+        <Card className="border border-forest/20 bg-forest/5">
+          <CardContent className="p-4 flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-48 space-y-1">
+              <p className="text-sm font-medium text-gray-700">Template de notificação de turma</p>
+              <Select value={selectedNotifTemplateId} onValueChange={setSelectedNotifTemplateId}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Selecione um template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {notifTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              size="sm"
+              className="bg-forest hover:bg-forest/90 text-white h-9"
+              disabled={!selectedNotifTemplateId || subs.length === 0 || sendingNotif}
+              onClick={handleSendNotification}
+            >
+              <Bell className="w-3 h-3 mr-1" />
+              {sendingNotif ? 'Enviando...' : `Notificar ${subs.length} inscrito${subs.length !== 1 ? 's' : ''}`}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-16">
@@ -1295,6 +1479,17 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   const [dispatching, setDispatching] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [dispatchProgress, setDispatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [certReadyTemplateId, setCertReadyTemplateId] = useState('none');
+
+  const { data: certReadyTemplates = [] } = useQuery<{ id: string; name: string; subject: string }[]>({
+    queryKey: ['/api/marketing/templates', 'certificate_ready'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/templates?trigger=certificate_ready', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
   const [loadProgress, setLoadProgress] = useState<number>(0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(1);
@@ -1757,7 +1952,19 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
             body: JSON.stringify({ fileData: base64 }),
           });
-          if (!res.ok) errors++;
+          if (!res.ok) {
+            errors++;
+          } else if (certReadyTemplateId && certReadyTemplateId !== 'none' && enrollment.email) {
+            await fetch('/api/marketing/send-direct', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+              body: JSON.stringify({
+                emails: [enrollment.email],
+                templateId: certReadyTemplateId,
+                vars: { nome: enrollment.fullName ?? enrollment.email, curso: selectedCourse?.title ?? '' },
+              }),
+            }).catch(() => {});
+          }
         } catch {
           errors++;
         }
@@ -1851,6 +2058,22 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
               </div>
 
               <div className="flex flex-col gap-2">
+                {certReadyTemplates.length > 0 && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-600">E-mail de certificado pronto (opcional)</label>
+                    <Select value={certReadyTemplateId} onValueChange={setCertReadyTemplateId}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Selecione template..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não enviar e-mail</SelectItem>
+                        {certReadyTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Button
                   className="bg-forest hover:bg-forest/90 text-white w-full"
                   disabled={dispatching || savingConfig || !selectedCourseId || !templateFile}

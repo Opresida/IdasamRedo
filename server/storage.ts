@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and } from "drizzle-orm";
 
@@ -99,6 +99,30 @@ export interface IStorage {
 
   migrateEnrollmentNamesToTitleCase(): Promise<number>;
   deduplicateEnrollments(): Promise<number>;
+
+  getEmailAudiences(): Promise<EmailAudience[]>;
+  getEmailAudience(id: string): Promise<EmailAudience | undefined>;
+  createEmailAudience(audience: InsertEmailAudience): Promise<EmailAudience>;
+  deleteEmailAudience(id: string): Promise<void>;
+
+  getAudienceLeads(audienceId: string): Promise<AudienceLead[]>;
+  addAudienceLead(lead: InsertAudienceLead): Promise<AudienceLead>;
+  removeAudienceLead(id: string): Promise<void>;
+
+  getEmailTemplates(): Promise<EmailTemplate[]>;
+  getEmailTemplatesByTrigger(trigger: string): Promise<EmailTemplate[]>;
+  getEmailTemplate(id: string): Promise<EmailTemplate | undefined>;
+  createEmailTemplate(template: InsertEmailTemplate): Promise<EmailTemplate>;
+  updateEmailTemplate(id: string, template: Partial<InsertEmailTemplate>): Promise<EmailTemplate | undefined>;
+  deleteEmailTemplate(id: string): Promise<void>;
+
+  getEmailCampaigns(): Promise<EmailCampaign[]>;
+  getEmailCampaign(id: string): Promise<EmailCampaign | undefined>;
+  createEmailCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign>;
+  updateEmailCampaign(id: string, campaign: Partial<InsertEmailCampaign>): Promise<EmailCampaign | undefined>;
+  deleteEmailCampaign(id: string): Promise<void>;
+
+  searchLeads(query: string): Promise<{ name: string; email: string; source: string }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -541,6 +565,113 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return updated;
+  }
+
+  async getEmailAudiences(): Promise<EmailAudience[]> {
+    return db.select().from(emailAudiences).orderBy(desc(emailAudiences.createdAt));
+  }
+
+  async getEmailAudience(id: string): Promise<EmailAudience | undefined> {
+    const [a] = await db.select().from(emailAudiences).where(eq(emailAudiences.id, id));
+    return a || undefined;
+  }
+
+  async createEmailAudience(audience: InsertEmailAudience): Promise<EmailAudience> {
+    const [created] = await db.insert(emailAudiences).values(audience).returning();
+    return created;
+  }
+
+  async deleteEmailAudience(id: string): Promise<void> {
+    await db.delete(audienceLeads).where(eq(audienceLeads.audienceId, id));
+    await db.delete(emailAudiences).where(eq(emailAudiences.id, id));
+  }
+
+  async getAudienceLeads(audienceId: string): Promise<AudienceLead[]> {
+    return db.select().from(audienceLeads).where(eq(audienceLeads.audienceId, audienceId)).orderBy(audienceLeads.name);
+  }
+
+  async addAudienceLead(lead: InsertAudienceLead): Promise<AudienceLead> {
+    const [created] = await db.insert(audienceLeads).values(lead).returning();
+    return created;
+  }
+
+  async removeAudienceLead(id: string): Promise<void> {
+    await db.delete(audienceLeads).where(eq(audienceLeads.id, id));
+  }
+
+  async getEmailTemplates(): Promise<EmailTemplate[]> {
+    return db.select().from(emailTemplates).orderBy(desc(emailTemplates.createdAt));
+  }
+
+  async getEmailTemplatesByTrigger(trigger: string): Promise<EmailTemplate[]> {
+    return db.select().from(emailTemplates).where(eq(emailTemplates.trigger, trigger));
+  }
+
+  async getEmailTemplate(id: string): Promise<EmailTemplate | undefined> {
+    const [t] = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id));
+    return t || undefined;
+  }
+
+  async createEmailTemplate(template: InsertEmailTemplate): Promise<EmailTemplate> {
+    const [created] = await db.insert(emailTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateEmailTemplate(id: string, template: Partial<InsertEmailTemplate>): Promise<EmailTemplate | undefined> {
+    const [updated] = await db.update(emailTemplates).set(template).where(eq(emailTemplates.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteEmailTemplate(id: string): Promise<void> {
+    await db.delete(emailTemplates).where(eq(emailTemplates.id, id));
+  }
+
+  async getEmailCampaigns(): Promise<EmailCampaign[]> {
+    return db.select().from(emailCampaigns).orderBy(emailCampaigns.sentAt);
+  }
+
+  async getEmailCampaign(id: string): Promise<EmailCampaign | undefined> {
+    const [row] = await db.select().from(emailCampaigns).where(eq(emailCampaigns.id, id));
+    return row;
+  }
+
+  async createEmailCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign> {
+    const [created] = await db.insert(emailCampaigns).values(campaign).returning();
+    return created;
+  }
+
+  async updateEmailCampaign(id: string, campaign: Partial<InsertEmailCampaign>): Promise<EmailCampaign | undefined> {
+    const [updated] = await db.update(emailCampaigns).set(campaign).where(eq(emailCampaigns.id, id)).returning();
+    return updated;
+  }
+
+  async deleteEmailCampaign(id: string): Promise<void> {
+    await db.delete(emailCampaigns).where(eq(emailCampaigns.id, id));
+  }
+
+  async searchLeads(query: string): Promise<{ name: string; email: string; source: string }[]> {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const subs = await db.select().from(courseNotificationSubscriptions);
+    const enrAll = await db.select().from(enrollments);
+    const results: { name: string; email: string; source: string }[] = [];
+    const seen = new Set<string>();
+    for (const s of subs) {
+      if ((s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)) && s.email) {
+        const key = s.email.toLowerCase();
+        if (!seen.has(key)) { seen.add(key); results.push({ name: s.name, email: s.email, source: 'Notificações' }); }
+      }
+    }
+    for (const e of enrAll) {
+      if (!e.email) continue;
+      const nameMatch = (e.fullName ?? '').toLowerCase().includes(q);
+      const emailMatch = e.email.toLowerCase().includes(q);
+      if (nameMatch || emailMatch) {
+        const key = e.email.toLowerCase();
+        if (!seen.has(key)) { seen.add(key); results.push({ name: e.fullName ?? e.email, email: e.email, source: 'Matrículas' }); }
+      }
+    }
+    return results.slice(0, 20);
   }
 
   async deduplicateEnrollments(): Promise<number> {

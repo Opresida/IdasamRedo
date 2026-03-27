@@ -12,7 +12,8 @@ import {
   LogOut,
   Shield,
   Users,
-  GraduationCap
+  GraduationCap,
+  Mail
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -70,6 +71,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: GraduationCap,
       path: '/dashboard/capacitacao',
       description: 'Cursos e certificados'
+    },
+    {
+      label: 'Marketing',
+      icon: Mail,
+      path: '/dashboard/marketing',
+      description: 'E-mail marketing'
     }
   ];
 
