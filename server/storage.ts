@@ -57,7 +57,7 @@ export interface IStorage {
   getEnrollments(): Promise<Enrollment[]>;
   getEnrollmentsByCourse(courseId: string): Promise<Enrollment[]>;
   getEnrollmentByIdentifier(identifier: string): Promise<Enrollment[]>;
-  findEnrollmentDuplicate(courseId: string, cpf?: string | null, email?: string | null): Promise<Enrollment | undefined>;
+  findEnrollmentDuplicate(courseId: string, cpf?: string | null, email?: string | null, fullName?: string | null): Promise<Enrollment | undefined>;
   createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment>;
   updateEnrollment(id: string, enrollment: Partial<InsertEnrollment>): Promise<Enrollment | undefined>;
   deleteEnrollment(id: string): Promise<void>;
@@ -98,6 +98,7 @@ export interface IStorage {
   getUserArticleReactions(articleId: string, anonymousUserId: string): Promise<string[]>;
 
   migrateEnrollmentNamesToTitleCase(): Promise<number>;
+  deduplicateEnrollments(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -229,33 +230,45 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async findEnrollmentDuplicate(courseId: string, cpf?: string | null, email?: string | null): Promise<Enrollment | undefined> {
+  async findEnrollmentDuplicate(courseId: string, cpf?: string | null, email?: string | null, fullName?: string | null): Promise<Enrollment | undefined> {
     const normalizedCpf = cpf ? normalizeIdentifier(cpf) : null;
     const normalizedEmail = email ? normalizeIdentifier(email) : null;
     const hasCpf = !!(normalizedCpf && normalizedCpf.length > 0);
     const hasEmail = !!(normalizedEmail && normalizedEmail.length > 0);
-    if (!hasCpf && !hasEmail) return undefined;
-    const conditions = [];
-    if (hasCpf) conditions.push(eq(enrollments.cpf, normalizedCpf!));
-    if (hasEmail) conditions.push(eq(enrollments.email, normalizedEmail!));
-    const candidates = await db.select().from(enrollments).where(
-      and(eq(enrollments.courseId, courseId), or(...conditions))
-    );
-    return candidates.find((e) => {
-      if (hasCpf) {
-        const eCpf = e.cpf ? normalizeIdentifier(e.cpf) : null;
-        if (eCpf && eCpf === normalizedCpf) return true;
-      }
-      if (hasEmail) {
-        const eEmail = e.email ? normalizeIdentifier(e.email) : null;
-        if (eEmail && eEmail === normalizedEmail) return true;
-      }
-      return false;
-    });
+
+    if (hasCpf || hasEmail) {
+      const conditions = [];
+      if (hasCpf) conditions.push(eq(enrollments.cpf, normalizedCpf!));
+      if (hasEmail) conditions.push(eq(enrollments.email, normalizedEmail!));
+      const candidates = await db.select().from(enrollments).where(
+        and(eq(enrollments.courseId, courseId), or(...conditions))
+      );
+      const found = candidates.find((e) => {
+        if (hasCpf) {
+          const eCpf = e.cpf ? normalizeIdentifier(e.cpf) : null;
+          if (eCpf && eCpf === normalizedCpf) return true;
+        }
+        if (hasEmail) {
+          const eEmail = e.email ? normalizeIdentifier(e.email) : null;
+          if (eEmail && eEmail === normalizedEmail) return true;
+        }
+        return false;
+      });
+      if (found) return found;
+    }
+
+    if (!hasCpf && !hasEmail && fullName) {
+      const normalizedName = normalizeName(fullName);
+      if (normalizedName.length === 0) return undefined;
+      const courseEnrollments = await db.select().from(enrollments).where(eq(enrollments.courseId, courseId));
+      return courseEnrollments.find((e) => normalizeName(e.fullName ?? '') === normalizedName);
+    }
+
+    return undefined;
   }
 
   async createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment> {
-    const duplicate = await this.findEnrollmentDuplicate(enrollment.courseId, enrollment.cpf, enrollment.email);
+    const duplicate = await this.findEnrollmentDuplicate(enrollment.courseId, enrollment.cpf, enrollment.email, enrollment.fullName);
     if (duplicate) {
       throw new Error("DUPLICATE_ENROLLMENT");
     }
@@ -528,6 +541,52 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return updated;
+  }
+
+  async deduplicateEnrollments(): Promise<number> {
+    const allEnrollments = await db.select().from(enrollments);
+    const allCertificates = await db.select().from(certificates);
+
+    const certsByEnrollment = new Map<string, boolean>();
+    for (const cert of allCertificates) {
+      if (cert.fileData) {
+        certsByEnrollment.set(cert.enrollmentId, true);
+      }
+    }
+
+    const grouped = new Map<string, Enrollment[]>();
+    for (const e of allEnrollments) {
+      const normalizedName = normalizeName(e.fullName ?? '');
+      if (normalizedName.length === 0) continue;
+      const key = `${e.courseId}::${normalizedName}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(e);
+    }
+
+    let removed = 0;
+    for (const [, group] of grouped) {
+      if (group.length <= 1) continue;
+
+      const sortedByDate = [...group].sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
+
+      const withCert = sortedByDate.filter((e) => certsByEnrollment.get(e.id));
+      const keeper = withCert.length > 0 ? withCert[0] : sortedByDate[0];
+
+      const toDelete = group.filter((e) => e.id !== keeper.id);
+      const toDeleteIds = toDelete.map((e) => e.id);
+
+      if (toDeleteIds.length > 0) {
+        await db.delete(certificates).where(inArray(certificates.enrollmentId, toDeleteIds));
+        await db.delete(enrollments).where(inArray(enrollments.id, toDeleteIds));
+        removed += toDeleteIds.length;
+      }
+    }
+
+    return removed;
   }
 }
 

@@ -266,12 +266,24 @@ async function migrateEnrollmentNames() {
   }
 }
 
+async function deduplicateExistingEnrollments() {
+  try {
+    const count = await storage.deduplicateEnrollments();
+    if (count > 0) {
+      console.log(`Removed ${count} duplicate enrollment(s) on startup.`);
+    }
+  } catch (err) {
+    console.error("Erro ao deduplicar inscrições:", err);
+  }
+}
+
 export async function registerRoutes(app: Express) {
   await seedCourses();
   await seedArticles();
   await storage.backfillAuthCodes();
   await storage.deleteOrphanedCertificates();
   await migrateEnrollmentNames();
+  await deduplicateExistingEnrollments();
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", message: "Server is running" });
@@ -487,7 +499,7 @@ export async function registerRoutes(app: Express) {
       res.status(201).json(enrollment);
     } catch (err: any) {
       if (err?.message === "DUPLICATE_ENROLLMENT") {
-        return res.status(409).json({ message: "Aluno já está matriculado neste curso. Verifique CPF ou e-mail." });
+        return res.status(409).json({ message: "Aluno já está matriculado neste curso. Verifique CPF, e-mail ou nome." });
       }
       res.status(500).json({ message: "Erro ao criar inscrição" });
     }
@@ -542,28 +554,34 @@ export async function registerRoutes(app: Express) {
       let skipped = 0;
       const seenCpfs = new Set<string>();
       const seenEmails = new Set<string>();
+      const seenNames = new Set<string>();
       for (let i = 0; i < records.length; i++) {
         const parsed = insertEnrollmentSchema.safeParse({ ...records[i], courseId });
         if (!parsed.success) {
           errors.push({ row: i + 1, errors: parsed.error.errors });
           continue;
         }
-        const { cpf, email } = parsed.data;
+        const { cpf, email, fullName } = parsed.data;
         const normalizedCpf = cpf ? cpf.trim().replace(/\D/g, "") : null;
         const normalizedEmail = email ? email.trim().toLowerCase() : null;
-        const dupInBatch = (normalizedCpf && normalizedCpf.length > 0 && seenCpfs.has(normalizedCpf))
-          || (normalizedEmail && normalizedEmail.length > 0 && seenEmails.has(normalizedEmail));
+        const normalizedName = fullName ? fullName.trim().toLowerCase().replace(/\s+/g, " ") : null;
+        const hasCpf = !!(normalizedCpf && normalizedCpf.length > 0);
+        const hasEmail = !!(normalizedEmail && normalizedEmail.length > 0);
+        const dupInBatch = (hasCpf && seenCpfs.has(normalizedCpf!))
+          || (hasEmail && seenEmails.has(normalizedEmail!))
+          || (!hasCpf && !hasEmail && normalizedName && normalizedName.length > 0 && seenNames.has(normalizedName));
         if (dupInBatch) {
           skipped++;
           continue;
         }
-        const dupInDb = await storage.findEnrollmentDuplicate(courseId, cpf, email);
+        const dupInDb = await storage.findEnrollmentDuplicate(courseId, cpf, email, fullName);
         if (dupInDb) {
           skipped++;
           continue;
         }
-        if (normalizedCpf && normalizedCpf.length > 0) seenCpfs.add(normalizedCpf);
-        if (normalizedEmail && normalizedEmail.length > 0) seenEmails.add(normalizedEmail);
+        if (hasCpf) seenCpfs.add(normalizedCpf!);
+        if (hasEmail) seenEmails.add(normalizedEmail!);
+        if (!hasCpf && !hasEmail && normalizedName && normalizedName.length > 0) seenNames.add(normalizedName);
         try {
           const enrollment = await storage.createEnrollment(parsed.data);
           created.push(enrollment);
@@ -608,18 +626,29 @@ export async function registerRoutes(app: Express) {
         return res.status(404).json({ message: "Nenhuma inscrição encontrada" });
       }
 
-      const result = await Promise.all(
+      const rawResults = await Promise.all(
         enrolls.map(async (e) => {
           const cert = await storage.getCertificate(e.id);
           const course = await storage.getCourse(e.courseId);
           return {
             enrollmentId: e.id,
             fullName: e.fullName,
+            courseId: e.courseId,
             courseTitle: course?.title ?? "Curso",
             hasCertificate: !!(cert?.fileData),
           };
         })
       );
+
+      const deduped = new Map<string, typeof rawResults[number]>();
+      for (const r of rawResults) {
+        const existing = deduped.get(r.courseId);
+        if (!existing || (!existing.hasCertificate && r.hasCertificate)) {
+          deduped.set(r.courseId, r);
+        }
+      }
+
+      const result = Array.from(deduped.values()).map(({ courseId: _cid, ...rest }) => rest);
 
       res.json(result);
     } catch (err) {
