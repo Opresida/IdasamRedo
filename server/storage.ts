@@ -1,6 +1,6 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate } from "@shared/schema";
 import { db } from "./db";
-import { eq, or, inArray, desc, isNull, and } from "drizzle-orm";
+import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
 
 function generateAuthCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -121,6 +121,7 @@ export interface IStorage {
   createEmailCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign>;
   updateEmailCampaign(id: string, campaign: Partial<InsertEmailCampaign>): Promise<EmailCampaign | undefined>;
   deleteEmailCampaign(id: string): Promise<void>;
+  trackCampaignOpen(campaignId: string, leadId: string): Promise<void>;
 
   searchLeads(query: string): Promise<{ name: string; email: string; source: string }[]>;
   getLeadsByCourseIds(courseIds: string[]): Promise<{ name: string; email: string; source: string; courseTitle: string }[]>;
@@ -654,6 +655,22 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEmailCampaign(id: string): Promise<void> {
     await db.delete(emailCampaigns).where(eq(emailCampaigns.id, id));
+  }
+
+  async trackCampaignOpen(campaignId: string, leadId: string): Promise<void> {
+    try {
+      await db.insert(campaignOpenEvents).values({ campaignId, leadId });
+      await db.execute(
+        sql`UPDATE email_campaigns SET open_count = open_count + 1 WHERE id = ${campaignId}`
+      );
+    } catch (err) {
+      const pgErr = err as { code?: string };
+      if (pgErr?.code === '23505') {
+        // Unique constraint violation — lead already opened this campaign, skip
+      } else {
+        throw err;
+      }
+    }
   }
 
   async searchLeads(query: string): Promise<{ name: string; email: string; source: string }[]> {

@@ -1295,32 +1295,106 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Marketing: Tracking pixel for email opens
+  app.get("/api/marketing/track/open/:campaignId/:leadId", async (req, res) => {
+    try {
+      const { campaignId, leadId } = req.params;
+      const campaign = await storage.getEmailCampaign(campaignId);
+      if (campaign) {
+        const leads = await storage.getAudienceLeads(campaign.audienceId);
+        const leadBelongs = leads.some(l => l.id === leadId);
+        if (leadBelongs) {
+          await storage.trackCampaignOpen(campaignId, leadId);
+        }
+      }
+    } catch {
+      // Silently fail - tracking should not break email experience
+    }
+    const pixel = Buffer.from(
+      'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      'base64'
+    );
+    res.set('Content-Type', 'image/gif');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.end(pixel);
+  });
+
+  // Marketing: Analytics endpoint
+  app.get("/api/marketing/analytics", requireAdmin, async (_req, res) => {
+    try {
+      const campaigns = await storage.getEmailCampaigns();
+      const totalSent = campaigns.reduce((sum, c) => sum + c.sentCount, 0);
+      const totalErrors = campaigns.reduce((sum, c) => sum + (c.errorCount ?? 0), 0);
+      const totalOpens = campaigns.reduce((sum, c) => sum + (c.openCount ?? 0), 0);
+      const openRate = totalSent > 0 ? Math.round((totalOpens / totalSent) * 100) : 0;
+      res.json({ totalSent, totalErrors, totalOpens, openRate, campaigns });
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar analytics" });
+    }
+  });
+
   // Marketing: Send campaign
   app.post("/api/marketing/send", requireAdmin, async (req, res) => {
     try {
-      const { audienceId, templateId, customHtmlTemplateId } = req.body;
-      if (!audienceId || !templateId) return res.status(400).json({ message: "audienceId e templateId são obrigatórios" });
-      const [tpl, leads] = await Promise.all([
-        storage.getEmailTemplate(templateId),
-        storage.getAudienceLeads(audienceId),
-      ]);
-      if (!tpl) return res.status(404).json({ message: "Template não encontrado" });
+      const { audienceId, templateId, customHtmlTemplateId, subject: manualSubject } = req.body;
+      if (!audienceId) return res.status(400).json({ message: "audienceId é obrigatório" });
+      if (!templateId && !customHtmlTemplateId) return res.status(400).json({ message: "templateId ou customHtmlTemplateId são obrigatórios" });
+      if (customHtmlTemplateId && !templateId && (!manualSubject || !manualSubject.trim())) {
+        return res.status(400).json({ message: "Assunto do e-mail é obrigatório quando não há template Markdown" });
+      }
+
+      const leads = await storage.getAudienceLeads(audienceId);
       if (leads.length === 0) return res.status(400).json({ message: "Audiência sem leads" });
-      let sent = 0;
-      let failed = 0;
+
+      let emailSubject: string;
       let htmlBody: string;
+
       if (customHtmlTemplateId) {
         const htmlTpl = await storage.getCustomHtmlTemplate(customHtmlTemplateId);
-        htmlBody = htmlTpl ? htmlTpl.htmlContent : await markdownToHtml(tpl.body);
+        if (!htmlTpl) return res.status(404).json({ message: "Template HTML não encontrado" });
+        htmlBody = htmlTpl.htmlContent;
+        if (templateId) {
+          const tpl = await storage.getEmailTemplate(templateId);
+          emailSubject = tpl ? tpl.subject : (manualSubject ?? 'Mensagem');
+        } else {
+          emailSubject = manualSubject ?? 'Mensagem';
+        }
       } else {
+        const tpl = await storage.getEmailTemplate(templateId);
+        if (!tpl) return res.status(404).json({ message: "Template não encontrado" });
+        emailSubject = tpl.subject;
         htmlBody = await markdownToHtml(tpl.body);
       }
+
+      let sent = 0;
+      let failed = 0;
+
+      const campaignRecord = await storage.createEmailCampaign({
+        audienceId,
+        templateId: templateId ?? null,
+        customHtmlTemplateId: customHtmlTemplateId ?? null,
+        sentCount: 0,
+        errorCount: 0,
+        subject: emailSubject,
+      });
+
+      const appBaseUrl = process.env.APP_URL
+        || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null)
+        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null);
+
       for (const lead of leads) {
-        const rendered = renderTemplate(htmlBody, { nome: lead.name, email: lead.email });
-        const ok = await sendEmailViaResend(lead.email, tpl.subject, rendered);
+        let bodyWithTracking = htmlBody;
+        if (appBaseUrl) {
+          const trackingPixel = `<img src="${appBaseUrl}/api/marketing/track/open/${campaignRecord.id}/${lead.id}" width="1" height="1" style="display:none" alt="" />`;
+          bodyWithTracking = htmlBody + trackingPixel;
+        }
+        const rendered = renderTemplate(bodyWithTracking, { nome: lead.name, email: lead.email });
+        const ok = await sendEmailViaResend(lead.email, emailSubject, rendered);
         if (ok) sent++; else failed++;
       }
-      await storage.createEmailCampaign({ audienceId, templateId, customHtmlTemplateId: customHtmlTemplateId ?? null, sentCount: sent });
+
+      await storage.updateEmailCampaign(campaignRecord.id, { sentCount: sent, errorCount: failed });
       res.json({ message: "Campanha disparada", sent, failed });
     } catch {
       res.status(500).json({ message: "Erro ao disparar campanha" });

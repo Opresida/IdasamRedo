@@ -20,8 +20,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Form,
   FormControl,
@@ -33,7 +38,10 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Users, Pencil, Trash2, Plus, Send, Search, X, FileText, Zap, Bell, BookOpen, Code2, Eye } from 'lucide-react';
+import {
+  Mail, Users, Pencil, Trash2, Plus, Send, Search, X, FileText,
+  Zap, Bell, BookOpen, Code2, Eye, BarChart3, TrendingUp, AlertCircle, CheckCircle2,
+} from 'lucide-react';
 import type { EmailAudience, AudienceLead, EmailTemplate, Course, CourseNotificationSubscription, CustomHtmlTemplate } from '@shared/schema';
 import { EMAIL_TRIGGER_TYPES, COURSE_STATUSES } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
@@ -247,7 +255,7 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
               <p className="text-sm">Crie uma audiência para começar.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-80 overflow-y-auto">
               {audiences.map(a => (
                 <div
                   key={a.id}
@@ -503,7 +511,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [previewMd, setPreviewMd] = useState('');
   const [preview, setPreview] = useState('');
 
@@ -523,7 +531,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
   });
 
   React.useEffect(() => {
-    if (dialogOpen) {
+    if (sheetOpen) {
       if (editingTemplate) {
         form.reset({ name: editingTemplate.name, subject: editingTemplate.subject, body: editingTemplate.body, trigger: editingTemplate.trigger as typeof EMAIL_TRIGGER_TYPES[number] });
         setPreviewMd(editingTemplate.body);
@@ -533,7 +541,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
         setPreview('');
       }
     }
-  }, [dialogOpen, editingTemplate]);
+  }, [sheetOpen, editingTemplate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -559,7 +567,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
     onSuccess: () => {
       toast({ title: editingTemplate ? 'Template atualizado!' : 'Template salvo!' });
       qc.invalidateQueries({ queryKey: ['/api/marketing/templates'] });
-      setDialogOpen(false);
+      setSheetOpen(false);
       setEditingTemplate(null);
     },
     onError: () => toast({ title: 'Erro ao salvar template', variant: 'destructive' }),
@@ -579,7 +587,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
 
   const handleOpen = (tpl?: EmailTemplate) => {
     setEditingTemplate(tpl ?? null);
-    setDialogOpen(true);
+    setSheetOpen(true);
   };
 
   return (
@@ -631,85 +639,87 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={v => { if (!v) { setDialogOpen(false); setEditingTemplate(null); } }}>
-        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-forest flex items-center gap-2">
+      <Sheet open={sheetOpen} onOpenChange={v => { if (!v) { setSheetOpen(false); setEditingTemplate(null); } }}>
+        <SheetContent side="right" className="w-full sm:max-w-4xl flex flex-col p-0">
+          <SheetHeader className="p-6 pb-4 border-b">
+            <SheetTitle className="text-forest flex items-center gap-2">
               <FileText className="w-5 h-5" />
               {editingTemplate ? 'Editar Template' : 'Novo Template'}
-            </DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(d => saveMutation.mutate(d))} className="flex flex-col flex-1 overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome do Template</FormLabel>
-                    <FormControl><Input placeholder="Ex: Boas-vindas" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="subject" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assunto do E-mail</FormLabel>
-                    <FormControl><Input placeholder="Ex: Bem-vindo ao IDASAM!" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="trigger" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Gatilho</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {EMAIL_TRIGGER_TYPES.map(t => (
-                          <SelectItem key={t} value={t}>{TRIGGER_LABELS[t]}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
-                <FormField control={form.control} name="body" render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Markdown (editar aqui)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        className="flex-1 font-mono text-sm resize-none min-h-[300px]"
-                        placeholder="# Olá {{nome}}!&#10;&#10;Seja bem-vindo ao curso **{{curso}}**."
-                        {...field}
-                        onChange={e => { field.onChange(e); setPreviewMd(e.target.value); }}
-                      />
-                    </FormControl>
-                    <p className="text-xs text-gray-400">Use &#123;&#123;nome&#125;&#125;, &#123;&#123;curso&#125;&#125; como variáveis</p>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Preview HTML</p>
-                  <div
-                    className="flex-1 border border-gray-200 rounded-md p-4 overflow-y-auto text-sm leading-relaxed prose prose-sm max-w-none min-h-[300px] bg-white"
-                    dangerouslySetInnerHTML={{ __html: preview || '<p class="text-gray-400">Nenhum conteúdo ainda...</p>' }}
-                  />
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto p-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(d => saveMutation.mutate(d))} className="flex flex-col gap-4 h-full">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome do Template</FormLabel>
+                      <FormControl><Input placeholder="Ex: Boas-vindas" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="subject" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assunto do E-mail</FormLabel>
+                      <FormControl><Input placeholder="Ex: Bem-vindo ao IDASAM!" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="trigger" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Gatilho</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {EMAIL_TRIGGER_TYPES.map(t => (
+                            <SelectItem key={t} value={t}>{TRIGGER_LABELS[t]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
-              </div>
 
-              <DialogFooter className="mt-4 gap-2">
-                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setEditingTemplate(null); }}>Cancelar</Button>
-                <Button type="submit" className="bg-forest hover:bg-forest/90 text-white" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? 'Salvando...' : 'Salvar Template'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="body" render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Markdown (editar aqui)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          className="font-mono text-sm resize-none min-h-[360px]"
+                          placeholder="# Olá {{nome}}!&#10;&#10;Seja bem-vindo ao curso **{{curso}}**."
+                          {...field}
+                          onChange={e => { field.onChange(e); setPreviewMd(e.target.value); }}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-gray-400">Use &#123;&#123;nome&#125;&#125;, &#123;&#123;curso&#125;&#125; como variáveis</p>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Preview HTML</p>
+                    <div
+                      className="border border-gray-200 rounded-md p-4 overflow-y-auto text-sm leading-relaxed prose prose-sm max-w-none min-h-[360px] bg-white"
+                      dangerouslySetInnerHTML={{ __html: preview || '<p class="text-gray-400">Nenhum conteúdo ainda...</p>' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => { setSheetOpen(false); setEditingTemplate(null); }}>Cancelar</Button>
+                  <Button type="submit" className="bg-forest hover:bg-forest/90 text-white" disabled={saveMutation.isPending}>
+                    {saveMutation.isPending ? 'Salvando...' : 'Salvar Template'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -727,10 +737,11 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [editingTemplate, setEditingTemplate] = useState<CustomHtmlTemplate | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [showEditorPreview, setShowEditorPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
+  const [quickPreviewTemplate, setQuickPreviewTemplate] = useState<CustomHtmlTemplate | null>(null);
 
   const { data: templates = [], isLoading } = useQuery<CustomHtmlTemplate[]>({
     queryKey: ['/api/marketing/html-templates'],
@@ -742,7 +753,7 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
     enabled: !!adminToken,
   });
 
-  const { data: campaigns = [] } = useQuery<{ id: string; audienceId: string; templateId: string; customHtmlTemplateId?: string | null; sentAt?: string | null; sentCount: number }[]>({
+  const { data: campaigns = [] } = useQuery<{ id: string; audienceId: string; templateId: string | null; customHtmlTemplateId?: string | null; sentAt?: string | null; sentCount: number }[]>({
     queryKey: ['/api/marketing/campaigns'],
     queryFn: async () => {
       const res = await fetch('/api/marketing/campaigns', { headers: { Authorization: `Bearer ${adminToken}` } });
@@ -758,7 +769,7 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
   });
 
   React.useEffect(() => {
-    if (dialogOpen) {
+    if (sheetOpen) {
       if (editingTemplate) {
         form.reset({ name: editingTemplate.name, htmlContent: editingTemplate.htmlContent, campaignIds: editingTemplate.campaignIds ?? [] });
         setPreviewHtml(editingTemplate.htmlContent);
@@ -768,9 +779,9 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
         setPreviewHtml('');
         setSelectedCampaignIds([]);
       }
-      setShowPreview(false);
+      setShowEditorPreview(false);
     }
-  }, [dialogOpen, editingTemplate]);
+  }, [sheetOpen, editingTemplate]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: HtmlTemplateFormData) => {
@@ -787,7 +798,7 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
     onSuccess: () => {
       toast({ title: editingTemplate ? 'Template HTML atualizado!' : 'Template HTML salvo!' });
       qc.invalidateQueries({ queryKey: ['/api/marketing/html-templates'] });
-      setDialogOpen(false);
+      setSheetOpen(false);
       setEditingTemplate(null);
     },
     onError: () => toast({ title: 'Erro ao salvar template HTML', variant: 'destructive' }),
@@ -807,7 +818,7 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
 
   const handleOpen = (tpl?: CustomHtmlTemplate) => {
     setEditingTemplate(tpl ?? null);
-    setDialogOpen(true);
+    setSheetOpen(true);
   };
 
   const getUsageCount = (templateId: string) => {
@@ -859,6 +870,14 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
                     </p>
                   </div>
                   <div className="flex gap-1 ml-4 shrink-0">
+                    <Button
+                      size="sm" variant="ghost"
+                      className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                      title="Preview rápido"
+                      onClick={() => setQuickPreviewTemplate(tpl)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-blue-500 hover:bg-blue-50" onClick={() => handleOpen(tpl)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -873,109 +892,132 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={v => { if (!v) { setDialogOpen(false); setEditingTemplate(null); } }}>
-        <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-forest flex items-center gap-2">
-              <Code2 className="w-5 h-5" />
-              {editingTemplate ? 'Editar Template HTML' : 'Novo Template HTML'}
+      {/* Quick Preview Modal */}
+      <Dialog open={!!quickPreviewTemplate} onOpenChange={v => { if (!v) setQuickPreviewTemplate(null); }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0">
+          <DialogHeader className="p-4 pb-3 border-b shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-forest">
+              <Eye className="w-4 h-4" />
+              Preview — {quickPreviewTemplate?.name}
             </DialogTitle>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(d => saveMutation.mutate(d))} className="flex flex-col flex-1 overflow-hidden gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome do Template</FormLabel>
-                    <FormControl><Input placeholder="Ex: Newsletter Março 2026" {...field} /></FormControl>
+          <div className="flex-1 overflow-hidden min-h-0">
+            {quickPreviewTemplate && (
+              <iframe
+                srcDoc={quickPreviewTemplate.htmlContent || '<p style="color:#aaa;padding:16px">Sem conteúdo</p>'}
+                className="w-full h-full min-h-[500px]"
+                sandbox="allow-same-origin"
+                title="Preview HTML"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editor Sheet */}
+      <Sheet open={sheetOpen} onOpenChange={v => { if (!v) { setSheetOpen(false); setEditingTemplate(null); } }}>
+        <SheetContent side="right" className="w-full sm:max-w-5xl flex flex-col p-0">
+          <SheetHeader className="p-6 pb-4 border-b shrink-0">
+            <SheetTitle className="text-forest flex items-center gap-2">
+              <Code2 className="w-5 h-5" />
+              {editingTemplate ? 'Editar Template HTML' : 'Novo Template HTML'}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto p-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(d => saveMutation.mutate(d))} className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome do Template</FormLabel>
+                      <FormControl><Input placeholder="Ex: Newsletter Março 2026" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Campanhas Associadas <span className="text-gray-400 font-normal text-xs">(opcional)</span></p>
+                    {campaigns.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">Nenhuma campanha criada ainda</p>
+                    ) : (
+                      <div className="max-h-24 overflow-y-auto space-y-1 border rounded-md p-2 bg-gray-50">
+                        {campaigns.map(c => (
+                          <label key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-white rounded px-1 py-0.5">
+                            <input
+                              type="checkbox"
+                              checked={selectedCampaignIds.includes(c.id)}
+                              onChange={() => setSelectedCampaignIds(prev =>
+                                prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id]
+                              )}
+                              className="rounded text-forest"
+                            />
+                            <span className="text-xs text-gray-700">
+                              {new Date(c.sentAt ?? '').toLocaleDateString('pt-BR')} — {c.sentCount} enviado{c.sentCount !== 1 ? 's' : ''}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button" size="sm"
+                    variant={!showEditorPreview ? 'default' : 'outline'}
+                    className={!showEditorPreview ? 'bg-forest hover:bg-forest/90 text-white' : ''}
+                    onClick={() => setShowEditorPreview(false)}
+                  >
+                    <Code2 className="w-3 h-3 mr-1" /> Editor HTML
+                  </Button>
+                  <Button
+                    type="button" size="sm"
+                    variant={showEditorPreview ? 'default' : 'outline'}
+                    className={showEditorPreview ? 'bg-forest hover:bg-forest/90 text-white' : ''}
+                    onClick={() => setShowEditorPreview(true)}
+                  >
+                    <Eye className="w-3 h-3 mr-1" /> Preview
+                  </Button>
+                </div>
+
+                <FormField control={form.control} name="htmlContent" render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    {!showEditorPreview ? (
+                      <>
+                        <FormControl>
+                          <Textarea
+                            className="font-mono text-sm resize-none min-h-[400px]"
+                            placeholder="<!DOCTYPE html><html>...</html>"
+                            {...field}
+                            onChange={e => { field.onChange(e); setPreviewHtml(e.target.value); }}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-gray-400">HTML puro — use &#123;&#123;nome&#125;&#125; e &#123;&#123;email&#125;&#125; como variáveis</p>
+                      </>
+                    ) : (
+                      <div className="border border-gray-200 rounded-md overflow-hidden min-h-[400px] bg-white">
+                        <iframe
+                          srcDoc={previewHtml || field.value || '<p style="color:#aaa;padding:16px">Nenhum conteúdo ainda...</p>'}
+                          className="w-full min-h-[400px]"
+                          sandbox="allow-same-origin"
+                          title="Preview HTML"
+                        />
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )} />
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Campanhas Associadas <span className="text-gray-400 font-normal text-xs">(opcional)</span></p>
-                  {campaigns.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">Nenhuma campanha criada ainda</p>
-                  ) : (
-                    <div className="max-h-24 overflow-y-auto space-y-1 border rounded-md p-2 bg-gray-50">
-                      {campaigns.map(c => (
-                        <label key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-white rounded px-1 py-0.5">
-                          <input
-                            type="checkbox"
-                            checked={selectedCampaignIds.includes(c.id)}
-                            onChange={() => setSelectedCampaignIds(prev =>
-                              prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id]
-                            )}
-                            className="rounded text-forest"
-                          />
-                          <span className="text-xs text-gray-700">
-                            {new Date(c.sentAt ?? '').toLocaleDateString('pt-BR')} — {c.sentCount} enviado{c.sentCount !== 1 ? 's' : ''}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => { setSheetOpen(false); setEditingTemplate(null); }}>Cancelar</Button>
+                  <Button type="submit" className="bg-forest hover:bg-forest/90 text-white" disabled={saveMutation.isPending}>
+                    {saveMutation.isPending ? 'Salvando...' : 'Salvar Template HTML'}
+                  </Button>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={!showPreview ? 'default' : 'outline'}
-                  className={!showPreview ? 'bg-forest hover:bg-forest/90 text-white' : ''}
-                  onClick={() => setShowPreview(false)}
-                >
-                  <Code2 className="w-3 h-3 mr-1" /> Editor HTML
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={showPreview ? 'default' : 'outline'}
-                  className={showPreview ? 'bg-forest hover:bg-forest/90 text-white' : ''}
-                  onClick={() => setShowPreview(true)}
-                >
-                  <Eye className="w-3 h-3 mr-1" /> Preview
-                </Button>
-              </div>
-
-              <FormField control={form.control} name="htmlContent" render={({ field }) => (
-                <FormItem className="flex flex-col flex-1 min-h-0">
-                  {!showPreview ? (
-                    <>
-                      <FormControl>
-                        <Textarea
-                          className="flex-1 font-mono text-sm resize-none min-h-[380px]"
-                          placeholder="<!DOCTYPE html><html>...</html>"
-                          {...field}
-                          onChange={e => { field.onChange(e); setPreviewHtml(e.target.value); }}
-                        />
-                      </FormControl>
-                      <p className="text-xs text-gray-400">HTML puro — use &#123;&#123;nome&#125;&#125; e &#123;&#123;email&#125;&#125; como variáveis</p>
-                    </>
-                  ) : (
-                    <div className="flex-1 border border-gray-200 rounded-md overflow-hidden min-h-[380px] bg-white">
-                      <iframe
-                        srcDoc={previewHtml || field.value || '<p style="color:#aaa;padding:16px">Nenhum conteúdo ainda...</p>'}
-                        className="w-full h-full min-h-[380px]"
-                        sandbox="allow-same-origin"
-                        title="Preview HTML"
-                      />
-                    </div>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <DialogFooter className="gap-2">
-                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setEditingTemplate(null); }}>Cancelar</Button>
-                <Button type="submit" className="bg-forest hover:bg-forest/90 text-white" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? 'Salvando...' : 'Salvar Template HTML'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+              </form>
+            </Form>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -985,10 +1027,13 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
 interface EmailCampaignRecord {
   id: string;
   audienceId: string;
-  templateId: string;
+  templateId: string | null;
   customHtmlTemplateId?: string | null;
   sentAt: string | null;
   sentCount: number;
+  errorCount: number;
+  openCount: number;
+  subject?: string | null;
 }
 
 function CampaignTab({ adminToken }: { adminToken: string }) {
@@ -997,6 +1042,7 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
   const [selectedAudienceId, setSelectedAudienceId] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [selectedHtmlTemplateId, setSelectedHtmlTemplateId] = useState('__none__');
+  const [manualSubject, setManualSubject] = useState('');
   const [sending, setSending] = useState(false);
 
   const { data: audiences = [] } = useQuery<AudienceWithCount[]>({
@@ -1052,12 +1098,24 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
   });
 
   const selectedAudience = audiences.find(a => a.id === selectedAudienceId);
-  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+  const effectiveTemplateId = (selectedTemplateId && selectedTemplateId !== '__none_md__') ? selectedTemplateId : '';
+  const selectedTemplate = templates.find(t => t.id === effectiveTemplateId);
   const effectiveHtmlTemplateId = selectedHtmlTemplateId === '__none__' ? null : selectedHtmlTemplateId;
   const selectedHtmlTemplate = htmlTemplates.find(t => t.id === effectiveHtmlTemplateId);
 
+  const htmlIsSelected = !!effectiveHtmlTemplateId;
+  const markdownOptional = htmlIsSelected;
+  const needsManualSubject = htmlIsSelected && !effectiveTemplateId;
+  const subjectFromTemplate = selectedTemplate?.subject ?? '';
+  const effectiveSubject = needsManualSubject ? manualSubject : subjectFromTemplate;
+
+  const canSend = !!selectedAudienceId
+    && (selectedAudience?.leadCount ?? 0) > 0
+    && (htmlIsSelected || !!effectiveTemplateId)
+    && (!needsManualSubject || manualSubject.trim().length > 0);
+
   const handleSend = async () => {
-    if (!selectedAudienceId || !selectedTemplateId) return;
+    if (!canSend) return;
     setSending(true);
     try {
       const res = await fetch('/api/marketing/send', {
@@ -1065,8 +1123,9 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
         body: JSON.stringify({
           audienceId: selectedAudienceId,
-          templateId: selectedTemplateId,
+          templateId: effectiveTemplateId || null,
           customHtmlTemplateId: effectiveHtmlTemplateId,
+          subject: needsManualSubject ? manualSubject : undefined,
         }),
       });
       const result = await res.json();
@@ -1111,25 +1170,36 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Template (Markdown)</label>
+            <label className="text-sm font-medium text-gray-700">
+              Template (Markdown)
+              {markdownOptional && <span className="text-gray-400 font-normal ml-1">(opcional com HTML)</span>}
+            </label>
             <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um template..." />
+                <SelectValue placeholder={markdownOptional ? "Opcional — HTML selecionado" : "Selecione um template..."} />
               </SelectTrigger>
               <SelectContent>
+                {markdownOptional && (
+                  <SelectItem value="__none_md__">Nenhum — usar somente HTML</SelectItem>
+                )}
                 {templates.map(t => (
                   <SelectItem key={t.id} value={t.id}>{t.name} — {t.subject}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-400">O assunto do template Markdown será usado para o e-mail</p>
+            {!markdownOptional && (
+              <p className="text-xs text-gray-400">O assunto do template Markdown será usado para o e-mail</p>
+            )}
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
               Template HTML Personalizado <span className="text-gray-400 font-normal">(opcional)</span>
             </label>
-            <Select value={selectedHtmlTemplateId} onValueChange={setSelectedHtmlTemplateId}>
+            <Select value={selectedHtmlTemplateId} onValueChange={v => {
+              setSelectedHtmlTemplateId(v);
+              if (v === '__none__') setManualSubject('');
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Sem template HTML (usa o Markdown)" />
               </SelectTrigger>
@@ -1150,11 +1220,28 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
             )}
           </div>
 
-          {selectedAudience && selectedTemplate && (
+          {/* Manual subject field — shown when HTML is selected but Markdown is not */}
+          {needsManualSubject && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Assunto do E-mail <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder="Ex: Newsletter de Março — IDASAM"
+                value={manualSubject}
+                onChange={e => setManualSubject(e.target.value)}
+              />
+              <p className="text-xs text-gray-400">Obrigatório quando não há template Markdown selecionado</p>
+            </div>
+          )}
+
+          {selectedAudience && (htmlIsSelected || selectedTemplate) && (
             <div className="p-3 bg-gray-50 rounded-lg text-sm space-y-1 border">
               <p><span className="text-gray-500">Audiência:</span> <strong>{selectedAudience.name}</strong> ({selectedAudience.leadCount} destinatário{selectedAudience.leadCount !== 1 ? 's' : ''})</p>
-              <p><span className="text-gray-500">Template:</span> <strong>{selectedTemplate.name}</strong></p>
-              <p><span className="text-gray-500">Assunto:</span> {selectedTemplate.subject}</p>
+              {selectedTemplate && (
+                <p><span className="text-gray-500">Template:</span> <strong>{selectedTemplate.name}</strong></p>
+              )}
+              <p><span className="text-gray-500">Assunto:</span> {effectiveSubject || <span className="text-gray-400 italic">não definido</span>}</p>
               {selectedHtmlTemplate && (
                 <p><span className="text-gray-500">HTML:</span> <strong>{selectedHtmlTemplate.name}</strong></p>
               )}
@@ -1163,7 +1250,7 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
 
           <Button
             className="w-full bg-forest hover:bg-forest/90 text-white"
-            disabled={!selectedAudienceId || !selectedTemplateId || sending || (selectedAudience?.leadCount ?? 0) === 0}
+            disabled={!canSend || sending}
             onClick={handleSend}
           >
             <Send className="w-4 h-4 mr-2" />
@@ -1177,50 +1264,236 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
           <h3 className="text-base font-semibold text-gray-800">Histórico de Campanhas</h3>
           <Card className="border border-gray-200">
             <CardContent className="p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Audiência</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Template</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">HTML</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Enviados</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Data</th>
-                    <th className="py-3 px-4"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...campaigns].reverse().map(c => (
-                    <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                      <td className="py-3 px-4">{audienceMap[c.audienceId] ?? c.audienceId.slice(0, 8)}</td>
-                      <td className="py-3 px-4">{templateMap[c.templateId] ?? c.templateId.slice(0, 8)}</td>
-                      <td className="py-3 px-4">
-                        {c.customHtmlTemplateId ? (
-                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
-                            {htmlTemplateMap[c.customHtmlTemplateId] ?? 'HTML'}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">{c.sentCount} enviado{c.sentCount !== 1 ? 's' : ''}</Badge>
-                      </td>
-                      <td className="py-3 px-4 text-gray-500">{c.sentAt ? new Date(c.sentAt).toLocaleString('pt-BR') : '—'}</td>
-                      <td className="py-3 px-4">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => deleteCampaignMutation.mutate(c.id)}
-                          disabled={deleteCampaignMutation.isPending}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Audiência</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Template</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">HTML</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Enviados</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Erros</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Aberturas</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Data</th>
+                      <th className="py-3 px-4"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {[...campaigns].reverse().map(c => (
+                      <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                        <td className="py-3 px-4">{audienceMap[c.audienceId] ?? c.audienceId.slice(0, 8)}</td>
+                        <td className="py-3 px-4">{c.templateId ? (templateMap[c.templateId] ?? c.templateId.slice(0, 8)) : <span className="text-gray-400 text-xs">—</span>}</td>
+                        <td className="py-3 px-4">
+                          {c.customHtmlTemplateId ? (
+                            <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
+                              {htmlTemplateMap[c.customHtmlTemplateId] ?? 'HTML'}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">{c.sentCount}</Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          {(c.errorCount ?? 0) > 0 ? (
+                            <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">{c.errorCount}</Badge>
+                          ) : (
+                            <span className="text-gray-400 text-xs">0</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">{c.openCount ?? 0}</Badge>
+                        </td>
+                        <td className="py-3 px-4 text-gray-500">{c.sentAt ? new Date(c.sentAt).toLocaleString('pt-BR') : '—'}</td>
+                        <td className="py-3 px-4">
+                          <Button
+                            size="sm" variant="ghost"
+                            className="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => deleteCampaignMutation.mutate(c.id)}
+                            disabled={deleteCampaignMutation.isPending}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Analytics Tab ────────────────────────────────────────────────────────────
+
+interface AnalyticsData {
+  totalSent: number;
+  totalErrors: number;
+  totalOpens: number;
+  openRate: number;
+  campaigns: EmailCampaignRecord[];
+}
+
+function AnalyticsTab({ adminToken }: { adminToken: string }) {
+  const { data: analytics, isLoading } = useQuery<AnalyticsData>({
+    queryKey: ['/api/marketing/analytics'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/analytics', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const { data: audiences = [] } = useQuery<AudienceWithCount[]>({
+    queryKey: ['/api/marketing/audiences'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/audiences', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const { data: templates = [] } = useQuery<EmailTemplate[]>({
+    queryKey: ['/api/marketing/templates'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/templates', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const audienceMap = Object.fromEntries(audiences.map(a => [a.id, a.name]));
+  const templateMap = Object.fromEntries(templates.map(t => [t.id, t.name]));
+
+  if (isLoading) {
+    return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>;
+  }
+
+  if (!analytics) {
+    return <div className="text-center py-16 text-gray-400"><p>Erro ao carregar analytics</p></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Analytics de E-mail</h2>
+        <p className="text-sm text-gray-500">Métricas globais e detalhadas por campanha</p>
+      </div>
+
+      {/* Global metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border border-gray-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Enviados</p>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{analytics.totalSent.toLocaleString('pt-BR')}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Erros</p>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{analytics.totalErrors.toLocaleString('pt-BR')}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Eye className="w-4 h-4 text-blue-500" />
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Aberturas</p>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{analytics.totalOpens.toLocaleString('pt-BR')}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="w-4 h-4 text-forest" />
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Taxa de Abertura</p>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{analytics.openRate}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Per-campaign breakdown */}
+      {analytics.campaigns.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
+          <BarChart3 className="w-10 h-10 mx-auto mb-2" />
+          <p className="font-medium">Nenhuma campanha enviada ainda</p>
+          <p className="text-sm">Dispare uma campanha para ver os analytics aqui.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold text-gray-800">Detalhamento por Campanha</h3>
+          <Card className="border border-gray-200">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Data</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Audiência</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Assunto / Template</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Enviados</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Erros</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Aberturas</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Taxa</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...analytics.campaigns].reverse().map(c => {
+                      const openRate = c.sentCount > 0
+                        ? Math.round(((c.openCount ?? 0) / c.sentCount) * 100)
+                        : 0;
+                      const tplName = c.templateId ? (templateMap[c.templateId] ?? '—') : '—';
+                      const displayLabel = c.subject ?? tplName;
+                      return (
+                        <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                          <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
+                            {c.sentAt ? new Date(c.sentAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                          </td>
+                          <td className="py-3 px-4 max-w-[140px] truncate">{audienceMap[c.audienceId] ?? c.audienceId.slice(0, 8)}</td>
+                          <td className="py-3 px-4 max-w-[180px] truncate text-gray-700">{displayLabel}</td>
+                          <td className="py-3 px-4">
+                            <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">{c.sentCount}</Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            {(c.errorCount ?? 0) > 0 ? (
+                              <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">{c.errorCount}</Badge>
+                            ) : (
+                              <span className="text-gray-400 text-xs">0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">{c.openCount ?? 0}</Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs font-semibold ${openRate >= 20 ? 'text-green-600' : openRate > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                              {openRate}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -1234,6 +1507,16 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
 export default function MarketingPage() {
   const { adminToken } = useAuth();
 
+  const { data: notificationSubs = [] } = useQuery<CourseNotificationSubscription[]>({
+    queryKey: ['/api/marketing/notification-subscriptions'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/notification-subscriptions', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
   if (!adminToken) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -1244,18 +1527,28 @@ export default function MarketingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-green-50 rounded-lg">
-          <Mail className="w-6 h-6 text-forest" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-green-50 rounded-lg">
+            <Mail className="w-6 h-6 text-forest" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">E-mail Marketing</h1>
+            <p className="text-gray-600">Gerencie audiências, templates e campanhas de e-mail</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">E-mail Marketing</h1>
-          <p className="text-gray-600">Gerencie audiências, templates e campanhas de e-mail</p>
+        <div className="relative">
+          <Bell className="w-6 h-6 text-gray-500" />
+          {notificationSubs.length > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white leading-none">
+              {notificationSubs.length > 99 ? '99+' : notificationSubs.length}
+            </span>
+          )}
         </div>
       </div>
 
       <Tabs defaultValue="audiencias">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="audiencias" className="flex items-center gap-2">
             <Users className="w-4 h-4" /> Audiências
           </TabsTrigger>
@@ -1267,6 +1560,9 @@ export default function MarketingPage() {
           </TabsTrigger>
           <TabsTrigger value="campanha" className="flex items-center gap-2">
             <Send className="w-4 h-4" /> Disparar Campanha
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" /> Analytics
           </TabsTrigger>
         </TabsList>
         <TabsContent value="audiencias">
@@ -1280,6 +1576,9 @@ export default function MarketingPage() {
         </TabsContent>
         <TabsContent value="campanha">
           <CampaignTab adminToken={adminToken} />
+        </TabsContent>
+        <TabsContent value="analytics">
+          <AnalyticsTab adminToken={adminToken} />
         </TabsContent>
       </Tabs>
     </div>

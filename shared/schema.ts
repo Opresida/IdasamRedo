@@ -1,6 +1,6 @@
 
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, uuid, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, uuid, timestamp, integer, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -303,16 +303,22 @@ export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export const emailCampaigns = pgTable("email_campaigns", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   audienceId: uuid("audience_id").notNull().references(() => emailAudiences.id),
-  templateId: uuid("template_id").notNull().references(() => emailTemplates.id),
+  templateId: uuid("template_id").references(() => emailTemplates.id),
   customHtmlTemplateId: uuid("custom_html_template_id"),
   sentAt: timestamp("sent_at", { withTimezone: true }).default(sql`NOW()`),
   sentCount: integer("sent_count").notNull().default(0),
+  errorCount: integer("error_count").notNull().default(0),
+  openCount: integer("open_count").notNull().default(0),
+  subject: text("subject"),
 });
 
 export const insertEmailCampaignSchema = createInsertSchema(emailCampaigns).omit({ id: true, sentAt: true }).extend({
   audienceId: z.string().min(1, "Audiência é obrigatória"),
-  templateId: z.string().min(1, "Template é obrigatório"),
+  templateId: z.string().optional().nullable(),
   customHtmlTemplateId: z.string().optional().nullable(),
+  errorCount: z.number().optional(),
+  openCount: z.number().optional(),
+  subject: z.string().optional().nullable(),
 });
 export type InsertEmailCampaign = z.infer<typeof insertEmailCampaignSchema>;
 export type EmailCampaign = typeof emailCampaigns.$inferSelect;
@@ -332,3 +338,12 @@ export const insertCustomHtmlTemplateSchema = createInsertSchema(customHtmlTempl
 });
 export type InsertCustomHtmlTemplate = z.infer<typeof insertCustomHtmlTemplateSchema>;
 export type CustomHtmlTemplate = typeof customHtmlTemplates.$inferSelect;
+
+export const campaignOpenEvents = pgTable("campaign_open_events", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: uuid("campaign_id").notNull().references(() => emailCampaigns.id, { onDelete: 'cascade' }),
+  leadId: uuid("lead_id").notNull(),
+  openedAt: timestamp("opened_at", { withTimezone: true }).default(sql`NOW()`),
+}, (t) => ({
+  uniqueOpenPerLead: unique("unique_open_per_lead").on(t.campaignId, t.leadId),
+}));
