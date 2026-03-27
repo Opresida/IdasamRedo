@@ -227,15 +227,14 @@ async function generateCertificatePdf(
   if (wrappedLines.length === 0) wrappedLines.push(textToDraw);
 
   const clampedFinalY = Math.max(0, Math.min(finalY, pdfHeight - safeDrawSize));
-  const lineWidths = wrappedLines.map((line) => embedFont.widthOfTextAtSize(line, safeDrawSize));
-  const actualBoxWidth = Math.max(...lineWidths, 0);
+  const blockMaxWidth = pdfWidth * 0.8;
   wrappedLines.forEach((line, index) => {
-    const lineWidth = lineWidths[index];
+    const lineWidth = embedFont.widthOfTextAtSize(line, safeDrawSize);
     let lineX: number;
     if (align === 'center') {
-      lineX = finalX + (actualBoxWidth - lineWidth) / 2;
+      lineX = (pdfWidth - lineWidth) / 2;
     } else if (align === 'right') {
-      lineX = finalX + (actualBoxWidth - lineWidth);
+      lineX = finalX + (blockMaxWidth - lineWidth);
     } else {
       lineX = finalX;
     }
@@ -2025,8 +2024,9 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                           fontFamily: block.font === 'alexbrush' ? '"Alex Brush", cursive' : 'Poppins, sans-serif',
                           textAlign: block.align ?? 'left',
                           borderColor: 'rgba(100,100,200,0.5)',
-                          left: `${visualX}px`,
+                          left: (block.align ?? 'left') === 'center' ? 0 : `${visualX}px`,
                           top: `${visualY}px`,
+                          width: (block.align ?? 'left') === 'center' ? '100%' : undefined,
                         }}
                         title={`${block.label} — X: ${(block.pctX * 100).toFixed(1)}%, Y: ${(block.pctY * 100).toFixed(1)}%`}
                         onMouseDown={(e) => handleBlockMouseDown(block.key, e)}
