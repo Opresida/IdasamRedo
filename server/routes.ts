@@ -255,11 +255,23 @@ async function seedArticles() {
   }
 }
 
+async function migrateEnrollmentNames() {
+  try {
+    const count = await storage.migrateEnrollmentNamesToTitleCase();
+    if (count > 0) {
+      console.log(`Migrated ${count} enrollment name(s) to Title Case.`);
+    }
+  } catch (err) {
+    console.error("Erro ao migrar nomes dos alunos para Title Case:", err);
+  }
+}
+
 export async function registerRoutes(app: Express) {
   await seedCourses();
   await seedArticles();
   await storage.backfillAuthCodes();
   await storage.deleteOrphanedCertificates();
+  await migrateEnrollmentNames();
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", message: "Server is running" });
@@ -329,6 +341,15 @@ export async function registerRoutes(app: Express) {
 
   app.get("/api/admin/verify", requireAdmin, (_req, res) => {
     res.json({ valid: true });
+  });
+
+  app.post("/api/admin/migrate-names", requireAdmin, async (_req, res) => {
+    try {
+      const count = await storage.migrateEnrollmentNamesToTitleCase();
+      res.json({ message: `Migração concluída. ${count} nome(s) atualizado(s) para Title Case.`, updated: count });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao executar migração de nomes" });
+    }
   });
 
   app.get("/api/courses", async (_req, res) => {

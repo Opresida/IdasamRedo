@@ -11,6 +11,15 @@ function generateAuthCode(): string {
   return `IDASAM-${suffix}`;
 }
 
+export function toTitleCase(str: string): string {
+  if (!str) return str;
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/\p{L}+/gu, (word) => word.charAt(0).toUpperCase() + word.slice(1));
+}
+
 export function normalizeIdentifier(identifier: string): string {
   const trimmed = identifier.trim();
   if (trimmed.includes("@")) {
@@ -87,6 +96,8 @@ export interface IStorage {
   getArticleReactions(articleId: string): Promise<Record<string, number>>;
   toggleArticleReaction(articleId: string, anonymousUserId: string, reactionType: string): Promise<{ added: boolean }>;
   getUserArticleReactions(articleId: string, anonymousUserId: string): Promise<string[]>;
+
+  migrateEnrollmentNamesToTitleCase(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -248,14 +259,24 @@ export class DatabaseStorage implements IStorage {
     if (duplicate) {
       throw new Error("DUPLICATE_ENROLLMENT");
     }
-    const [created] = await db.insert(enrollments).values(enrollment).returning();
+    const normalizedEnrollment = {
+      ...enrollment,
+      fullName: enrollment.fullName ? toTitleCase(enrollment.fullName) : enrollment.fullName,
+    };
+    const [created] = await db.insert(enrollments).values(normalizedEnrollment).returning();
     return created;
   }
 
   async updateEnrollment(id: string, enrollment: Partial<InsertEnrollment>): Promise<Enrollment | undefined> {
+    const normalized = {
+      ...enrollment,
+      ...(enrollment.fullName !== undefined
+        ? { fullName: enrollment.fullName ? toTitleCase(enrollment.fullName) : enrollment.fullName }
+        : {}),
+    };
     const [updated] = await db
       .update(enrollments)
-      .set(enrollment)
+      .set(normalized)
       .where(eq(enrollments.id, id))
       .returning();
     return updated || undefined;
@@ -493,6 +514,20 @@ export class DatabaseStorage implements IStorage {
       and(eq(articleReactions.articleId, articleId), eq(articleReactions.anonymousUserId, anonymousUserId))
     );
     return rows.map(r => r.reactionType);
+  }
+
+  async migrateEnrollmentNamesToTitleCase(): Promise<number> {
+    const all = await db.select({ id: enrollments.id, fullName: enrollments.fullName }).from(enrollments);
+    let updated = 0;
+    for (const e of all) {
+      if (!e.fullName) continue;
+      const titleCased = toTitleCase(e.fullName);
+      if (titleCased !== e.fullName) {
+        await db.update(enrollments).set({ fullName: titleCased }).where(eq(enrollments.id, e.id));
+        updated++;
+      }
+    }
+    return updated;
   }
 }
 
