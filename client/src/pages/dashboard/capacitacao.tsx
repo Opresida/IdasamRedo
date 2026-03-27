@@ -2064,10 +2064,13 @@ export default function DashboardCapacitacao() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'coming_soon' | 'completed'>('all');
 
   const { data: courses = [], isLoading } = useQuery<Course[]>({
     queryKey: ['/api/courses'],
   });
+
+  const filteredCourses = statusFilter === 'all' ? courses : courses.filter((c) => c.status === statusFilter);
 
   if (!adminToken) {
     return (
@@ -2148,6 +2151,27 @@ export default function DashboardCapacitacao() {
 
       {activeTab === 'cursos' ? (
         <>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { value: 'all', label: 'Todos' },
+              { value: 'open', label: 'Aberto' },
+              { value: 'closed', label: 'Fechado' },
+              { value: 'coming_soon', label: 'Em Breve' },
+              { value: 'completed', label: 'Concluído' },
+            ] as const).map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setStatusFilter(value)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  statusFilter === value
+                    ? 'bg-forest text-white border-forest'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:text-gray-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {isLoading ? (
             <div className="flex justify-center py-16">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest" />
@@ -2158,9 +2182,15 @@ export default function DashboardCapacitacao() {
               <p className="text-lg font-medium">Nenhum curso cadastrado</p>
               <p className="text-sm mt-1">Clique em "Novo Curso" para começar.</p>
             </div>
+          ) : filteredCourses.length === 0 ? (
+            <div className="text-center py-16 text-gray-500">
+              <GraduationCap className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p className="text-lg font-medium">Nenhum curso encontrado</p>
+              <p className="text-sm mt-1">Não há cursos com o status selecionado.</p>
+            </div>
           ) : (
             <div className="space-y-4">
-              {courses.map((course) => (
+              {filteredCourses.map((course) => (
                 <CourseEnrollments
                   key={course.id}
                   course={course}
