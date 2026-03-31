@@ -328,6 +328,7 @@ export const customHtmlTemplates = pgTable("custom_html_templates", {
   name: text("name").notNull(),
   htmlContent: text("html_content").notNull(),
   campaignIds: text("campaign_ids").array(),
+  triggerType: text("trigger_type").default("manual"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
@@ -335,6 +336,7 @@ export const insertCustomHtmlTemplateSchema = createInsertSchema(customHtmlTempl
   name: z.string().min(1, "Nome é obrigatório"),
   htmlContent: z.string().min(1, "Conteúdo HTML é obrigatório"),
   campaignIds: z.array(z.string()).optional().nullable(),
+  triggerType: z.enum(EMAIL_TRIGGER_TYPES).optional().default("manual"),
 });
 export type InsertCustomHtmlTemplate = z.infer<typeof insertCustomHtmlTemplateSchema>;
 export type CustomHtmlTemplate = typeof customHtmlTemplates.$inferSelect;

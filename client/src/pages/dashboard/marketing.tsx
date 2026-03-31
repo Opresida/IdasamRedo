@@ -41,8 +41,9 @@ import { z } from 'zod';
 import {
   Mail, Users, Pencil, Trash2, Plus, Send, Search, X, FileText,
   Zap, Bell, BookOpen, Code2, Eye, BarChart3, TrendingUp, AlertCircle, CheckCircle2,
+  ChevronRight, ArrowRight, ArrowLeft, Layers, Target, RefreshCw,
 } from 'lucide-react';
-import type { EmailAudience, AudienceLead, EmailTemplate, Course, CourseNotificationSubscription, CustomHtmlTemplate } from '@shared/schema';
+import type { EmailAudience, AudienceLead, EmailTemplate, Course, CourseNotificationSubscription, CustomHtmlTemplate, EmailTriggerType } from '@shared/schema';
 import { EMAIL_TRIGGER_TYPES, COURSE_STATUSES } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -227,220 +228,254 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Audience list + create */}
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Nome da nova audiência..."
-              value={createName}
-              onChange={e => setCreateName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && createName.trim()) createAudience.mutate(); }}
-            />
-            <Button
-              className="bg-forest hover:bg-forest/90 text-white shrink-0"
-              disabled={!createName.trim() || createAudience.isPending}
-              onClick={() => createAudience.mutate()}
-            >
-              <Plus className="w-4 h-4 mr-1" /> Criar
-            </Button>
+      {/* Master-detail layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-0 rounded-xl border border-gray-200 overflow-hidden min-h-[520px]">
+        {/* Left: Audience list */}
+        <div className="lg:col-span-2 border-r border-gray-200 bg-gray-50/50 flex flex-col">
+          <div className="p-4 border-b border-gray-200 bg-white">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Audiências</p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nova audiência..."
+                value={createName}
+                onChange={e => setCreateName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && createName.trim()) createAudience.mutate(); }}
+                className="text-sm h-8"
+              />
+              <Button
+                size="sm"
+                className="bg-forest hover:bg-forest/90 text-white h-8 px-3 shrink-0"
+                disabled={!createName.trim() || createAudience.isPending}
+                onClick={() => createAudience.mutate()}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           </div>
-
-          {loadingAudiences ? (
-            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>
-          ) : audiences.length === 0 ? (
-            <div className="text-center py-10 text-gray-500">
-              <Users className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-              <p className="font-medium">Nenhuma audiência criada</p>
-              <p className="text-sm">Crie uma audiência para começar.</p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {audiences.map(a => (
-                <div
-                  key={a.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${selectedAudienceId === a.id ? 'border-forest bg-forest/5' : 'border-gray-200 hover:border-gray-300'}`}
-                  onClick={() => setSelectedAudienceId(a.id)}
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{a.name}</p>
-                    <p className="text-xs text-gray-500">{a.leadCount} lead{a.leadCount !== 1 ? 's' : ''}</p>
-                  </div>
-                  <Button
-                    size="sm" variant="ghost"
-                    className="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
-                    onClick={e => { e.stopPropagation(); deleteAudience.mutate(a.id); }}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+          <div className="flex-1 overflow-y-auto">
+            {loadingAudiences ? (
+              <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-forest" /></div>
+            ) : audiences.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                  <Users className="w-5 h-5 text-gray-400" />
                 </div>
-              ))}
-            </div>
-          )}
+                <p className="text-sm font-medium text-gray-600">Nenhuma audiência</p>
+                <p className="text-xs text-gray-400 mt-1">Crie uma audiência acima.</p>
+              </div>
+            ) : (
+              <div className="p-2 space-y-1">
+                {audiences.map(a => (
+                  <div
+                    key={a.id}
+                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all group ${
+                      selectedAudienceId === a.id
+                        ? 'bg-forest text-white shadow-sm'
+                        : 'hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200'
+                    }`}
+                    onClick={() => setSelectedAudienceId(a.id)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                        selectedAudienceId === a.id ? 'bg-white/20 text-white' : 'bg-forest/10 text-forest'
+                      }`}>
+                        {a.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-sm font-medium truncate ${selectedAudienceId === a.id ? 'text-white' : 'text-gray-900'}`}>{a.name}</p>
+                        <p className={`text-xs ${selectedAudienceId === a.id ? 'text-white/70' : 'text-gray-400'}`}>
+                          {a.leadCount} lead{a.leadCount !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {selectedAudienceId === a.id && <ChevronRight className="w-3.5 h-3.5 text-white/70" />}
+                      <Button
+                        size="sm" variant="ghost"
+                        className={`h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity ${
+                          selectedAudienceId === a.id ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-red-400 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        onClick={e => { e.stopPropagation(); deleteAudience.mutate(a.id); }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Right: Leads for selected audience */}
-        <div className="space-y-4">
+        {/* Right: Leads panel */}
+        <div className="lg:col-span-3 flex flex-col bg-white">
           {!selectedAudience ? (
-            <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
-              <Users className="w-10 h-10 mx-auto mb-2" />
-              <p className="font-medium">Selecione uma audiência</p>
-              <p className="text-sm">para gerenciar seus leads</p>
+            <div className="flex flex-col items-center justify-center h-full py-16 text-center px-8">
+              <div className="w-16 h-16 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center mb-4">
+                <Users className="w-7 h-7 text-gray-300" />
+              </div>
+              <p className="text-base font-semibold text-gray-600 mb-1">Selecione uma audiência</p>
+              <p className="text-sm text-gray-400">Clique em uma audiência à esquerda para gerenciar seus leads</p>
             </div>
           ) : (
             <>
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-1">{selectedAudience.name}</h3>
-                <p className="text-sm text-gray-500">Busque e adicione leads por nome, e-mail ou curso</p>
+              {/* Header */}
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-900">{selectedAudience.name}</h3>
+                    <Badge className="bg-forest/10 text-forest border-0 text-xs">{selectedAudience.leadCount} leads</Badge>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">Busque e adicione leads por nome, e-mail ou curso</p>
+                </div>
               </div>
 
-              {/* Search mode toggle */}
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant={searchMode === 'text' ? 'default' : 'outline'}
-                  className={searchMode === 'text' ? 'bg-forest hover:bg-forest/90 text-white' : ''}
-                  onClick={() => setSearchMode('text')}
-                >
-                  <Search className="w-3 h-3 mr-1" /> Por Nome/E-mail
-                </Button>
-                <Button
-                  size="sm"
-                  variant={searchMode === 'course' ? 'default' : 'outline'}
-                  className={searchMode === 'course' ? 'bg-forest hover:bg-forest/90 text-white' : ''}
-                  onClick={() => setSearchMode('course')}
-                >
-                  <BookOpen className="w-3 h-3 mr-1" /> Por Curso
-                </Button>
-              </div>
+              <div className="p-4 border-b border-gray-100 space-y-3">
+                {/* Search mode toggle */}
+                <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+                  <button
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      searchMode === 'text' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setSearchMode('text')}
+                  >
+                    <Search className="w-3 h-3" /> Por Nome/E-mail
+                  </button>
+                  <button
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      searchMode === 'course' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setSearchMode('course')}
+                  >
+                    <BookOpen className="w-3 h-3" /> Por Curso
+                  </button>
+                </div>
 
-              {/* Text search */}
-              {searchMode === 'text' && (
-                <div className="space-y-2">
+                {/* Text search */}
+                {searchMode === 'text' && (
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                     <Input
                       placeholder="Buscar por nome ou e-mail..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 h-9 text-sm"
                     />
+                    {searchQuery && (
+                      <button className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" onClick={() => { setSearchQuery(''); setDebouncedQuery(''); }}>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <p className="text-xs text-gray-400">Pesquise por nome completo ou endereço de e-mail</p>
-                </div>
-              )}
+                )}
 
-              {/* Course filter */}
-              {searchMode === 'course' && (
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-500 font-medium">Selecione um ou mais cursos:</p>
-                  <div className="max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2">
-                    {allCourses.map(c => (
-                      <label
-                        key={c.id}
-                        className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-gray-50 transition-colors ${selectedCourseIds.includes(c.id) ? 'bg-forest/5 border border-forest/20' : ''}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedCourseIds.includes(c.id)}
-                          onChange={() => toggleCourse(c.id)}
-                          className="rounded text-forest"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{c.title}</p>
-                        </div>
-                        <Badge className={`text-xs shrink-0 ${STATUS_BADGE_CLASSES[c.status] ?? ''}`}>
-                          {STATUS_LABELS[c.status] ?? c.status}
-                        </Badge>
-                      </label>
-                    ))}
+                {/* Course filter */}
+                {searchMode === 'course' && (
+                  <div className="space-y-2">
+                    <div className="max-h-36 overflow-y-auto space-y-1 border border-gray-200 rounded-lg p-2 bg-gray-50">
+                      {allCourses.map(c => (
+                        <label
+                          key={c.id}
+                          className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-white transition-colors ${selectedCourseIds.includes(c.id) ? 'bg-white border border-forest/20' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedCourseIds.includes(c.id)}
+                            onChange={() => toggleCourse(c.id)}
+                            className="rounded text-forest"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{c.title}</p>
+                          </div>
+                          <Badge className={`text-xs shrink-0 ${STATUS_BADGE_CLASSES[c.status] ?? ''}`}>
+                            {STATUS_LABELS[c.status] ?? c.status}
+                          </Badge>
+                        </label>
+                      ))}
+                    </div>
+                    {selectedCourseIds.length > 0 && (
+                      <button className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1" onClick={() => setSelectedCourseIds([])}>
+                        <X className="w-3 h-3" /> Limpar seleção
+                      </button>
+                    )}
                   </div>
-                  {selectedCourseIds.length > 0 && (
-                    <Button size="sm" variant="ghost" className="text-xs text-gray-500" onClick={() => setSelectedCourseIds([])}>
-                      <X className="w-3 h-3 mr-1" /> Limpar seleção
-                    </Button>
-                  )}
-                </div>
-              )}
+                )}
 
-              {/* Search / course results */}
-              {activeResults.length > 0 && (
-                <Card className="border border-gray-200">
-                  <CardContent className="p-2">
-                    <div className="space-y-1">
+                {/* Search results */}
+                {activeResults.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="p-2 bg-gray-50 border-b border-gray-100">
+                      <p className="text-xs text-gray-500 font-medium">{activeResults.length} resultado{activeResults.length !== 1 ? 's' : ''} encontrado{activeResults.length !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="divide-y divide-gray-50 max-h-40 overflow-y-auto">
                       {activeResults.map((r, i) => {
                         const alreadyAdded = leads.some(l => l.email.toLowerCase() === r.email.toLowerCase());
                         return (
-                          <div key={i} className="flex items-center justify-between p-2 rounded hover:bg-gray-50">
+                          <div key={i} className="flex items-center justify-between p-2.5 hover:bg-gray-50">
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium">{r.name}</p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {r.email}
-                                {' · '}
-                                <span className="text-forest">{r.source}</span>
-                                {'courseTitle' in r && r.courseTitle && (
-                                  <> · <span className="text-gray-400 truncate">{r.courseTitle}</span></>
-                                )}
-                              </p>
+                              <p className="text-xs font-medium text-gray-900">{r.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{r.email} · <span className="text-forest">{r.source}</span></p>
                             </div>
                             <Button
                               size="sm" variant="outline"
-                              className="h-7 text-xs shrink-0 ml-2"
+                              className="h-6 text-xs shrink-0 ml-2 px-2"
                               disabled={alreadyAdded || addLead.isPending}
                               onClick={() => addLead.mutate({ name: r.name, email: r.email })}
                             >
-                              {alreadyAdded ? 'Adicionado' : 'Adicionar'}
+                              {alreadyAdded ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <Plus className="w-3 h-3" />}
                             </Button>
                           </div>
                         );
                       })}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                )}
 
-              {searchMode === 'text' && debouncedQuery.length > 1 && searchResults.length === 0 && (
-                <Card className="border border-gray-200">
-                  <CardContent className="p-4">
-                    <p className="text-sm text-gray-400">Nenhum resultado encontrado</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {searchMode === 'course' && selectedCourseIds.length > 0 && !loadingCourseLeads && courseLeads.length === 0 && (
-                <Card className="border border-gray-200">
-                  <CardContent className="p-4">
-                    <p className="text-sm text-gray-400">Nenhum aluno matriculado nos cursos selecionados</p>
-                  </CardContent>
-                </Card>
-              )}
+                {searchMode === 'text' && debouncedQuery.length > 1 && searchResults.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-2">Nenhum resultado para "{debouncedQuery}"</p>
+                )}
+                {searchMode === 'course' && selectedCourseIds.length > 0 && !loadingCourseLeads && courseLeads.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-2">Nenhum aluno matriculado nos cursos selecionados</p>
+                )}
+              </div>
 
               {/* Leads list */}
-              {loadingLeads ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>
-              ) : leads.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-sm">Nenhum lead na audiência. Use a busca acima.</p>
-                </div>
-              ) : (
-                <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {leads.map(l => (
-                    <div key={l.id} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50 border border-transparent hover:border-gray-100">
-                      <div>
-                        <p className="text-sm font-medium">{l.name}</p>
-                        <p className="text-xs text-gray-500">{l.email}</p>
-                      </div>
-                      <Button
-                        size="sm" variant="ghost"
-                        className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
-                        onClick={() => removeLead.mutate(l.id)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
+              <div className="flex-1 overflow-y-auto">
+                {loadingLeads ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-forest" /></div>
+                ) : leads.length === 0 ? (
+                  <div className="text-center py-10 px-6">
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-2">
+                      <Mail className="w-4 h-4 text-gray-300" />
                     </div>
-                  ))}
-                </div>
-              )}
+                    <p className="text-sm text-gray-500">Nenhum lead nesta audiência</p>
+                    <p className="text-xs text-gray-400 mt-1">Use a busca acima para adicionar.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {leads.map(l => (
+                      <div key={l.id} className="flex items-center justify-between py-2.5 px-4 hover:bg-gray-50 transition-colors group">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-forest/10 flex items-center justify-center text-xs font-bold text-forest shrink-0">
+                            {(l.name || l.email).charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{l.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{l.email}</p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-6 w-6 p-0 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeLead.mutate(l.id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -448,33 +483,44 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
 
       {/* Notification Subscriptions Panel */}
       <Card className="border border-gray-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bell className="w-4 h-4 text-forest" />
-            Notificações de Curso
-            <Badge variant="secondary" className="text-xs">{notificationSubs.length}</Badge>
-          </CardTitle>
-          <p className="text-sm text-gray-500">Leads que solicitaram notificações sobre novos cursos</p>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+              <Bell className="w-4 h-4 text-amber-600" />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-semibold text-gray-900">Notificações de Curso</CardTitle>
+              <p className="text-xs text-gray-500">Leads que solicitaram avisos sobre novos cursos</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="text-xs">{notificationSubs.length}</Badge>
         </CardHeader>
         <CardContent className="pt-0">
           {loadingNotifSubs ? (
-            <div className="flex justify-center py-4"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-forest" /></div>
+            <div className="flex justify-center py-4"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-forest" /></div>
           ) : notificationSubs.length === 0 ? (
-            <p className="text-sm text-gray-400 py-2">Nenhuma inscrição de notificação encontrada.</p>
+            <div className="text-center py-6">
+              <p className="text-sm text-gray-400">Nenhuma inscrição de notificação encontrada.</p>
+            </div>
           ) : (
-            <div className="space-y-1 max-h-64 overflow-y-auto">
+            <div className="space-y-1 max-h-56 overflow-y-auto">
               {notificationSubs.map(sub => (
-                <div key={sub.id} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50 border border-transparent hover:border-gray-100">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{sub.name}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-gray-500">{sub.email}</p>
-                      {sub.createdAt && (
-                        <p className="text-xs text-gray-400">· {new Date(sub.createdAt).toLocaleDateString('pt-BR')}</p>
-                      )}
+                <div key={sub.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center text-xs font-bold text-amber-600 shrink-0">
+                      {sub.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{sub.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-gray-500 truncate">{sub.email}</p>
+                        {sub.createdAt && (
+                          <p className="text-xs text-gray-400 shrink-0">· {new Date(sub.createdAt).toLocaleDateString('pt-BR')}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  {selectedAudienceId && (
+                  {selectedAudienceId ? (
                     <Button
                       size="sm" variant="outline"
                       className="h-7 text-xs shrink-0 ml-2"
@@ -483,9 +529,8 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
                     >
                       {leads.some(l => l.email.toLowerCase() === sub.email.toLowerCase()) ? 'Adicionado' : 'Adicionar'}
                     </Button>
-                  )}
-                  {!selectedAudienceId && (
-                    <span className="text-xs text-gray-400 italic">Selecione uma audiência</span>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic shrink-0">Selecione audiência</span>
                   )}
                 </div>
               ))}
@@ -533,7 +578,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
   React.useEffect(() => {
     if (sheetOpen) {
       if (editingTemplate) {
-        form.reset({ name: editingTemplate.name, subject: editingTemplate.subject, body: editingTemplate.body, trigger: editingTemplate.trigger as typeof EMAIL_TRIGGER_TYPES[number] });
+        form.reset({ name: editingTemplate.name, subject: editingTemplate.subject, body: editingTemplate.body, trigger: (EMAIL_TRIGGER_TYPES as ReadonlyArray<string>).includes(editingTemplate.trigger) ? (editingTemplate.trigger as EmailTriggerType) : 'manual' });
         setPreviewMd(editingTemplate.body);
       } else {
         form.reset({ name: '', subject: '', body: '', trigger: 'manual' });
@@ -730,6 +775,7 @@ const htmlTemplateFormSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   htmlContent: z.string().min(1, 'Conteúdo HTML é obrigatório'),
   campaignIds: z.array(z.string()).optional().nullable(),
+  triggerType: z.enum(EMAIL_TRIGGER_TYPES).optional(),
 });
 type HtmlTemplateFormData = z.infer<typeof htmlTemplateFormSchema>;
 
@@ -765,17 +811,22 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
 
   const form = useForm<HtmlTemplateFormData>({
     resolver: zodResolver(htmlTemplateFormSchema),
-    defaultValues: { name: '', htmlContent: '' },
+    defaultValues: { name: '', htmlContent: '', triggerType: 'manual' },
   });
 
   React.useEffect(() => {
     if (sheetOpen) {
       if (editingTemplate) {
-        form.reset({ name: editingTemplate.name, htmlContent: editingTemplate.htmlContent, campaignIds: editingTemplate.campaignIds ?? [] });
+        form.reset({
+          name: editingTemplate.name,
+          htmlContent: editingTemplate.htmlContent,
+          campaignIds: editingTemplate.campaignIds ?? [],
+          triggerType: (EMAIL_TRIGGER_TYPES as ReadonlyArray<string>).includes(editingTemplate.triggerType ?? '') ? (editingTemplate.triggerType as EmailTriggerType) : 'manual',
+        });
         setPreviewHtml(editingTemplate.htmlContent);
         setSelectedCampaignIds(editingTemplate.campaignIds ?? []);
       } else {
-        form.reset({ name: '', htmlContent: '', campaignIds: [] });
+        form.reset({ name: '', htmlContent: '', campaignIds: [], triggerType: 'manual' });
         setPreviewHtml('');
         setSelectedCampaignIds([]);
       }
@@ -849,6 +900,7 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
         <div className="grid gap-3">
           {templates.map(tpl => {
             const usageCount = getUsageCount(tpl.id);
+            const trigger: string = tpl.triggerType ?? 'manual';
             return (
               <Card key={tpl.id} className="border border-gray-200">
                 <CardContent className="flex items-center justify-between p-4">
@@ -858,6 +910,10 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
                       <Badge variant="secondary" className="text-xs">
                         <Code2 className="w-2.5 h-2.5 mr-1" />
                         HTML
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        <Zap className="w-2.5 h-2.5 mr-1" />
+                        {TRIGGER_LABELS[trigger] ?? trigger}
                       </Badge>
                       {usageCount > 0 && (
                         <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-200">
@@ -926,11 +982,27 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
           <div className="flex-1 overflow-y-auto p-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(d => saveMutation.mutate(d))} className="flex flex-col gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField control={form.control} name="name" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nome do Template</FormLabel>
                       <FormControl><Input placeholder="Ex: Newsletter Março 2026" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="triggerType" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Gatilho</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? 'manual'}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {EMAIL_TRIGGER_TYPES.map(t => (
+                            <SelectItem key={t} value={t}>{TRIGGER_LABELS[t]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -1022,7 +1094,7 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
   );
 }
 
-// ─── Campaign Tab ─────────────────────────────────────────────────────────────
+// ─── Campaign Tab (Wizard) ────────────────────────────────────────────────────
 
 interface EmailCampaignRecord {
   id: string;
@@ -1036,14 +1108,56 @@ interface EmailCampaignRecord {
   subject?: string | null;
 }
 
+type WizardStep = 1 | 2 | 3 | 4;
+
+const WIZARD_STEPS = [
+  { id: 1, label: 'Audiência', icon: Users },
+  { id: 2, label: 'Template', icon: FileText },
+  { id: 3, label: 'Revisar', icon: Eye },
+  { id: 4, label: 'Disparar', icon: Send },
+];
+
+function WizardProgress({ currentStep }: { currentStep: WizardStep }) {
+  return (
+    <div className="flex items-center gap-0 mb-8">
+      {WIZARD_STEPS.map((step, idx) => {
+        const Icon = step.icon;
+        const isActive = step.id === currentStep;
+        const isDone = step.id < currentStep;
+        return (
+          <React.Fragment key={step.id}>
+            <div className="flex flex-col items-center gap-1.5">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                isDone ? 'bg-forest text-white' :
+                isActive ? 'bg-forest text-white ring-4 ring-forest/20' :
+                'bg-gray-100 text-gray-400'
+              }`}>
+                {isDone ? <CheckCircle2 className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+              </div>
+              <p className={`text-xs font-medium ${isActive ? 'text-forest' : isDone ? 'text-gray-600' : 'text-gray-400'}`}>
+                {step.label}
+              </p>
+            </div>
+            {idx < WIZARD_STEPS.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-2 mb-5 transition-all ${step.id < currentStep ? 'bg-forest' : 'bg-gray-200'}`} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 function CampaignTab({ adminToken }: { adminToken: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [wizardStep, setWizardStep] = useState<WizardStep>(1);
   const [selectedAudienceId, setSelectedAudienceId] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('__none_md__');
   const [selectedHtmlTemplateId, setSelectedHtmlTemplateId] = useState('__none__');
   const [manualSubject, setManualSubject] = useState('');
   const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   const { data: audiences = [] } = useQuery<AudienceWithCount[]>({
     queryKey: ['/api/marketing/audiences'],
@@ -1109,10 +1223,19 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
   const subjectFromTemplate = selectedTemplate?.subject ?? '';
   const effectiveSubject = needsManualSubject ? manualSubject : subjectFromTemplate;
 
-  const canSend = !!selectedAudienceId
-    && (selectedAudience?.leadCount ?? 0) > 0
-    && (htmlIsSelected || !!effectiveTemplateId)
-    && (!needsManualSubject || manualSubject.trim().length > 0);
+  const step1Valid = !!selectedAudienceId && (selectedAudience?.leadCount ?? 0) > 0;
+  const step2Valid = htmlIsSelected || !!effectiveTemplateId;
+  const step3Valid = step2Valid && (!needsManualSubject || manualSubject.trim().length > 0);
+  const canSend = step1Valid && step3Valid;
+
+  const resetWizard = () => {
+    setWizardStep(1);
+    setSelectedAudienceId('');
+    setSelectedTemplateId('__none_md__');
+    setSelectedHtmlTemplateId('__none__');
+    setManualSubject('');
+    setSent(false);
+  };
 
   const handleSend = async () => {
     if (!canSend) return;
@@ -1134,6 +1257,7 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
       } else {
         toast({ title: 'Campanha disparada!', description: `${result.sent} e-mail(s) enviados, ${result.failed} com falha.` });
         qc.invalidateQueries({ queryKey: ['/api/marketing/campaigns'] });
+        setSent(true);
       }
     } catch {
       toast({ title: 'Erro inesperado', variant: 'destructive' });
@@ -1147,118 +1271,255 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
   const htmlTemplateMap = Object.fromEntries(htmlTemplates.map(t => [t.id, t.name]));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">Disparar Campanha</h2>
-        <p className="text-sm text-gray-500">Selecione uma audiência, um template e opcionalmente um template HTML personalizado.</p>
-      </div>
+    <div className="space-y-8">
+      {/* Wizard */}
+      <Card className="border border-gray-200">
+        <CardContent className="p-6">
+          <WizardProgress currentStep={wizardStep} />
 
-      <Card className="border border-gray-200 max-w-xl">
-        <CardContent className="p-6 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Audiência</label>
-            <Select value={selectedAudienceId} onValueChange={setSelectedAudienceId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma audiência..." />
-              </SelectTrigger>
-              <SelectContent>
-                {audiences.map(a => (
-                  <SelectItem key={a.id} value={a.id}>{a.name} ({a.leadCount} leads)</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Template (Markdown)
-              {markdownOptional && <span className="text-gray-400 font-normal ml-1">(opcional com HTML)</span>}
-            </label>
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-              <SelectTrigger>
-                <SelectValue placeholder={markdownOptional ? "Opcional — HTML selecionado" : "Selecione um template..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {markdownOptional && (
-                  <SelectItem value="__none_md__">Nenhum — usar somente HTML</SelectItem>
-                )}
-                {templates.map(t => (
-                  <SelectItem key={t.id} value={t.id}>{t.name} — {t.subject}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!markdownOptional && (
-              <p className="text-xs text-gray-400">O assunto do template Markdown será usado para o e-mail</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Template HTML Personalizado <span className="text-gray-400 font-normal">(opcional)</span>
-            </label>
-            <Select value={selectedHtmlTemplateId} onValueChange={v => {
-              setSelectedHtmlTemplateId(v);
-              if (v === '__none__') setManualSubject('');
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sem template HTML (usa o Markdown)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Nenhum — usar corpo Markdown</SelectItem>
-                {htmlTemplates.map(t => (
-                  <SelectItem key={t.id} value={t.id}>
-                    <div className="flex items-center gap-2">
-                      <Code2 className="w-3 h-3" />
-                      {t.name}
+          {/* Step 1: Audience */}
+          {wizardStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Selecione a Audiência</h3>
+                <p className="text-sm text-gray-500">Escolha quem receberá esta campanha</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                {audiences.length === 0 ? (
+                  <div className="col-span-2 text-center py-8 text-gray-400">
+                    <Users className="w-8 h-8 mx-auto mb-2" />
+                    <p className="text-sm">Nenhuma audiência disponível</p>
+                  </div>
+                ) : audiences.map(a => (
+                  <div
+                    key={a.id}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      selectedAudienceId === a.id
+                        ? 'border-forest bg-forest/5'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedAudienceId(a.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          selectedAudienceId === a.id ? 'bg-forest text-white' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {a.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{a.name}</p>
+                          <p className="text-xs text-gray-500">{a.leadCount} lead{a.leadCount !== 1 ? 's' : ''}</p>
+                        </div>
+                      </div>
+                      {selectedAudienceId === a.id && <CheckCircle2 className="w-5 h-5 text-forest" />}
                     </div>
-                  </SelectItem>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
-            {effectiveHtmlTemplateId && (
-              <p className="text-xs text-green-600">Template HTML "{selectedHtmlTemplate?.name}" será usado como corpo do e-mail</p>
-            )}
-          </div>
-
-          {/* Manual subject field — shown when HTML is selected but Markdown is not */}
-          {needsManualSubject && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Assunto do E-mail <span className="text-red-500">*</span>
-              </label>
-              <Input
-                placeholder="Ex: Newsletter de Março — IDASAM"
-                value={manualSubject}
-                onChange={e => setManualSubject(e.target.value)}
-              />
-              <p className="text-xs text-gray-400">Obrigatório quando não há template Markdown selecionado</p>
+              </div>
+              {selectedAudienceId && (selectedAudience?.leadCount ?? 0) === 0 && (
+                <p className="text-xs text-amber-600 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Esta audiência não tem leads. Adicione leads na aba Audiências.
+                </p>
+              )}
+              <div className="flex justify-end pt-2">
+                <Button
+                  className="bg-forest hover:bg-forest/90 text-white"
+                  disabled={!step1Valid}
+                  onClick={() => setWizardStep(2)}
+                >
+                  Próximo <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
 
-          {selectedAudience && (htmlIsSelected || selectedTemplate) && (
-            <div className="p-3 bg-gray-50 rounded-lg text-sm space-y-1 border">
-              <p><span className="text-gray-500">Audiência:</span> <strong>{selectedAudience.name}</strong> ({selectedAudience.leadCount} destinatário{selectedAudience.leadCount !== 1 ? 's' : ''})</p>
-              {selectedTemplate && (
-                <p><span className="text-gray-500">Template:</span> <strong>{selectedTemplate.name}</strong></p>
-              )}
-              <p><span className="text-gray-500">Assunto:</span> {effectiveSubject || <span className="text-gray-400 italic">não definido</span>}</p>
-              {selectedHtmlTemplate && (
-                <p><span className="text-gray-500">HTML:</span> <strong>{selectedHtmlTemplate.name}</strong></p>
-              )}
+          {/* Step 2: Template */}
+          {wizardStep === 2 && (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Selecione o Template</h3>
+                <p className="text-sm text-gray-500">Escolha um template Markdown, HTML personalizado ou ambos</p>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Template Markdown
+                    {markdownOptional && <span className="text-gray-400 font-normal ml-1">(opcional — HTML selecionado)</span>}
+                  </label>
+                  <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={markdownOptional ? 'Opcional' : 'Selecione um template Markdown...'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none_md__">Nenhum — usar somente HTML</SelectItem>
+                      {templates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.name} — {t.subject}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Template HTML <span className="text-gray-400 font-normal">(opcional)</span>
+                  </label>
+                  <Select value={selectedHtmlTemplateId} onValueChange={v => {
+                    setSelectedHtmlTemplateId(v);
+                    if (v === '__none__') setManualSubject('');
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sem template HTML" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nenhum — usar corpo Markdown</SelectItem>
+                      {htmlTemplates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>
+                          <div className="flex items-center gap-2">
+                            <Code2 className="w-3 h-3" />
+                            {t.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {needsManualSubject && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Assunto do E-mail <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      placeholder="Ex: Newsletter de Março — IDASAM"
+                      value={manualSubject}
+                      onChange={e => setManualSubject(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between pt-2">
+                <Button variant="outline" onClick={() => setWizardStep(1)}>
+                  <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+                </Button>
+                <Button
+                  className="bg-forest hover:bg-forest/90 text-white"
+                  disabled={!step2Valid || (needsManualSubject && !manualSubject.trim())}
+                  onClick={() => setWizardStep(3)}
+                >
+                  Próximo <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
 
-          <Button
-            className="w-full bg-forest hover:bg-forest/90 text-white"
-            disabled={!canSend || sending}
-            onClick={handleSend}
-          >
-            <Send className="w-4 h-4 mr-2" />
-            {sending ? 'Disparando...' : 'Disparar Campanha'}
-          </Button>
+          {/* Step 3: Review */}
+          {wizardStep === 3 && (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Revisar Campanha</h3>
+                <p className="text-sm text-gray-500">Confirme os detalhes antes de disparar</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl border border-gray-200 divide-y divide-gray-200">
+                <div className="flex items-center gap-3 p-4">
+                  <div className="w-8 h-8 rounded-lg bg-forest/10 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-forest" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Audiência</p>
+                    <p className="text-sm font-semibold text-gray-900">{selectedAudience?.name}</p>
+                  </div>
+                  <Badge className="ml-auto bg-forest/10 text-forest border-0">{selectedAudience?.leadCount} destinatário{(selectedAudience?.leadCount ?? 0) !== 1 ? 's' : ''}</Badge>
+                </div>
+                <div className="flex items-center gap-3 p-4">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Mail className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Assunto</p>
+                    <p className="text-sm font-semibold text-gray-900">{effectiveSubject || <span className="text-gray-400 italic text-sm">não definido</span>}</p>
+                  </div>
+                </div>
+                {selectedTemplate && (
+                  <div className="flex items-center gap-3 p-4">
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                      <FileText className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Template Markdown</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedTemplate.name}</p>
+                    </div>
+                  </div>
+                )}
+                {selectedHtmlTemplate && (
+                  <div className="flex items-center gap-3 p-4">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                      <Code2 className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Template HTML</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedHtmlTemplate.name}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between pt-2">
+                <Button variant="outline" onClick={() => setWizardStep(2)}>
+                  <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+                </Button>
+                <Button
+                  className="bg-forest hover:bg-forest/90 text-white"
+                  onClick={() => setWizardStep(4)}
+                >
+                  Confirmar <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Send */}
+          {wizardStep === 4 && (
+            <div className="space-y-5">
+              {sent ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Campanha Disparada!</h3>
+                  <p className="text-sm text-gray-500 mb-6">Os e-mails foram enviados para {selectedAudience?.name}.</p>
+                  <Button className="bg-forest hover:bg-forest/90 text-white" onClick={resetWizard}>
+                    <RefreshCw className="w-4 h-4 mr-2" /> Nova Campanha
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900 mb-1">Pronto para Disparar</h3>
+                    <p className="text-sm text-gray-500">Esta ação irá enviar e-mails para <strong>{selectedAudience?.leadCount}</strong> destinatário{(selectedAudience?.leadCount ?? 0) !== 1 ? 's' : ''}.</p>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                    <p className="text-sm text-amber-700">Esta ação não pode ser desfeita. Certifique-se de que as informações estão corretas antes de disparar.</p>
+                  </div>
+                  <div className="flex justify-between pt-2">
+                    <Button variant="outline" onClick={() => setWizardStep(3)} disabled={sending}>
+                      <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+                    </Button>
+                    <Button
+                      className="bg-forest hover:bg-forest/90 text-white"
+                      disabled={!canSend || sending}
+                      onClick={handleSend}
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      {sending ? 'Disparando...' : 'Disparar Campanha'}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Campaign history */}
       {campaigns.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-base font-semibold text-gray-800">Histórico de Campanhas</h3>
@@ -1507,6 +1768,26 @@ function AnalyticsTab({ adminToken }: { adminToken: string }) {
 export default function MarketingPage() {
   const { adminToken } = useAuth();
 
+  const { data: audiences = [] } = useQuery<AudienceWithCount[]>({
+    queryKey: ['/api/marketing/audiences'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/audiences', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const { data: campaigns = [] } = useQuery<EmailCampaignRecord[]>({
+    queryKey: ['/api/marketing/campaigns'],
+    queryFn: async () => {
+      const res = await fetch('/api/marketing/campaigns', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
   const { data: notificationSubs = [] } = useQuery<CourseNotificationSubscription[]>({
     queryKey: ['/api/marketing/notification-subscriptions'],
     queryFn: async () => {
@@ -1525,20 +1806,26 @@ export default function MarketingPage() {
     );
   }
 
+  const totalLeads = audiences.reduce((sum, a) => sum + a.leadCount, 0);
+  const totalSent = campaigns.reduce((sum, c) => sum + c.sentCount, 0);
+  const totalOpens = campaigns.reduce((sum, c) => sum + (c.openCount ?? 0), 0);
+  const openRate = totalSent > 0 ? Math.round((totalOpens / totalSent) * 100) : 0;
+
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-50 rounded-lg">
+          <div className="p-2.5 bg-forest/10 rounded-xl">
             <Mail className="w-6 h-6 text-forest" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">E-mail Marketing</h1>
-            <p className="text-gray-600">Gerencie audiências, templates e campanhas de e-mail</p>
+            <p className="text-gray-500 text-sm">Gerencie audiências, templates e campanhas</p>
           </div>
         </div>
         <div className="relative">
-          <Bell className="w-6 h-6 text-gray-500" />
+          <Bell className="w-5 h-5 text-gray-400" />
           {notificationSubs.length > 0 && (
             <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white leading-none">
               {notificationSubs.length > 99 ? '99+' : notificationSubs.length}
@@ -1547,22 +1834,62 @@ export default function MarketingPage() {
         </div>
       </div>
 
+      {/* Metric cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border border-gray-200 bg-gradient-to-br from-white to-gray-50">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-lg bg-forest/10 flex items-center justify-center">
+                <Users className="w-4 h-4 text-forest" />
+              </div>
+              <Badge variant="secondary" className="text-xs font-normal">{audiences.length} audiência{audiences.length !== 1 ? 's' : ''}</Badge>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{totalLeads.toLocaleString('pt-BR')}</p>
+            <p className="text-sm text-gray-500 mt-0.5">Total de Leads</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-200 bg-gradient-to-br from-white to-gray-50">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Send className="w-4 h-4 text-blue-600" />
+              </div>
+              <Badge variant="secondary" className="text-xs font-normal">{campaigns.length} campanha{campaigns.length !== 1 ? 's' : ''}</Badge>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{totalSent.toLocaleString('pt-BR')}</p>
+            <p className="text-sm text-gray-500 mt-0.5">E-mails Enviados</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-200 bg-gradient-to-br from-white to-gray-50">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-amber-600" />
+              </div>
+              <Badge variant="secondary" className="text-xs font-normal">{totalOpens} abertura{totalOpens !== 1 ? 's' : ''}</Badge>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{openRate}%</p>
+            <p className="text-sm text-gray-500 mt-0.5">Taxa de Abertura Média</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs defaultValue="audiencias">
-        <TabsList className="mb-4 flex-wrap">
-          <TabsTrigger value="audiencias" className="flex items-center gap-2">
-            <Users className="w-4 h-4" /> Audiências
+        <TabsList className="mb-4 bg-gray-100 p-1 rounded-lg gap-0.5">
+          <TabsTrigger value="audiencias" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md">
+            <Users className="w-3.5 h-3.5" /> Audiências
           </TabsTrigger>
-          <TabsTrigger value="studio" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" /> Estúdio de Templates
+          <TabsTrigger value="studio" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md">
+            <FileText className="w-3.5 h-3.5" /> Estúdio
           </TabsTrigger>
-          <TabsTrigger value="html" className="flex items-center gap-2">
-            <Code2 className="w-4 h-4" /> HTML Personalizado
+          <TabsTrigger value="html" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md">
+            <Code2 className="w-3.5 h-3.5" /> HTML
           </TabsTrigger>
-          <TabsTrigger value="campanha" className="flex items-center gap-2">
-            <Send className="w-4 h-4" /> Disparar Campanha
+          <TabsTrigger value="campanha" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md">
+            <Send className="w-3.5 h-3.5" /> Disparar
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" /> Analytics
+          <TabsTrigger value="analytics" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md">
+            <BarChart3 className="w-3.5 h-3.5" /> Analytics
           </TabsTrigger>
         </TabsList>
         <TabsContent value="audiencias">

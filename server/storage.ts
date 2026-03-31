@@ -128,6 +128,7 @@ export interface IStorage {
 
   getCustomHtmlTemplates(): Promise<CustomHtmlTemplate[]>;
   getCustomHtmlTemplate(id: string): Promise<CustomHtmlTemplate | undefined>;
+  getCustomHtmlTemplatesByTrigger(trigger: string): Promise<CustomHtmlTemplate[]>;
   createCustomHtmlTemplate(template: InsertCustomHtmlTemplate): Promise<CustomHtmlTemplate>;
   updateCustomHtmlTemplate(id: string, template: Partial<InsertCustomHtmlTemplate>): Promise<CustomHtmlTemplate | undefined>;
   deleteCustomHtmlTemplate(id: string): Promise<void>;
@@ -723,6 +724,10 @@ export class DatabaseStorage implements IStorage {
   async getCustomHtmlTemplate(id: string): Promise<CustomHtmlTemplate | undefined> {
     const [t] = await db.select().from(customHtmlTemplates).where(eq(customHtmlTemplates.id, id));
     return t || undefined;
+  }
+
+  async getCustomHtmlTemplatesByTrigger(trigger: string): Promise<CustomHtmlTemplate[]> {
+    return db.select().from(customHtmlTemplates).where(eq(customHtmlTemplates.triggerType, trigger));
   }
 
   async createCustomHtmlTemplate(template: InsertCustomHtmlTemplate): Promise<CustomHtmlTemplate> {

@@ -555,19 +555,26 @@ export async function registerRoutes(app: Express) {
       const enrollment = await storage.createEnrollment(parsed.data);
       res.status(201).json(enrollment);
 
-      // Automation: send course_signup email if template exists
+      // Automation: send course_signup email if template exists (Markdown and/or HTML)
       if (enrollment.email) {
         try {
-          const templates = await storage.getEmailTemplatesByTrigger("course_signup");
-          if (templates.length > 0) {
-            const tpl = templates[0];
-            const vars: Record<string, string> = {
-              nome: enrollment.fullName ?? enrollment.email,
-              curso: course.title,
-            };
+          const vars: Record<string, string> = {
+            nome: enrollment.fullName ?? enrollment.email,
+            curso: course.title,
+          };
+          const mdTemplates = await storage.getEmailTemplatesByTrigger("course_signup");
+          if (mdTemplates.length > 0) {
+            const tpl = mdTemplates[0];
             const rendered = renderTemplate(tpl.body, vars);
             const html = await markdownToHtml(rendered);
             await sendEmailViaResend(enrollment.email, tpl.subject, html);
+          }
+          const htmlTemplates = await storage.getCustomHtmlTemplatesByTrigger("course_signup");
+          if (htmlTemplates.length > 0) {
+            const htmlTpl = htmlTemplates[0];
+            const rendered = renderTemplate(htmlTpl.htmlContent, vars);
+            const subject = htmlTpl.name;
+            await sendEmailViaResend(enrollment.email, subject, rendered);
           }
         } catch (emailErr) {
           console.error("Error sending course_signup email:", emailErr);
