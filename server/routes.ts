@@ -346,7 +346,23 @@ export async function registerRoutes(app: Express) {
     res.json({ status: "ok", message: "Server is running" });
   });
 
+  const isSocialBot = (userAgent: string = ''): boolean => {
+    const botPatterns = [
+      'facebookexternalhit', 'facebookbot', 'twitterbot', 'linkedinbot',
+      'whatsapp', 'telegrambot', 'slackbot', 'slack-imgproxy',
+      'googlebot', 'bingbot', 'applebot', 'discordbot',
+      'pinterest', 'redditbot', 'vkshare', 'w3c_validator',
+      'rogerbot', 'embedly', 'quora link preview', 'showyoubot',
+      'outbrain', 'flipboard', 'tumblr', 'bitlybot', 'skypeuripreview',
+    ];
+    const ua = userAgent.toLowerCase();
+    return botPatterns.some(pattern => ua.includes(pattern));
+  };
+
   const injectArticleOgTags = async (req: any, res: any, next: any, articleId: string) => {
+    if (!isSocialBot(req.get('User-Agent'))) {
+      return next();
+    }
     try {
       const art = await storage.getArticle(articleId);
       if (!art) return next();
