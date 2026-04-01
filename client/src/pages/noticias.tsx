@@ -514,7 +514,7 @@ export default function NoticiasPage() {
                       />
                     </div>
                   )}
-                  <div className={`${featuredArticle.image ? 'md:w-1/2' : 'w-full'} p-8 md:p-10 bg-gradient-to-br from-[#2A5B46] to-[#1e4433] flex flex-col justify-center`}>
+                  <div className={`${featuredArticle.image ? 'md:w-1/2' : 'w-full'} p-5 sm:p-8 md:p-10 bg-gradient-to-br from-[#2A5B46] to-[#1e4433] flex flex-col justify-center`}>
                     {featuredArticle.categoryName && (
                       <Badge className="w-fit mb-4 bg-amber-400 text-amber-900 border-0">
                         {featuredArticle.categoryName}
@@ -745,7 +745,7 @@ export default function NoticiasPage() {
 
       {/* Article Modal */}
       <Dialog open={selectedArticle !== null} onOpenChange={(open) => { if (!open) handleArticleClose(); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[95dvh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <ArticleModalErrorBoundary key={selectedArticle?.id ?? 'empty'}>
           {selectedArticle && (
             <>
@@ -755,7 +755,7 @@ export default function NoticiasPage() {
                     <img
                       src={selectedArticle.image}
                       alt={selectedArticle.title}
-                      className="w-full h-64 object-cover rounded-xl"
+                      className="w-full h-44 sm:h-64 object-cover rounded-lg sm:rounded-xl"
                     />
                   )}
                   <div className="flex flex-wrap items-center gap-2">
@@ -781,7 +781,7 @@ export default function NoticiasPage() {
 
               <div className="space-y-6 mt-2">
                 {selectedArticle.excerpt && (
-                  <p className="text-lg text-gray-600 border-l-4 border-[#2A5B46] pl-4 font-medium leading-relaxed">
+                  <p className="text-base sm:text-lg text-gray-600 border-l-4 border-[#2A5B46] pl-4 font-medium leading-relaxed">
                     {selectedArticle.excerpt}
                   </p>
                 )}
@@ -796,7 +796,7 @@ export default function NoticiasPage() {
                   </div>
                 </div>
 
-                <div className="prose prose-lg max-w-none prose-headings:text-[#2A5B46] prose-a:text-[#2A5B46]">
+                <div className="prose sm:prose-lg max-w-none prose-headings:text-[#2A5B46] prose-a:text-[#2A5B46]">
                   {(selectedArticle.content || '').split('\n\n').map((paragraph, i) => (
                     <p key={i} className="text-gray-700 leading-relaxed mb-4">{paragraph}</p>
                   ))}
@@ -815,7 +815,7 @@ export default function NoticiasPage() {
                 {/* Social Reactions */}
                 <div className="pt-4 border-t border-gray-100">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">Como você se sentiu com essa notícia?</h4>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <SocialReactions
                       targetId={selectedArticle.id}
                       targetType="article"
