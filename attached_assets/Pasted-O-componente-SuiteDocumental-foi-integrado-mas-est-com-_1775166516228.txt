@@ -1,0 +1,61 @@
+O componente SuiteDocumental foi integrado mas está com dois problemas na geração de documentos:
+Problema 1 — Paginação não funciona (todo o conteúdo fica numa só página em vez de criar novas páginas A4)
+Problema 2 — Margens erradas no corpo do documento A4
+Causa provável: a função autoPaginate mede scrollHeight do elemento .sd-content, mas o container .sd-body tem overflow: hidden no CSS, o que impede a leitura correta da altura. Além disso, o valor MAX_H = 823 pode estar diferente da altura real disponível no ambiente.
+Corrija da seguinte forma:
+1. No arquivo suite.css, localize .sd-body e remova overflow: hidden (se existir) e garanta que o padding está exatamente assim:
+css.sd-body {
+  padding: 34px 55px 88px 55px;
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+2. No arquivo SuiteDocumental.tsx, substitua a função autoPaginate inteira por esta versão corrigida:
+typescriptasync function autoPaginate(
+  source: HTMLElement,
+  container: HTMLElement,
+  docType: string,
+  isOrc = false,
+) {
+  await document.fonts.ready
+  container.innerHTML = ''
+
+  const newPage = () => {
+    const p = createA4Page(docType, isOrc)
+    container.appendChild(p)
+    return p.querySelector('.sd-content') as HTMLElement
+  }
+
+  let contentBox = newPage()
+  let pageCount = 1
+  const LIMIT = 820
+
+  for (const el of Array.from(source.children)) {
+    const clone = el.cloneNode(true) as HTMLElement
+    contentBox.appendChild(clone)
+
+    // Força o browser a calcular o layout
+    await new Promise(r => requestAnimationFrame(r))
+    await new Promise(r => requestAnimationFrame(r))
+
+    if (contentBox.getBoundingClientRect().height > LIMIT ||
+        contentBox.scrollHeight > LIMIT) {
+      contentBox.removeChild(clone)
+      pageCount++
+      contentBox = newPage()
+      contentBox.appendChild(clone)
+
+      // Aguarda segundo frame após mover
+      await new Promise(r => requestAnimationFrame(r))
+    }
+  }
+
+  container.querySelectorAll('.sd-page-num').forEach((el, i) => {
+    el.textContent = `Página ${i + 1} de ${pageCount} • IDASAM — Documento Oficial`
+  })
+}
+3. Ainda no SuiteDocumental.tsx, localize a função handlePreview e aumente o delay de 200 para 350 milissegundos:
+typescriptawait new Promise(r => setTimeout(r, 350))
+Não altere mais nada. Após as correções, teste gerando um Contrato com pelo menos 8 cláusulas — ele deve criar múltiplas páginas A4 automaticamente.

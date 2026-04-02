@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
 
@@ -132,6 +132,12 @@ export interface IStorage {
   createCustomHtmlTemplate(template: InsertCustomHtmlTemplate): Promise<CustomHtmlTemplate>;
   updateCustomHtmlTemplate(id: string, template: Partial<InsertCustomHtmlTemplate>): Promise<CustomHtmlTemplate | undefined>;
   deleteCustomHtmlTemplate(id: string): Promise<void>;
+
+  getProposals(): Promise<Proposal[]>;
+  getProposal(id: string): Promise<Proposal | undefined>;
+  createProposal(proposal: InsertProposal): Promise<Proposal>;
+  updateProposalStatus(id: string, status: ProposalStatus): Promise<Proposal | undefined>;
+  deleteProposal(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -788,6 +794,29 @@ export class DatabaseStorage implements IStorage {
     }
 
     return removed;
+  }
+
+  async getProposals(): Promise<Proposal[]> {
+    return db.select().from(proposals).orderBy(desc(proposals.createdAt));
+  }
+
+  async getProposal(id: string): Promise<Proposal | undefined> {
+    const [row] = await db.select().from(proposals).where(eq(proposals.id, id));
+    return row || undefined;
+  }
+
+  async createProposal(proposal: InsertProposal): Promise<Proposal> {
+    const [row] = await db.insert(proposals).values(proposal).returning();
+    return row;
+  }
+
+  async updateProposalStatus(id: string, status: ProposalStatus): Promise<Proposal | undefined> {
+    const [row] = await db.update(proposals).set({ status }).where(eq(proposals.id, id)).returning();
+    return row || undefined;
+  }
+
+  async deleteProposal(id: string): Promise<void> {
+    await db.delete(proposals).where(eq(proposals.id, id));
   }
 }
 

@@ -25,6 +25,7 @@ import ProjetosAdminPage from '@/pages/projetos-admin';
 import UsuariosPage from '@/pages/dashboard/usuarios';
 import DashboardCapacitacaoPage from '@/pages/dashboard/capacitacao';
 import MarketingPage from '@/pages/dashboard/marketing';
+import DocumentosPage from '@/pages/dashboard/documentos';
 import TransparenciaPage from './pages/transparencia';
 import BioPage from './pages/bio';
 import TelegramFloat from '@/components/telegram-float';
@@ -112,6 +113,13 @@ function AppContent() {
           <ProtectedRoute>
             <AdminLayout>
               <MarketingPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/dashboard/documentos">
+          <ProtectedRoute>
+            <AdminLayout>
+              <DocumentosPage />
             </AdminLayout>
           </ProtectedRoute>
         </Route>

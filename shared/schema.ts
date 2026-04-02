@@ -349,3 +349,37 @@ export const campaignOpenEvents = pgTable("campaign_open_events", {
 }, (t) => ({
   uniqueOpenPerLead: unique("unique_open_per_lead").on(t.campaignId, t.leadId),
 }));
+
+export const PROPOSAL_STATUSES = ['enviada', 'aprovada', 'rejeitada', 'em_negociacao'] as const;
+export type ProposalStatus = typeof PROPOSAL_STATUSES[number];
+
+export const DOC_TIPOS = ['contrato', 'orcamento', 'oficio'] as const;
+export type DocTipo = typeof DOC_TIPOS[number];
+
+export const proposals = pgTable("proposals", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  tipo: text("tipo").$type<DocTipo>().default("orcamento"),
+  numero: text("numero").notNull(),
+  titulo: text("titulo").notNull(),
+  cliNome: text("cli_nome").notNull(),
+  cliEmail: text("cli_email"),
+  cliTel: text("cli_tel"),
+  valorTotal: text("valor_total"),
+  status: text("status").$type<ProposalStatus>().default("enviada"),
+  emissao: text("emissao"),
+  validade: text("validade"),
+  dados: text("dados"),
+  obs: text("obs"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertProposalSchema = createInsertSchema(proposals).omit({ id: true, createdAt: true }).extend({
+  tipo:       z.enum(DOC_TIPOS).optional().default("orcamento"),
+  numero:     z.string().min(1, "Número é obrigatório"),
+  titulo:     z.string().min(1, "Título é obrigatório"),
+  cliNome:    z.string().min(1, "Nome é obrigatório"),
+  valorTotal: z.string().optional().nullable(),
+  status:     z.enum(PROPOSAL_STATUSES).optional().default("enviada"),
+});
+export type InsertProposal = z.infer<typeof insertProposalSchema>;
+export type Proposal = typeof proposals.$inferSelect;

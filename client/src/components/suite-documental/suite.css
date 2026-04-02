@@ -1,0 +1,481 @@
+/* IDASAM Suite Documental — A4 page styles (sd- prefix avoids Tailwind conflicts) */
+
+.sd-preview-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: #b8c9be;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  padding-top: 56px;
+  padding-bottom: 48px;
+}
+
+.sd-preview-topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: #2A5B46;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  z-index: 9001;
+  border-bottom: 1px solid rgba(251,191,36,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.sd-topbar-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Rajdhani', sans-serif;
+}
+.sd-topbar-btn-outline:hover { border-color: #fff; color: #fff; }
+
+.sd-topbar-btn-solid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border-radius: 9999px;
+  border: none;
+  background: linear-gradient(135deg, #2A5B46, #4E8D7C);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Rajdhani', sans-serif;
+  box-shadow: 0 4px 12px rgba(42,91,70,0.4);
+}
+.sd-topbar-btn-solid:hover { opacity: 0.88; transform: translateY(-1px); }
+.sd-topbar-btn-solid:disabled { opacity: 0.5; cursor: wait; transform: none; }
+
+.sd-topbar-btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border-radius: 9999px;
+  border: none;
+  background: linear-gradient(135deg, #6B4C9A, #9B72CF);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Rajdhani', sans-serif;
+  box-shadow: 0 4px 12px rgba(107,76,154,0.4);
+}
+.sd-topbar-btn-save:hover { opacity: 0.88; transform: translateY(-1px); }
+.sd-topbar-btn-save:disabled { opacity: 0.5; cursor: wait; transform: none; }
+
+.sd-pages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-items: center;
+  width: 100%;
+  padding: 24px 0 48px;
+}
+
+.sd-page-a4 {
+  width: 794px;
+  height: 1123px;
+  min-width: 794px;
+  min-height: 1123px;
+  background: #ffffff;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.3);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.sd-topo-stripe {
+  height: 5px;
+  background: linear-gradient(90deg, #2A5B46, #4E8D7C, #008080);
+  flex-shrink: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sd-header {
+  background: #2A5B46;
+  padding: 16px 50px;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  min-height: 130px;
+}
+
+.sd-header::after {
+  content: '';
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 140px; height: 80px;
+  background: radial-gradient(ellipse at 100% 100%, rgba(251,191,36,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.sd-logo-img {
+  height: 100px;
+  max-width: 340px;
+  filter: brightness(0) invert(1);
+  object-fit: contain;
+  object-position: left center;
+}
+
+.sd-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.sd-doc-type {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #FBBF24;
+}
+.sd-doc-type.orcamento { color: #C86A3B; }
+
+.sd-info {
+  text-align: right;
+  font-size: 8px;
+  opacity: 0.55;
+  line-height: 1.7;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+}
+
+.sd-stripe {
+  height: 3px;
+  background: linear-gradient(90deg, #2A5B46, #4E8D7C);
+  flex-shrink: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sd-stripe.orcamento {
+  background: linear-gradient(90deg, #C86A3B, #FBBF24);
+}
+
+.sd-body {
+  padding: 28px 55px 20px 55px;
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sd-watermark {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 380px;
+  opacity: 0.028;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sd-watermark img { width: 100%; filter: brightness(0); }
+
+.sd-corner-detail {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 80px; height: 80px;
+  background: #4E8D7C;
+  opacity: 0.045;
+  border-radius: 80px 0 0 0;
+  pointer-events: none;
+  z-index: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sd-corner-detail-2 {
+  position: absolute;
+  top: 0; right: 0;
+  width: 40px; height: 40px;
+  background: #FBBF24;
+  opacity: 0.04;
+  border-radius: 0 0 0 40px;
+  pointer-events: none;
+  z-index: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sd-footer {
+  flex-shrink: 0;
+  padding: 10px 50px;
+  font-size: 8px;
+  color: #4A7260;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 2px solid #2A5B46;
+  background: #F0F4F8;
+  box-sizing: border-box;
+  position: relative;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sd-footer::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #2A5B46, #FBBF24);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sd-footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sd-footer-brand {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  color: #2A5B46;
+  letter-spacing: 0.4px;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.sd-footer-info {
+  font-size: 7px;
+  color: #6A9A80;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+}
+.sd-footer-right {
+  text-align: right;
+  font-size: 7.5px;
+  color: #8AAD92;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.sd-content {
+  position: relative;
+  z-index: 1;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #1F2937;
+  text-align: justify;
+  font-family: 'Inter', sans-serif;
+}
+.sd-content h3 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #2A5B46;
+  margin: 22px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #C8DDD5;
+}
+.sd-content p  { margin-bottom: 10px; }
+.sd-content ul { margin-bottom: 12px; padding-left: 18px; }
+.sd-content li { margin-bottom: 6px; }
+
+.sd-doc-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  position: relative;
+  z-index: 1;
+}
+.sd-doc-date {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  color: #4A7260;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.sd-doc-id {
+  font-size: 10px;
+  color: #4A7260;
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+.sd-doc-title {
+  font-family: 'Georgia', serif;
+  font-size: 21px;
+  font-style: italic;
+  font-weight: 700;
+  color: #2A5B46;
+  border-left: 4px solid #2A5B46;
+  padding-left: 14px;
+  margin-bottom: 30px;
+  line-height: 1.3;
+  position: relative;
+  z-index: 1;
+}
+.sd-doc-title.orcamento { border-left-color: #C86A3B; }
+
+.sd-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 20px;
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+}
+.sd-items-table thead tr { background: #2A5B46; color: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.sd-items-table thead th {
+  padding: 9px 12px;
+  text-align: left;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.sd-items-table thead th:last-child,
+.sd-items-table thead th:nth-child(3),
+.sd-items-table thead th:nth-child(4) { text-align: right; }
+.sd-items-table tbody tr:nth-child(even) { background: #F0F4F8; }
+.sd-items-table tbody td { padding: 9px 12px; border-bottom: 1px solid #E0EDE4; color: #1F2937; vertical-align: top; }
+.sd-items-table tbody td:last-child,
+.sd-items-table tbody td:nth-child(3),
+.sd-items-table tbody td:nth-child(4) { text-align: right; font-family: monospace; font-size: 11.5px; }
+.sd-items-table tbody td:nth-child(2) { text-align: center; }
+
+.sd-totals {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 5px; margin-top: 6px; padding-top: 10px; position: relative; z-index: 1;
+}
+.sd-total-line { display: flex; gap: 20px; font-size: 12px; color: #4A7260; }
+.sd-total-line span:first-child { min-width: 130px; text-align: right; }
+.sd-total-line span:last-child  { min-width: 110px; text-align: right; font-family: monospace; font-weight: 600; color: #1F2937; }
+.sd-total-grand { display: flex; gap: 20px; font-size: 14px; font-weight: 700; color: #2A5B46; border-top: 2px solid #2A5B46; padding-top: 8px; margin-top: 6px; }
+.sd-total-grand span:first-child { min-width: 130px; text-align: right; }
+.sd-total-grand span:last-child  { min-width: 110px; text-align: right; font-family: monospace; color: #2A5B46; }
+
+.sd-doc-obs {
+  position: relative; z-index: 1; margin-top: 20px;
+  padding: 14px 16px; background: #F0F4F8;
+  border-left: 3px solid #2A5B46; border-radius: 0 6px 6px 0;
+  font-size: 12px; line-height: 1.6; color: #4A7260;
+}
+.sd-doc-obs strong { color: #1F2937; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; font-family: 'Rajdhani', sans-serif; }
+
+.sd-doc-validity {
+  position: relative; z-index: 1; display: flex; justify-content: space-between;
+  margin-top: 18px; padding: 12px 16px; background: #F0F4F8;
+  border: 1px solid rgba(200,106,59,0.25); border-radius: 8px; font-size: 11.5px;
+}
+.sd-validity-item { display: flex; flex-direction: column; gap: 2px; }
+.sd-validity-item .label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #C86A3B; font-weight: 700; font-family: 'Rajdhani', sans-serif; }
+.sd-validity-item .value { color: #1F2937; font-weight: 600; }
+
+.sd-sigs-wrapper { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; margin-top: 50px; width: 100%; }
+.sd-sigs         { display: flex; flex-direction: column; gap: 50px; width: 80%; }
+.sd-sig-box      { width: 100%; text-align: center; }
+.sd-sig-line     { width: 100%; height: 1px; background: linear-gradient(90deg, #2A5B46, #008080); margin-bottom: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.sd-sig-name     { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; color: #1F2937; }
+.sd-sig-role     { font-size: 11px; color: #4A7260; margin-top: 3px; }
+
+.sd-orc-sig-section { position: relative; z-index: 1; margin-top: 40px; display: flex; gap: 40px; }
+.sd-orc-sig-box  { flex: 1; text-align: center; }
+.sd-orc-sig-line { width: 100%; height: 1px; background: linear-gradient(90deg, #2A5B46, #008080); margin-bottom: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.sd-orc-sig-name { font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; color: #1F2937; }
+.sd-orc-sig-role { font-size: 10.5px; color: #4A7260; margin-top: 3px; }
+
+.sd-oficio-num {
+  font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+  color: #1F2937; text-transform: uppercase; letter-spacing: 1.5px;
+}
+.sd-oficio-data { font-size: 12px; color: #4A7260; text-align: right; }
+
+.sd-oficio-dest {
+  margin-bottom: 28px; padding: 14px 18px;
+  border-left: 3px solid #2A5B46; background: #F0F4F8;
+  border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.7;
+  position: relative; z-index: 1;
+}
+.sd-oficio-dest .dest-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #2A5B46; margin-bottom: 4px; font-family: 'Rajdhani', sans-serif; display: block; }
+.sd-oficio-dest .dest-nome  { font-weight: 700; color: #1F2937; font-size: 13px; }
+.sd-oficio-dest .dest-cargo { color: #4A7260; font-size: 12px; }
+
+.sd-oficio-assunto {
+  margin-bottom: 28px; padding: 10px 16px; background: #F0F4F8;
+  border-radius: 8px; font-size: 12.5px; position: relative; z-index: 1;
+  border: 1px solid #C8DDD5;
+}
+.sd-oficio-assunto strong {
+  font-family: 'Rajdhani', sans-serif; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 1px; color: #2A5B46; display: block; margin-bottom: 3px;
+}
+
+.sd-oficio-corpo { position: relative; z-index: 1; font-size: 13px; line-height: 1.85; color: #1F2937; text-align: justify; }
+.sd-oficio-corpo p { margin-bottom: 14px; }
+
+.sd-section-label {
+  font-family: 'Rajdhani', sans-serif; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: #2A5B46;
+  margin: 20px 0 6px; display: block;
+}
+
+.sd-oficio-fund {
+  position: relative; z-index: 1; margin-top: 20px; padding: 14px 18px;
+  background: #F0F4F8; border-left: 3px solid #2A5B46;
+  border-radius: 0 8px 8px 0; font-size: 12px; line-height: 1.6; color: #1F2937;
+}
+.sd-oficio-fund strong { font-size: 9.5px; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; letter-spacing: 1px; color: #2A5B46; display: block; margin-bottom: 6px; }
+.sd-oficio-fund ul { padding-left: 16px; }
+.sd-oficio-fund li { margin-bottom: 4px; }
+
+.sd-oficio-fechamento { position: relative; z-index: 1; margin-top: 32px; font-size: 13px; color: #1F2937; line-height: 1.7; }
+
+.sd-oficio-assinatura { position: relative; z-index: 1; margin-top: 48px; display: inline-block; }
+.sd-sig-grad-line { width: 220px; height: 2px; background: linear-gradient(90deg, #2A5B46, #008080); margin-bottom: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.sd-sig-nome  { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; color: #1F2937; }
+.sd-sig-cargo { font-size: 11px; color: #4A7260; margin-top: 2px; }
+.sd-sig-inst  { font-size: 10px; color: #2A5B46; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px; font-family: 'Rajdhani', sans-serif; }
+
+body.sd-exporting .sd-page-a4 {
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+body.sd-exporting .sd-preview-wrap {
+  padding: 0 !important;
+  background: #fff !important;
+}
+body.sd-exporting .sd-preview-topbar {
+  display: none !important;
+}
+body.sd-exporting .sd-pages-container {
+  gap: 0 !important;
+  padding: 0 !important;
+}

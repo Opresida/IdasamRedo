@@ -13,7 +13,8 @@ import {
   Shield,
   Users,
   GraduationCap,
-  Mail
+  Mail,
+  FileText
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -77,6 +78,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: Mail,
       path: '/dashboard/marketing',
       description: 'E-mail marketing'
+    },
+    {
+      label: 'Gerador de Documentos',
+      icon: FileText,
+      path: '/dashboard/documentos',
+      description: 'Contratos, orçamentos e ofícios'
     }
   ];
 

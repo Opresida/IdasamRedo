@@ -1,6 +1,7 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, PROPOSAL_STATUSES } from "@shared/schema";
+import type { ProposalStatus } from "@shared/schema";
 import multer from "multer";
 import { createServer } from "http";
 import crypto from "crypto";
@@ -1442,6 +1443,58 @@ export async function registerRoutes(app: Express) {
       res.json({ message: "E-mails enviados", sent, failed });
     } catch {
       res.status(500).json({ message: "Erro ao enviar e-mails" });
+    }
+  });
+
+  app.get("/api/admin/proposals", requireAdmin, async (_req, res) => {
+    try {
+      const list = await storage.getProposals();
+      res.json(list);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar propostas" });
+    }
+  });
+
+  app.get("/api/admin/proposals/:id", requireAdmin, async (req, res) => {
+    try {
+      const p = await storage.getProposal(req.params.id);
+      if (!p) return res.status(404).json({ message: "Proposta não encontrada" });
+      res.json(p);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar proposta" });
+    }
+  });
+
+  app.post("/api/admin/proposals", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertProposalSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.flatten() });
+      const created = await storage.createProposal(parsed.data);
+      res.status(201).json(created);
+    } catch {
+      res.status(500).json({ message: "Erro ao criar proposta" });
+    }
+  });
+
+  app.patch("/api/admin/proposals/:id/status", requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body as { status: string };
+      if (!PROPOSAL_STATUSES.includes(status as any))
+        return res.status(400).json({ message: "Status inválido" });
+      const updated = await storage.updateProposalStatus(req.params.id, status as ProposalStatus);
+      if (!updated) return res.status(404).json({ message: "Proposta não encontrada" });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ message: "Erro ao atualizar status" });
+    }
+  });
+
+  app.delete("/api/admin/proposals/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteProposal(req.params.id);
+      res.json({ message: "Proposta excluída" });
+    } catch {
+      res.status(500).json({ message: "Erro ao excluir proposta" });
     }
   });
 
