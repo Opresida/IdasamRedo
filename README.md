@@ -176,3 +176,85 @@ O servidor estará disponível em `http://localhost:5000`.
 ## Acesso ao Painel Administrativo
 
 O painel administrativo está disponível em `/admin`. As credenciais são configuradas via variáveis de ambiente (`ADMIN_EMAIL` e `ADMIN_PASSWORD`). Após o login, o sistema gera um token de sessão válido por 8 horas.
+
+---
+
+## Arquitetura
+
+### Visão Geral
+
+```
+Monorepo full-stack (Express + React no mesmo repositório)
+        │
+        ├── server/          Backend Express (API REST)
+        │     ├── index.ts   Entry point — Express + sessão + Vite middleware
+        │     ├── routes.ts  Todas as rotas /api
+        │     ├── db.ts      Conexão Drizzle + Neon serverless
+        │     ├── storage.ts Camada de acesso a dados e uploads
+        │     └── vite.ts    Serve o frontend em dev (Vite middleware)
+        │
+        ├── client/src/      Frontend React
+        │     ├── pages/     Páginas públicas e do dashboard
+        │     ├── components/ Componentes reutilizáveis
+        │     ├── contexts/  Contextos React (autenticação)
+        │     ├── hooks/     Hooks customizados
+        │     └── App.tsx    Entrada + roteamento (Wouter)
+        │
+        └── shared/
+              └── schema.ts  Schema Drizzle — fonte única de verdade para tipos e validações
+```
+
+### Fluxo de Dados
+
+```
+Browser (React + Wouter)
+    └── TanStack Query → fetch /api/*
+          └── Express routes.ts
+                └── Drizzle ORM (storage.ts)
+                      └── PostgreSQL (Neon serverless)
+```
+
+### Tabelas do Banco
+
+| Tabela | Descrição |
+|--------|-----------|
+| `users` | Usuários do sistema |
+| `courses` | Cursos (título, instrutor, carga horária, datas, vagas, status) |
+| `enrollments` | Matrículas de usuários em cursos |
+| `certificates` | Certificados gerados por conclusão de curso |
+| `articles` | Artigos/notícias do blog institucional |
+| `email_campaigns` | Campanhas de e-mail marketing |
+| `proposals` | Propostas e documentos |
+
+### Decisões Arquiteturais
+
+| Decisão | Justificativa |
+|---------|--------------|
+| Monorepo full-stack | Frontend e backend no mesmo repo, deploy simplificado |
+| Drizzle + Neon | ORM type-safe com PostgreSQL serverless — sem servidor para gerenciar |
+| `shared/schema.ts` | Tipos compartilhados entre frontend e backend sem duplicação |
+| Wouter (não React Router) | Roteamento leve no frontend |
+| cross-env + --env-file | Compatibilidade Windows para variáveis de ambiente |
+| Token Bearer (admin) | Sessão admin leve sem overhead de Passport completo |
+
+---
+
+## Status Atual
+
+### Concluído
+- [x] Setup inicial Express + React + Vite + TypeScript
+- [x] Conexão com banco Neon via Drizzle ORM
+- [x] Schema completo: users, courses, enrollments, certificates, articles, email_campaigns, proposals
+- [x] Autenticação admin com token Bearer + sessão 8h
+- [x] Configuração para rodar localmente no Windows (cross-env + --env-file)
+- [x] Site institucional público (Home, Projetos, Notícias, Capacitação, Transparência, Doação)
+- [x] Painel administrativo (Dashboard, Capacitação, Marketing, Documentos, Financeiro, Projetos, Usuários)
+- [x] Integração Stripe (doações USD/EUR)
+- [x] Integração Resend (e-mail transacional e campanhas)
+- [x] Geração de certificados em PDF (pdf-lib + jsPDF)
+
+### Pendente
+- [ ] Configurar ADMIN_EMAIL e ADMIN_PASSWORD no `.env` para habilitar login admin
+- [ ] Configurar STRIPE_SECRET_KEY e VITE_STRIPE_PUBLISHABLE_KEY para pagamentos
+- [ ] Configurar RESEND_API_KEY para envio de e-mails
+- [ ] Configurar SUPABASE_URL e SUPABASE_ANON_KEY para storage de arquivos
