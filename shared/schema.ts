@@ -353,7 +353,7 @@ export const campaignOpenEvents = pgTable("campaign_open_events", {
 export const PROPOSAL_STATUSES = ['enviada', 'aprovada', 'rejeitada', 'em_negociacao'] as const;
 export type ProposalStatus = typeof PROPOSAL_STATUSES[number];
 
-export const DOC_TIPOS = ['contrato', 'orcamento', 'oficio'] as const;
+export const DOC_TIPOS = ['contrato', 'orcamento', 'oficio', 'relatorio', 'projeto'] as const;
 export type DocTipo = typeof DOC_TIPOS[number];
 
 export const proposals = pgTable("proposals", {
