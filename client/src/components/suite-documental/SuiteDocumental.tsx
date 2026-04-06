@@ -993,7 +993,6 @@ export function SuiteDocumental() {
     </div>`
     if (ofData.assunto) h += `<div class="sd-oficio-assunto"><strong>Assunto</strong>${ofData.assunto}</div>`
 
-    h += `<div class="sd-oficio-corpo">`
     if (ofData.intro) {
       h += `<span class="sd-section-label">Introdução</span>`
       ofData.intro.split('\n').forEach(l => { const t = l.trim(); if (t) h += `<p>${t}</p>` })
@@ -1006,7 +1005,6 @@ export function SuiteDocumental() {
       h += `<span class="sd-section-label">Conclusão</span>`
       ofData.conclusao.split('\n').forEach(l => { const t = l.trim(); if (t) h += `<p>${t}</p>` })
     }
-    h += `</div>`
 
     if (ofData.fundamentacao) {
       h += `<div class="sd-oficio-fund"><strong>Fundamentação Jurídica / Normativa</strong><ul>`

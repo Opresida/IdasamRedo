@@ -438,8 +438,6 @@
   letter-spacing: 1px; color: #2A5B46; display: block; margin-bottom: 3px;
 }
 
-.sd-oficio-corpo { position: relative; z-index: 1; font-size: 13px; line-height: 1.85; color: #1F2937; text-align: justify; }
-.sd-oficio-corpo p { margin-bottom: 14px; }
 
 .sd-section-label {
   font-family: 'Rajdhani', sans-serif; font-size: 10px; font-weight: 700;
