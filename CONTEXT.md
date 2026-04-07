@@ -41,6 +41,15 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 - Inscrições em `/capacitacao` — públicas, sem login
 - Certificados gerados em lote pelo admin ou consultados publicamente via `authCode`
 
+### Assinatura Digital (Lei 14.063/2020)
+- Assinatura interna: admin seleciona signatário cadastrado → pdf-lib embutir página de autenticação no PDF
+- Assinatura externa: gera link público `/assinar/:token` (7 dias) → signatário preenche nome, CPF, desenha assinatura
+- Evidências capturadas: IP, user-agent, data/hora, hash SHA-256 do documento original
+- Página de autenticação dedicada no final do PDF: QR Code, hash, link de validação, dados do signatário
+- Validação pública: `/validar/:hash` — qualquer pessoa verifica autenticidade
+- Trilha de auditoria: tabela `assinatura_logs` com todas as evidências
+- Função compartilhada: `client/src/lib/pdf-auth-page.ts` — gera a página de autenticação no PDF
+
 ### Banco de Dados
 - Schema em `shared/schema.ts` — fonte única de verdade para tipos frontend e backend
 - Para alterar o schema: editar `shared/schema.ts` → rodar `npm run db:push`

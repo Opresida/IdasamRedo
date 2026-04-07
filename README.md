@@ -224,7 +224,10 @@ Browser (React + Wouter)
 | `certificates` | Certificados gerados por conclusão de curso |
 | `articles` | Artigos/notícias do blog institucional |
 | `email_campaigns` | Campanhas de e-mail marketing |
-| `proposals` | Propostas e documentos |
+| `proposals` | Documentos (contratos, orçamentos, ofícios, relatórios, projetos) com PDF original e assinado |
+| `signatarios` | Signatários internos cadastrados (nome, cargo, email) |
+| `assinatura_links` | Tokens de assinatura externa (link público, 7 dias de validade) |
+| `assinatura_logs` | Trilha de auditoria de assinaturas (nome, CPF, IP, user-agent, hash SHA-256) |
 
 ### Decisões Arquiteturais
 
@@ -252,9 +255,18 @@ Browser (React + Wouter)
 - [x] Integração Stripe (doações USD/EUR)
 - [x] Integração Resend (e-mail transacional e campanhas)
 - [x] Geração de certificados em PDF (pdf-lib + jsPDF)
+- [x] Configurar ADMIN_EMAIL e ADMIN_PASSWORD — login admin habilitado ✓ *2026-04-06*
+- [x] Salvar PDF junto com documentos emitidos (base64 no banco) ✓ *2026-04-07*
+- [x] Preview de PDF no modal com react-pdf ✓ *2026-04-07*
+- [x] Download, envio por email e upload de PDF assinado ✓ *2026-04-07*
+- [x] Timeline de ciclo de vida: Emitido → Assinado → Enviado ✓ *2026-04-07*
+- [x] Sistema de assinatura digital interna (IDASAM) com pdf-lib + signatários cadastrados ✓ *2026-04-07*
+- [x] Assinatura externa via link público (/assinar/:token) com canvas, CPF, IP e evidências ✓ *2026-04-07*
+- [x] Página de autenticação dedicada no PDF com QR Code + hash SHA-256 + link de validação ✓ *2026-04-07*
+- [x] Página pública de validação de documentos (/validar/:hash) ✓ *2026-04-07*
+- [x] Referência à Lei 14.063/2020 e Regulamento eIDAS ✓ *2026-04-07*
 
 ### Pendente
-- [ ] Configurar ADMIN_EMAIL e ADMIN_PASSWORD no `.env` para habilitar login admin
 - [ ] Configurar STRIPE_SECRET_KEY e VITE_STRIPE_PUBLISHABLE_KEY para pagamentos
 - [ ] Configurar RESEND_API_KEY para envio de e-mails
 - [ ] Configurar SUPABASE_URL e SUPABASE_ANON_KEY para storage de arquivos
