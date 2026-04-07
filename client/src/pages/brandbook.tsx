@@ -5,7 +5,7 @@ import {
   BookOpen, Download, Shield, Eye, Target, Heart, Leaf, Globe, Sun, Droplets,
 } from 'lucide-react'
 
-const LOGO_URL = 'https://raw.githubusercontent.com/Opresida/IdasamRedo/refs/heads/main/logo.svg'
+const LOGO_URL = '/logo-idasam-vector.svg'
 
 // ── Brand Colors ──
 const COLORS = {
@@ -176,17 +176,42 @@ export default function BrandbookPage() {
         <section id="logo">
           <SectionTitle icon={Image} title="Logotipo" subtitle="Marca principal e regras de uso" />
 
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
-            {/* Logo principal */}
-            <div className="bg-white rounded-2xl p-10 shadow-md flex flex-col items-center justify-center border border-[#C8DDD5]">
-              <img src={LOGO_URL} alt="IDASAM Logo" className="w-64 h-64 mb-6" />
-              <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Versao Principal</span>
+          {/* Variacoes de cor */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {/* Original — verde escuro */}
+            <div className="bg-white rounded-2xl p-8 shadow-md flex flex-col items-center justify-center border border-[#C8DDD5]">
+              <img src={LOGO_URL} alt="IDASAM Logo" className="h-44 mb-4" />
+              <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Original (#004000)</span>
             </div>
 
-            {/* Logo sobre fundo escuro */}
-            <div className="bg-[#1a3a2e] rounded-2xl p-10 shadow-md flex flex-col items-center justify-center">
-              <img src={LOGO_URL} alt="IDASAM Logo" className="w-64 h-64 mb-6" />
-              <span className="text-xs text-white/40 font-medium uppercase tracking-widest">Sobre fundo escuro</span>
+            {/* Branca — sobre fundo escuro */}
+            <div className="bg-[#1a3a2e] rounded-2xl p-8 shadow-md flex flex-col items-center justify-center">
+              <img src={LOGO_URL} alt="IDASAM Logo" className="h-44 mb-4" style={{ filter: 'brightness(0) invert(1)' }} />
+              <span className="text-xs text-white/40 font-medium uppercase tracking-widest">Branca (fundo escuro)</span>
+            </div>
+
+            {/* Preta — monocromatica */}
+            <div className="bg-gray-100 rounded-2xl p-8 shadow-md flex flex-col items-center justify-center border border-gray-200">
+              <img src={LOGO_URL} alt="IDASAM Logo" className="h-44 mb-4" style={{ filter: 'brightness(0)' }} />
+              <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Preta (1 cor)</span>
+            </div>
+
+            {/* Forest Green — cor principal da marca */}
+            <div className="bg-[#F0F4F8] rounded-2xl p-8 shadow-md flex flex-col items-center justify-center border border-[#C8DDD5]">
+              <img src={LOGO_URL} alt="IDASAM Logo" className="h-44 mb-4" style={{ filter: 'brightness(0) saturate(100%) invert(27%) sepia(15%) saturate(1800%) hue-rotate(100deg) brightness(95%) contrast(90%)' }} />
+              <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Forest Green (#2A5B46)</span>
+            </div>
+
+            {/* Teal */}
+            <div className="bg-white rounded-2xl p-8 shadow-md flex flex-col items-center justify-center border border-[#C8DDD5]">
+              <img src={LOGO_URL} alt="IDASAM Logo" className="h-44 mb-4" style={{ filter: 'brightness(0) saturate(100%) invert(33%) sepia(80%) saturate(500%) hue-rotate(140deg) brightness(90%) contrast(100%)' }} />
+              <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Teal (#008080)</span>
+            </div>
+
+            {/* Gold — sobre fundo escuro */}
+            <div className="bg-[#2A5B46] rounded-2xl p-8 shadow-md flex flex-col items-center justify-center">
+              <img src={LOGO_URL} alt="IDASAM Logo" className="h-44 mb-4" style={{ filter: 'brightness(0) saturate(100%) invert(76%) sepia(60%) saturate(600%) hue-rotate(5deg) brightness(100%) contrast(95%)' }} />
+              <span className="text-xs text-white/40 font-medium uppercase tracking-widest">Gold (#FBBF24)</span>
             </div>
           </div>
 
