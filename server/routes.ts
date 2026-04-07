@@ -93,12 +93,16 @@ const ADMIN_CREDENTIALS: Record<string, string> = {
   ...(EDITOR_EMAIL && EDITOR_PASSWORD ? { [EDITOR_EMAIL]: EDITOR_PASSWORD } : {}),
 };
 
-const adminSessions = new Map<string, { email: string; expiresAt: number }>();
+const ADMIN_ROLES: Record<string, string> = {
+  ...(ADMIN_EMAIL ? { [ADMIN_EMAIL]: "admin" } : {}),
+  ...(EDITOR_EMAIL ? { [EDITOR_EMAIL]: "editor" } : {}),
+};
 
-function createAdminSession(email: string): string {
+async function createAdminSession(email: string): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = Date.now() + 8 * 60 * 60 * 1000;
-  adminSessions.set(token, { email, expiresAt });
+  const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  const role = ADMIN_ROLES[email] ?? "admin";
+  await storage.createAdminSession(token, email, role, expiresAt);
   return token;
 }
 
@@ -108,12 +112,17 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ message: "Autenticação necessária" });
   }
   const token = authHeader.slice(7);
-  const session = adminSessions.get(token);
-  if (!session || session.expiresAt < Date.now()) {
-    adminSessions.delete(token);
-    return res.status(401).json({ message: "Sessão expirada ou inválida" });
-  }
-  next();
+  storage.getAdminSession(token).then(async (session) => {
+    if (!session || session.expiresAt < new Date()) {
+      if (session) {
+        await storage.deleteAdminSession(token);
+      }
+      return res.status(401).json({ message: "Sessão expirada ou inválida" });
+    }
+    next();
+  }).catch(() => {
+    return res.status(500).json({ message: "Erro ao verificar sessão" });
+  });
 }
 
 const INITIAL_COURSES = [
@@ -406,7 +415,7 @@ export async function registerRoutes(app: Express) {
     return injectArticleOgTags(req, res, next, id);
   });
 
-  app.post("/api/admin/login", (req, res) => {
+  app.post("/api/admin/login", async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: "E-mail e senha são obrigatórios" });
@@ -415,14 +424,23 @@ export async function registerRoutes(app: Express) {
     if (!validPassword || validPassword !== password) {
       return res.status(401).json({ message: "Credenciais inválidas" });
     }
-    const token = createAdminSession(email);
-    res.json({ token, email });
+    try {
+      const token = await createAdminSession(email);
+      res.json({ token, email });
+    } catch (err) {
+      console.error("Erro ao criar sessão:", err);
+      res.status(500).json({ message: "Erro interno ao criar sessão" });
+    }
   });
 
-  app.post("/api/admin/logout", (req, res) => {
+  app.post("/api/admin/logout", async (req, res) => {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith("Bearer ")) {
-      adminSessions.delete(authHeader.slice(7));
+      try {
+        await storage.deleteAdminSession(authHeader.slice(7));
+      } catch (err) {
+        console.error("Erro ao deletar sessão:", err);
+      }
     }
     res.json({ message: "Sessão encerrada" });
   });

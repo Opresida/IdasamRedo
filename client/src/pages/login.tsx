@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [sessionExpiredMsg, setSessionExpiredMsg] = useState('');
   const [, setLocation] = useLocation();
   
   const { login, isLoading, isAuthenticated } = useAuth();
@@ -26,6 +27,15 @@ export default function LoginPage() {
       setLocation('/dashboard');
     }
   }, [isAuthenticated, setLocation]);
+
+  // Detectar sessão expirada
+  useEffect(() => {
+    const expired = localStorage.getItem('idasam_session_expired');
+    if (expired) {
+      setSessionExpiredMsg('Sessão expirada, faça login novamente');
+      localStorage.removeItem('idasam_session_expired');
+    }
+  }, []);
 
   // Configurar SEO
   useEffect(() => {
@@ -77,6 +87,12 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {sessionExpiredMsg && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{sessionExpiredMsg}</AlertDescription>
+            </Alert>
+          )}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />

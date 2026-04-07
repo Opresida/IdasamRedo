@@ -469,3 +469,12 @@ export const assinaturaLogs = pgTable("assinatura_logs", {
 });
 export type AssinaturaLog = typeof assinaturaLogs.$inferSelect;
 export type InsertAssinaturaLog = Omit<AssinaturaLog, 'id' | 'createdAt'>;
+
+// ── Admin Sessions ──
+export const adminSessions = pgTable("admin_sessions", {
+  token: text("token").primaryKey(),
+  email: text("email").notNull(),
+  role: text("role").notNull().default("admin"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+export type AdminSession = typeof adminSessions.$inferSelect;

@@ -15,6 +15,7 @@ interface AuthContextType {
   adminToken: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  handleSessionExpired: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else if (res.status === 401 || res.status === 403) {
             localStorage.removeItem('idasam_auth_user');
             localStorage.removeItem('idasam_admin_token');
+            localStorage.setItem('idasam_session_expired', '1');
           } else {
             setUser(parsedUser);
             setAdminToken(savedToken);
@@ -117,6 +119,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('idasam_admin_token');
   };
 
+  const handleSessionExpired = () => {
+    setUser(null);
+    setAdminToken(null);
+    localStorage.removeItem('idasam_auth_user');
+    localStorage.removeItem('idasam_admin_token');
+    localStorage.setItem('idasam_session_expired', '1');
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user && !!adminToken,
@@ -124,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     adminToken,
     login,
     logout,
+    handleSessionExpired,
   };
 
   return (

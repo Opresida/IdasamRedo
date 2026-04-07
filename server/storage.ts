@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
 
@@ -167,6 +167,11 @@ export interface IStorage {
   updateDelegacaoAtoPdf(id: string, atoDesignacaoPdf: string): Promise<Delegacao | undefined>;
   revogaDelegacao(id: string): Promise<Delegacao | undefined>;
   getDelegacoesAtivasParaSignatario(signatarioId: string): Promise<Delegacao[]>;
+
+  // Admin Sessions
+  createAdminSession(token: string, email: string, role: string, expiresAt: Date): Promise<AdminSession>;
+  getAdminSession(token: string): Promise<AdminSession | undefined>;
+  deleteAdminSession(token: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -964,6 +969,19 @@ export class DatabaseStorage implements IStorage {
       and(eq(delegacoes.delegadoId, signatarioId), eq(delegacoes.status, 'ativa'))
     );
     return all.filter(d => new Date(d.validaDe) <= now && new Date(d.validaAte) >= now);
+  }
+
+  // Admin Sessions
+  async createAdminSession(token: string, email: string, role: string, expiresAt: Date): Promise<AdminSession> {
+    const [row] = await db.insert(adminSessions).values({ token, email, role, expiresAt }).returning();
+    return row;
+  }
+  async getAdminSession(token: string): Promise<AdminSession | undefined> {
+    const [row] = await db.select().from(adminSessions).where(eq(adminSessions.token, token));
+    return row || undefined;
+  }
+  async deleteAdminSession(token: string): Promise<void> {
+    await db.delete(adminSessions).where(eq(adminSessions.token, token));
   }
 }
 

@@ -263,7 +263,7 @@ async function autoPaginate(
 
 export function SuiteDocumental() {
   const { toast } = useToast()
-  const { adminToken } = useAuth()
+  const { adminToken, handleSessionExpired } = useAuth()
 
   const adminFetch = useCallback(async (method: string, url: string, data?: unknown): Promise<Response> => {
     const res = await fetch(url, {
@@ -274,12 +274,16 @@ export function SuiteDocumental() {
       },
       body: data ? JSON.stringify(data) : undefined,
     })
+    if (res.status === 401) {
+      handleSessionExpired()
+      throw new Error('Sessão expirada, faça login novamente')
+    }
     if (!res.ok) {
       const text = (await res.text()) || res.statusText
       throw new Error(`${res.status}: ${text}`)
     }
     return res
-  }, [adminToken])
+  }, [adminToken, handleSessionExpired])
 
   const [activeTab, setActiveTab] = useState('contratos')
   const [editingProposalId, setEditingProposalId] = useState<string | null>(null)
