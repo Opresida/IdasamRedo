@@ -224,10 +224,11 @@ Browser (React + Wouter)
 | `certificates` | Certificados gerados por conclusão de curso |
 | `articles` | Artigos/notícias do blog institucional |
 | `email_campaigns` | Campanhas de e-mail marketing |
-| `proposals` | Documentos (contratos, orçamentos, ofícios, relatórios, projetos) com PDF original e assinado |
-| `signatarios` | Signatários internos cadastrados (nome, cargo, email) |
+| `proposals` | Documentos (contratos, orçamentos, ofícios, relatórios, projetos) com PDF original e assinado, suporte a rascunhos editáveis |
+| `signatarios` | Signatários internos cadastrados (nome, cargo, email, função estatutária) |
+| `delegacoes` | Delegações de poderes de assinatura (Art. 22 Estatuto), com Ato de Designação em PDF |
 | `assinatura_links` | Tokens de assinatura externa (link público, 7 dias de validade) |
-| `assinatura_logs` | Trilha de auditoria de assinaturas (nome, CPF, IP, user-agent, hash SHA-256) |
+| `assinatura_logs` | Trilha de auditoria de assinaturas (nome, CPF, IP, user-agent, hash SHA-256, delegacaoId) |
 
 ### Decisões Arquiteturais
 
@@ -239,6 +240,8 @@ Browser (React + Wouter)
 | Wouter (não React Router) | Roteamento leve no frontend |
 | cross-env + --env-file | Compatibilidade Windows para variáveis de ambiente |
 | Token Bearer (admin) | Sessão admin leve sem overhead de Passport completo |
+| Delegação de poderes | Conforme Art. 22 do Estatuto Social — Presidente delega, VP assume automaticamente |
+| Rascunhos editáveis | Documentos salvos como rascunho podem ser carregados e editados antes de gerar PDF final |
 
 ---
 
@@ -265,6 +268,9 @@ Browser (React + Wouter)
 - [x] Página de autenticação dedicada no PDF com QR Code + hash SHA-256 + link de validação ✓ *2026-04-07*
 - [x] Página pública de validação de documentos (/validar/:hash) ✓ *2026-04-07*
 - [x] Referência à Lei 14.063/2020 e Regulamento eIDAS ✓ *2026-04-07*
+- [x] Módulo de delegação de poderes (Art. 22 Estatuto) com Ato de Designação em PDF ✓ *2026-04-07*
+- [x] Validação de poderes na assinatura interna (cargo direto ou delegação ativa) ✓ *2026-04-07*
+- [x] Sistema de rascunhos editáveis para todos os tipos de documento ✓ *2026-04-07*
 
 ### Pendente
 - [ ] Configurar STRIPE_SECRET_KEY e VITE_STRIPE_PUBLISHABLE_KEY para pagamentos

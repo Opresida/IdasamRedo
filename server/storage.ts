@@ -136,6 +136,7 @@ export interface IStorage {
   getProposals(): Promise<Proposal[]>;
   getProposal(id: string): Promise<Proposal | undefined>;
   createProposal(proposal: InsertProposal): Promise<Proposal>;
+  updateProposal(id: string, data: Partial<InsertProposal>): Promise<Proposal | undefined>;
   updateProposalStatus(id: string, status: ProposalStatus): Promise<Proposal | undefined>;
   updateProposalPdf(id: string, pdfData: string): Promise<Proposal | undefined>;
   uploadSignedPdf(id: string, pdfAssinado: string): Promise<Proposal | undefined>;
@@ -856,6 +857,11 @@ export class DatabaseStorage implements IStorage {
   async createProposal(proposal: InsertProposal): Promise<Proposal> {
     const [row] = await db.insert(proposals).values(proposal).returning();
     return row;
+  }
+
+  async updateProposal(id: string, data: Partial<InsertProposal>): Promise<Proposal | undefined> {
+    const [row] = await db.update(proposals).set(data).where(eq(proposals.id, id)).returning();
+    return row || undefined;
   }
 
   async updateProposalStatus(id: string, status: ProposalStatus): Promise<Proposal | undefined> {

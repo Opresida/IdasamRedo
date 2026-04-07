@@ -350,7 +350,7 @@ export const campaignOpenEvents = pgTable("campaign_open_events", {
   uniqueOpenPerLead: unique("unique_open_per_lead").on(t.campaignId, t.leadId),
 }));
 
-export const PROPOSAL_STATUSES = ['enviada', 'aprovada', 'rejeitada', 'em_negociacao'] as const;
+export const PROPOSAL_STATUSES = ['rascunho', 'enviada', 'aprovada', 'rejeitada', 'em_negociacao'] as const;
 export type ProposalStatus = typeof PROPOSAL_STATUSES[number];
 
 export const DOC_TIPOS = ['contrato', 'orcamento', 'oficio', 'relatorio', 'projeto'] as const;

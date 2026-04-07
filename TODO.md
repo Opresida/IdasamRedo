@@ -52,3 +52,9 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
 - [x] Página pública de validação de documentos (/validar/:hash) ✓ *2026-04-07*
 - [x] Referência à Lei 14.063/2020 e Regulamento eIDAS ✓ *2026-04-07*
 - [x] Removido plugin Replit (vite-plugin-runtime-error-modal) ✓ *2026-04-07*
+- [x] Módulo de delegação de poderes (Art. 22 Estatuto) com geração automática do Ato de Designação em PDF ✓ *2026-04-07*
+- [x] Função estatutária nos signatários (presidente, vice_presidente, diretor_administrativo, outro) ✓ *2026-04-07*
+- [x] Validação de poderes na assinatura interna (cargo direto ou delegação ativa) ✓ *2026-04-07*
+- [x] Vice-Presidente pode assinar sem delegação formal (Parágrafo Único Art. 22) ✓ *2026-04-07*
+- [x] Sistema de rascunhos editáveis para todos os tipos de documento (contrato, orçamento, ofício, relatório, projeto) ✓ *2026-04-07*
+- [x] Rota PATCH /api/admin/proposals/:id para atualizar propostas existentes ✓ *2026-04-07*

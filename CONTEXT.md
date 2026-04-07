@@ -20,7 +20,9 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 | E-mail | Resend | — |
 | Pagamentos | Stripe | — |
 | Storage | Supabase Storage | — |
-| PDF | pdf-lib + jsPDF | — |
+| PDF | pdf-lib + jsPDF + html2canvas | — |
+| Preview PDF | react-pdf | — |
+| QR Code | qrcode (npm) | — |
 
 ---
 
@@ -49,6 +51,24 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 - Validação pública: `/validar/:hash` — qualquer pessoa verifica autenticidade
 - Trilha de auditoria: tabela `assinatura_logs` com todas as evidências
 - Função compartilhada: `client/src/lib/pdf-auth-page.ts` — gera a página de autenticação no PDF
+
+### Delegação de Poderes (Art. 22 Estatuto)
+- Somente o Presidente pode criar delegações de poderes de assinatura
+- Vice-Presidente pode assinar sem delegação formal (Parágrafo Único do Art. 22)
+- Delegação tem: delegante, delegado, motivo, poderes específicos, período de validade
+- Ato de Designação gerado automaticamente em PDF (`client/src/lib/pdf-ato-designacao.ts`)
+- Na assinatura interna, sistema verifica se signatário tem poderes (cargo direto ou delegação ativa)
+- Se for delegação, registra `delegacaoId` no log de auditoria
+- Delegação pode ser revogada a qualquer momento pelo Presidente
+- Tabela `delegacoes` armazena tudo; status: `ativa`, `revogada`, `expirada`
+
+### Rascunhos Editáveis
+- Documentos podem ser salvos como rascunho (`status: 'rascunho'`) sem gerar PDF
+- Rascunhos aparecem na aba "Documentos Emitidos" com botão de edição (caneta)
+- Ao editar: dados JSON do campo `dados` são carregados de volta no formulário correto
+- Rascunho pode ser atualizado várias vezes antes de gerar o PDF final
+- Ao gerar PDF, status muda de `rascunho` para `enviada`
+- Funciona para todos os 5 tipos: contrato, orçamento, ofício, relatório, projeto
 
 ### Banco de Dados
 - Schema em `shared/schema.ts` — fonte única de verdade para tipos frontend e backend

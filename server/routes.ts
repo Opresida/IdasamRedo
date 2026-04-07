@@ -1478,6 +1478,17 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Atualizar proposta (rascunho ou dados gerais)
+  app.patch("/api/admin/proposals/:id", requireAdmin, async (req, res) => {
+    try {
+      const updated = await storage.updateProposal(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Proposta não encontrada" });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ message: "Erro ao atualizar proposta" });
+    }
+  });
+
   app.patch("/api/admin/proposals/:id/status", requireAdmin, async (req, res) => {
     try {
       const { status } = req.body as { status: string };

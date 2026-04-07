@@ -281,6 +281,10 @@ export function SuiteDocumental() {
     return res
   }, [adminToken])
 
+  const [activeTab, setActiveTab] = useState('contratos')
+  const [editingProposalId, setEditingProposalId] = useState<string | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+
   const [preview,       setPreview]       = useState<PreviewType | null>(null)
   const [paginating,    setPaginating]    = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
@@ -542,17 +546,23 @@ export function SuiteDocumental() {
       const today = new Date()
       const seq   = today.getTime().toString().slice(-5)
       const year  = today.getFullYear()
-      await adminFetch('POST', '/api/admin/proposals', {
+      const body = {
         tipo:    'relatorio',
         numero:  `REL-${year}-${seq}`,
         titulo:  formData.titulo || 'Relatório IDASAM',
         cliNome: formData.responsavel || 'IDASAM',
         cliEmail: formData.cargo || null,
         emissao: today.toISOString().slice(0, 10),
-        status:  'enviada',
+        status:  'enviada' as const,
         dados:   JSON.stringify({ formData }),
         pdfData: pdfBase64Cache,
-      })
+      }
+      if (editingProposalId) {
+        await adminFetch('PATCH', `/api/admin/proposals/${editingProposalId}`, body)
+        setEditingProposalId(null)
+      } else {
+        await adminFetch('POST', '/api/admin/proposals', body)
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
       setRelatorioSalvo(true)
       toast({ title: 'Relatório salvo!', description: 'PDF armazenado. Acesse em Documentos Emitidos.' })
@@ -780,17 +790,23 @@ export function SuiteDocumental() {
       const today = new Date()
       const seq   = today.getTime().toString().slice(-5)
       const year  = today.getFullYear()
-      await adminFetch('POST', '/api/admin/proposals', {
+      const body = {
         tipo:    'projeto',
         numero:  `PRJ-${year}-${seq}`,
         titulo:  projData.titulo || 'Proposta de Projeto IDASAM',
         cliNome: projData.organizacao || 'IDASAM',
         cliEmail: projData.responsavel || null,
         emissao: today.toISOString().slice(0, 10),
-        status:  'enviada',
+        status:  'enviada' as const,
         dados:   JSON.stringify({ projData }),
         pdfData: projPdfBase64Cache,
-      })
+      }
+      if (editingProposalId) {
+        await adminFetch('PATCH', `/api/admin/proposals/${editingProposalId}`, body)
+        setEditingProposalId(null)
+      } else {
+        await adminFetch('POST', '/api/admin/proposals', body)
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
       setProjetoSalvo(true)
       toast({ title: 'Proposta salva!', description: 'PDF armazenado. Acesse em Documentos Emitidos.' })
@@ -1487,6 +1503,104 @@ export function SuiteDocumental() {
     }
   }
 
+  // ── Salvar Rascunho ──
+  async function handleSaveDraft(tipo: string) {
+    setSavingDraft(true)
+    try {
+      let body: Record<string, unknown>
+      if (tipo === 'contrato') {
+        body = {
+          tipo: 'contrato', numero: cData.docId, titulo: cData.titulo,
+          cliNome: cData.ctadoNome || 'Contratado', emissao: new Date().toISOString().slice(0, 10),
+          status: 'rascunho', dados: JSON.stringify({ cData, clauses, sigs, cMode }),
+        }
+      } else if (tipo === 'orcamento') {
+        body = {
+          tipo: 'orcamento', numero: oData.numero, titulo: oData.titulo,
+          cliNome: oData.cliNome, cliEmail: oData.cliEmail, cliTel: oData.cliTel,
+          valorTotal: fmtBRL(totalOrc), emissao: oData.emissao, validade: oData.validade, obs: oData.obs || null,
+          status: 'rascunho', dados: JSON.stringify({ oData, oItems }),
+        }
+      } else if (tipo === 'oficio') {
+        body = {
+          tipo: 'oficio', numero: ofData.numero, titulo: ofData.assunto || `Ofício nº ${ofData.numero}`,
+          cliNome: ofData.destNome || 'Destinatário', emissao: ofData.data,
+          status: 'rascunho', dados: JSON.stringify({ ofData }),
+        }
+      } else if (tipo === 'relatorio') {
+        body = {
+          tipo: 'relatorio', numero: `REL-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
+          titulo: formData.titulo || 'Relatório IDASAM', cliNome: formData.responsavel || 'IDASAM',
+          emissao: new Date().toISOString().slice(0, 10),
+          status: 'rascunho', dados: JSON.stringify({ formData }),
+        }
+      } else {
+        body = {
+          tipo: 'projeto', numero: `PRJ-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
+          titulo: projData.titulo || 'Proposta de Projeto IDASAM', cliNome: projData.organizacao || 'IDASAM',
+          emissao: new Date().toISOString().slice(0, 10),
+          status: 'rascunho', dados: JSON.stringify({ projData }),
+        }
+      }
+
+      if (editingProposalId) {
+        await adminFetch('PATCH', `/api/admin/proposals/${editingProposalId}`, body)
+        toast({ title: 'Rascunho atualizado!' })
+      } else {
+        const res = await adminFetch('POST', '/api/admin/proposals', body)
+        const created = await res.json()
+        setEditingProposalId(created.id)
+        toast({ title: 'Rascunho salvo!' })
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
+    } catch {
+      toast({ title: 'Erro ao salvar rascunho', variant: 'destructive' })
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  // ── Carregar rascunho para edição ──
+  function handleEditDraft(proposal: Proposal) {
+    if (!proposal.dados) return
+    try {
+      const dados = JSON.parse(proposal.dados)
+      const tipo = proposal.tipo || 'orcamento'
+      setEditingProposalId(proposal.id)
+
+      if (tipo === 'contrato' && dados.cData) {
+        setCData(dados.cData)
+        if (dados.clauses) setClauses(dados.clauses)
+        if (dados.sigs) setSigs(dados.sigs)
+        if (dados.cMode) setCMode(dados.cMode)
+        setActiveTab('contratos')
+      } else if (tipo === 'orcamento' && dados.oData) {
+        setOData(dados.oData)
+        if (dados.oItems) setOItems(dados.oItems)
+        setActiveTab('orcamentos')
+      } else if (tipo === 'oficio' && dados.ofData) {
+        setOfData(dados.ofData)
+        setActiveTab('oficios')
+      } else if (tipo === 'relatorio' && dados.formData) {
+        setFormData(dados.formData)
+        setRelView('form')
+        setRelatorioSalvo(false)
+        setPdfBase64Cache(null)
+        setActiveTab('relatorios')
+      } else if (tipo === 'projeto' && dados.projData) {
+        setProjData(dados.projData)
+        setProjView('form')
+        setProjetoSalvo(false)
+        setProjPdfBase64Cache(null)
+        setActiveTab('projetos')
+      }
+
+      toast({ title: 'Rascunho carregado', description: `Editando: ${proposal.titulo}` })
+    } catch {
+      toast({ title: 'Erro ao carregar rascunho', variant: 'destructive' })
+    }
+  }
+
   async function saveCurrentDocument(tipo: PreviewType) {
     setSavingProposal(true)
     try {
@@ -1536,7 +1650,12 @@ export function SuiteDocumental() {
           pdfData:    pdfBase64,
         }
       }
-      await adminFetch('POST', '/api/admin/proposals', body)
+      if (editingProposalId) {
+        await adminFetch('PATCH', `/api/admin/proposals/${editingProposalId}`, body)
+        setEditingProposalId(null)
+      } else {
+        await adminFetch('POST', '/api/admin/proposals', body)
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
       const labels = { contratos: 'Contrato', orcamentos: 'Orçamento', oficios: 'Ofício' }
       toast({ title: `${labels[tipo]} salvo com sucesso!`, description: 'PDF armazenado. Acesse em Documentos Emitidos.' })
@@ -1626,7 +1745,7 @@ export function SuiteDocumental() {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 py-8">
-          <Tabs defaultValue="contratos" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1 mb-8 bg-[#2A5B46]/8 border border-[#C8DDD5] rounded-lg">
               <TabsTrigger value="contratos" className="gap-1.5 text-[11px] flex-1 min-w-[100px] data-[state=active]:bg-[#2A5B46] data-[state=active]:text-white">
                 <FileText size={13} /> Contratos
@@ -1773,8 +1892,17 @@ export function SuiteDocumental() {
                 </div>
               </SdCard>
 
+              {editingProposalId && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
+                  <PenTool size={14} /> Editando rascunho existente. Alterações serão salvas no mesmo documento.
+                  <button className="ml-auto underline" onClick={() => setEditingProposalId(null)}>Desvincular</button>
+                </div>
+              )}
               <div className="flex justify-end gap-3 pt-1">
                 <Button variant="outline" onClick={() => { setClauses(DEFAULT_CLAUSES); setSigs(DEFAULT_SIGS) }}>↺ Restaurar</Button>
+                <Button variant="outline" onClick={() => handleSaveDraft('contrato')} disabled={savingDraft} className="gap-1.5">
+                  {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Salvar Rascunho
+                </Button>
                 <Button onClick={() => handlePreview('contratos')} className="bg-[#2A5B46] hover:bg-[#4E8D7C] text-white gap-2">
                   Visualizar Contrato <ArrowLeft size={15} className="rotate-180" />
                 </Button>
@@ -1935,8 +2063,17 @@ export function SuiteDocumental() {
                 </div>
               </SdCard>
 
+              {editingProposalId && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
+                  <PenTool size={14} /> Editando rascunho existente. Alterações serão salvas no mesmo documento.
+                  <button className="ml-auto underline" onClick={() => setEditingProposalId(null)}>Desvincular</button>
+                </div>
+              )}
               <div className="flex justify-end gap-3 pt-1">
                 <Button variant="outline" onClick={() => setOItems(DEFAULT_ORC_ITEMS)}>↺ Restaurar</Button>
+                <Button variant="outline" onClick={() => handleSaveDraft('orcamento')} disabled={savingDraft} className="gap-1.5">
+                  {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Salvar Rascunho
+                </Button>
                 <Button onClick={() => handlePreview('orcamentos')} className="bg-[#C86A3B] hover:bg-[#A8562F] text-white gap-2">
                   Visualizar Orçamento <ArrowLeft size={15} className="rotate-180" />
                 </Button>
@@ -2058,10 +2195,19 @@ export function SuiteDocumental() {
                 </div>
               </SdCard>
 
+              {editingProposalId && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
+                  <PenTool size={14} /> Editando rascunho existente. Alterações serão salvas no mesmo documento.
+                  <button className="ml-auto underline" onClick={() => setEditingProposalId(null)}>Desvincular</button>
+                </div>
+              )}
               <div className="flex justify-end gap-3 pt-1">
                 <Button variant="outline" onClick={() =>
                   setOfData(d => ({ ...d, destNome:'', destCargo:'', destInst:'', assunto:'', intro:'', desenvolvimento:'', conclusao:'', fundamentacao:'' }))}>
                   ↺ Limpar
+                </Button>
+                <Button variant="outline" onClick={() => handleSaveDraft('oficio')} disabled={savingDraft} className="gap-1.5">
+                  {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Salvar Rascunho
                 </Button>
                 <Button onClick={() => handlePreview('oficios')} className="bg-[#008080] hover:bg-[#006060] text-white gap-2">
                   Visualizar Ofício <ArrowLeft size={15} className="rotate-180" />
@@ -2178,6 +2324,9 @@ export function SuiteDocumental() {
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent>
+                                            <SelectItem value="rascunho">
+                                              <span className="flex items-center gap-1.5"><PenTool size={11} className="text-gray-400" /> Rascunho</span>
+                                            </SelectItem>
                                             <SelectItem value="enviada">
                                               <span className="flex items-center gap-1.5"><Clock size={11} className="text-[#FBBF24]" />
                                                 {tipo === 'contrato' ? 'Enviado' : tipo === 'oficio' ? 'Enviado' : tipo === 'relatorio' ? 'Emitido' : tipo === 'projeto' ? 'Emitido' : 'Enviada'}
@@ -2296,6 +2445,16 @@ export function SuiteDocumental() {
                                       {/* ── Ações ── */}
                                       <td className="py-3 px-3">
                                         <div className="flex items-center gap-1">
+                                          {/* Editar — disponível para rascunhos ou qualquer doc com dados salvos */}
+                                          {p.dados && (
+                                            <button
+                                              className="text-amber-500 hover:text-amber-700 transition-colors p-1 rounded"
+                                              onClick={() => handleEditDraft(p)}
+                                              title="Editar documento"
+                                            >
+                                              <PenTool size={14} />
+                                            </button>
+                                          )}
                                           {p.pdfData === 'has_pdf' && (
                                             <>
                                               <button
@@ -2569,14 +2728,27 @@ export function SuiteDocumental() {
                     </div>
                   </div>
 
-                  {/* Generate button */}
-                  <button onClick={handleGerarProjeto} disabled={generatingProjeto}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-bold text-sm text-white bg-[#1E40AF] hover:bg-[#1e3a8a] disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md">
-                    {generatingProjeto
-                      ? <><Loader2 size={15} className="animate-spin" /> {loadingText || 'Gerando PDF...'}</>
-                      : <><Download size={15} /> Gerar Proposta PDF</>
-                    }
-                  </button>
+                  {editingProposalId && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
+                      <PenTool size={14} /> Editando rascunho existente.
+                      <button className="ml-auto underline" onClick={() => setEditingProposalId(null)}>Desvincular</button>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex gap-3">
+                    <button onClick={() => handleSaveDraft('projeto')} disabled={savingDraft}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm border border-[#BFDBFE] text-[#1E40AF] hover:bg-[#EFF6FF] disabled:opacity-60 transition-colors">
+                      {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Salvar Rascunho
+                    </button>
+                    <button onClick={handleGerarProjeto} disabled={generatingProjeto}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm text-white bg-[#1E40AF] hover:bg-[#1e3a8a] disabled:opacity-60 transition-colors shadow-md">
+                      {generatingProjeto
+                        ? <><Loader2 size={15} className="animate-spin" /> {loadingText || 'Gerando PDF...'}</>
+                        : <><Download size={15} /> Gerar Proposta PDF</>
+                      }
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* ══════════════════ PDF PREVIEW ══════════════════ */
@@ -2844,14 +3016,27 @@ export function SuiteDocumental() {
                     </div>
                   </div>
 
-                  {/* Generate button */}
-                  <button onClick={handleGerarRelatorio} disabled={generatingRelatorio}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-bold text-sm text-white bg-[#2A5B46] hover:bg-[#1e4434] disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md">
-                    {generatingRelatorio
-                      ? <><Loader2 size={15} className="animate-spin" /> {loadingText || 'Gerando PDF...'}</>
-                      : <><Download size={15} /> Gerar Relatório PDF</>
-                    }
-                  </button>
+                  {editingProposalId && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
+                      <PenTool size={14} /> Editando rascunho existente.
+                      <button className="ml-auto underline" onClick={() => setEditingProposalId(null)}>Desvincular</button>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex gap-3">
+                    <button onClick={() => handleSaveDraft('relatorio')} disabled={savingDraft}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm border border-[#C8DDD5] text-[#2A5B46] hover:bg-[#F0F7F4] disabled:opacity-60 transition-colors">
+                      {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Salvar Rascunho
+                    </button>
+                    <button onClick={handleGerarRelatorio} disabled={generatingRelatorio}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm text-white bg-[#2A5B46] hover:bg-[#1e4434] disabled:opacity-60 transition-colors shadow-md">
+                      {generatingRelatorio
+                        ? <><Loader2 size={15} className="animate-spin" /> {loadingText || 'Gerando PDF...'}</>
+                        : <><Download size={15} /> Gerar Relatório PDF</>
+                      }
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* ══════════════════ PDF PREVIEW ══════════════════ */
