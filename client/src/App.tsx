@@ -16,6 +16,7 @@ import GomaTokenPage from './pages/gomatoken';
 import NotFoundPage from './pages/not-found';
 import AssinarPage from './pages/assinar';
 import ValidarPage from './pages/validar';
+import BrandbookPage from './pages/brandbook';
 import PaginaDeDoacao from '@/PaginaDeDoacao';
 import PaginaDeDoacaoEUR from '@/PaginaDeDoacaoEUR';
 import AdminLayout from '@/components/admin-layout';
@@ -135,6 +136,7 @@ function AppContent() {
         <Route path="/gomatoken" component={GomaTokenPage} />
         <Route path="/assinar/:token" component={AssinarPage} />
         <Route path="/validar/:hash" component={ValidarPage} />
+        <Route path="/brandbook" component={BrandbookPage} />
         <Route path="/404" component={NotFoundPage} />
         <Route component={NotFoundPage} />
       </Switch>
