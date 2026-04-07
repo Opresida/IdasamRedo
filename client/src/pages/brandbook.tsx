@@ -61,6 +61,43 @@ const FONTS = [
   },
 ]
 
+const EMAIL_SIGNATURE_HTML = `<table cellpadding="0" cellspacing="0" border="0" style="font-family:'Inter',Arial,Helvetica,sans-serif;color:#1F2937;max-width:500px;">
+  <tr>
+    <td style="padding-right:18px;vertical-align:middle;border-right:3px solid #2A5B46;text-align:center;">
+      <img src="https://raw.githubusercontent.com/Opresida/IdasamRedo/refs/heads/main/logo.svg" alt="IDASAM" width="120" height="120" style="display:block;margin:0 auto;" />
+    </td>
+    <td style="padding-left:18px;vertical-align:top;">
+      <p style="margin:0 0 2px 0;font-size:16px;font-weight:700;color:#2A5B46;">[NOME]</p>
+      <p style="margin:0 0 8px 0;font-size:12px;color:#6B7280;text-transform:uppercase;letter-spacing:0.05em;">[CARGO]</p>
+      <table cellpadding="0" cellspacing="0" border="0" style="font-size:12px;color:#4B5563;">
+        <tr>
+          <td style="padding:2px 0;">
+            <span style="color:#2A5B46;font-weight:600;">E:</span> <a href="mailto:[EMAIL]" style="color:#4B5563;text-decoration:none;">[EMAIL]</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:2px 0;">
+            <span style="color:#2A5B46;font-weight:600;">T:</span> <a href="tel:+551692XXXXXXX" style="color:#4B5563;text-decoration:none;">(92) XXXXX-XXXX</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:2px 0;">
+            <span style="color:#2A5B46;font-weight:600;">W:</span> <a href="https://www.idasam.org.br" style="color:#2A5B46;text-decoration:none;font-weight:600;">www.idasam.org.br</a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:10px 0 0 0;font-size:11px;color:#9CA3AF;line-height:1.4;">
+        Instituto de Desenvolvimento Ambiental e Social da Amazonia<br/>
+        Centro Empresarial Art Center, 3694 — Manaus/AM<br/>
+        CNPJ: 02.906.177/0001-87
+      </p>
+      <p style="margin:8px 0 0 0;padding-top:8px;border-top:1px solid #E5E7EB;font-size:9px;color:#C8DDD5;">
+        Esta mensagem pode conter informacoes confidenciais. Se voce nao for o destinatario, por favor descarte-a.
+      </p>
+    </td>
+  </tr>
+</table>`
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -108,6 +145,7 @@ function SectionTitle({ icon: Icon, title, subtitle }: { icon: React.ElementType
 
 export default function BrandbookPage() {
   const [, navigate] = useLocation()
+  const [copiedSignature, setCopiedSignature] = useState(false)
 
   return (
     <div className="font-inter min-h-screen bg-[#F8FAF9]">
@@ -126,7 +164,7 @@ export default function BrandbookPage() {
 
           <div className="flex flex-col md:flex-row items-center gap-12 py-12">
             <div className="flex-shrink-0">
-              <img src={LOGO_URL} alt="IDASAM Logo" className="w-40 h-40 md:w-52 md:h-52 drop-shadow-2xl" />
+              <img src={LOGO_URL} alt="IDASAM Logo" className="w-40 h-40 md:w-52 md:h-52 drop-shadow-2xl" style={{ filter: 'brightness(0) invert(1)' }} />
             </div>
             <div>
               <div className="text-xs font-bold tracking-[0.3em] uppercase text-[#FBBF24] mb-4">Brand Guidelines</div>
@@ -157,7 +195,9 @@ export default function BrandbookPage() {
             { id: 'tipografia', label: 'Tipografia', icon: Type },
             { id: 'identidade', label: 'Identidade', icon: BookOpen },
             { id: 'componentes', label: 'Componentes', icon: Grid3X3 },
+            { id: 'graficos', label: 'Graficos', icon: Layers },
             { id: 'aplicacoes', label: 'Aplicacoes', icon: Layout },
+            { id: 'github', label: 'GitHub', icon: Layers },
           ].map(s => (
             <a
               key={s.id}
@@ -514,9 +554,150 @@ export default function BrandbookPage() {
               <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#FBBF24]/20 text-[#92710B]">Destaque</span>
             </div>
           </div>
+
+          {/* Assinatura de E-mail */}
+          <div className="bg-white rounded-2xl p-8 border border-[#C8DDD5] mt-8">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-[#2A5B46] mb-6">Assinatura de E-mail</h3>
+
+            {/* Preview */}
+            <div className="border border-gray-200 rounded-xl p-6 max-w-xl mb-6">
+              <div dangerouslySetInnerHTML={{ __html: EMAIL_SIGNATURE_HTML }} />
+            </div>
+
+            {/* Codigo HTML */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-gray-500">Codigo HTML pronto para colar no Gmail, Outlook, etc. Substitua [NOME], [CARGO] e [EMAIL].</p>
+              <button
+                onClick={() => { navigator.clipboard.writeText(EMAIL_SIGNATURE_HTML); setCopiedSignature(true); setTimeout(() => setCopiedSignature(false), 2000) }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2A5B46] text-white text-sm font-semibold hover:bg-[#1F4A38] transition-colors shrink-0 ml-4"
+              >
+                {copiedSignature ? <><Check size={14} /> Copiado!</> : <><Copy size={14} /> Copiar HTML</>}
+              </button>
+            </div>
+            <pre className="bg-[#1F2937] text-green-400 text-xs rounded-xl p-6 overflow-x-auto max-h-64 whitespace-pre-wrap break-all">
+              {EMAIL_SIGNATURE_HTML}
+            </pre>
+          </div>
         </section>
 
-        {/* ══════ 6. APLICACOES ══════ */}
+        {/* ══════ 6. COMPONENTES GRAFICOS ══════ */}
+        <section id="graficos">
+          <SectionTitle icon={Layers} title="Componentes Graficos" subtitle="Materiais impressos e pecas visuais" />
+
+          {/* Cartao de Visita */}
+          <div className="bg-white rounded-2xl p-8 border border-[#C8DDD5] shadow-sm">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-[#2A5B46] mb-8">Cartao de Visita — 90 x 50mm</h3>
+
+            <div className="grid md:grid-cols-2 gap-10">
+
+              {/* FRENTE */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 text-center">Frente</p>
+                <div
+                  className="relative rounded-xl overflow-hidden shadow-xl"
+                  style={{ aspectRatio: '90/50', background: 'linear-gradient(135deg, #1a3a2e 0%, #2A5B46 60%, #4E8D7C 100%)' }}
+                >
+                  {/* Pattern decorativo */}
+                  <div className="absolute inset-0 opacity-[0.04]" style={{
+                    backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+                    backgroundSize: '20px 20px',
+                  }} />
+
+                  {/* Linha dourada lateral */}
+                  <div className="absolute left-0 top-[15%] bottom-[15%] w-[3px] bg-[#FBBF24]" />
+
+                  {/* Conteudo */}
+                  <div className="relative h-full flex flex-col justify-between p-[8%]">
+                    {/* Topo — Logo + nome do instituto */}
+                    <div className="flex items-center gap-3">
+                      <img src={LOGO_URL} alt="IDASAM" className="w-[18%]" style={{ filter: 'brightness(0) invert(1)' }} />
+                      <div>
+                        <p className="text-white font-extrabold text-[clamp(10px,2.2vw,16px)] tracking-wide leading-tight">IDASAM</p>
+                        <p className="text-white/50 text-[clamp(4px,0.9vw,7px)] leading-tight mt-0.5">Instituto de Desenvolvimento Ambiental<br/>e Social da Amazonia</p>
+                      </div>
+                    </div>
+
+                    {/* Meio — Nome e cargo */}
+                    <div className="pl-[5%]">
+                      <p className="text-white font-bold text-[clamp(9px,1.8vw,14px)] tracking-wide">[NOME COMPLETO]</p>
+                      <p className="text-[#FBBF24] font-semibold text-[clamp(5px,1vw,8px)] uppercase tracking-[0.15em] mt-0.5">[CARGO / FUNCAO]</p>
+                    </div>
+
+                    {/* Rodape — Contatos */}
+                    <div className="flex items-end justify-between pl-[5%]">
+                      <div className="space-y-[2px]">
+                        <p className="text-white/70 text-[clamp(4px,0.75vw,6px)]">[email]@idasam.org.br</p>
+                        <p className="text-white/70 text-[clamp(4px,0.75vw,6px)]">(92) XXXXX-XXXX</p>
+                      </div>
+                      <p className="text-white/40 text-[clamp(4px,0.7vw,5.5px)] font-semibold">www.idasam.org.br</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* VERSO */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 text-center">Verso</p>
+                <div
+                  className="relative rounded-xl overflow-hidden shadow-xl bg-white"
+                  style={{ aspectRatio: '90/50', border: '1px solid #E5E7EB' }}
+                >
+                  {/* Faixa verde inferior */}
+                  <div className="absolute bottom-0 left-0 right-0 h-[18%] bg-gradient-to-r from-[#2A5B46] to-[#4E8D7C]" />
+
+                  {/* Linha dourada acima da faixa */}
+                  <div className="absolute bottom-[18%] left-[10%] right-[10%] h-[2px] bg-[#FBBF24]/40" />
+
+                  {/* Conteudo central */}
+                  <div className="relative h-full flex flex-col items-center justify-center">
+                    {/* Logo grande centralizada */}
+                    <img src={LOGO_URL} alt="IDASAM" className="w-[28%] mb-2" />
+
+                    {/* Tagline */}
+                    <p className="text-[#2A5B46] font-bold text-[clamp(6px,1.3vw,10px)] tracking-[0.1em]">IDASAM</p>
+                    <p className="text-gray-400 text-[clamp(3.5px,0.65vw,5px)] text-center leading-relaxed mt-0.5 max-w-[70%]">
+                      Inovacao e Tecnologia para o<br/>Desenvolvimento da Amazonia
+                    </p>
+
+                    {/* Endereco na faixa verde */}
+                    <div className="absolute bottom-0 left-0 right-0 h-[18%] flex items-center justify-center">
+                      <p className="text-white/70 text-[clamp(3px,0.55vw,4.5px)] text-center">
+                        Centro Empresarial Art Center, 3694 — Manaus/AM &nbsp;|&nbsp; CNPJ: 02.906.177/0001-87
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Especificacoes */}
+            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Dimensoes</p>
+                <p className="text-sm font-semibold text-[#1F2937]">90 x 50 mm</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Sangria</p>
+                <p className="text-sm font-semibold text-[#1F2937]">3mm em cada lado</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Papel</p>
+                <p className="text-sm font-semibold text-[#1F2937]">Couche 300g fosco</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Acabamento</p>
+                <p className="text-sm font-semibold text-[#1F2937]">Laminacao fosca + verniz localizado (logo)</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-400 mt-4">
+              Frente: fundo gradiente Forest Green com detalhe dourado. Verso: fundo branco com logo centralizada e faixa verde.
+              Substituir [NOME COMPLETO], [CARGO / FUNCAO] e dados de contato.
+            </p>
+          </div>
+        </section>
+
+        {/* ══════ 7. APLICACOES ══════ */}
         <section id="aplicacoes">
           <SectionTitle icon={Layout} title="Aplicacoes" subtitle="Exemplos de uso da marca em diferentes contextos" />
 
@@ -589,10 +770,61 @@ export default function BrandbookPage() {
           </div>
         </section>
 
+        {/* ══════ 7. GITHUB ══════ */}
+        <section id="github">
+          <SectionTitle icon={Layers} title="Repositorio" subtitle="Codigo-fonte e recursos do projeto" />
+
+          <div className="bg-white rounded-2xl p-8 border border-[#C8DDD5] shadow-sm">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="w-20 h-20 rounded-2xl bg-[#1F2937] flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" className="w-10 h-10 text-white" fill="currentColor">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-[#1F2937] mb-2">GitHub — Opresida/IdasamRedo</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Repositorio oficial do projeto IDASAM. Codigo-fonte completo, assets, documentacao e historico de desenvolvimento.
+                </p>
+                <a
+                  href="https://github.com/Opresida/IdasamRedo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#1F2937] text-white font-semibold text-sm hover:bg-[#111827] transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                  Acessar Repositorio
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════ CTA SUPORTE ══════ */}
+        <section className="bg-gradient-to-r from-[#2A5B46] to-[#008080] rounded-2xl p-10 text-white text-center">
+          <h3 className="text-2xl font-bold mb-3">Precisa de ajuda?</h3>
+          <p className="text-white/70 mb-6 max-w-md mx-auto">
+            Entre em contato com nosso suporte para duvidas sobre a marca, identidade visual ou uso dos assets.
+          </p>
+          <a
+            href="https://wa.me/5516982166580"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 px-8 py-3.5 rounded-xl bg-white text-[#2A5B46] font-bold text-base hover:bg-gray-100 transition-colors shadow-lg"
+          >
+            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            Suporte: (16) 98216-6580
+          </a>
+        </section>
+
         {/* ══════ FOOTER INFO ══════ */}
         <section className="bg-[#2A5B46] rounded-2xl p-10 text-white">
           <div className="flex flex-col md:flex-row items-center gap-8">
-            <img src={LOGO_URL} alt="IDASAM" className="w-24 h-24" />
+            <img src={LOGO_URL} alt="IDASAM" className="w-24 h-24" style={{ filter: 'brightness(0) invert(1)' }} />
             <div>
               <h3 className="text-xl font-bold mb-2">IDASAM &mdash; Brandbook 2026</h3>
               <p className="text-white/60 text-sm leading-relaxed max-w-xl">
@@ -603,6 +835,9 @@ export default function BrandbookPage() {
                 <span>CNPJ: 02.906.177/0001-87</span>
                 <span>Manaus, AM</span>
                 <span>www.idasam.org.br</span>
+              </div>
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <p className="text-xs text-white/30">Desenvolvido por <strong className="text-white/50">MAZARI CORP</strong></p>
               </div>
             </div>
           </div>
