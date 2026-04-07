@@ -1644,14 +1644,114 @@ export async function registerRoutes(app: Express) {
   });
 
   // ══════════════════════════════════════════════
+  // DELEGAÇÕES DE PODERES
+  // ══════════════════════════════════════════════
+  app.get("/api/admin/delegacoes", requireAdmin, async (_req, res) => {
+    try { res.json(await storage.getDelegacoes()); }
+    catch { res.status(500).json({ message: "Erro ao buscar delegações" }); }
+  });
+  app.get("/api/admin/delegacoes/ativas", requireAdmin, async (_req, res) => {
+    try { res.json(await storage.getDelegacoesAtivas()); }
+    catch { res.status(500).json({ message: "Erro ao buscar delegações ativas" }); }
+  });
+  app.post("/api/admin/delegacoes", requireAdmin, async (req, res) => {
+    try {
+      const { deleganteId, delegadoId, motivo, poderes, validaDe, validaAte } = req.body;
+      if (!deleganteId || !delegadoId || !motivo || !poderes || !validaDe || !validaAte)
+        return res.status(400).json({ message: "Todos os campos são obrigatórios" });
+
+      // Validar que o delegante é Presidente
+      const delegante = await storage.getSignatario(deleganteId);
+      if (!delegante || delegante.role !== 'presidente')
+        return res.status(403).json({ message: "Apenas o Presidente pode delegar poderes (Art. 22, IV do Estatuto)" });
+
+      // Gerar número do ato
+      const year = new Date().getFullYear();
+      const all = await storage.getDelegacoes();
+      const seq = all.filter(d => d.numero.includes(`/${year}`)).length + 1;
+      const numero = `${String(seq).padStart(3, '0')}/${year}`;
+
+      const delegacao = await storage.createDelegacao({
+        numero,
+        deleganteId,
+        delegadoId,
+        motivo,
+        poderes: typeof poderes === 'string' ? poderes : JSON.stringify(poderes),
+        validaDe: new Date(validaDe),
+        validaAte: new Date(validaAte),
+        status: 'ativa',
+      });
+      res.status(201).json(delegacao);
+    } catch (e) {
+      console.error("Erro ao criar delegação:", e);
+      res.status(500).json({ message: "Erro ao criar delegação" });
+    }
+  });
+  app.patch("/api/admin/delegacoes/:id/revogar", requireAdmin, async (req, res) => {
+    try {
+      const updated = await storage.revogaDelegacao(req.params.id);
+      if (!updated) return res.status(404).json({ message: "Delegação não encontrada" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Erro ao revogar delegação" }); }
+  });
+  app.patch("/api/admin/delegacoes/:id/ato-pdf", requireAdmin, async (req, res) => {
+    try {
+      const { atoDesignacaoPdf } = req.body;
+      if (!atoDesignacaoPdf) return res.status(400).json({ message: "PDF é obrigatório" });
+      const updated = await storage.updateDelegacaoAtoPdf(req.params.id, atoDesignacaoPdf);
+      if (!updated) return res.status(404).json({ message: "Delegação não encontrada" });
+      res.json({ message: "Ato de Designação salvo" });
+    } catch { res.status(500).json({ message: "Erro ao salvar Ato" }); }
+  });
+  app.get("/api/admin/delegacoes/:id/ato-pdf", requireAdmin, async (req, res) => {
+    try {
+      const d = await storage.getDelegacao(req.params.id);
+      if (!d || !d.atoDesignacaoPdf) return res.status(404).json({ message: "Ato não encontrado" });
+      const buffer = Buffer.from(d.atoDesignacaoPdf, "base64");
+      res.set({ "Content-Type": "application/pdf", "Content-Length": buffer.length.toString(), "Content-Disposition": `inline; filename="Ato_Designacao_${d.numero.replace(/\//g, '-')}.pdf"` });
+      res.send(buffer);
+    } catch { res.status(500).json({ message: "Erro ao buscar Ato" }); }
+  });
+  // Verificar poderes de um signatário (usado pelo frontend)
+  app.get("/api/admin/signatarios/:id/poderes", requireAdmin, async (req, res) => {
+    try {
+      const sig = await storage.getSignatario(req.params.id);
+      if (!sig) return res.status(404).json({ message: "Signatário não encontrado" });
+
+      // Presidente e Vice-Presidente podem assinar diretamente (Art. 22)
+      if (sig.role === 'presidente' || sig.role === 'vice_presidente') {
+        return res.json({ podeAssinar: true, tipo: 'cargo_direto', role: sig.role, delegacao: null });
+      }
+
+      // Outros: verificar delegação ativa
+      const delegacoesAtivas = await storage.getDelegacoesAtivasParaSignatario(sig.id);
+      if (delegacoesAtivas.length > 0) {
+        const d = delegacoesAtivas[0];
+        return res.json({ podeAssinar: true, tipo: 'delegacao', role: sig.role, delegacao: { id: d.id, numero: d.numero, poderes: d.poderes } });
+      }
+
+      res.json({ podeAssinar: false, tipo: 'sem_poderes', role: sig.role, delegacao: null });
+    } catch { res.status(500).json({ message: "Erro ao verificar poderes" }); }
+  });
+
+  // ══════════════════════════════════════════════
   // ASSINATURA INTERNA (admin assina pelo IDASAM)
   // ══════════════════════════════════════════════
   app.post("/api/admin/proposals/:id/sign-internal", requireAdmin, async (req, res) => {
     try {
-      const { signatarioId, pdfAssinado, documentHash } = req.body as { signatarioId: string; pdfAssinado: string; documentHash: string };
+      const { signatarioId, pdfAssinado, documentHash, delegacaoId } = req.body as { signatarioId: string; pdfAssinado: string; documentHash: string; delegacaoId?: string };
       if (!signatarioId || !pdfAssinado || !documentHash) return res.status(400).json({ message: "signatarioId, pdfAssinado e documentHash são obrigatórios" });
       const signatario = await storage.getSignatario(signatarioId);
       if (!signatario) return res.status(404).json({ message: "Signatário não encontrado" });
+
+      // Validar poderes de assinatura conforme Estatuto (Art. 22)
+      if (signatario.role !== 'presidente' && signatario.role !== 'vice_presidente') {
+        const delegacoesAtivas = await storage.getDelegacoesAtivasParaSignatario(signatarioId);
+        if (delegacoesAtivas.length === 0) {
+          return res.status(403).json({ message: `${signatario.nome} não possui poderes de assinatura. É necessário delegação ativa do Presidente (Art. 22, IV do Estatuto).` });
+        }
+      }
+
       await storage.uploadSignedPdf(req.params.id, pdfAssinado);
       const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
       await storage.createAssinaturaLog({
@@ -1665,6 +1765,7 @@ export async function registerRoutes(app: Express) {
         signatureImage: null,
         documentHash,
         signatarioId,
+        delegacaoId: delegacaoId || null,
       });
       res.json({ message: "Documento assinado internamente" });
     } catch (e) {

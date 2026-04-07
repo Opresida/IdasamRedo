@@ -20,10 +20,11 @@ import {
   Download, ArrowLeft, Plus, X, Loader2, Save, Trash2,
   CheckCircle, XCircle, Clock, RefreshCw, FolderOpen, BarChart2,
   Upload, ImagePlus, ChevronUp, ChevronDown, AlignLeft, Image as ImageIcon, Table,
-  Eye, Mail, Send, PenTool, Link2, Shield, FileCheck, UserPlus, Users,
+  Eye, Mail, Send, PenTool, Link2, Shield, FileCheck, UserPlus, Users, Handshake, Ban, CalendarDays,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import type { Proposal, ProposalStatus, Signatario } from '@shared/schema'
+import type { Proposal, ProposalStatus, Signatario, Delegacao, SignatarioRole, PoderDelegavel } from '@shared/schema'
+import { SIGNATARIO_ROLES, PODERES_DELEGAVEIS } from '@shared/schema'
 import './suite.css'
 
 interface Clause  { id: string; title: string; body: string }
@@ -941,10 +942,10 @@ export function SuiteDocumental() {
     queryFn: async () => { const r = await adminFetch('GET', '/api/admin/signatarios'); return r.json() },
     enabled: !!adminToken,
   })
-  const [novoSig, setNovoSig] = useState({ nome: '', cargo: '', email: '' })
+  const [novoSig, setNovoSig] = useState({ nome: '', cargo: '', email: '', role: 'outro' as SignatarioRole })
   const createSigMutation = useMutation({
     mutationFn: (data: typeof novoSig) => adminFetch('POST', '/api/admin/signatarios', data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/admin/signatarios'] }); setNovoSig({ nome: '', cargo: '', email: '' }); toast({ title: 'Signatário cadastrado' }) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/admin/signatarios'] }); setNovoSig({ nome: '', cargo: '', email: '', role: 'outro' }); toast({ title: 'Signatário cadastrado' }) },
     onError: () => toast({ title: 'Erro ao cadastrar', variant: 'destructive' }),
   })
   const deleteSigMutation = useMutation({
@@ -953,10 +954,137 @@ export function SuiteDocumental() {
     onError: () => toast({ title: 'Erro ao excluir', variant: 'destructive' }),
   })
 
+  // ── Delegações de Poderes ──
+  const { data: delegacoesList = [] } = useQuery<Delegacao[]>({
+    queryKey: ['/api/admin/delegacoes'],
+    queryFn: async () => { const r = await adminFetch('GET', '/api/admin/delegacoes'); return r.json() },
+    enabled: !!adminToken,
+  })
+  const [showDelegacaoModal, setShowDelegacaoModal] = useState(false)
+  const [novaDelegacao, setNovaDelegacao] = useState({
+    delegadoId: '',
+    motivo: '',
+    poderes: [] as string[],
+    validaDe: '',
+    validaAte: '',
+  })
+  const [creatingDelegacao, setCreatingDelegacao] = useState(false)
+
+  const ROLE_LABELS: Record<string, string> = {
+    presidente: 'Presidente',
+    vice_presidente: 'Vice-Presidente',
+    diretor_administrativo: 'Diretor Administrativo',
+    outro: 'Outro',
+  }
+  const PODER_LABELS: Record<string, string> = {
+    assinar_contratos: 'Assinar contratos e convênios',
+    assinar_orcamentos: 'Assinar orçamentos',
+    assinar_oficios: 'Assinar ofícios',
+    assinar_relatorios: 'Assinar relatórios',
+    assinar_projetos: 'Assinar projetos',
+  }
+
+  const presidenteSig = signatariosList.find(s => s.role === 'presidente' && s.ativo === 'true')
+
+  const handleCreateDelegacao = async () => {
+    if (!presidenteSig || !novaDelegacao.delegadoId || !novaDelegacao.motivo || !novaDelegacao.validaDe || !novaDelegacao.validaAte || novaDelegacao.poderes.length === 0) return
+    setCreatingDelegacao(true)
+    try {
+      // 1. Criar delegação no backend
+      const res = await adminFetch('POST', '/api/admin/delegacoes', {
+        deleganteId: presidenteSig.id,
+        delegadoId: novaDelegacao.delegadoId,
+        motivo: novaDelegacao.motivo,
+        poderes: novaDelegacao.poderes,
+        validaDe: new Date(novaDelegacao.validaDe).toISOString(),
+        validaAte: new Date(novaDelegacao.validaAte).toISOString(),
+      })
+      const delegacao = await res.json()
+
+      // 2. Gerar PDF do Ato de Designação no cliente
+      const delegado = signatariosList.find(s => s.id === novaDelegacao.delegadoId)
+      if (delegado) {
+        const { generateAtoDesignacaoPdf } = await import('@/lib/pdf-ato-designacao')
+        const now = new Date()
+        const pdfBase64 = await generateAtoDesignacaoPdf({
+          numero: delegacao.numero,
+          deleganteNome: presidenteSig.nome,
+          deleganteCargo: presidenteSig.cargo,
+          delegadoNome: delegado.nome,
+          delegadoCargo: delegado.cargo,
+          motivo: novaDelegacao.motivo,
+          poderes: novaDelegacao.poderes,
+          validaDe: new Date(novaDelegacao.validaDe).toLocaleDateString('pt-BR'),
+          validaAte: new Date(novaDelegacao.validaAte).toLocaleDateString('pt-BR'),
+          dataEmissao: now.toLocaleDateString('pt-BR') + ' às ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        })
+
+        // 3. Salvar PDF no backend
+        await adminFetch('PATCH', `/api/admin/delegacoes/${delegacao.id}/ato-pdf`, { atoDesignacaoPdf: pdfBase64 })
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/delegacoes'] })
+      toast({ title: 'Delegação criada!', description: `Ato de Designação nº ${delegacao.numero} gerado.` })
+      setShowDelegacaoModal(false)
+      setNovaDelegacao({ delegadoId: '', motivo: '', poderes: [], validaDe: '', validaAte: '' })
+    } catch (e) {
+      console.error('Erro ao criar delegação:', e)
+      toast({ title: 'Erro ao criar delegação', variant: 'destructive' })
+    } finally {
+      setCreatingDelegacao(false)
+    }
+  }
+
+  const handleRevogaDelegacao = async (id: string) => {
+    try {
+      await adminFetch('PATCH', `/api/admin/delegacoes/${id}/revogar`)
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/delegacoes'] })
+      toast({ title: 'Delegação revogada' })
+    } catch {
+      toast({ title: 'Erro ao revogar', variant: 'destructive' })
+    }
+  }
+
+  const handleDownloadAto = async (id: string, numero: string) => {
+    try {
+      const res = await adminFetch('GET', `/api/admin/delegacoes/${id}/ato-pdf`)
+      const data = await res.json()
+      if (!data.atoDesignacaoPdf) { toast({ title: 'PDF do Ato não disponível', variant: 'destructive' }); return }
+      const byteChars = atob(data.atoDesignacaoPdf)
+      const byteArray = new Uint8Array(byteChars.length)
+      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i)
+      const blob = new Blob([byteArray], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `Ato_Designacao_${numero}.pdf`; a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast({ title: 'Erro ao baixar Ato', variant: 'destructive' })
+    }
+  }
+
   // ── Assinatura Interna ──
   const [signInternalModal, setSignInternalModal] = useState<{ proposalId: string; numero: string; tipo: string; titulo: string } | null>(null)
   const [selectedSignatarioId, setSelectedSignatarioId] = useState('')
   const [signingInternal, setSigningInternal] = useState(false)
+  const [sigPoderes, setSigPoderes] = useState<{ podeAssinar: boolean; tipo: string; role: string; delegacao: { id: string; numero: string; poderes: string } | null } | null>(null)
+  const [checkingPoderes, setCheckingPoderes] = useState(false)
+
+  const handleSelectSignatario = async (sigId: string) => {
+    setSelectedSignatarioId(sigId)
+    setSigPoderes(null)
+    if (!sigId) return
+    setCheckingPoderes(true)
+    try {
+      const res = await adminFetch('GET', `/api/admin/signatarios/${sigId}/poderes`)
+      const data = await res.json()
+      setSigPoderes(data)
+    } catch {
+      setSigPoderes(null)
+    } finally {
+      setCheckingPoderes(false)
+    }
+  }
 
   const handleSignInternal = async () => {
     if (!signInternalModal || !selectedSignatarioId) return
@@ -1004,6 +1132,7 @@ export function SuiteDocumental() {
         signatarioId: selectedSignatarioId,
         pdfAssinado: base64,
         documentHash: hashHex,
+        delegacaoId: sigPoderes?.delegacao?.id || undefined,
       })
       queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
       toast({ title: 'Documento assinado com sucesso!', description: `Assinado por ${sig.nome}` })
@@ -2782,7 +2911,7 @@ export function SuiteDocumental() {
                 {/* Formulário de cadastro */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                   <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3 flex items-center gap-1.5"><UserPlus size={13} /> Novo Signatário</h4>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
                     <div>
                       <label className="text-[10px] font-semibold text-gray-500 uppercase">Nome completo</label>
                       <Input className="mt-1 h-9 text-sm" placeholder="Ex: João Silva" value={novoSig.nome} onChange={e => setNovoSig(s => ({ ...s, nome: e.target.value }))} />
@@ -2790,6 +2919,19 @@ export function SuiteDocumental() {
                     <div>
                       <label className="text-[10px] font-semibold text-gray-500 uppercase">Cargo</label>
                       <Input className="mt-1 h-9 text-sm" placeholder="Ex: Diretor Executivo" value={novoSig.cargo} onChange={e => setNovoSig(s => ({ ...s, cargo: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase">Função estatutária</label>
+                      <select
+                        className="mt-1 w-full h-9 border border-gray-300 rounded-md px-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2A5B46]"
+                        value={novoSig.role}
+                        onChange={e => setNovoSig(s => ({ ...s, role: e.target.value as SignatarioRole }))}
+                      >
+                        <option value="presidente">Presidente</option>
+                        <option value="vice_presidente">Vice-Presidente</option>
+                        <option value="diretor_administrativo">Diretor Administrativo</option>
+                        <option value="outro">Outro</option>
+                      </select>
                     </div>
                     <div>
                       <label className="text-[10px] font-semibold text-gray-500 uppercase">E-mail</label>
@@ -2818,6 +2960,7 @@ export function SuiteDocumental() {
                       <tr className="border-b border-[#C8DDD5]">
                         <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Nome</th>
                         <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Cargo</th>
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Função</th>
                         <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">E-mail</th>
                         <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Status</th>
                         <th className="py-2 px-3"></th>
@@ -2828,6 +2971,16 @@ export function SuiteDocumental() {
                         <tr key={s.id} className="border-b border-[#F0F4F8] hover:bg-[#F0F4F8]/60 transition-colors">
                           <td className="py-3 px-3 font-semibold text-[#1F2937]">{s.nome}</td>
                           <td className="py-3 px-3 text-gray-500">{s.cargo}</td>
+                          <td className="py-3 px-3">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              s.role === 'presidente' ? 'bg-amber-100 text-amber-700' :
+                              s.role === 'vice_presidente' ? 'bg-blue-100 text-blue-700' :
+                              s.role === 'diretor_administrativo' ? 'bg-purple-100 text-purple-700' :
+                              'bg-gray-100 text-gray-500'
+                            }`}>
+                              {ROLE_LABELS[s.role] || s.role}
+                            </span>
+                          </td>
                           <td className="py-3 px-3 text-gray-500 text-xs">{s.email}</td>
                           <td className="py-3 px-3">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.ativo === 'true' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -2845,6 +2998,97 @@ export function SuiteDocumental() {
                           </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                )}
+              </SdCard>
+
+              {/* ── Delegações de Poderes ── */}
+              <SdCard title="Delegações de Poderes">
+                <p className="text-xs text-gray-500 mb-4">
+                  Conforme Art. 22 do Estatuto Social, o Presidente pode delegar poderes de assinatura temporariamente.
+                </p>
+
+                {!presidenteSig ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-700 flex items-center gap-2">
+                    <Shield size={16} /> Cadastre um signatário com função "Presidente" para habilitar delegações.
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="mb-4 bg-[#0F766E] hover:bg-[#0D655E] text-white gap-1.5"
+                    onClick={() => setShowDelegacaoModal(true)}
+                  >
+                    <Handshake size={14} /> Nova Delegação
+                  </Button>
+                )}
+
+                {delegacoesList.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 text-gray-400">
+                    <Handshake size={28} className="opacity-25 mb-2" />
+                    <p className="text-sm">Nenhuma delegação registrada.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#C8DDD5]">
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Nº Ato</th>
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Delegado</th>
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Período</th>
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Poderes</th>
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Status</th>
+                        <th className="py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {delegacoesList.map(d => {
+                        const delegado = signatariosList.find(s => s.id === d.delegadoId)
+                        const poderes: string[] = (() => { try { return JSON.parse(d.poderes) } catch { return [] } })()
+                        const isAtiva = d.status === 'ativa' && new Date(d.validaAte) > new Date()
+                        const statusLabel = isAtiva ? 'Ativa' : d.status === 'revogada' ? 'Revogada' : 'Expirada'
+                        const statusColor = isAtiva ? 'bg-green-100 text-green-700' : d.status === 'revogada' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'
+                        return (
+                          <tr key={d.id} className="border-b border-[#F0F4F8] hover:bg-[#F0F4F8]/60 transition-colors">
+                            <td className="py-3 px-3 font-mono text-xs font-semibold text-[#1F2937]">{d.numero}</td>
+                            <td className="py-3 px-3 font-semibold text-[#1F2937]">{delegado?.nome || '—'}</td>
+                            <td className="py-3 px-3 text-xs text-gray-500">
+                              {new Date(d.validaDe).toLocaleDateString('pt-BR')} — {new Date(d.validaAte).toLocaleDateString('pt-BR')}
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex flex-wrap gap-1">
+                                {poderes.map(p => (
+                                  <span key={p} className="text-[9px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded">{PODER_LABELS[p] || p}</span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-1">
+                                {d.atoDesignacaoPdf && (
+                                  <button
+                                    className="text-[#2A5B46] hover:text-[#1F4A38] p-1 transition-colors"
+                                    onClick={() => handleDownloadAto(d.id, d.numero)}
+                                    title="Baixar Ato de Designação (PDF)"
+                                  >
+                                    <Download size={14} />
+                                  </button>
+                                )}
+                                {isAtiva && (
+                                  <button
+                                    className="text-red-400 hover:text-red-600 p-1 transition-colors"
+                                    onClick={() => handleRevogaDelegacao(d.id)}
+                                    title="Revogar delegação"
+                                  >
+                                    <Ban size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -2979,14 +3223,46 @@ export function SuiteDocumental() {
                   <select
                     className="mt-1 w-full h-10 border border-gray-300 rounded-md px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2A5B46] focus:border-[#2A5B46]"
                     value={selectedSignatarioId}
-                    onChange={e => setSelectedSignatarioId(e.target.value)}
+                    onChange={e => handleSelectSignatario(e.target.value)}
                   >
                     <option value="">Escolha um signatário...</option>
                     {signatariosList.filter(s => s.ativo === 'true').map(s => (
-                      <option key={s.id} value={s.id}>{s.nome} — {s.cargo}</option>
+                      <option key={s.id} value={s.id}>{s.nome} — {s.cargo} ({ROLE_LABELS[s.role]})</option>
                     ))}
                   </select>
                 </div>
+
+                {/* Verificação de poderes */}
+                {checkingPoderes && (
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+                    <Loader2 size={12} className="animate-spin" /> Verificando poderes...
+                  </div>
+                )}
+                {sigPoderes && !sigPoderes.podeAssinar && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-xs text-red-700 flex items-center gap-2">
+                    <Ban size={14} />
+                    <div>
+                      <strong>Sem poderes de assinatura.</strong> Este signatário não possui cargo estatutário (Presidente/Vice) nem delegação ativa.
+                      Crie uma delegação na aba Signatários.
+                    </div>
+                  </div>
+                )}
+                {sigPoderes && sigPoderes.podeAssinar && sigPoderes.tipo === 'delegacao' && sigPoderes.delegacao && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-700 flex items-center gap-2">
+                    <Handshake size={14} />
+                    <div>
+                      <strong>Assinando por delegação</strong> — Ato de Designação nº {sigPoderes.delegacao.numero}
+                    </div>
+                  </div>
+                )}
+                {sigPoderes && sigPoderes.podeAssinar && sigPoderes.tipo === 'cargo_direto' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-xs text-green-700 flex items-center gap-2">
+                    <CheckCircle size={14} />
+                    <div>
+                      <strong>Poderes diretos</strong> — {ROLE_LABELS[sigPoderes.role]} conforme Art. 22 do Estatuto.
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-gray-50 rounded-lg p-3 mb-4 text-xs text-gray-500">
                   <div className="flex items-center gap-1.5 mb-1 text-[#2A5B46] font-semibold"><Shield size={12} /> O que será embutido no PDF:</div>
@@ -2995,14 +3271,17 @@ export function SuiteDocumental() {
                     <li>Data e hora da assinatura</li>
                     <li>Hash SHA-256 do documento original</li>
                     <li>Referência à Lei 14.063/2020</li>
+                    {sigPoderes?.tipo === 'delegacao' && sigPoderes.delegacao && (
+                      <li className="text-blue-600 font-semibold">Referência ao Ato de Designação nº {sigPoderes.delegacao.numero}</li>
+                    )}
                   </ul>
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setSignInternalModal(null)} size="sm">Cancelar</Button>
+                  <Button variant="outline" onClick={() => { setSignInternalModal(null); setSigPoderes(null) }} size="sm">Cancelar</Button>
                   <Button
                     onClick={handleSignInternal}
-                    disabled={signingInternal || !selectedSignatarioId}
+                    disabled={signingInternal || !selectedSignatarioId || (sigPoderes !== null && !sigPoderes.podeAssinar)}
                     size="sm"
                     className="bg-[#2A5B46] hover:bg-[#1F4A38] text-white gap-2"
                   >
@@ -3014,6 +3293,94 @@ export function SuiteDocumental() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════ Modal Nova Delegação ══════ */}
+      {showDelegacaoModal && presidenteSig && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowDelegacaoModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg text-[#1F2937] flex items-center gap-2">
+                <Handshake size={18} className="text-[#2A5B46]" /> Nova Delegação de Poderes
+              </h3>
+              <button onClick={() => setShowDelegacaoModal(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-700">
+              <strong>Delegante:</strong> {presidenteSig.nome} — {presidenteSig.cargo} (Presidente)
+              <br />Conforme Art. 22, IV do Estatuto Social do IDASAM.
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase">Delegar para</label>
+                <select
+                  className="mt-1 w-full h-10 border border-gray-300 rounded-md px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2A5B46]"
+                  value={novaDelegacao.delegadoId}
+                  onChange={e => setNovaDelegacao(d => ({ ...d, delegadoId: e.target.value }))}
+                >
+                  <option value="">Escolha um signatário...</option>
+                  {signatariosList.filter(s => s.ativo === 'true' && s.id !== presidenteSig.id).map(s => (
+                    <option key={s.id} value={s.id}>{s.nome} — {s.cargo} ({ROLE_LABELS[s.role]})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-semibold text-gray-500 uppercase flex items-center gap-1"><CalendarDays size={10} /> Data início</label>
+                  <Input type="date" className="mt-1 h-9 text-sm" value={novaDelegacao.validaDe} onChange={e => setNovaDelegacao(d => ({ ...d, validaDe: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-gray-500 uppercase flex items-center gap-1"><CalendarDays size={10} /> Data fim</label>
+                  <Input type="date" className="mt-1 h-9 text-sm" value={novaDelegacao.validaAte} onChange={e => setNovaDelegacao(d => ({ ...d, validaAte: e.target.value }))} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase">Motivo da delegação</label>
+                <Input className="mt-1 h-9 text-sm" placeholder="Ex: Viagem institucional a Brasília" value={novaDelegacao.motivo} onChange={e => setNovaDelegacao(d => ({ ...d, motivo: e.target.value }))} />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase mb-2 block">Poderes a delegar</label>
+                <div className="space-y-2">
+                  {PODERES_DELEGAVEIS.map(p => (
+                    <label key={p} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 p-1.5 rounded">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-[#2A5B46] focus:ring-[#2A5B46]"
+                        checked={novaDelegacao.poderes.includes(p)}
+                        onChange={e => {
+                          setNovaDelegacao(d => ({
+                            ...d,
+                            poderes: e.target.checked ? [...d.poderes, p] : d.poderes.filter(x => x !== p),
+                          }))
+                        }}
+                      />
+                      {PODER_LABELS[p] || p}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowDelegacaoModal(false)} size="sm">Cancelar</Button>
+              <Button
+                onClick={handleCreateDelegacao}
+                disabled={creatingDelegacao || !novaDelegacao.delegadoId || !novaDelegacao.motivo || !novaDelegacao.validaDe || !novaDelegacao.validaAte || novaDelegacao.poderes.length === 0}
+                size="sm"
+                className="bg-[#2A5B46] hover:bg-[#1F4A38] text-white gap-2"
+              >
+                {creatingDelegacao
+                  ? <><Loader2 size={14} className="animate-spin" /> Criando...</>
+                  : <><FileCheck size={14} /> Criar Delegação e Gerar Ato</>
+                }
+              </Button>
+            </div>
           </div>
         </div>
       )}

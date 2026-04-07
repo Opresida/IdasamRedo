@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
 
@@ -157,6 +157,15 @@ export interface IStorage {
   // Audit Logs
   createAssinaturaLog(log: InsertAssinaturaLog): Promise<AssinaturaLog>;
   getAssinaturaLogsByProposal(proposalId: string): Promise<AssinaturaLog[]>;
+
+  // Delegações
+  getDelegacoes(): Promise<Delegacao[]>;
+  getDelegacoesAtivas(): Promise<Delegacao[]>;
+  getDelegacao(id: string): Promise<Delegacao | undefined>;
+  createDelegacao(data: InsertDelegacao): Promise<Delegacao>;
+  updateDelegacaoAtoPdf(id: string, atoDesignacaoPdf: string): Promise<Delegacao | undefined>;
+  revogaDelegacao(id: string): Promise<Delegacao | undefined>;
+  getDelegacoesAtivasParaSignatario(signatarioId: string): Promise<Delegacao[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -916,6 +925,39 @@ export class DatabaseStorage implements IStorage {
   }
   async getAssinaturaLogsByProposal(proposalId: string): Promise<AssinaturaLog[]> {
     return db.select().from(assinaturaLogs).where(eq(assinaturaLogs.proposalId, proposalId)).orderBy(desc(assinaturaLogs.createdAt));
+  }
+
+  // ── Delegações ──
+  async getDelegacoes(): Promise<Delegacao[]> {
+    return db.select().from(delegacoes).orderBy(desc(delegacoes.criadoEm));
+  }
+  async getDelegacoesAtivas(): Promise<Delegacao[]> {
+    const now = new Date();
+    const all = await db.select().from(delegacoes).where(eq(delegacoes.status, 'ativa'));
+    return all.filter(d => new Date(d.validaDe) <= now && new Date(d.validaAte) >= now);
+  }
+  async getDelegacao(id: string): Promise<Delegacao | undefined> {
+    const [row] = await db.select().from(delegacoes).where(eq(delegacoes.id, id));
+    return row || undefined;
+  }
+  async createDelegacao(data: InsertDelegacao): Promise<Delegacao> {
+    const [row] = await db.insert(delegacoes).values(data).returning();
+    return row;
+  }
+  async updateDelegacaoAtoPdf(id: string, atoDesignacaoPdf: string): Promise<Delegacao | undefined> {
+    const [row] = await db.update(delegacoes).set({ atoDesignacaoPdf }).where(eq(delegacoes.id, id)).returning();
+    return row || undefined;
+  }
+  async revogaDelegacao(id: string): Promise<Delegacao | undefined> {
+    const [row] = await db.update(delegacoes).set({ status: 'revogada' as DelegacaoStatus, revogadoEm: new Date() }).where(eq(delegacoes.id, id)).returning();
+    return row || undefined;
+  }
+  async getDelegacoesAtivasParaSignatario(signatarioId: string): Promise<Delegacao[]> {
+    const now = new Date();
+    const all = await db.select().from(delegacoes).where(
+      and(eq(delegacoes.delegadoId, signatarioId), eq(delegacoes.status, 'ativa'))
+    );
+    return all.filter(d => new Date(d.validaDe) <= now && new Date(d.validaAte) >= now);
   }
 }
 

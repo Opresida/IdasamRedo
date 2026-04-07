@@ -42,8 +42,8 @@ export async function addAuthenticationPage(params: AuthPageParams) {
   // ── Faixa verde topo ──
   page.drawRectangle({ x: 0, y: H - 100, width: W, height: 100, color: green })
   page.drawText('IDASAM', { x: 50, y: H - 45, size: 22, font: fontBold, color: white })
-  page.drawText('Instituto de Desenvolvimento Ambiental e Social da Amazônia', { x: 50, y: H - 65, size: 9, font, color: rgb(1, 1, 1, 0.8) })
-  page.drawText('CNPJ: 02.906.177/0001-87 • Centro Empresarial Art Center, 3694 — Manaus/AM', { x: 50, y: H - 82, size: 7.5, font, color: rgb(1, 1, 1, 0.55) })
+  page.drawText('Instituto de Desenvolvimento Ambiental e Social da Amazônia', { x: 50, y: H - 65, size: 9, font, color: rgb(0.9, 0.9, 0.9) })
+  page.drawText('CNPJ: 02.906.177/0001-87 • Centro Empresarial Art Center, 3694 — Manaus/AM', { x: 50, y: H - 82, size: 7.5, font, color: rgb(0.75, 0.75, 0.75) })
 
   // ── Linha decorativa ──
   page.drawRectangle({ x: 50, y: H - 120, width: W - 100, height: 1.5, color: green })

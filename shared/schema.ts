@@ -390,10 +390,14 @@ export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type Proposal = typeof proposals.$inferSelect;
 
 // ── Signatários (assinantes internos cadastrados) ──
+export const SIGNATARIO_ROLES = ['presidente', 'vice_presidente', 'diretor_administrativo', 'outro'] as const;
+export type SignatarioRole = typeof SIGNATARIO_ROLES[number];
+
 export const signatarios = pgTable("signatarios", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: text("nome").notNull(),
   cargo: text("cargo").notNull(),
+  role: text("role").$type<SignatarioRole>().notNull().default("outro"),
   email: text("email").notNull(),
   ativo: text("ativo").notNull().default("true"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
@@ -401,10 +405,35 @@ export const signatarios = pgTable("signatarios", {
 export const insertSignatarioSchema = createInsertSchema(signatarios).omit({ id: true, createdAt: true }).extend({
   nome:  z.string().min(1, "Nome é obrigatório"),
   cargo: z.string().min(1, "Cargo é obrigatório"),
+  role:  z.enum(SIGNATARIO_ROLES).optional().default("outro"),
   email: z.string().email("E-mail inválido"),
 });
 export type InsertSignatario = z.infer<typeof insertSignatarioSchema>;
 export type Signatario = typeof signatarios.$inferSelect;
+
+// ── Delegações de Poderes ──
+export const DELEGACAO_STATUSES = ['ativa', 'revogada', 'expirada'] as const;
+export type DelegacaoStatus = typeof DELEGACAO_STATUSES[number];
+
+export const PODERES_DELEGAVEIS = ['assinar_contratos', 'assinar_orcamentos', 'assinar_oficios', 'assinar_relatorios', 'assinar_projetos'] as const;
+export type PoderDelegavel = typeof PODERES_DELEGAVEIS[number];
+
+export const delegacoes = pgTable("delegacoes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  numero: text("numero").notNull(),
+  deleganteId: uuid("delegante_id").notNull(),
+  delegadoId: uuid("delegado_id").notNull(),
+  motivo: text("motivo").notNull(),
+  poderes: text("poderes").notNull(), // JSON array de PoderDelegavel
+  validaDe: timestamp("valida_de", { withTimezone: true }).notNull(),
+  validaAte: timestamp("valida_ate", { withTimezone: true }).notNull(),
+  status: text("status").$type<DelegacaoStatus>().notNull().default("ativa"),
+  atoDesignacaoPdf: text("ato_designacao_pdf"),
+  revogadoEm: timestamp("revogado_em", { withTimezone: true }),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export type Delegacao = typeof delegacoes.$inferSelect;
+export type InsertDelegacao = Omit<Delegacao, 'id' | 'criadoEm' | 'revogadoEm' | 'atoDesignacaoPdf'>;
 
 // ── Links de assinatura externa ──
 export const assinaturaLinks = pgTable("assinatura_links", {
@@ -435,6 +464,7 @@ export const assinaturaLogs = pgTable("assinatura_logs", {
   signatureImage: text("signature_image"),
   documentHash: text("document_hash").notNull(),
   signatarioId: uuid("signatario_id"),
+  delegacaoId: uuid("delegacao_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 export type AssinaturaLog = typeof assinaturaLogs.$inferSelect;
