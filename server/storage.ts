@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
 
@@ -137,7 +137,26 @@ export interface IStorage {
   getProposal(id: string): Promise<Proposal | undefined>;
   createProposal(proposal: InsertProposal): Promise<Proposal>;
   updateProposalStatus(id: string, status: ProposalStatus): Promise<Proposal | undefined>;
+  updateProposalPdf(id: string, pdfData: string): Promise<Proposal | undefined>;
+  uploadSignedPdf(id: string, pdfAssinado: string): Promise<Proposal | undefined>;
+  markProposalSent(id: string): Promise<Proposal | undefined>;
   deleteProposal(id: string): Promise<void>;
+
+  // Signatários
+  getSignatarios(): Promise<Signatario[]>;
+  getSignatario(id: string): Promise<Signatario | undefined>;
+  createSignatario(s: InsertSignatario): Promise<Signatario>;
+  updateSignatario(id: string, s: Partial<InsertSignatario>): Promise<Signatario | undefined>;
+  deleteSignatario(id: string): Promise<void>;
+
+  // Assinatura Links
+  createAssinaturaLink(data: { proposalId: string; token: string; signerName?: string; signerEmail?: string; expiresAt: Date }): Promise<AssinaturaLink>;
+  getAssinaturaLinkByToken(token: string): Promise<AssinaturaLink | undefined>;
+  markAssinaturaLinkUsed(token: string): Promise<AssinaturaLink | undefined>;
+
+  // Audit Logs
+  createAssinaturaLog(log: InsertAssinaturaLog): Promise<AssinaturaLog>;
+  getAssinaturaLogsByProposal(proposalId: string): Promise<AssinaturaLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -797,7 +816,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProposals(): Promise<Proposal[]> {
-    return db.select().from(proposals).orderBy(desc(proposals.createdAt));
+    const rows = await db.select({
+      id: proposals.id,
+      tipo: proposals.tipo,
+      numero: proposals.numero,
+      titulo: proposals.titulo,
+      cliNome: proposals.cliNome,
+      cliEmail: proposals.cliEmail,
+      cliTel: proposals.cliTel,
+      valorTotal: proposals.valorTotal,
+      status: proposals.status,
+      emissao: proposals.emissao,
+      validade: proposals.validade,
+      dados: proposals.dados,
+      obs: proposals.obs,
+      pdfData: sql<string | null>`CASE WHEN ${proposals.pdfData} IS NOT NULL THEN 'has_pdf' ELSE NULL END`.as('pdf_data'),
+      pdfAssinado: sql<string | null>`CASE WHEN ${proposals.pdfAssinado} IS NOT NULL THEN 'has_pdf_assinado' ELSE NULL END`.as('pdf_assinado'),
+      assinadoEm: proposals.assinadoEm,
+      enviadoEm: proposals.enviadoEm,
+      createdAt: proposals.createdAt,
+    }).from(proposals).orderBy(desc(proposals.createdAt));
+    return rows as Proposal[];
   }
 
   async getProposal(id: string): Promise<Proposal | undefined> {
@@ -815,8 +854,68 @@ export class DatabaseStorage implements IStorage {
     return row || undefined;
   }
 
+  async updateProposalPdf(id: string, pdfData: string): Promise<Proposal | undefined> {
+    const [row] = await db.update(proposals).set({ pdfData }).where(eq(proposals.id, id)).returning();
+    return row || undefined;
+  }
+
+  async uploadSignedPdf(id: string, pdfAssinado: string): Promise<Proposal | undefined> {
+    const [row] = await db.update(proposals).set({ pdfAssinado, assinadoEm: new Date() }).where(eq(proposals.id, id)).returning();
+    return row || undefined;
+  }
+
+  async markProposalSent(id: string): Promise<Proposal | undefined> {
+    const [row] = await db.update(proposals).set({ enviadoEm: new Date() }).where(eq(proposals.id, id)).returning();
+    return row || undefined;
+  }
+
   async deleteProposal(id: string): Promise<void> {
+    await db.delete(assinaturaLogs).where(eq(assinaturaLogs.proposalId, id));
+    await db.delete(assinaturaLinks).where(eq(assinaturaLinks.proposalId, id));
     await db.delete(proposals).where(eq(proposals.id, id));
+  }
+
+  // ── Signatários ──
+  async getSignatarios(): Promise<Signatario[]> {
+    return db.select().from(signatarios).orderBy(signatarios.nome);
+  }
+  async getSignatario(id: string): Promise<Signatario | undefined> {
+    const [row] = await db.select().from(signatarios).where(eq(signatarios.id, id));
+    return row || undefined;
+  }
+  async createSignatario(s: InsertSignatario): Promise<Signatario> {
+    const [row] = await db.insert(signatarios).values(s).returning();
+    return row;
+  }
+  async updateSignatario(id: string, s: Partial<InsertSignatario>): Promise<Signatario | undefined> {
+    const [row] = await db.update(signatarios).set(s).where(eq(signatarios.id, id)).returning();
+    return row || undefined;
+  }
+  async deleteSignatario(id: string): Promise<void> {
+    await db.delete(signatarios).where(eq(signatarios.id, id));
+  }
+
+  // ── Assinatura Links ──
+  async createAssinaturaLink(data: { proposalId: string; token: string; signerName?: string; signerEmail?: string; expiresAt: Date }): Promise<AssinaturaLink> {
+    const [row] = await db.insert(assinaturaLinks).values(data).returning();
+    return row;
+  }
+  async getAssinaturaLinkByToken(token: string): Promise<AssinaturaLink | undefined> {
+    const [row] = await db.select().from(assinaturaLinks).where(eq(assinaturaLinks.token, token));
+    return row || undefined;
+  }
+  async markAssinaturaLinkUsed(token: string): Promise<AssinaturaLink | undefined> {
+    const [row] = await db.update(assinaturaLinks).set({ usedAt: new Date() }).where(eq(assinaturaLinks.token, token)).returning();
+    return row || undefined;
+  }
+
+  // ── Audit Logs ──
+  async createAssinaturaLog(log: InsertAssinaturaLog): Promise<AssinaturaLog> {
+    const [row] = await db.insert(assinaturaLogs).values(log).returning();
+    return row;
+  }
+  async getAssinaturaLogsByProposal(proposalId: string): Promise<AssinaturaLog[]> {
+    return db.select().from(assinaturaLogs).where(eq(assinaturaLogs.proposalId, proposalId)).orderBy(desc(assinaturaLogs.createdAt));
   }
 }
 

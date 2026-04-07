@@ -1,7 +1,9 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, PROPOSAL_STATUSES } from "@shared/schema";
-import type { ProposalStatus } from "@shared/schema";
+import { db } from "./db";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
+import type { ProposalStatus, SignatureType } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 import multer from "multer";
 import { createServer } from "http";
 import crypto from "crypto";
@@ -1495,6 +1497,317 @@ export async function registerRoutes(app: Express) {
       res.json({ message: "Proposta excluída" });
     } catch {
       res.status(500).json({ message: "Erro ao excluir proposta" });
+    }
+  });
+
+  // Salvar PDF base64 em uma proposal existente
+  app.patch("/api/admin/proposals/:id/pdf", requireAdmin, async (req, res) => {
+    try {
+      const { pdfData } = req.body as { pdfData: string };
+      if (!pdfData) return res.status(400).json({ message: "pdfData é obrigatório" });
+      const updated = await storage.updateProposalPdf(req.params.id, pdfData);
+      if (!updated) return res.status(404).json({ message: "Proposta não encontrada" });
+      res.json({ message: "PDF salvo com sucesso" });
+    } catch {
+      res.status(500).json({ message: "Erro ao salvar PDF" });
+    }
+  });
+
+  // Servir PDF de uma proposal como arquivo
+  app.get("/api/admin/proposals/:id/pdf", requireAdmin, async (req, res) => {
+    try {
+      const p = await storage.getProposal(req.params.id);
+      if (!p || !p.pdfData) return res.status(404).json({ message: "PDF não encontrado" });
+      const buffer = Buffer.from(p.pdfData, "base64");
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Length": buffer.length.toString(),
+        "Content-Disposition": `inline; filename="${p.tipo}_${p.numero}.pdf"`,
+      });
+      res.send(buffer);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar PDF" });
+    }
+  });
+
+  // Upload de PDF assinado
+  app.patch("/api/admin/proposals/:id/signed-pdf", requireAdmin, async (req, res) => {
+    try {
+      const { pdfAssinado } = req.body as { pdfAssinado: string };
+      if (!pdfAssinado) return res.status(400).json({ message: "pdfAssinado é obrigatório" });
+      const updated = await storage.uploadSignedPdf(req.params.id, pdfAssinado);
+      if (!updated) return res.status(404).json({ message: "Proposta não encontrada" });
+      res.json({ message: "PDF assinado salvo com sucesso" });
+    } catch {
+      res.status(500).json({ message: "Erro ao salvar PDF assinado" });
+    }
+  });
+
+  // Servir PDF assinado
+  app.get("/api/admin/proposals/:id/signed-pdf", requireAdmin, async (req, res) => {
+    try {
+      const p = await storage.getProposal(req.params.id);
+      if (!p || !p.pdfAssinado) return res.status(404).json({ message: "PDF assinado não encontrado" });
+      const buffer = Buffer.from(p.pdfAssinado, "base64");
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Length": buffer.length.toString(),
+        "Content-Disposition": `inline; filename="${p.tipo}_${p.numero}_assinado.pdf"`,
+      });
+      res.send(buffer);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar PDF assinado" });
+    }
+  });
+
+  // Marcar documento como enviado (timeline)
+  app.patch("/api/admin/proposals/:id/mark-sent", requireAdmin, async (req, res) => {
+    try {
+      const updated = await storage.markProposalSent(req.params.id);
+      if (!updated) return res.status(404).json({ message: "Proposta não encontrada" });
+      res.json({ message: "Documento marcado como enviado" });
+    } catch {
+      res.status(500).json({ message: "Erro ao marcar como enviado" });
+    }
+  });
+
+  // Enviar documento por e-mail com PDF anexo
+  app.post("/api/admin/proposals/:id/email", requireAdmin, async (req, res) => {
+    try {
+      const { to, subject, message } = req.body as { to: string; subject?: string; message?: string };
+      if (!to) return res.status(400).json({ message: "Destinatário (to) é obrigatório" });
+      const p = await storage.getProposal(req.params.id);
+      if (!p) return res.status(404).json({ message: "Proposta não encontrada" });
+      // Preferir PDF assinado; fallback para PDF original
+      const pdfContent = p.pdfAssinado || p.pdfData;
+      if (!pdfContent) return res.status(400).json({ message: "Este documento não possui PDF salvo" });
+
+      if (!RESEND_API_KEY) return res.status(400).json({ message: "RESEND_API_KEY não configurada" });
+
+      const { Resend } = await import("resend");
+      const resend = new Resend(RESEND_API_KEY);
+
+      const tipoLabel = p.tipo === 'contrato' ? 'Contrato' : p.tipo === 'orcamento' ? 'Orçamento' : p.tipo === 'oficio' ? 'Ofício' : p.tipo === 'relatorio' ? 'Relatório' : 'Proposta de Projeto';
+      const emailSubject = subject || `${tipoLabel} ${p.numero} — IDASAM`;
+      const emailBody = message || `Prezado(a),\n\nSegue em anexo o documento <strong>${tipoLabel} nº ${p.numero}</strong> — ${p.titulo}.\n\nAtenciosamente,\nIDASSAM`;
+
+      const suffix = p.pdfAssinado ? '_assinado' : '';
+      const filename = `${p.tipo}_${p.numero.replace(/\//g, '-')}${suffix}.pdf`;
+
+      const result = await resend.emails.send({
+        from: EMAIL_FROM,
+        to,
+        subject: emailSubject,
+        html: wrapEmailHtml(emailBody.replace(/\n/g, '<br>')),
+        attachments: [{
+          filename,
+          content: pdfContent,
+        }],
+      });
+
+      if (result.error) return res.status(500).json({ message: "Erro ao enviar e-mail", error: result.error });
+
+      // Marcar como enviado na timeline
+      await storage.markProposalSent(req.params.id);
+
+      res.json({ message: "E-mail enviado com sucesso" });
+    } catch (e) {
+      console.error("Erro ao enviar e-mail com PDF:", e);
+      res.status(500).json({ message: "Erro ao enviar e-mail" });
+    }
+  });
+
+  // ══════════════════════════════════════════════
+  // SIGNATÁRIOS CRUD
+  // ══════════════════════════════════════════════
+  app.get("/api/admin/signatarios", requireAdmin, async (_req, res) => {
+    try { res.json(await storage.getSignatarios()); }
+    catch { res.status(500).json({ message: "Erro ao buscar signatários" }); }
+  });
+  app.post("/api/admin/signatarios", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertSignatarioSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.flatten() });
+      res.status(201).json(await storage.createSignatario(parsed.data));
+    } catch { res.status(500).json({ message: "Erro ao criar signatário" }); }
+  });
+  app.patch("/api/admin/signatarios/:id", requireAdmin, async (req, res) => {
+    try {
+      const updated = await storage.updateSignatario(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Signatário não encontrado" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Erro ao atualizar signatário" }); }
+  });
+  app.delete("/api/admin/signatarios/:id", requireAdmin, async (req, res) => {
+    try { await storage.deleteSignatario(req.params.id); res.json({ message: "Signatário excluído" }); }
+    catch { res.status(500).json({ message: "Erro ao excluir signatário" }); }
+  });
+
+  // ══════════════════════════════════════════════
+  // ASSINATURA INTERNA (admin assina pelo IDASAM)
+  // ══════════════════════════════════════════════
+  app.post("/api/admin/proposals/:id/sign-internal", requireAdmin, async (req, res) => {
+    try {
+      const { signatarioId, pdfAssinado, documentHash } = req.body as { signatarioId: string; pdfAssinado: string; documentHash: string };
+      if (!signatarioId || !pdfAssinado || !documentHash) return res.status(400).json({ message: "signatarioId, pdfAssinado e documentHash são obrigatórios" });
+      const signatario = await storage.getSignatario(signatarioId);
+      if (!signatario) return res.status(404).json({ message: "Signatário não encontrado" });
+      await storage.uploadSignedPdf(req.params.id, pdfAssinado);
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+      await storage.createAssinaturaLog({
+        proposalId: req.params.id,
+        signerName: signatario.nome,
+        signerEmail: signatario.email,
+        signerCpf: null,
+        signerIp: ip,
+        signerUserAgent: req.headers['user-agent'] || null,
+        signatureType: 'internal' as SignatureType,
+        signatureImage: null,
+        documentHash,
+        signatarioId,
+      });
+      res.json({ message: "Documento assinado internamente" });
+    } catch (e) {
+      console.error("Erro ao assinar internamente:", e);
+      res.status(500).json({ message: "Erro ao assinar documento" });
+    }
+  });
+
+  // ══════════════════════════════════════════════
+  // SOLICITAR ASSINATURA EXTERNA (gera link)
+  // ══════════════════════════════════════════════
+  app.post("/api/admin/proposals/:id/request-external-signature", requireAdmin, async (req, res) => {
+    try {
+      const proposal = await storage.getProposal(req.params.id);
+      if (!proposal) return res.status(404).json({ message: "Proposta não encontrada" });
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
+      const link = await storage.createAssinaturaLink({
+        proposalId: req.params.id,
+        token,
+        signerName: proposal.cliNome || undefined,
+        signerEmail: proposal.cliEmail || undefined,
+        expiresAt,
+      });
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const fullLink = `${baseUrl}/assinar/${token}`;
+
+      // Enviar email com o link se tiver cliEmail
+      if (proposal.cliEmail && RESEND_API_KEY) {
+        const tipoLabel = proposal.tipo === 'contrato' ? 'Contrato' : proposal.tipo === 'orcamento' ? 'Orçamento' : proposal.tipo === 'oficio' ? 'Ofício' : proposal.tipo === 'relatorio' ? 'Relatório' : 'Proposta de Projeto';
+        await sendEmailViaResend(
+          proposal.cliEmail,
+          `Assinatura solicitada — ${tipoLabel} ${proposal.numero}`,
+          `Prezado(a) ${proposal.cliNome},<br><br>O IDASAM solicita sua assinatura no documento <strong>${tipoLabel} nº ${proposal.numero}</strong> — ${proposal.titulo}.<br><br><a href="${fullLink}" style="display:inline-block;background:#1a5c38;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;">Assinar Documento</a><br><br>Este link expira em 7 dias.<br><br>Atenciosamente,<br>IDASAM`
+        );
+      }
+
+      res.json({ token, link: fullLink, expiresAt: link.expiresAt });
+    } catch (e) {
+      console.error("Erro ao solicitar assinatura externa:", e);
+      res.status(500).json({ message: "Erro ao gerar link de assinatura" });
+    }
+  });
+
+  // ══════════════════════════════════════════════
+  // AUDIT TRAIL
+  // ══════════════════════════════════════════════
+  app.get("/api/admin/proposals/:id/signature-logs", requireAdmin, async (req, res) => {
+    try { res.json(await storage.getAssinaturaLogsByProposal(req.params.id)); }
+    catch { res.status(500).json({ message: "Erro ao buscar logs de assinatura" }); }
+  });
+
+  // ══════════════════════════════════════════════
+  // ROTAS PÚBLICAS — assinatura externa (sem auth)
+  // ══════════════════════════════════════════════
+  // Validação pública de documento por hash
+  app.get("/api/public/validar/:hash", async (req, res) => {
+    try {
+      const logs = await db.select().from(assinaturaLogsTable).where(eq(assinaturaLogsTable.documentHash, req.params.hash)).orderBy(desc(assinaturaLogsTable.createdAt));
+      if (logs.length === 0) return res.status(404).json({ valid: false, message: "Documento não encontrado" });
+      const log = logs[0];
+      const proposal = await storage.getProposal(log.proposalId);
+      const tipoLabel = proposal?.tipo === 'contrato' ? 'Contrato' : proposal?.tipo === 'orcamento' ? 'Orçamento' : proposal?.tipo === 'oficio' ? 'Ofício' : proposal?.tipo === 'relatorio' ? 'Relatório' : 'Proposta de Projeto';
+      res.json({
+        valid: true,
+        documento: proposal ? `${tipoLabel} nº ${proposal.numero}` : 'Documento',
+        titulo: proposal?.titulo || '',
+        signerName: log.signerName,
+        signatureType: log.signatureType,
+        signedAt: log.createdAt,
+        hash: log.documentHash,
+      });
+    } catch { res.status(500).json({ valid: false, message: "Erro ao validar" }); }
+  });
+
+  app.get("/api/public/my-ip", (req, res) => {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    res.json({ ip });
+  });
+
+  app.get("/api/public/assinar/:token", async (req, res) => {
+    try {
+      const link = await storage.getAssinaturaLinkByToken(req.params.token);
+      if (!link) return res.status(404).json({ message: "Link de assinatura não encontrado" });
+      if (link.usedAt) return res.status(409).json({ message: "Este documento já foi assinado" });
+      if (new Date() > new Date(link.expiresAt)) return res.status(410).json({ message: "Link de assinatura expirado" });
+
+      const proposal = await storage.getProposal(link.proposalId);
+      if (!proposal) return res.status(404).json({ message: "Documento não encontrado" });
+
+      // Retornar o PDF mais recente (assinado internamente ou original)
+      const pdfContent = proposal.pdfAssinado || proposal.pdfData;
+
+      res.json({
+        titulo: proposal.titulo,
+        numero: proposal.numero,
+        tipo: proposal.tipo,
+        signerName: link.signerName,
+        signerEmail: link.signerEmail,
+        pdfBase64: pdfContent,
+      });
+    } catch { res.status(500).json({ message: "Erro ao carregar documento para assinatura" }); }
+  });
+
+  app.post("/api/public/assinar/:token", async (req, res) => {
+    try {
+      const link = await storage.getAssinaturaLinkByToken(req.params.token);
+      if (!link) return res.status(404).json({ message: "Link não encontrado" });
+      if (link.usedAt) return res.status(409).json({ message: "Documento já assinado" });
+      if (new Date() > new Date(link.expiresAt)) return res.status(410).json({ message: "Link expirado" });
+
+      const { signerName, signerCpf, signatureImage, pdfAssinado, documentHash } = req.body as {
+        signerName: string; signerCpf: string; signatureImage: string; pdfAssinado: string; documentHash: string;
+      };
+      if (!signerName || !signerCpf || !pdfAssinado || !documentHash) {
+        return res.status(400).json({ message: "Nome, CPF, PDF assinado e hash são obrigatórios" });
+      }
+
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+      const userAgent = req.headers['user-agent'] || null;
+
+      // Salvar PDF assinado na proposal
+      await storage.uploadSignedPdf(link.proposalId, pdfAssinado);
+      // Marcar link como usado
+      await storage.markAssinaturaLinkUsed(req.params.token);
+      // Criar audit log
+      await storage.createAssinaturaLog({
+        proposalId: link.proposalId,
+        signerName,
+        signerCpf,
+        signerEmail: link.signerEmail,
+        signerIp: ip,
+        signerUserAgent: userAgent,
+        signatureType: 'external' as SignatureType,
+        signatureImage,
+        documentHash,
+        signatarioId: null,
+      });
+
+      res.json({ message: "Documento assinado com sucesso" });
+    } catch (e) {
+      console.error("Erro na assinatura externa:", e);
+      res.status(500).json({ message: "Erro ao processar assinatura" });
     }
   });
 

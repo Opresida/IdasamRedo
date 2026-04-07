@@ -6,14 +6,13 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
 
 ## Em andamento
 
-- [ ] Configurar variáveis de ambiente para habilitar todas as integrações
+- [ ] Configurar variáveis de ambiente das integrações externas (Stripe, Resend, Supabase)
 
 ---
 
 ## Funcionalidades pendentes
 
 ### Alta prioridade
-- [ ] Configurar `ADMIN_EMAIL` e `ADMIN_PASSWORD` no `.env` para habilitar login admin
 - [ ] Configurar `STRIPE_SECRET_KEY` e `VITE_STRIPE_PUBLISHABLE_KEY` para pagamentos
 - [ ] Configurar `RESEND_API_KEY` para envio de e-mails
 
@@ -42,3 +41,4 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
 - [x] Conexão com banco Neon via `DATABASE_URL`
 - [x] Aplicação rodando localmente em `http://localhost:5000`
 - [x] Criação dos arquivos de documentação (README, CONTEXT, TODO)
+- [x] Configurar `ADMIN_EMAIL` e `ADMIN_PASSWORD` — login admin habilitado ✓ *2026-04-06*

@@ -370,6 +370,10 @@ export const proposals = pgTable("proposals", {
   validade: text("validade"),
   dados: text("dados"),
   obs: text("obs"),
+  pdfData: text("pdf_data"),
+  pdfAssinado: text("pdf_assinado"),
+  assinadoEm: timestamp("assinado_em", { withTimezone: true }),
+  enviadoEm: timestamp("enviado_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
@@ -380,6 +384,58 @@ export const insertProposalSchema = createInsertSchema(proposals).omit({ id: tru
   cliNome:    z.string().min(1, "Nome é obrigatório"),
   valorTotal: z.string().optional().nullable(),
   status:     z.enum(PROPOSAL_STATUSES).optional().default("enviada"),
+  pdfData:    z.string().optional().nullable(),
 });
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type Proposal = typeof proposals.$inferSelect;
+
+// ── Signatários (assinantes internos cadastrados) ──
+export const signatarios = pgTable("signatarios", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  nome: text("nome").notNull(),
+  cargo: text("cargo").notNull(),
+  email: text("email").notNull(),
+  ativo: text("ativo").notNull().default("true"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+export const insertSignatarioSchema = createInsertSchema(signatarios).omit({ id: true, createdAt: true }).extend({
+  nome:  z.string().min(1, "Nome é obrigatório"),
+  cargo: z.string().min(1, "Cargo é obrigatório"),
+  email: z.string().email("E-mail inválido"),
+});
+export type InsertSignatario = z.infer<typeof insertSignatarioSchema>;
+export type Signatario = typeof signatarios.$inferSelect;
+
+// ── Links de assinatura externa ──
+export const assinaturaLinks = pgTable("assinatura_links", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: uuid("proposal_id").notNull(),
+  token: text("token").notNull().unique(),
+  signerName: text("signer_name"),
+  signerEmail: text("signer_email"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+export type AssinaturaLink = typeof assinaturaLinks.$inferSelect;
+
+// ── Audit trail de assinaturas ──
+export const SIGNATURE_TYPES = ['internal', 'external'] as const;
+export type SignatureType = typeof SIGNATURE_TYPES[number];
+
+export const assinaturaLogs = pgTable("assinatura_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: uuid("proposal_id").notNull(),
+  signerName: text("signer_name").notNull(),
+  signerCpf: text("signer_cpf"),
+  signerEmail: text("signer_email"),
+  signerIp: text("signer_ip"),
+  signerUserAgent: text("signer_user_agent"),
+  signatureType: text("signature_type").$type<SignatureType>().notNull(),
+  signatureImage: text("signature_image"),
+  documentHash: text("document_hash").notNull(),
+  signatarioId: uuid("signatario_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
+});
+export type AssinaturaLog = typeof assinaturaLogs.$inferSelect;
+export type InsertAssinaturaLog = Omit<AssinaturaLog, 'id' | 'createdAt'>;

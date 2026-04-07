@@ -1,4 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
+import { Document, Page, pdfjs } from 'react-pdf'
+import 'react-pdf/dist/Page/AnnotationLayer.css'
+import 'react-pdf/dist/Page/TextLayer.css'
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -15,9 +20,10 @@ import {
   Download, ArrowLeft, Plus, X, Loader2, Save, Trash2,
   CheckCircle, XCircle, Clock, RefreshCw, FolderOpen, BarChart2,
   Upload, ImagePlus, ChevronUp, ChevronDown, AlignLeft, Image as ImageIcon, Table,
+  Eye, Mail, Send, PenTool, Link2, Shield, FileCheck, UserPlus, Users,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import type { Proposal, ProposalStatus } from '@shared/schema'
+import type { Proposal, ProposalStatus, Signatario } from '@shared/schema'
 import './suite.css'
 
 interface Clause  { id: string; title: string; body: string }
@@ -296,6 +302,7 @@ export function SuiteDocumental() {
     ],
   })
   const [pdfUrl, setPdfUrl]                   = useState<string | null>(null)
+  const [pdfBase64Cache, setPdfBase64Cache]   = useState<string | null>(null)
   const [generatingRelatorio, setGeneratingRelatorio] = useState(false)
   const [relView, setRelView]                 = useState<'form' | 'preview'>('form')
 
@@ -314,6 +321,7 @@ export function SuiteDocumental() {
     ],
   })
   const [projPdfUrl, setProjPdfUrl]               = useState<string | null>(null)
+  const [projPdfBase64Cache, setProjPdfBase64Cache] = useState<string | null>(null)
   const [generatingProjeto, setGeneratingProjeto] = useState(false)
   const [salvandoProjeto, setSalvandoProjeto]     = useState(false)
   const [projetoSalvo, setProjetoSalvo]           = useState(false)
@@ -509,6 +517,12 @@ export function SuiteDocumental() {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl)
       const url = URL.createObjectURL(blob)
       setPdfUrl(url)
+
+      // Cache base64 para salvar junto com os metadados
+      const arrayBuf = await blob.arrayBuffer()
+      const base64 = btoa(new Uint8Array(arrayBuf).reduce((d, b) => d + String.fromCharCode(b), ''))
+      setPdfBase64Cache(base64)
+
       setRelatorioSalvo(false)
       setRelView('preview')
     } catch (e) {
@@ -536,10 +550,11 @@ export function SuiteDocumental() {
         emissao: today.toISOString().slice(0, 10),
         status:  'enviada',
         dados:   JSON.stringify({ formData }),
+        pdfData: pdfBase64Cache,
       })
       queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
       setRelatorioSalvo(true)
-      toast({ title: 'Relatório salvo!', description: 'Registrado em Documentos Emitidos → Relatórios.' })
+      toast({ title: 'Relatório salvo!', description: 'PDF armazenado. Acesse em Documentos Emitidos.' })
     } catch {
       toast({ title: 'Erro ao salvar relatório', variant: 'destructive' })
     } finally {
@@ -740,6 +755,12 @@ export function SuiteDocumental() {
       if (projPdfUrl) URL.revokeObjectURL(projPdfUrl)
       const url = URL.createObjectURL(blob)
       setProjPdfUrl(url)
+
+      // Cache base64 para salvar junto
+      const arrayBuf = await blob.arrayBuffer()
+      const base64 = btoa(new Uint8Array(arrayBuf).reduce((d, b) => d + String.fromCharCode(b), ''))
+      setProjPdfBase64Cache(base64)
+
       setProjetoSalvo(false)
       setProjView('preview')
     } catch (e) {
@@ -767,10 +788,11 @@ export function SuiteDocumental() {
         emissao: today.toISOString().slice(0, 10),
         status:  'enviada',
         dados:   JSON.stringify({ projData }),
+        pdfData: projPdfBase64Cache,
       })
       queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
       setProjetoSalvo(true)
-      toast({ title: 'Proposta salva!', description: 'Registrada em Documentos Emitidos → Projetos.' })
+      toast({ title: 'Proposta salva!', description: 'PDF armazenado. Acesse em Documentos Emitidos.' })
     } catch {
       toast({ title: 'Erro ao salvar proposta', variant: 'destructive' })
     } finally {
@@ -805,6 +827,214 @@ export function SuiteDocumental() {
     },
     onError: () => toast({ title: 'Erro ao excluir proposta', variant: 'destructive' }),
   })
+
+  // ── Documentos Emitidos — Preview, Download, Email ──
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
+  const [previewNumPages, setPreviewNumPages] = useState(0)
+  const [emailModal, setEmailModal] = useState<{ id: string; numero: string; cliEmail: string | null } | null>(null)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
+  const [sendingEmail, setSendingEmail] = useState(false)
+
+  const handlePreviewPdf = async (proposalId: string) => {
+    try {
+      const res = await adminFetch('GET', `/api/admin/proposals/${proposalId}/pdf`)
+      const rawBlob = await res.blob()
+      // Forçar tipo MIME para que o iframe renderize como PDF
+      const pdfBlob = new Blob([rawBlob], { type: 'application/pdf' })
+      if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl)
+      const url = URL.createObjectURL(pdfBlob)
+      setPreviewPdfUrl(url)
+    } catch {
+      toast({ title: 'PDF não disponível', description: 'Este documento não possui PDF salvo.', variant: 'destructive' })
+    }
+  }
+
+  const handleDownloadPdf = async (proposal: Proposal) => {
+    try {
+      // Priorizar versão assinada, fallback para original
+      const hasSigned = proposal.pdfAssinado === 'has_pdf_assinado'
+      const endpoint = hasSigned
+        ? `/api/admin/proposals/${proposal.id}/signed-pdf`
+        : `/api/admin/proposals/${proposal.id}/pdf`
+      const suffix = hasSigned ? '_assinado' : ''
+      const res = await adminFetch('GET', endpoint)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${proposal.tipo}_${proposal.numero.replace(/\//g, '-')}${suffix}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast({ title: 'PDF não disponível', description: 'Este documento não possui PDF salvo.', variant: 'destructive' })
+    }
+  }
+
+  const handleOpenEmailModal = (p: Proposal) => {
+    const tipoLabel = p.tipo === 'contrato' ? 'Contrato' : p.tipo === 'orcamento' ? 'Orçamento' : p.tipo === 'oficio' ? 'Ofício' : p.tipo === 'relatorio' ? 'Relatório' : 'Proposta de Projeto'
+    setEmailTo(p.cliEmail || '')
+    setEmailSubject(`${tipoLabel} ${p.numero} — IDASAM`)
+    setEmailMessage(`Prezado(a),\n\nSegue em anexo o documento ${tipoLabel} nº ${p.numero} — ${p.titulo}.\n\nAtenciosamente,\nIDASSAM`)
+    setEmailModal({ id: p.id, numero: p.numero, cliEmail: p.cliEmail })
+  }
+
+  const handleSendEmail = async () => {
+    if (!emailModal || !emailTo.trim()) return
+    setSendingEmail(true)
+    try {
+      await adminFetch('POST', `/api/admin/proposals/${emailModal.id}/email`, {
+        to: emailTo.trim(),
+        subject: emailSubject,
+        message: emailMessage,
+      })
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
+      toast({ title: 'E-mail enviado com sucesso!', description: `Documento enviado para ${emailTo}` })
+      setEmailModal(null)
+    } catch {
+      toast({ title: 'Erro ao enviar e-mail', variant: 'destructive' })
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
+  // ── Upload de PDF assinado ──
+  const [uploadingSignedPdf, setUploadingSignedPdf] = useState<string | null>(null)
+  const signedFileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleUploadSignedPdf = async (proposalId: string, file: File) => {
+    if (file.type !== 'application/pdf') {
+      toast({ title: 'Apenas PDFs são aceitos', variant: 'destructive' })
+      return
+    }
+    setUploadingSignedPdf(proposalId)
+    try {
+      const arrayBuf = await file.arrayBuffer()
+      const base64 = btoa(new Uint8Array(arrayBuf).reduce((d, b) => d + String.fromCharCode(b), ''))
+      await adminFetch('PATCH', `/api/admin/proposals/${proposalId}/signed-pdf`, { pdfAssinado: base64 })
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
+      toast({ title: 'PDF assinado salvo!', description: 'Documento atualizado com a versão assinada.' })
+    } catch {
+      toast({ title: 'Erro ao enviar PDF assinado', variant: 'destructive' })
+    } finally {
+      setUploadingSignedPdf(null)
+    }
+  }
+
+  const handlePreviewSignedPdf = async (proposalId: string) => {
+    try {
+      const res = await adminFetch('GET', `/api/admin/proposals/${proposalId}/signed-pdf`)
+      const rawBlob = await res.blob()
+      const pdfBlob = new Blob([rawBlob], { type: 'application/pdf' })
+      if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl)
+      const url = URL.createObjectURL(pdfBlob)
+      setPreviewPdfUrl(url)
+    } catch {
+      toast({ title: 'PDF assinado não disponível', variant: 'destructive' })
+    }
+  }
+
+  // ── Signatários ──
+  const { data: signatariosList = [] } = useQuery<Signatario[]>({
+    queryKey: ['/api/admin/signatarios'],
+    queryFn: async () => { const r = await adminFetch('GET', '/api/admin/signatarios'); return r.json() },
+    enabled: !!adminToken,
+  })
+  const [novoSig, setNovoSig] = useState({ nome: '', cargo: '', email: '' })
+  const createSigMutation = useMutation({
+    mutationFn: (data: typeof novoSig) => adminFetch('POST', '/api/admin/signatarios', data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/admin/signatarios'] }); setNovoSig({ nome: '', cargo: '', email: '' }); toast({ title: 'Signatário cadastrado' }) },
+    onError: () => toast({ title: 'Erro ao cadastrar', variant: 'destructive' }),
+  })
+  const deleteSigMutation = useMutation({
+    mutationFn: (id: string) => adminFetch('DELETE', `/api/admin/signatarios/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/admin/signatarios'] }); toast({ title: 'Signatário excluído' }) },
+    onError: () => toast({ title: 'Erro ao excluir', variant: 'destructive' }),
+  })
+
+  // ── Assinatura Interna ──
+  const [signInternalModal, setSignInternalModal] = useState<{ proposalId: string; numero: string; tipo: string; titulo: string } | null>(null)
+  const [selectedSignatarioId, setSelectedSignatarioId] = useState('')
+  const [signingInternal, setSigningInternal] = useState(false)
+
+  const handleSignInternal = async () => {
+    if (!signInternalModal || !selectedSignatarioId) return
+    setSigningInternal(true)
+    try {
+      // Buscar PDF original
+      const pdfRes = await adminFetch('GET', `/api/admin/proposals/${signInternalModal.proposalId}/pdf`)
+      const pdfBlob = await pdfRes.blob()
+      const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer())
+
+      // Calcular hash SHA-256 do original
+      const hashBuffer = await crypto.subtle.digest('SHA-256', pdfBytes)
+      const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+
+      // Encontrar signatário selecionado
+      const sig = signatariosList.find(s => s.id === selectedSignatarioId)
+      if (!sig) throw new Error('Signatário não encontrado')
+
+      // Usar pdf-lib + página de autenticação dedicada
+      const { PDFDocument } = await import('pdf-lib')
+      const { addAuthenticationPage } = await import('@/lib/pdf-auth-page')
+      const pdfDoc = await PDFDocument.load(pdfBytes)
+
+      const now = new Date()
+      const dateStr = now.toLocaleDateString('pt-BR') + ' às ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      const baseUrl = window.location.origin
+
+      await addAuthenticationPage({
+        pdfDoc,
+        docTipo: signInternalModal.tipo,
+        docNumero: signInternalModal.numero,
+        docTitulo: signInternalModal.titulo,
+        signerName: sig.nome,
+        signerCargo: sig.cargo,
+        dateStr,
+        hashHex,
+        validationBaseUrl: baseUrl,
+        signatureType: 'internal',
+      })
+
+      const signedBytes = await pdfDoc.save()
+      const base64 = btoa(new Uint8Array(signedBytes).reduce((d, b) => d + String.fromCharCode(b), ''))
+
+      await adminFetch('POST', `/api/admin/proposals/${signInternalModal.proposalId}/sign-internal`, {
+        signatarioId: selectedSignatarioId,
+        pdfAssinado: base64,
+        documentHash: hashHex,
+      })
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
+      toast({ title: 'Documento assinado com sucesso!', description: `Assinado por ${sig.nome}` })
+      setSignInternalModal(null)
+      setSelectedSignatarioId('')
+    } catch (e) {
+      console.error('Erro ao assinar:', e)
+      toast({ title: 'Erro ao assinar documento', variant: 'destructive' })
+    } finally {
+      setSigningInternal(false)
+    }
+  }
+
+  // ── Assinatura Externa (gerar link) ──
+  const [extLinkModal, setExtLinkModal] = useState<{ link: string; expiresAt: string } | null>(null)
+  const [requestingExtLink, setRequestingExtLink] = useState<string | null>(null)
+
+  const handleRequestExternalSignature = async (proposalId: string) => {
+    setRequestingExtLink(proposalId)
+    try {
+      const res = await adminFetch('POST', `/api/admin/proposals/${proposalId}/request-external-signature`)
+      const data = await res.json()
+      setExtLinkModal({ link: data.link, expiresAt: data.expiresAt })
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
+      toast({ title: 'Link de assinatura gerado!' })
+    } catch {
+      toast({ title: 'Erro ao gerar link', variant: 'destructive' })
+    } finally {
+      setRequestingExtLink(null)
+    }
+  }
 
   const contPagesRef = useRef<HTMLDivElement>(null)
   const orcPagesRef  = useRef<HTMLDivElement>(null)
@@ -1041,10 +1271,12 @@ export function SuiteDocumental() {
     setPaginating(false)
   }
 
-  async function gerarPDF(tipo: PreviewType) {
-    const ref = tipo === 'contratos' ? contPagesRef : tipo === 'orcamentos' ? orcPagesRef : ofPagesRef
-    if (!ref.current) return
-    setGeneratingPDF(true)
+  /** Captura as páginas de um ref e retorna { base64, blob } do PDF gerado */
+  async function capturePdfFromRef(
+    ref: React.RefObject<HTMLDivElement | null>,
+    onProgress?: (text: string) => void,
+  ): Promise<{ base64: string; blob: Blob } | null> {
+    if (!ref.current) return null
     document.body.classList.add('sd-exporting')
     window.scrollTo(0, 0)
     try {
@@ -1056,9 +1288,6 @@ export function SuiteDocumental() {
       const pdf = new jsPDF({ unit: 'px', format: [W, H], orientation: 'portrait' })
       const pages = ref.current.querySelectorAll('.sd-page-a4')
 
-      // html2canvas cannot apply CSS filters to cross-origin SVGs.
-      // Build a white raster version of the logo using Canvas 2D and swap
-      // each .sd-logo-img src before capturing, then restore afterwards.
       const whiteLogoUrl = await buildWhiteLogoDataUrl()
       const allLogos = Array.from(
         ref.current.querySelectorAll('.sd-logo-img')
@@ -1069,7 +1298,6 @@ export function SuiteDocumental() {
         img.src          = whiteLogoUrl
         img.style.filter = 'none'
       })
-      // Wait for every logo to finish loading the new src before capturing
       await Promise.all(allLogos.map(img =>
         img.complete
           ? Promise.resolve()
@@ -1078,7 +1306,7 @@ export function SuiteDocumental() {
       await new Promise(r => requestAnimationFrame(r))
 
       for (let i = 0; i < pages.length; i++) {
-        setLoadingText(`Renderizando página ${i + 1} de ${pages.length}...`)
+        onProgress?.(`Renderizando página ${i + 1} de ${pages.length}...`)
         const canvas = await html2canvas(pages[i] as HTMLElement, {
           scale: 2, useCORS: true, logging: false, width: W, height: H, windowWidth: W,
         })
@@ -1091,17 +1319,40 @@ export function SuiteDocumental() {
         img.style.filter = savedFilters[i]
       })
 
+      const blob = pdf.output('blob')
+      const arrayBuf = await blob.arrayBuffer()
+      const base64 = btoa(
+        new Uint8Array(arrayBuf).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      )
+      return { base64, blob }
+    } finally {
+      document.body.classList.remove('sd-exporting')
+    }
+  }
+
+  async function gerarPDF(tipo: PreviewType) {
+    const ref = tipo === 'contratos' ? contPagesRef : tipo === 'orcamentos' ? orcPagesRef : ofPagesRef
+    if (!ref.current) return
+    setGeneratingPDF(true)
+    try {
+      const result = await capturePdfFromRef(ref, setLoadingText)
+      if (!result) return
+
       const year = new Date().getFullYear()
       const filename =
         tipo === 'contratos'  ? `Contrato_IDASAM_${cData.ctadoNome.split(' ')[0] || 'Contrato'}_${year}.pdf` :
         tipo === 'orcamentos' ? `Orcamento_IDASAM_${oData.numero}_${oData.cliNome.split(' ')[0] || 'Cliente'}.pdf` :
                                 `Oficio_IDASAM_${ofData.numero.replace(/\//g, '-')}_${year}.pdf`
-      pdf.save(filename)
+
+      // Download via blob URL
+      const url = URL.createObjectURL(result.blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
     } catch (err) {
       console.error('Erro ao gerar PDF:', err)
       alert('Erro ao gerar o PDF. Veja o console para detalhes.')
     } finally {
-      document.body.classList.remove('sd-exporting')
       setGeneratingPDF(false)
       setLoadingText('')
     }
@@ -1110,6 +1361,12 @@ export function SuiteDocumental() {
   async function saveCurrentDocument(tipo: PreviewType) {
     setSavingProposal(true)
     try {
+      // Gerar PDF base64 a partir do preview renderizado
+      const ref = tipo === 'contratos' ? contPagesRef : tipo === 'orcamentos' ? orcPagesRef : ofPagesRef
+      setLoadingText('Gerando PDF para salvar...')
+      const pdfResult = await capturePdfFromRef(ref, setLoadingText)
+      const pdfBase64 = pdfResult?.base64 || null
+
       let body: Record<string, unknown>
       if (tipo === 'contratos') {
         body = {
@@ -1120,6 +1377,7 @@ export function SuiteDocumental() {
           emissao:    new Date().toISOString().slice(0, 10),
           status:     'enviada' as ProposalStatus,
           dados:      JSON.stringify({ cData, clauses, sigs }),
+          pdfData:    pdfBase64,
         }
       } else if (tipo === 'orcamentos') {
         body = {
@@ -1135,6 +1393,7 @@ export function SuiteDocumental() {
           obs:        oData.obs || null,
           status:     'enviada' as ProposalStatus,
           dados:      JSON.stringify({ oData, oItems }),
+          pdfData:    pdfBase64,
         }
       } else {
         body = {
@@ -1145,16 +1404,18 @@ export function SuiteDocumental() {
           emissao:    ofData.data,
           status:     'enviada' as ProposalStatus,
           dados:      JSON.stringify({ ofData }),
+          pdfData:    pdfBase64,
         }
       }
       await adminFetch('POST', '/api/admin/proposals', body)
       queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
       const labels = { contratos: 'Contrato', orcamentos: 'Orçamento', oficios: 'Ofício' }
-      toast({ title: `${labels[tipo]} salvo com sucesso!`, description: 'Registrado na aba Documentos Emitidos.' })
+      toast({ title: `${labels[tipo]} salvo com sucesso!`, description: 'PDF armazenado. Acesse em Documentos Emitidos.' })
     } catch {
       toast({ title: 'Erro ao salvar documento', variant: 'destructive' })
     } finally {
       setSavingProposal(false)
+      setLoadingText('')
     }
   }
 
@@ -1237,29 +1498,35 @@ export function SuiteDocumental() {
 
         <div className="max-w-4xl mx-auto px-4 py-8">
           <Tabs defaultValue="contratos" className="w-full">
-            <TabsList className="grid grid-cols-6 w-full h-12 mb-8 bg-[#2A5B46]/8 border border-[#C8DDD5]">
-              <TabsTrigger value="contratos"  className="gap-2 data-[state=active]:bg-[#2A5B46] data-[state=active]:text-white">
-                <FileText size={14} /> Contratos
+            <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1 mb-8 bg-[#2A5B46]/8 border border-[#C8DDD5] rounded-lg">
+              <TabsTrigger value="contratos" className="gap-1.5 text-[11px] flex-1 min-w-[100px] data-[state=active]:bg-[#2A5B46] data-[state=active]:text-white">
+                <FileText size={13} /> Contratos
               </TabsTrigger>
-              <TabsTrigger value="orcamentos" className="gap-2 data-[state=active]:bg-[#C86A3B] data-[state=active]:text-white">
-                <DollarSign size={14} /> Orçamentos
+              <TabsTrigger value="orcamentos" className="gap-1.5 text-[11px] flex-1 min-w-[100px] data-[state=active]:bg-[#C86A3B] data-[state=active]:text-white">
+                <DollarSign size={13} /> Orçamentos
               </TabsTrigger>
-              <TabsTrigger value="oficios"    className="gap-2 data-[state=active]:bg-[#008080] data-[state=active]:text-white">
-                <MessageSquare size={14} /> Ofícios
+              <TabsTrigger value="oficios" className="gap-1.5 text-[11px] flex-1 min-w-[80px] data-[state=active]:bg-[#008080] data-[state=active]:text-white">
+                <MessageSquare size={13} /> Ofícios
               </TabsTrigger>
-              <TabsTrigger value="documentos" className="gap-2 data-[state=active]:bg-[#6B4C9A] data-[state=active]:text-white">
-                <Archive size={14} /> Documentos Emitidos
+              <TabsTrigger value="documentos" className="gap-1.5 text-[11px] flex-1 min-w-[130px] data-[state=active]:bg-[#6B4C9A] data-[state=active]:text-white">
+                <Archive size={13} /> Emitidos
                 {savedProposals.length > 0 && (
-                  <span className="ml-1 bg-[#FBBF24] text-[#1F2937] text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
+                  <span className="ml-0.5 bg-[#FBBF24] text-[#1F2937] text-[9px] font-bold rounded-full px-1.5 py-0.5 leading-none">
                     {savedProposals.length}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="projetos" className="gap-2 data-[state=active]:bg-[#1E40AF] data-[state=active]:text-white">
-                <FolderOpen size={14} /> Projetos
+              <TabsTrigger value="projetos" className="gap-1.5 text-[11px] flex-1 min-w-[90px] data-[state=active]:bg-[#1E40AF] data-[state=active]:text-white">
+                <FolderOpen size={13} /> Projetos
               </TabsTrigger>
-              <TabsTrigger value="relatorios" className="gap-2 data-[state=active]:bg-[#6B7280] data-[state=active]:text-white">
-                <BarChart2 size={14} /> Relatórios
+              <TabsTrigger value="relatorios" className="gap-1.5 text-[11px] flex-1 min-w-[100px] data-[state=active]:bg-[#6B7280] data-[state=active]:text-white">
+                <BarChart2 size={13} /> Relatórios
+              </TabsTrigger>
+              <TabsTrigger value="signatarios" className="gap-1.5 text-[11px] flex-1 min-w-[110px] data-[state=active]:bg-[#0F766E] data-[state=active]:text-white">
+                <Users size={13} /> Signatários
+                {signatariosList.length > 0 && (
+                  <span className="ml-0.5 text-[9px] opacity-60">({signatariosList.length})</span>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -1747,7 +2014,8 @@ export function SuiteDocumental() {
                                     {showValor && <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Valor</th>}
                                     {showValidade && <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Validade</th>}
                                     <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Status</th>
-                                    <th className="py-2 px-3"></th>
+                                    <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Ciclo de Vida</th>
+                                    <th className="py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Ações</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1804,16 +2072,136 @@ export function SuiteDocumental() {
                                           </SelectContent>
                                         </Select>
                                       </td>
+                                      {/* ── Timeline / Ciclo de Vida ── */}
                                       <td className="py-3 px-3">
-                                        <button
-                                          className="text-red-400 hover:text-red-600 transition-colors p-1 rounded"
-                                          onClick={() => {
-                                            if (confirm(`Excluir ${labelMap[subtab]} ${p.numero}?`)) deleteProposalMutation.mutate(p.id)
-                                          }}
-                                          title={`Excluir ${labelMap[subtab]}`}
-                                        >
-                                          <Trash2 size={14} />
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                          {/* Emitido */}
+                                          <div className="flex items-center gap-0.5" title={`Emitido em ${p.createdAt ? new Date(p.createdAt).toLocaleDateString('pt-BR') : '—'}`}>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#2A5B46]" />
+                                            <span className="text-[9px] text-[#2A5B46] font-semibold">Emitido</span>
+                                          </div>
+                                          <div className={`w-4 h-px ${p.pdfAssinado === 'has_pdf_assinado' ? 'bg-[#2A5B46]' : 'bg-gray-300'}`} />
+
+                                          {/* Assinado */}
+                                          <div className="flex items-center gap-0.5" title={p.assinadoEm ? `Assinado em ${new Date(p.assinadoEm).toLocaleDateString('pt-BR')}` : 'Aguardando assinatura'}>
+                                            <div className={`w-2.5 h-2.5 rounded-full ${p.pdfAssinado === 'has_pdf_assinado' ? 'bg-blue-500' : 'bg-gray-300 border border-dashed border-gray-400'}`} />
+                                            <span className={`text-[9px] font-semibold ${p.pdfAssinado === 'has_pdf_assinado' ? 'text-blue-500' : 'text-gray-400'}`}>Assinado</span>
+                                          </div>
+                                          <div className={`w-4 h-px ${p.enviadoEm ? 'bg-blue-500' : 'bg-gray-300'}`} />
+
+                                          {/* Enviado */}
+                                          <div className="flex items-center gap-0.5" title={p.enviadoEm ? `Enviado em ${new Date(p.enviadoEm).toLocaleDateString('pt-BR')}` : 'Não enviado'}>
+                                            <div className={`w-2.5 h-2.5 rounded-full ${p.enviadoEm ? 'bg-orange-500' : 'bg-gray-300 border border-dashed border-gray-400'}`} />
+                                            <span className={`text-[9px] font-semibold ${p.enviadoEm ? 'text-orange-500' : 'text-gray-400'}`}>Enviado</span>
+                                          </div>
+                                        </div>
+
+                                        {/* Ações de assinatura */}
+                                        {p.pdfAssinado !== 'has_pdf_assinado' && (
+                                          <div className="mt-1.5 flex flex-col gap-1">
+                                            {p.pdfData === 'has_pdf' && (
+                                              <button
+                                                className="flex items-center gap-1 text-[10px] font-medium text-[#2A5B46] hover:text-[#1F4A38] transition-colors"
+                                                onClick={() => setSignInternalModal({ proposalId: p.id, numero: p.numero, tipo: p.tipo || 'contrato', titulo: p.titulo })}
+                                              >
+                                                <PenTool size={11} /> Assinar (IDASAM)
+                                              </button>
+                                            )}
+                                            <button
+                                              className="flex items-center gap-1 text-[10px] font-medium text-purple-600 hover:text-purple-800 transition-colors"
+                                              onClick={() => handleRequestExternalSignature(p.id)}
+                                              disabled={requestingExtLink === p.id}
+                                            >
+                                              {requestingExtLink === p.id
+                                                ? <><Loader2 size={11} className="animate-spin" /> Gerando link...</>
+                                                : <><Link2 size={11} /> Solicitar assinatura externa</>
+                                              }
+                                            </button>
+                                            <button
+                                              className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                                              onClick={() => {
+                                                const input = document.createElement('input')
+                                                input.type = 'file'; input.accept = 'application/pdf'
+                                                input.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleUploadSignedPdf(p.id, f) }
+                                                input.click()
+                                              }}
+                                              disabled={uploadingSignedPdf === p.id}
+                                            >
+                                              {uploadingSignedPdf === p.id
+                                                ? <><Loader2 size={11} className="animate-spin" /> Enviando...</>
+                                                : <><Upload size={11} /> Upload PDF assinado</>
+                                              }
+                                            </button>
+                                          </div>
+                                        )}
+
+                                        {/* Link para visualizar PDF assinado */}
+                                        {p.pdfAssinado === 'has_pdf_assinado' && (
+                                          <button
+                                            className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-blue-500 hover:text-blue-700 transition-colors"
+                                            onClick={() => handlePreviewSignedPdf(p.id)}
+                                          >
+                                            <Eye size={11} /> Ver versão assinada
+                                          </button>
+                                        )}
+
+                                        {/* Marcar como enviado manualmente */}
+                                        {!p.enviadoEm && (
+                                          <button
+                                            className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-orange-500 hover:text-orange-700 transition-colors"
+                                            onClick={async () => {
+                                              try {
+                                                await adminFetch('PATCH', `/api/admin/proposals/${p.id}/mark-sent`)
+                                                queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
+                                                toast({ title: 'Documento marcado como enviado' })
+                                              } catch {
+                                                toast({ title: 'Erro ao marcar como enviado', variant: 'destructive' })
+                                              }
+                                            }}
+                                          >
+                                            <Send size={11} /> Marcar como enviado
+                                          </button>
+                                        )}
+                                      </td>
+
+                                      {/* ── Ações ── */}
+                                      <td className="py-3 px-3">
+                                        <div className="flex items-center gap-1">
+                                          {p.pdfData === 'has_pdf' && (
+                                            <>
+                                              <button
+                                                className="text-blue-500 hover:text-blue-700 transition-colors p-1 rounded"
+                                                onClick={() => handlePreviewPdf(p.id)}
+                                                title="Visualizar PDF original"
+                                              >
+                                                <Eye size={14} />
+                                              </button>
+                                              <button
+                                                className="text-green-600 hover:text-green-800 transition-colors p-1 rounded"
+                                                onClick={() => handleDownloadPdf(p)}
+                                                title="Baixar PDF"
+                                              >
+                                                <Download size={14} />
+                                              </button>
+                                              <button
+                                                className="text-orange-500 hover:text-orange-700 transition-colors p-1 rounded"
+                                                onClick={() => handleOpenEmailModal(p)}
+                                                title="Enviar por e-mail"
+                                              >
+                                                <Mail size={14} />
+                                              </button>
+                                            </>
+                                          )}
+                                          <button
+                                            className="text-red-400 hover:text-red-600 transition-colors p-1 rounded"
+                                            onClick={() => {
+                                              deleteProposalMutation.mutate(p.id)
+                                            }}
+                                            title={`Excluir ${labelMap[subtab]}`}
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </div>
                                       </td>
                                     </tr>
                                   ))}
@@ -2386,9 +2774,274 @@ export function SuiteDocumental() {
               )}
             </TabsContent>
 
+            {/* ══════ ABA SIGNATÁRIOS ══════ */}
+            <TabsContent value="signatarios" className="space-y-4">
+              <SdCard title="Signatários Cadastrados">
+                <p className="text-xs text-gray-500 mb-4">Cadastre os signatários autorizados a assinar documentos internamente pelo IDASAM.</p>
+
+                {/* Formulário de cadastro */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3 flex items-center gap-1.5"><UserPlus size={13} /> Novo Signatário</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase">Nome completo</label>
+                      <Input className="mt-1 h-9 text-sm" placeholder="Ex: João Silva" value={novoSig.nome} onChange={e => setNovoSig(s => ({ ...s, nome: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase">Cargo</label>
+                      <Input className="mt-1 h-9 text-sm" placeholder="Ex: Diretor Executivo" value={novoSig.cargo} onChange={e => setNovoSig(s => ({ ...s, cargo: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase">E-mail</label>
+                      <Input className="mt-1 h-9 text-sm" placeholder="Ex: joao@idasam.org" value={novoSig.email} onChange={e => setNovoSig(s => ({ ...s, email: e.target.value }))} />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="mt-3 bg-[#0F766E] hover:bg-[#0D655E] text-white gap-1.5"
+                    disabled={!novoSig.nome || !novoSig.cargo || !novoSig.email}
+                    onClick={() => createSigMutation.mutate(novoSig)}
+                  >
+                    <Plus size={14} /> Cadastrar Signatário
+                  </Button>
+                </div>
+
+                {/* Lista */}
+                {signatariosList.length === 0 ? (
+                  <div className="flex flex-col items-center py-10 text-gray-400">
+                    <Users size={32} className="opacity-25 mb-2" />
+                    <p className="text-sm">Nenhum signatário cadastrado.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#C8DDD5]">
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Nome</th>
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Cargo</th>
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">E-mail</th>
+                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wide text-[#4A7260] font-bold">Status</th>
+                        <th className="py-2 px-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {signatariosList.map(s => (
+                        <tr key={s.id} className="border-b border-[#F0F4F8] hover:bg-[#F0F4F8]/60 transition-colors">
+                          <td className="py-3 px-3 font-semibold text-[#1F2937]">{s.nome}</td>
+                          <td className="py-3 px-3 text-gray-500">{s.cargo}</td>
+                          <td className="py-3 px-3 text-gray-500 text-xs">{s.email}</td>
+                          <td className="py-3 px-3">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.ativo === 'true' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                              {s.ativo === 'true' ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <button
+                              className="text-red-400 hover:text-red-600 transition-colors p-1"
+                              onClick={() => deleteSigMutation.mutate(s.id)}
+                              title="Excluir signatário"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </SdCard>
+            </TabsContent>
+
           </Tabs>
         </div>
       </div>
+
+      {/* ══════ Modal Preview PDF ══════ */}
+      {previewPdfUrl && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4" onClick={() => { URL.revokeObjectURL(previewPdfUrl); setPreviewPdfUrl(null); setPreviewNumPages(0) }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50 shrink-0">
+              <h3 className="font-bold text-sm text-[#1F2937] flex items-center gap-2">
+                <Eye size={16} className="text-[#2A5B46]" /> Pré-visualização do Documento
+                {previewNumPages > 0 && <span className="text-xs font-normal text-gray-400">({previewNumPages} {previewNumPages === 1 ? 'página' : 'páginas'})</span>}
+              </h3>
+              <button
+                onClick={() => { URL.revokeObjectURL(previewPdfUrl); setPreviewPdfUrl(null); setPreviewNumPages(0) }}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto bg-gray-100 flex flex-col items-center py-4 gap-4">
+              <Document
+                file={previewPdfUrl}
+                onLoadSuccess={({ numPages }) => setPreviewNumPages(numPages)}
+                loading={<div className="flex items-center gap-2 py-20 text-gray-400"><Loader2 size={20} className="animate-spin" /> Carregando documento...</div>}
+                error={<div className="py-20 text-red-500 text-sm">Erro ao carregar o PDF.</div>}
+              >
+                {Array.from({ length: previewNumPages }, (_, i) => (
+                  <Page
+                    key={i + 1}
+                    pageNumber={i + 1}
+                    width={700}
+                    className="shadow-lg rounded-sm"
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                  />
+                ))}
+              </Document>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════ Modal Enviar E-mail ══════ */}
+      {emailModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4" onClick={() => setEmailModal(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg text-[#1F2937] flex items-center gap-2">
+                <Mail size={18} className="text-[#2A5B46]" /> Enviar Documento por E-mail
+              </h3>
+              <button onClick={() => setEmailModal(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Documento: <strong>{emailModal.numero}</strong></p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Destinatário *</label>
+                <Input
+                  placeholder="email@exemplo.com"
+                  value={emailTo}
+                  onChange={e => setEmailTo(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Assunto</label>
+                <Input
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Mensagem</label>
+                <Textarea
+                  value={emailMessage}
+                  onChange={e => setEmailMessage(e.target.value)}
+                  rows={4}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <Button variant="outline" onClick={() => setEmailModal(null)} size="sm">
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSendEmail}
+                disabled={sendingEmail || !emailTo.trim()}
+                size="sm"
+                className="bg-[#2A5B46] hover:bg-[#1F4A38] text-white gap-2"
+              >
+                {sendingEmail
+                  ? <><Loader2 size={14} className="animate-spin" /> Enviando...</>
+                  : <><Send size={14} /> Enviar</>
+                }
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════ Modal Assinatura Interna ══════ */}
+      {signInternalModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4" onClick={() => setSignInternalModal(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg text-[#1F2937] flex items-center gap-2">
+                <PenTool size={18} className="text-[#2A5B46]" /> Assinar Documento
+              </h3>
+              <button onClick={() => setSignInternalModal(null)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Documento: <strong>{signInternalModal.numero}</strong></p>
+
+            {signatariosList.filter(s => s.ativo === 'true').length === 0 ? (
+              <div className="text-sm text-gray-400 text-center py-6">
+                <Users size={24} className="mx-auto mb-2 opacity-40" />
+                Nenhum signatário cadastrado.<br />Cadastre na aba Signatários primeiro.
+              </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Selecione o signatário</label>
+                  <select
+                    className="mt-1 w-full h-10 border border-gray-300 rounded-md px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2A5B46] focus:border-[#2A5B46]"
+                    value={selectedSignatarioId}
+                    onChange={e => setSelectedSignatarioId(e.target.value)}
+                  >
+                    <option value="">Escolha um signatário...</option>
+                    {signatariosList.filter(s => s.ativo === 'true').map(s => (
+                      <option key={s.id} value={s.id}>{s.nome} — {s.cargo}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-3 mb-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-1.5 mb-1 text-[#2A5B46] font-semibold"><Shield size={12} /> O que será embutido no PDF:</div>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    <li>Nome e cargo do signatário</li>
+                    <li>Data e hora da assinatura</li>
+                    <li>Hash SHA-256 do documento original</li>
+                    <li>Referência à Lei 14.063/2020</li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setSignInternalModal(null)} size="sm">Cancelar</Button>
+                  <Button
+                    onClick={handleSignInternal}
+                    disabled={signingInternal || !selectedSignatarioId}
+                    size="sm"
+                    className="bg-[#2A5B46] hover:bg-[#1F4A38] text-white gap-2"
+                  >
+                    {signingInternal
+                      ? <><Loader2 size={14} className="animate-spin" /> Assinando...</>
+                      : <><FileCheck size={14} /> Assinar</>
+                    }
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════ Modal Link Externo ══════ */}
+      {extLinkModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4" onClick={() => setExtLinkModal(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg text-[#1F2937] flex items-center gap-2">
+                <Link2 size={18} className="text-purple-600" /> Link de Assinatura Gerado
+              </h3>
+              <button onClick={() => setExtLinkModal(null)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-gray-500 mb-3">Compartilhe este link com a outra parte para assinatura:</p>
+            <div className="flex gap-2 mb-3">
+              <Input value={extLinkModal.link} readOnly className="text-xs" />
+              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(extLinkModal.link); toast({ title: 'Link copiado!' }) }}>Copiar</Button>
+            </div>
+            <p className="text-xs text-gray-400">
+              Expira em: {new Date(extLinkModal.expiresAt).toLocaleDateString('pt-BR')} às {new Date(extLinkModal.expiresAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setExtLinkModal(null)} size="sm" className="bg-[#2A5B46] hover:bg-[#1F4A38] text-white">Fechar</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
