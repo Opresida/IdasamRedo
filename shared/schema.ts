@@ -535,6 +535,8 @@ export const crmPessoaJuridica = pgTable("crm_pessoa_juridica", {
   razaoSocial: text("razao_social").notNull(),
   nomeFantasia: text("nome_fantasia"),
   inscricaoEstadual: text("inscricao_estadual"),
+  inscricaoMunicipal: text("inscricao_municipal"),
+  inscricaoSuframa: text("inscricao_suframa"),
   segmento: text("segmento"),
   porte: text("porte"),
   responsavelNome: text("responsavel_nome"),

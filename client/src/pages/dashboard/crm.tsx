@@ -96,7 +96,11 @@ export default function CrmPage() {
       toast({ title: 'Preencha nome e e-mail', variant: 'destructive' });
       return;
     }
-    const payload = { ...form, subdata: subform };
+    const finalForm = { ...form };
+    if (finalForm.tipo === 'pj' && (subform.nomeFantasia || subform.razaoSocial)) {
+      finalForm.nome = subform.nomeFantasia || subform.razaoSocial;
+    }
+    const payload = { ...finalForm, subdata: subform };
     if (editingId) {
       updateMutation.mutate({ id: editingId, data: payload });
     } else {
@@ -300,7 +304,7 @@ export default function CrmPage() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+              <div><Label>{form.tipo === 'pj' ? 'Nome do Proprietário' : 'Nome *'}</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
               <div><Label>E-mail *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               <div><Label>Telefone</Label><Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} /></div>
               <div><Label>CEP</Label><Input value={form.cep} onChange={e => setForm(f => ({ ...f, cep: e.target.value }))} /></div>
@@ -421,6 +425,8 @@ function PjFields({ subform, setSubform }: { subform: Record<string, any>; setSu
         <div><Label>Segmento</Label><Input value={subform.segmento || ''} onChange={e => set('segmento', e.target.value)} /></div>
         <div><Label>Porte</Label><Input value={subform.porte || ''} onChange={e => set('porte', e.target.value)} placeholder="MEI, ME, EPP, Médio, Grande" /></div>
         <div><Label>Inscrição Estadual</Label><Input value={subform.inscricaoEstadual || ''} onChange={e => set('inscricaoEstadual', e.target.value)} /></div>
+        <div><Label>Inscrição Municipal</Label><Input value={subform.inscricaoMunicipal || ''} onChange={e => set('inscricaoMunicipal', e.target.value)} /></div>
+        <div><Label>Inscrição Suframa</Label><Input value={subform.inscricaoSuframa || ''} onChange={e => set('inscricaoSuframa', e.target.value)} /></div>
       </div>
       <h5 className="text-xs font-semibold text-gray-500 mt-2">Responsável</h5>
       <div className="grid grid-cols-2 gap-3">
