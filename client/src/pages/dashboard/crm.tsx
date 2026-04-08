@@ -15,9 +15,10 @@ import { apiRequest } from '@/lib/queryClient';
 import {
   Plus, Search, Edit, Trash2, Eye, Send, FileText,
   Building2, User, Heart, Landmark, FlaskConical,
-  Shield, Copy, ExternalLink, MessageCircle, Banknote
+  Shield, Copy, ExternalLink, MessageCircle, Banknote, FileDown
 } from 'lucide-react';
 import type { CrmStakeholder, CrmStakeholderType } from '@shared/schema';
+import { generateStakeholderPdf } from '@/lib/pdf-stakeholder';
 
 const TIPO_LABELS: Record<CrmStakeholderType, { label: string; icon: React.ReactNode; color: string }> = {
   pj: { label: 'Pessoa Jurídica', icon: <Building2 className="w-4 h-4" />, color: 'bg-blue-100 text-blue-700' },
@@ -43,6 +44,8 @@ export default function CrmPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedStakeholder, setSelectedStakeholder] = useState<any>(null);
   const [activeDetailTab, setActiveDetailTab] = useState('info');
+  const [pdfPreview, setPdfPreview] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState('');
 
   // Form state
   const [form, setForm] = useState({
@@ -137,6 +140,40 @@ export default function CrmPage() {
     setSelectedStakeholder(full);
     setActiveDetailTab('info');
     setShowDetail(true);
+  };
+
+  const handlePreviewPdf = async (s: CrmStakeholder) => {
+    try {
+      const token = localStorage.getItem('idasam_admin_token');
+      const [detailRes, bancariosRes] = await Promise.all([
+        fetch(`/api/admin/crm/stakeholders/${s.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/admin/crm/stakeholders/${s.id}/bancarios`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const full = await detailRes.json();
+      const bancarios = await bancariosRes.json();
+      const pdfData = await generateStakeholderPdf({ ...full, bancarios });
+      // Convert base64 to blob URL for iframe preview
+      const byteString = atob(pdfData.split(',')[1]);
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+      const blob = new Blob([ab], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      setPdfPreview(blobUrl);
+      setPdfFileName(`stakeholder-${full.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+    } catch (e: any) {
+      console.error('PDF generation error:', e);
+      toast({ title: 'Erro ao gerar PDF', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    if (!pdfPreview) return;
+    const link = document.createElement('a');
+    link.href = pdfPreview;
+    link.download = pdfFileName;
+    link.click();
+    toast({ title: 'PDF baixado com sucesso' });
   };
 
   const copyLgpdLink = (token: string) => {
@@ -270,6 +307,7 @@ export default function CrmPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" title="Visualizar PDF" onClick={() => handlePreviewPdf(s)}><Eye className="w-4 h-4 text-green-600" /></Button>
                       <Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit className="w-4 h-4" /></Button>
                       <Button variant="ghost" size="sm" className="text-red-500" onClick={() => {
                         if (confirm('Remover este stakeholder?')) deleteMutation.mutate(s.id);
@@ -405,6 +443,34 @@ export default function CrmPage() {
               </Tabs>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={!!pdfPreview} onOpenChange={() => { if (pdfPreview) URL.revokeObjectURL(pdfPreview); setPdfPreview(null); }}>
+        <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Visualização do PDF</DialogTitle>
+              <Button onClick={handleDownloadPdf} size="sm">
+                <FileDown className="w-4 h-4 mr-1" /> Baixar PDF
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {pdfPreview && (
+              <object
+                data={pdfPreview}
+                type="application/pdf"
+                className="w-full h-full rounded border"
+              >
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-500">
+                  <p>Seu navegador não suporta visualização de PDF embutida.</p>
+                  <Button onClick={handleDownloadPdf}><FileDown className="w-4 h-4 mr-1" /> Baixar PDF</Button>
+                </div>
+              </object>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
