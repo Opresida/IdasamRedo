@@ -40,14 +40,22 @@ O Instituto de Desenvolvimento Ambiental e Social da Amazônia (IDASAM) é uma o
 
 ### Painel Administrativo (protegido)
 - **Dashboard** (`/dashboard`) — Visão geral com métricas e resumo de atividades
+- **CRM** (`/dashboard/crm`) — Gestão de stakeholders (PJ, PF, Doadores, Órgãos Públicos, Pesquisadores), dados bancários, documentos, recibos, interações, envio de e-mail, PDF timbrado e consentimento LGPD
 - **Capacitação** (`/dashboard/capacitacao`) — Gestão de cursos, inscrições e emissão de certificados em lote
-- **Marketing** (`/dashboard/marketing`) — Gerenciamento de audiências, templates de e-mail e campanhas
-- **Documentos** (`/dashboard/documentos`) — Criação e gestão de propostas, contratos e ofícios
-- **Financeiro** (`/dashboard/financeiro`) — Controle financeiro básico
+- **Marketing** (`/dashboard/marketing`) — Gerenciamento de audiências, templates de e-mail e campanhas com tracking de abertura
+- **Documentos** (`/dashboard/documentos`) — Suite Documental completa: contratos, orçamentos, ofícios, relatórios e projetos com assinatura digital (interna e externa), delegação de poderes e geração de PDF
+- **Financeiro** (`/dashboard/financeiro`) — Controle financeiro com transações, contas bancárias, fornecedores e doadores
 - **Projetos** (`/dashboard/projetos`) — Gestão de projetos institucionais
-- **Usuários** (`/dashboard/usuarios`) — Gestão de usuários do sistema
+- **Usuários** (`/dashboard/usuarios`) — Gestão de usuários com permissões por setor
 - **Agenda** (`/agenda`) — Gerenciamento de agenda e eventos
-- **Imprensa** (`/imprensa`) — Conteúdo para a imprensa
+- **Imprensa** (`/imprensa`) — Gestão de artigos, categorias, comentários e reações
+
+### Rotas Públicas Especiais
+- **Brandbook** (`/brandbook`) — Manual de marca do IDASAM com identidade visual, paleta, tipografia, cartão de visita e assinatura de e-mail
+- **Registro CRM** (`/registro/:tipo`) — Cadastro público de stakeholders (PJ, PF, Doador, Pesquisador) com LGPD integrada
+- **Consentimento LGPD** (`/lgpd/:token`) — Página de consentimento de dados conforme Lei 13.709/2018
+- **Assinatura Digital** (`/assinar/:token`) — Assinatura externa de documentos com captura de imagem
+- **Validação** (`/validar/:hash`) — Verificação de autenticidade de documentos assinados
 
 ---
 
