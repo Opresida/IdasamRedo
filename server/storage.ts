@@ -1,6 +1,7 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
+import crypto from "crypto";
 
 function generateAuthCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -172,6 +173,28 @@ export interface IStorage {
   createAdminSession(token: string, email: string, role: string, expiresAt: Date): Promise<AdminSession>;
   getAdminSession(token: string): Promise<AdminSession | undefined>;
   deleteAdminSession(token: string): Promise<void>;
+
+  // CRM
+  getCrmStakeholders(): Promise<CrmStakeholder[]>;
+  getCrmStakeholder(id: string): Promise<CrmStakeholder | undefined>;
+  getCrmStakeholderByToken(token: string): Promise<CrmStakeholder | undefined>;
+  createCrmStakeholder(data: InsertCrmStakeholder): Promise<CrmStakeholder>;
+  updateCrmStakeholder(id: string, data: Partial<InsertCrmStakeholder>): Promise<CrmStakeholder | undefined>;
+  deleteCrmStakeholder(id: string): Promise<void>;
+  updateCrmLgpdConsent(id: string, ip: string): Promise<CrmStakeholder | undefined>;
+
+  getCrmSubdata(stakeholderId: string, tipo: string): Promise<any>;
+  upsertCrmSubdata(stakeholderId: string, tipo: string, data: any): Promise<any>;
+
+  getCrmDocumentos(stakeholderId: string): Promise<CrmDocumento[]>;
+  createCrmDocumento(data: Omit<CrmDocumento, 'id' | 'criadoEm'>): Promise<CrmDocumento>;
+  deleteCrmDocumento(id: string): Promise<void>;
+
+  getCrmRecibos(stakeholderId: string): Promise<CrmRecibo[]>;
+  createCrmRecibo(data: Omit<CrmRecibo, 'id' | 'criadoEm'>): Promise<CrmRecibo>;
+
+  getCrmInteracoes(stakeholderId: string): Promise<CrmInteracao[]>;
+  createCrmInteracao(data: Omit<CrmInteracao, 'id' | 'criadoEm'>): Promise<CrmInteracao>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -982,6 +1005,100 @@ export class DatabaseStorage implements IStorage {
   }
   async deleteAdminSession(token: string): Promise<void> {
     await db.delete(adminSessions).where(eq(adminSessions.token, token));
+  }
+
+  // ── CRM ──
+  async getCrmStakeholders(): Promise<CrmStakeholder[]> {
+    return db.select().from(crmStakeholders).orderBy(desc(crmStakeholders.criadoEm));
+  }
+  async getCrmStakeholder(id: string): Promise<CrmStakeholder | undefined> {
+    const [row] = await db.select().from(crmStakeholders).where(eq(crmStakeholders.id, id));
+    return row || undefined;
+  }
+  async getCrmStakeholderByToken(token: string): Promise<CrmStakeholder | undefined> {
+    const [row] = await db.select().from(crmStakeholders).where(eq(crmStakeholders.tokenPublico, token));
+    return row || undefined;
+  }
+  async createCrmStakeholder(data: InsertCrmStakeholder): Promise<CrmStakeholder> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const [row] = await db.insert(crmStakeholders).values({ ...data, tokenPublico: token }).returning();
+    return row;
+  }
+  async updateCrmStakeholder(id: string, data: Partial<InsertCrmStakeholder>): Promise<CrmStakeholder | undefined> {
+    const [row] = await db.update(crmStakeholders).set({ ...data, atualizadoEm: new Date() }).where(eq(crmStakeholders.id, id)).returning();
+    return row || undefined;
+  }
+  async deleteCrmStakeholder(id: string): Promise<void> {
+    await db.delete(crmStakeholders).where(eq(crmStakeholders.id, id));
+  }
+  async updateCrmLgpdConsent(id: string, ip: string): Promise<CrmStakeholder | undefined> {
+    const [row] = await db.update(crmStakeholders).set({
+      lgpdConsentimento: true,
+      lgpdConsentidoEm: new Date(),
+      lgpdIp: ip,
+      status: 'ativo',
+      atualizadoEm: new Date(),
+    }).where(eq(crmStakeholders.id, id)).returning();
+    return row || undefined;
+  }
+
+  async getCrmSubdata(stakeholderId: string, tipo: string): Promise<any> {
+    const tableMap: Record<string, any> = {
+      pj: crmPessoaJuridica,
+      pf: crmPessoaFisica,
+      doador: crmDoador,
+      orgao_publico: crmOrgaoPublico,
+      pesquisador: crmPesquisador,
+    };
+    const table = tableMap[tipo];
+    if (!table) return undefined;
+    const [row] = await db.select().from(table).where(eq(table.stakeholderId, stakeholderId));
+    return row || undefined;
+  }
+  async upsertCrmSubdata(stakeholderId: string, tipo: string, data: any): Promise<any> {
+    const tableMap: Record<string, any> = {
+      pj: crmPessoaJuridica,
+      pf: crmPessoaFisica,
+      doador: crmDoador,
+      orgao_publico: crmOrgaoPublico,
+      pesquisador: crmPesquisador,
+    };
+    const table = tableMap[tipo];
+    if (!table) return undefined;
+    const existing = await this.getCrmSubdata(stakeholderId, tipo);
+    if (existing) {
+      const [row] = await db.update(table).set(data).where(eq(table.stakeholderId, stakeholderId)).returning();
+      return row;
+    }
+    const [row] = await db.insert(table).values({ ...data, stakeholderId }).returning();
+    return row;
+  }
+
+  async getCrmDocumentos(stakeholderId: string): Promise<CrmDocumento[]> {
+    return db.select().from(crmDocumentos).where(eq(crmDocumentos.stakeholderId, stakeholderId)).orderBy(desc(crmDocumentos.criadoEm));
+  }
+  async createCrmDocumento(data: Omit<CrmDocumento, 'id' | 'criadoEm'>): Promise<CrmDocumento> {
+    const [row] = await db.insert(crmDocumentos).values(data).returning();
+    return row;
+  }
+  async deleteCrmDocumento(id: string): Promise<void> {
+    await db.delete(crmDocumentos).where(eq(crmDocumentos.id, id));
+  }
+
+  async getCrmRecibos(stakeholderId: string): Promise<CrmRecibo[]> {
+    return db.select().from(crmRecibos).where(eq(crmRecibos.stakeholderId, stakeholderId)).orderBy(desc(crmRecibos.criadoEm));
+  }
+  async createCrmRecibo(data: Omit<CrmRecibo, 'id' | 'criadoEm'>): Promise<CrmRecibo> {
+    const [row] = await db.insert(crmRecibos).values(data).returning();
+    return row;
+  }
+
+  async getCrmInteracoes(stakeholderId: string): Promise<CrmInteracao[]> {
+    return db.select().from(crmInteracoes).where(eq(crmInteracoes.stakeholderId, stakeholderId)).orderBy(desc(crmInteracoes.criadoEm));
+  }
+  async createCrmInteracao(data: Omit<CrmInteracao, 'id' | 'criadoEm'>): Promise<CrmInteracao> {
+    const [row] = await db.insert(crmInteracoes).values(data).returning();
+    return row;
   }
 }
 

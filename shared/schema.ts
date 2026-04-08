@@ -1,6 +1,6 @@
 
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, uuid, timestamp, integer, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, uuid, timestamp, integer, unique, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -478,3 +478,171 @@ export const adminSessions = pgTable("admin_sessions", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 export type AdminSession = typeof adminSessions.$inferSelect;
+
+// ══════════════════════════════════════════════════════════════
+// CRM — Gestão de Stakeholders
+// ══════════════════════════════════════════════════════════════
+
+export const CRM_STAKEHOLDER_TYPES = ['pj', 'pf', 'doador', 'orgao_publico', 'pesquisador'] as const;
+export type CrmStakeholderType = typeof CRM_STAKEHOLDER_TYPES[number];
+
+export const CRM_STAKEHOLDER_STATUSES = ['ativo', 'inativo', 'pendente_lgpd'] as const;
+export type CrmStakeholderStatus = typeof CRM_STAKEHOLDER_STATUSES[number];
+
+export const crmStakeholders = pgTable("crm_stakeholders", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  tipo: text("tipo").$type<CrmStakeholderType>().notNull(),
+  nome: text("nome").notNull(),
+  email: text("email").notNull(),
+  telefone: text("telefone"),
+  endereco: text("endereco"),
+  cidade: text("cidade"),
+  estado: text("estado"),
+  cep: text("cep"),
+  observacoes: text("observacoes"),
+  status: text("status").$type<CrmStakeholderStatus>().notNull().default("ativo"),
+  tokenPublico: text("token_publico").unique(),
+  lgpdConsentimento: boolean("lgpd_consentimento").notNull().default(false),
+  lgpdConsentidoEm: timestamp("lgpd_consentido_em", { withTimezone: true }),
+  lgpdIp: text("lgpd_ip"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+
+export const insertCrmStakeholderSchema = createInsertSchema(crmStakeholders).omit({
+  id: true, criadoEm: true, atualizadoEm: true, tokenPublico: true,
+}).extend({
+  tipo: z.enum(CRM_STAKEHOLDER_TYPES),
+  nome: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("E-mail inválido"),
+  telefone: z.string().optional().nullable(),
+  endereco: z.string().optional().nullable(),
+  cidade: z.string().optional().nullable(),
+  estado: z.string().optional().nullable(),
+  cep: z.string().optional().nullable(),
+  observacoes: z.string().optional().nullable(),
+  status: z.enum(CRM_STAKEHOLDER_STATUSES).optional().default("ativo"),
+  lgpdConsentimento: z.boolean().optional().default(false),
+});
+export type InsertCrmStakeholder = z.infer<typeof insertCrmStakeholderSchema>;
+export type CrmStakeholder = typeof crmStakeholders.$inferSelect;
+
+// ── Pessoa Jurídica ──
+export const crmPessoaJuridica = pgTable("crm_pessoa_juridica", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  cnpj: text("cnpj").notNull(),
+  razaoSocial: text("razao_social").notNull(),
+  nomeFantasia: text("nome_fantasia"),
+  inscricaoEstadual: text("inscricao_estadual"),
+  segmento: text("segmento"),
+  porte: text("porte"),
+  responsavelNome: text("responsavel_nome"),
+  responsavelCargo: text("responsavel_cargo"),
+  responsavelTelefone: text("responsavel_telefone"),
+  responsavelEmail: text("responsavel_email"),
+});
+export type CrmPessoaJuridica = typeof crmPessoaJuridica.$inferSelect;
+
+// ── Pessoa Física ──
+export const crmPessoaFisica = pgTable("crm_pessoa_fisica", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  cpf: text("cpf").notNull(),
+  rg: text("rg"),
+  dataNascimento: text("data_nascimento"),
+  profissao: text("profissao"),
+  nacionalidade: text("nacionalidade"),
+});
+export type CrmPessoaFisica = typeof crmPessoaFisica.$inferSelect;
+
+// ── Doador ──
+export const CRM_DOADOR_TIPOS = ['pf', 'pj', 'internacional', 'fundo'] as const;
+export type CrmDoadorTipo = typeof CRM_DOADOR_TIPOS[number];
+
+export const crmDoador = pgTable("crm_doador", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  tipoDoador: text("tipo_doador").$type<CrmDoadorTipo>().notNull().default("pf"),
+  cpfCnpj: text("cpf_cnpj"),
+  areaInteresse: text("area_interesse"),
+  recorrente: boolean("recorrente").notNull().default(false),
+  valorMedioDoacao: text("valor_medio_doacao"),
+  ultimaDoacao: timestamp("ultima_doacao", { withTimezone: true }),
+});
+export type CrmDoador = typeof crmDoador.$inferSelect;
+
+// ── Órgão Público ──
+export const CRM_ORGAO_ESFERAS = ['municipal', 'estadual', 'federal'] as const;
+export type CrmOrgaoEsfera = typeof CRM_ORGAO_ESFERAS[number];
+
+export const crmOrgaoPublico = pgTable("crm_orgao_publico", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  nomeOrgao: text("nome_orgao").notNull(),
+  esfera: text("esfera").$type<CrmOrgaoEsfera>().notNull(),
+  sigla: text("sigla"),
+  setorResponsavel: text("setor_responsavel"),
+  contatoNome: text("contato_nome"),
+  contatoCargo: text("contato_cargo"),
+  contatoTelefone: text("contato_telefone"),
+  contatoEmail: text("contato_email"),
+});
+export type CrmOrgaoPublico = typeof crmOrgaoPublico.$inferSelect;
+
+// ── Pesquisador ──
+export const CRM_TITULACAO = ['graduacao', 'especializacao', 'mestrado', 'doutorado', 'pos_doutorado'] as const;
+export type CrmTitulacao = typeof CRM_TITULACAO[number];
+
+export const crmPesquisador = pgTable("crm_pesquisador", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  cpf: text("cpf"),
+  lattes: text("lattes"),
+  orcid: text("orcid"),
+  instituicao: text("instituicao"),
+  titulacao: text("titulacao").$type<CrmTitulacao>(),
+  areaAtuacao: text("area_atuacao"),
+  gruposPesquisa: text("grupos_pesquisa"),
+});
+export type CrmPesquisador = typeof crmPesquisador.$inferSelect;
+
+// ── Documentos do CRM ──
+export const crmDocumentos = pgTable("crm_documentos", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  nome: text("nome").notNull(),
+  tipo: text("tipo").notNull(),
+  fileData: text("file_data").notNull(),
+  tamanho: integer("tamanho"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export type CrmDocumento = typeof crmDocumentos.$inferSelect;
+
+// ── Recibos do CRM (doações) ──
+export const crmRecibos = pgTable("crm_recibos", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  numero: text("numero").notNull(),
+  valor: text("valor").notNull(),
+  descricao: text("descricao").notNull(),
+  dataEmissao: text("data_emissao").notNull(),
+  pdfData: text("pdf_data"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export type CrmRecibo = typeof crmRecibos.$inferSelect;
+
+// ── Interações do CRM ──
+export const CRM_INTERACAO_TIPOS = ['email', 'telefone', 'reuniao', 'visita', 'documento', 'outro'] as const;
+export type CrmInteracaoTipo = typeof CRM_INTERACAO_TIPOS[number];
+
+export const crmInteracoes = pgTable("crm_interacoes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  tipo: text("tipo").$type<CrmInteracaoTipo>().notNull(),
+  descricao: text("descricao").notNull(),
+  data: timestamp("data", { withTimezone: true }).notNull().default(sql`NOW()`),
+  responsavel: text("responsavel"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export type CrmInteracao = typeof crmInteracoes.$inferSelect;

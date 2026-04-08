@@ -1941,6 +1941,127 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // ══════════════════════════════════════════════════════════
+  // CRM Routes
+  // ══════════════════════════════════════════════════════════
+
+  // Admin CRUD
+  app.get("/api/admin/crm/stakeholders", requireAdmin, async (_req, res) => {
+    const list = await storage.getCrmStakeholders();
+    res.json(list);
+  });
+
+  app.get("/api/admin/crm/stakeholders/:id", requireAdmin, async (req, res) => {
+    const stakeholder = await storage.getCrmStakeholder(req.params.id);
+    if (!stakeholder) return res.status(404).json({ message: "Stakeholder não encontrado" });
+    const subdata = await storage.getCrmSubdata(stakeholder.id, stakeholder.tipo);
+    res.json({ ...stakeholder, subdata });
+  });
+
+  app.post("/api/admin/crm/stakeholders", requireAdmin, async (req, res) => {
+    try {
+      const { subdata, ...mainData } = req.body;
+      const stakeholder = await storage.createCrmStakeholder(mainData);
+      if (subdata && Object.keys(subdata).length > 0) {
+        await storage.upsertCrmSubdata(stakeholder.id, stakeholder.tipo, subdata);
+      }
+      res.json(stakeholder);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message || "Erro ao criar stakeholder" });
+    }
+  });
+
+  app.patch("/api/admin/crm/stakeholders/:id", requireAdmin, async (req, res) => {
+    try {
+      const { subdata, ...mainData } = req.body;
+      const stakeholder = await storage.updateCrmStakeholder(req.params.id, mainData);
+      if (!stakeholder) return res.status(404).json({ message: "Stakeholder não encontrado" });
+      if (subdata && Object.keys(subdata).length > 0) {
+        await storage.upsertCrmSubdata(stakeholder.id, stakeholder.tipo, subdata);
+      }
+      res.json(stakeholder);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message || "Erro ao atualizar" });
+    }
+  });
+
+  app.delete("/api/admin/crm/stakeholders/:id", requireAdmin, async (req, res) => {
+    await storage.deleteCrmStakeholder(req.params.id);
+    res.json({ message: "Removido" });
+  });
+
+  // LGPD consent link (public)
+  app.get("/api/public/crm/lgpd/:token", async (req, res) => {
+    const stakeholder = await storage.getCrmStakeholderByToken(req.params.token);
+    if (!stakeholder) return res.status(404).json({ message: "Link inválido" });
+    res.json({ nome: stakeholder.nome, email: stakeholder.email, tipo: stakeholder.tipo, lgpdConsentimento: stakeholder.lgpdConsentimento });
+  });
+
+  app.post("/api/public/crm/lgpd/:token/consent", async (req, res) => {
+    const stakeholder = await storage.getCrmStakeholderByToken(req.params.token);
+    if (!stakeholder) return res.status(404).json({ message: "Link inválido" });
+    if (stakeholder.lgpdConsentimento) return res.json({ message: "Consentimento já registrado" });
+    const ip = req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
+    await storage.updateCrmLgpdConsent(stakeholder.id, ip);
+    res.json({ message: "Consentimento registrado com sucesso" });
+  });
+
+  // Public self-registration
+  app.post("/api/public/crm/register", async (req, res) => {
+    try {
+      const { subdata, lgpdConsent, ...mainData } = req.body;
+      if (!lgpdConsent) return res.status(400).json({ message: "Consentimento LGPD obrigatório" });
+      const ip = req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
+      const stakeholder = await storage.createCrmStakeholder({
+        ...mainData,
+        lgpdConsentimento: true,
+        status: 'ativo',
+      });
+      await storage.updateCrmLgpdConsent(stakeholder.id, ip);
+      if (subdata && Object.keys(subdata).length > 0) {
+        await storage.upsertCrmSubdata(stakeholder.id, mainData.tipo, subdata);
+      }
+      res.json({ message: "Cadastro realizado com sucesso", id: stakeholder.id });
+    } catch (e: any) {
+      res.status(400).json({ message: e.message || "Erro no cadastro" });
+    }
+  });
+
+  // Documents
+  app.get("/api/admin/crm/stakeholders/:id/documentos", requireAdmin, async (req, res) => {
+    res.json(await storage.getCrmDocumentos(req.params.id));
+  });
+
+  app.post("/api/admin/crm/stakeholders/:id/documentos", requireAdmin, async (req, res) => {
+    const doc = await storage.createCrmDocumento({ ...req.body, stakeholderId: req.params.id });
+    res.json(doc);
+  });
+
+  app.delete("/api/admin/crm/documentos/:id", requireAdmin, async (req, res) => {
+    await storage.deleteCrmDocumento(req.params.id);
+    res.json({ message: "Documento removido" });
+  });
+
+  // Receipts
+  app.get("/api/admin/crm/stakeholders/:id/recibos", requireAdmin, async (req, res) => {
+    res.json(await storage.getCrmRecibos(req.params.id));
+  });
+
+  app.post("/api/admin/crm/stakeholders/:id/recibos", requireAdmin, async (req, res) => {
+    const recibo = await storage.createCrmRecibo({ ...req.body, stakeholderId: req.params.id });
+    res.json(recibo);
+  });
+
+  // Interactions
+  app.get("/api/admin/crm/stakeholders/:id/interacoes", requireAdmin, async (req, res) => {
+    res.json(await storage.getCrmInteracoes(req.params.id));
+  });
+
+  app.post("/api/admin/crm/stakeholders/:id/interacoes", requireAdmin, async (req, res) => {
+    const interacao = await storage.createCrmInteracao({ ...req.body, stakeholderId: req.params.id });
+    res.json(interacao);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

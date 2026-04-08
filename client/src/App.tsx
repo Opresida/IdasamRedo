@@ -17,6 +17,8 @@ import NotFoundPage from './pages/not-found';
 import AssinarPage from './pages/assinar';
 import ValidarPage from './pages/validar';
 import BrandbookPage from './pages/brandbook';
+import LgpdConsentPage from './pages/lgpd-consent';
+import RegistroPublicoPage from './pages/registro-publico';
 import PaginaDeDoacao from '@/PaginaDeDoacao';
 import PaginaDeDoacaoEUR from '@/PaginaDeDoacaoEUR';
 import AdminLayout from '@/components/admin-layout';
@@ -29,6 +31,7 @@ import UsuariosPage from '@/pages/dashboard/usuarios';
 import DashboardCapacitacaoPage from '@/pages/dashboard/capacitacao';
 import MarketingPage from '@/pages/dashboard/marketing';
 import DocumentosPage from '@/pages/dashboard/documentos';
+import CrmPage from '@/pages/dashboard/crm';
 import TransparenciaPage from './pages/transparencia';
 import BioPage from './pages/bio';
 import TelegramFloat from '@/components/telegram-float';
@@ -126,6 +129,13 @@ function AppContent() {
             </AdminLayout>
           </ProtectedRoute>
         </Route>
+        <Route path="/dashboard/crm">
+          <ProtectedRoute>
+            <AdminLayout>
+              <CrmPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        </Route>
         <Route path="/capacitacao" component={CapacitacaoPage} />
         <Route path="/meu-certificado" component={MeuCertificadoPage} />
         <Route path="/doacao-usd" component={PaginaDeDoacao} />
@@ -137,6 +147,8 @@ function AppContent() {
         <Route path="/assinar/:token" component={AssinarPage} />
         <Route path="/validar/:hash" component={ValidarPage} />
         <Route path="/brandbook" component={BrandbookPage} />
+        <Route path="/lgpd/:token" component={LgpdConsentPage} />
+        <Route path="/registro/:tipo" component={RegistroPublicoPage} />
         <Route path="/404" component={NotFoundPage} />
         <Route component={NotFoundPage} />
       </Switch>

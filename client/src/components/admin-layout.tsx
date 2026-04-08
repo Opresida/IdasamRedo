@@ -14,7 +14,8 @@ import {
   Users,
   GraduationCap,
   Mail,
-  FileText
+  FileText,
+  Contact
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -36,6 +37,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: LayoutDashboard,
       path: '/dashboard',
       description: 'Visão geral do sistema'
+    },
+    {
+      label: 'CRM',
+      icon: Contact,
+      path: '/dashboard/crm',
+      description: 'Gestão de stakeholders'
     },
     {
       label: 'Imprensa',
