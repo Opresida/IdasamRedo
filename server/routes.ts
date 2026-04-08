@@ -13,8 +13,8 @@ const EMAIL_FROM = process.env.EMAIL_FROM || "IDASAM <onboarding@resend.dev>";
 
 function wrapEmailHtml(body: string): string {
   return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<html lang="pt-BR">
+<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0">
   <tr><td align="center">
@@ -2081,6 +2081,82 @@ export async function registerRoutes(app: Express) {
   app.delete("/api/admin/crm/bancarios/:id", requireAdmin, async (req, res) => {
     await storage.deleteCrmDadosBancarios(req.params.id);
     res.json({ message: "Dados bancários removidos" });
+  });
+
+  // Send LGPD consent email
+  app.post("/api/admin/crm/stakeholders/:id/send-lgpd", requireAdmin, async (req, res) => {
+    const stakeholder = await storage.getCrmStakeholder(req.params.id);
+    if (!stakeholder) return res.status(404).json({ message: "Stakeholder não encontrado" });
+    if (stakeholder.lgpdConsentimento) return res.json({ message: "Consentimento já registrado" });
+    if (!stakeholder.tokenPublico) return res.status(400).json({ message: "Token público não encontrado" });
+
+    const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
+    const lgpdLink = `${origin}/lgpd/${stakeholder.tokenPublico}`;
+
+    const htmlBody = `
+      <h2 style="color:#1a5c38;margin-bottom:16px">Consentimento LGPD</h2>
+      <p>Olá, <strong>${stakeholder.nome}</strong>!</p>
+      <p>O <strong>IDASAM — Instituto de Desenvolvimento Ambiental e Social da Amazônia</strong> solicita seu consentimento para o tratamento dos seus dados pessoais, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
+      <p>Para visualizar os termos e registrar seu consentimento, clique no botão abaixo:</p>
+      <div style="text-align:center;margin:28px 0">
+        <a href="${lgpdLink}" style="background:#1a5c38;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block">
+          Acessar Termo de Consentimento
+        </a>
+      </div>
+      <p style="font-size:13px;color:#666">Se preferir, copie e cole o link abaixo no navegador:<br>
+      <a href="${lgpdLink}" style="color:#1a5c38;word-break:break-all">${lgpdLink}</a></p>
+      <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+      <p style="font-size:12px;color:#999">Este e-mail foi enviado pelo sistema IDASAM. Caso não reconheça este contato, desconsidere esta mensagem.</p>
+    `;
+
+    const ok = await sendEmailViaResend(stakeholder.email, 'IDASAM — Consentimento LGPD', htmlBody);
+    if (ok) {
+      res.json({ message: `E-mail enviado para ${stakeholder.email}` });
+    } else {
+      res.status(500).json({ message: "Erro ao enviar e-mail. Verifique a configuração do RESEND_API_KEY." });
+    }
+  });
+
+  // Send custom email to stakeholder
+  app.post("/api/admin/crm/stakeholders/:id/send-email", requireAdmin, async (req, res) => {
+    const stakeholder = await storage.getCrmStakeholder(req.params.id);
+    if (!stakeholder) return res.status(404).json({ message: "Stakeholder não encontrado" });
+
+    const { to, subject, message, includeLgpdLink } = req.body;
+    const email = to || stakeholder.email;
+    if (!email || !subject) return res.status(400).json({ message: "Destinatário e assunto são obrigatórios" });
+
+    let htmlBody = `<p>${(message || '').replace(/\n/g, '<br>')}</p>`;
+
+    if (includeLgpdLink && stakeholder.tokenPublico && !stakeholder.lgpdConsentimento) {
+      const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
+      const lgpdLink = `${origin}/lgpd/${stakeholder.tokenPublico}`;
+      htmlBody += `
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+        <p style="font-size:14px"><strong>Consentimento LGPD</strong></p>
+        <p style="font-size:13px">Para registrar seu consentimento ao tratamento de dados, clique no botão abaixo:</p>
+        <div style="text-align:center;margin:20px 0">
+          <a href="${lgpdLink}" style="background:#1a5c38;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block">
+            Acessar Termo LGPD
+          </a>
+        </div>
+      `;
+    }
+
+    const ok = await sendEmailViaResend(email, subject, htmlBody);
+    if (ok) {
+      // Register interaction
+      await storage.createCrmInteracao({
+        stakeholderId: stakeholder.id,
+        tipo: 'email',
+        descricao: `E-mail enviado: "${subject}" para ${email}`,
+        data: new Date(),
+        responsavel: 'Admin',
+      });
+      res.json({ message: `E-mail enviado para ${email}` });
+    } else {
+      res.status(500).json({ message: "Erro ao enviar e-mail. Verifique a configuração do RESEND_API_KEY." });
+    }
   });
 
   const httpServer = createServer(app);

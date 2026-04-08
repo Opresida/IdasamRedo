@@ -15,7 +15,7 @@ import { apiRequest } from '@/lib/queryClient';
 import {
   Plus, Search, Edit, Trash2, Eye, Send, FileText,
   Building2, User, Heart, Landmark, FlaskConical,
-  Shield, Copy, ExternalLink, MessageCircle, Banknote, FileDown
+  Shield, Copy, ExternalLink, MessageCircle, Banknote, FileDown, Mail
 } from 'lucide-react';
 import type { CrmStakeholder, CrmStakeholderType } from '@shared/schema';
 import { generateStakeholderPdf } from '@/lib/pdf-stakeholder';
@@ -44,8 +44,12 @@ export default function CrmPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedStakeholder, setSelectedStakeholder] = useState<any>(null);
   const [activeDetailTab, setActiveDetailTab] = useState('info');
+  const [showLinkMenu, setShowLinkMenu] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
   const [pdfFileName, setPdfFileName] = useState('');
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailTarget, setEmailTarget] = useState<CrmStakeholder | null>(null);
+  const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
 
   // Form state
   const [form, setForm] = useState({
@@ -87,6 +91,39 @@ export default function CrmPage() {
       toast({ title: 'Stakeholder removido' });
     },
   });
+
+  const sendEmailMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const token = localStorage.getItem('idasam_admin_token');
+      const res = await fetch(`/api/admin/crm/stakeholders/${id}/send-email`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Erro ao enviar');
+      return json;
+    },
+    onSuccess: (data) => {
+      toast({ title: data.message });
+      setShowEmailModal(false);
+      setEmailTarget(null);
+    },
+    onError: (e: any) => toast({ title: 'Erro ao enviar', description: e.message, variant: 'destructive' }),
+  });
+
+  const openEmailModal = (s: CrmStakeholder) => {
+    setEmailTarget(s);
+    const lgpdPending = !s.lgpdConsentimento;
+    setEmailForm({
+      to: s.email,
+      subject: lgpdPending ? 'IDASAM - Consentimento LGPD' : `IDASAM - Contato com ${s.nome}`,
+      message: lgpdPending
+        ? `Prezado(a) ${s.nome},\n\nO IDASAM - Instituto de Desenvolvimento Ambiental e Social da Amazônia solicita seu consentimento para o tratamento dos seus dados pessoais, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).\n\nPara visualizar os termos e registrar seu consentimento, utilize o botão ao final deste e-mail.\n\nAtenciosamente,\nEquipe IDASAM`
+        : `Prezado(a) ${s.nome},\n\n\n\nAtenciosamente,\nEquipe IDASAM`,
+    });
+    setShowEmailModal(true);
+  };
 
   const resetForm = () => {
     setForm({ tipo: 'pj', nome: '', email: '', telefone: '', endereco: '', cidade: '', estado: '', cep: '', observacoes: '' });
@@ -212,9 +249,33 @@ export default function CrmPage() {
           <p className="text-sm text-gray-500 mt-1">Gestão de partes interessadas do IDASAM</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => copyPublicLink('pj')}>
-            <ExternalLink className="w-4 h-4 mr-1" /> Link Público
-          </Button>
+          <div className="relative">
+            <Button variant="outline" size="sm" onClick={() => setShowLinkMenu(v => !v)}>
+              <ExternalLink className="w-4 h-4 mr-1" /> Link Público
+            </Button>
+            {showLinkMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowLinkMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 bg-white border rounded-lg shadow-lg py-1 w-56">
+                  {[
+                    { tipo: 'pj', label: 'Pessoa Jurídica', icon: <Building2 className="w-4 h-4" /> },
+                    { tipo: 'pf', label: 'Pessoa Física', icon: <User className="w-4 h-4" /> },
+                    { tipo: 'doador', label: 'Doador', icon: <Heart className="w-4 h-4" /> },
+                    { tipo: 'pesquisador', label: 'Pesquisador', icon: <FlaskConical className="w-4 h-4" /> },
+                  ].map(item => (
+                    <button
+                      key={item.tipo}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      onClick={() => { copyPublicLink(item.tipo); setShowLinkMenu(false); }}
+                    >
+                      {item.icon} {item.label}
+                      <Copy className="w-3 h-3 ml-auto text-gray-400" />
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <Button onClick={() => { resetForm(); setShowForm(true); }}>
             <Plus className="w-4 h-4 mr-1" /> Novo Stakeholder
           </Button>
@@ -300,14 +361,15 @@ export default function CrmPage() {
                     {s.lgpdConsentimento ? (
                       <Shield className="w-4 h-4 text-green-600" />
                     ) : (
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); copyLgpdLink(s.tokenPublico || ''); }}>
-                        <Send className="w-3 h-3 mr-1" /> Enviar
-                      </Button>
+                      <span className="text-xs text-yellow-600 font-medium">Pendente</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="sm" title="Visualizar PDF" onClick={() => handlePreviewPdf(s)}><Eye className="w-4 h-4 text-green-600" /></Button>
+                      <Button variant="ghost" size="sm" title="Enviar e-mail" onClick={() => openEmailModal(s)}>
+                        <Mail className="w-4 h-4 text-blue-500" />
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => handleEdit(s)}><Edit className="w-4 h-4" /></Button>
                       <Button variant="ghost" size="sm" className="text-red-500" onClick={() => {
                         if (confirm('Remover este stakeholder?')) deleteMutation.mutate(s.id);
@@ -442,6 +504,49 @@ export default function CrmPage() {
                 )}
               </Tabs>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Dialog */}
+      <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Mail className="w-5 h-5 text-blue-500" /> Enviar E-mail</DialogTitle>
+          </DialogHeader>
+          {emailTarget && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs font-semibold text-gray-500 uppercase">Destinatário *</Label>
+                <Input value={emailForm.to} onChange={e => setEmailForm(f => ({ ...f, to: e.target.value }))} placeholder="email@exemplo.com" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-gray-500 uppercase">Assunto *</Label>
+                <Input value={emailForm.subject} onChange={e => setEmailForm(f => ({ ...f, subject: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-gray-500 uppercase">Mensagem</Label>
+                <Textarea rows={8} value={emailForm.message} onChange={e => setEmailForm(f => ({ ...f, message: e.target.value }))} />
+              </div>
+              {!emailTarget.lgpdConsentimento && (
+                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-3 rounded-lg border border-green-200">
+                  <Shield className="w-4 h-4 flex-shrink-0" />
+                  <span>O link de consentimento LGPD será incluído automaticamente ao final do e-mail.</span>
+                </div>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowEmailModal(false)}>Cancelar</Button>
+                <Button
+                  onClick={() => sendEmailMutation.mutate({
+                    id: emailTarget.id,
+                    data: { ...emailForm, includeLgpdLink: !emailTarget.lgpdConsentimento },
+                  })}
+                  disabled={sendEmailMutation.isPending || !emailForm.to || !emailForm.subject}
+                >
+                  {sendEmailMutation.isPending ? 'Enviando...' : <><Send className="w-4 h-4 mr-1" /> Enviar</>}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
