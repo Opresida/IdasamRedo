@@ -2062,6 +2062,27 @@ export async function registerRoutes(app: Express) {
     res.json(interacao);
   });
 
+  // Banking data
+  app.get("/api/admin/crm/stakeholders/:id/bancarios", requireAdmin, async (req, res) => {
+    res.json(await storage.getCrmDadosBancarios(req.params.id));
+  });
+
+  app.post("/api/admin/crm/stakeholders/:id/bancarios", requireAdmin, async (req, res) => {
+    const dados = await storage.createCrmDadosBancarios({ ...req.body, stakeholderId: req.params.id });
+    res.json(dados);
+  });
+
+  app.patch("/api/admin/crm/bancarios/:id", requireAdmin, async (req, res) => {
+    const dados = await storage.updateCrmDadosBancarios(req.params.id, req.body);
+    if (!dados) return res.status(404).json({ message: "Não encontrado" });
+    res.json(dados);
+  });
+
+  app.delete("/api/admin/crm/bancarios/:id", requireAdmin, async (req, res) => {
+    await storage.deleteCrmDadosBancarios(req.params.id);
+    res.json({ message: "Dados bancários removidos" });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

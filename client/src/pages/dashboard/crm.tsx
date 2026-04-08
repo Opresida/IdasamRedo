@@ -15,7 +15,7 @@ import { apiRequest } from '@/lib/queryClient';
 import {
   Plus, Search, Edit, Trash2, Eye, Send, FileText,
   Building2, User, Heart, Landmark, FlaskConical,
-  Shield, Copy, ExternalLink, MessageCircle
+  Shield, Copy, ExternalLink, MessageCircle, Banknote
 } from 'lucide-react';
 import type { CrmStakeholder, CrmStakeholderType } from '@shared/schema';
 
@@ -348,6 +348,7 @@ export default function CrmPage() {
                 <TabsList>
                   <TabsTrigger value="info">Informações</TabsTrigger>
                   <TabsTrigger value="interacoes">Interações</TabsTrigger>
+                  <TabsTrigger value="bancarios">Dados Bancários</TabsTrigger>
                   <TabsTrigger value="documentos">Documentos</TabsTrigger>
                   {selectedStakeholder.tipo === 'doador' && <TabsTrigger value="recibos">Recibos</TabsTrigger>}
                 </TabsList>
@@ -385,6 +386,9 @@ export default function CrmPage() {
                 </TabsContent>
                 <TabsContent value="interacoes">
                   <InteracoesTab stakeholderId={selectedStakeholder.id} />
+                </TabsContent>
+                <TabsContent value="bancarios">
+                  <DadosBancariosTab stakeholderId={selectedStakeholder.id} />
                 </TabsContent>
                 <TabsContent value="documentos">
                   <DocumentosTab stakeholderId={selectedStakeholder.id} />
@@ -657,6 +661,113 @@ function DocumentosTab({ stakeholderId }: { stakeholderId: string }) {
           <Button variant="ghost" size="sm" className="text-red-500" onClick={() => deleteMutation.mutate(d.id)}>
             <Trash2 className="w-4 h-4" />
           </Button>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function DadosBancariosTab({ stakeholderId }: { stakeholderId: string }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({
+    banco: '', codigoBanco: '', agencia: '', conta: '', tipoConta: 'corrente',
+    titular: '', cpfCnpjTitular: '', pixTipo: '', pixChave: '', principal: false, observacoes: '',
+  });
+
+  const { data: contas = [] } = useQuery({
+    queryKey: [`/api/admin/crm/stakeholders/${stakeholderId}/bancarios`],
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', `/api/admin/crm/stakeholders/${stakeholderId}/bancarios`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/crm/stakeholders/${stakeholderId}/bancarios`] });
+      setShowAdd(false);
+      setForm({ banco: '', codigoBanco: '', agencia: '', conta: '', tipoConta: 'corrente', titular: '', cpfCnpjTitular: '', pixTipo: '', pixChave: '', principal: false, observacoes: '' });
+      toast({ title: 'Dados bancários cadastrados' });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/crm/bancarios/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/crm/stakeholders/${stakeholderId}/bancarios`] });
+      toast({ title: 'Conta removida' });
+    },
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <h4 className="text-sm font-semibold flex items-center gap-2"><Banknote className="w-4 h-4" /> Dados Bancários</h4>
+        <Button size="sm" onClick={() => setShowAdd(!showAdd)}><Plus className="w-3 h-3 mr-1" /> Nova Conta</Button>
+      </div>
+      {showAdd && (
+        <Card className="p-4 space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Banco *</Label><Input placeholder="Ex: Bradesco" value={form.banco} onChange={e => setForm(f => ({ ...f, banco: e.target.value }))} /></div>
+            <div><Label>Código</Label><Input placeholder="237" value={form.codigoBanco} onChange={e => setForm(f => ({ ...f, codigoBanco: e.target.value }))} /></div>
+            <div>
+              <Label>Tipo de Conta *</Label>
+              <Select value={form.tipoConta} onValueChange={v => setForm(f => ({ ...f, tipoConta: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="corrente">Corrente</SelectItem>
+                  <SelectItem value="poupanca">Poupança</SelectItem>
+                  <SelectItem value="salario">Salário</SelectItem>
+                  <SelectItem value="pagamento">Pagamento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Agência *</Label><Input placeholder="0001" value={form.agencia} onChange={e => setForm(f => ({ ...f, agencia: e.target.value }))} /></div>
+            <div><Label>Conta *</Label><Input placeholder="12345-6" value={form.conta} onChange={e => setForm(f => ({ ...f, conta: e.target.value }))} /></div>
+            <div><Label>Titular *</Label><Input value={form.titular} onChange={e => setForm(f => ({ ...f, titular: e.target.value }))} /></div>
+            <div><Label>CPF/CNPJ Titular</Label><Input value={form.cpfCnpjTitular} onChange={e => setForm(f => ({ ...f, cpfCnpjTitular: e.target.value }))} /></div>
+            <div>
+              <Label>Tipo PIX</Label>
+              <Select value={form.pixTipo || 'none'} onValueChange={v => setForm(f => ({ ...f, pixTipo: v === 'none' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Sem PIX" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem PIX</SelectItem>
+                  <SelectItem value="cpf">CPF</SelectItem>
+                  <SelectItem value="cnpj">CNPJ</SelectItem>
+                  <SelectItem value="email">E-mail</SelectItem>
+                  <SelectItem value="telefone">Telefone</SelectItem>
+                  <SelectItem value="aleatoria">Chave Aleatória</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Chave PIX</Label><Input value={form.pixChave} onChange={e => setForm(f => ({ ...f, pixChave: e.target.value }))} placeholder={form.pixTipo ? 'Informe a chave' : ''} disabled={!form.pixTipo} /></div>
+          </div>
+          <div><Label>Observações</Label><Input value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} /></div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>Cancelar</Button>
+            <Button size="sm" onClick={() => addMutation.mutate(form)} disabled={!form.banco || !form.agencia || !form.conta || !form.titular}>Salvar</Button>
+          </div>
+        </Card>
+      )}
+      {(contas as any[]).length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-4">Nenhuma conta bancária cadastrada</p>
+      ) : (contas as any[]).map((c: any) => (
+        <Card key={c.id} className="p-4">
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold">{c.banco} {c.codigoBanco ? `(${c.codigoBanco})` : ''}</p>
+                <Badge variant="secondary" className="text-xs">{c.tipoConta === 'corrente' ? 'C/C' : c.tipoConta === 'poupanca' ? 'Poup.' : c.tipoConta}</Badge>
+                {c.principal && <Badge className="bg-green-100 text-green-700 text-xs">Principal</Badge>}
+              </div>
+              <p className="text-sm text-gray-600">Ag: {c.agencia} | Conta: {c.conta}</p>
+              <p className="text-sm text-gray-600">Titular: {c.titular} {c.cpfCnpjTitular ? `(${c.cpfCnpjTitular})` : ''}</p>
+              {c.pixChave && <p className="text-sm text-gray-500">PIX ({c.pixTipo}): {c.pixChave}</p>}
+              {c.observacoes && <p className="text-xs text-gray-400">{c.observacoes}</p>}
+            </div>
+            <Button variant="ghost" size="sm" className="text-red-500" onClick={() => {
+              if (confirm('Remover esta conta?')) deleteMutation.mutate(c.id);
+            }}><Trash2 className="w-4 h-4" /></Button>
+          </div>
         </Card>
       ))}
     </div>

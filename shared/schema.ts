@@ -646,3 +646,28 @@ export const crmInteracoes = pgTable("crm_interacoes", {
   criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
 });
 export type CrmInteracao = typeof crmInteracoes.$inferSelect;
+
+// ── Dados Bancários do CRM ──
+export const CRM_CONTA_TIPOS = ['corrente', 'poupanca', 'salario', 'pagamento'] as const;
+export type CrmContaTipo = typeof CRM_CONTA_TIPOS[number];
+
+export const CRM_PIX_TIPOS = ['cpf', 'cnpj', 'email', 'telefone', 'aleatoria'] as const;
+export type CrmPixTipo = typeof CRM_PIX_TIPOS[number];
+
+export const crmDadosBancarios = pgTable("crm_dados_bancarios", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeholderId: uuid("stakeholder_id").notNull().references(() => crmStakeholders.id, { onDelete: 'cascade' }),
+  banco: text("banco").notNull(),
+  codigoBanco: text("codigo_banco"),
+  agencia: text("agencia").notNull(),
+  conta: text("conta").notNull(),
+  tipoConta: text("tipo_conta").$type<CrmContaTipo>().notNull().default("corrente"),
+  titular: text("titular").notNull(),
+  cpfCnpjTitular: text("cpf_cnpj_titular"),
+  pixTipo: text("pix_tipo").$type<CrmPixTipo>(),
+  pixChave: text("pix_chave"),
+  principal: boolean("principal").notNull().default(false),
+  observacoes: text("observacoes"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export type CrmDadosBancarios = typeof crmDadosBancarios.$inferSelect;
