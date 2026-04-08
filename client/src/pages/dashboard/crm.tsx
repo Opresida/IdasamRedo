@@ -106,7 +106,7 @@ export default function CrmPage() {
 
   const handleEdit = async (s: CrmStakeholder) => {
     const res = await fetch(`/api/admin/crm/stakeholders/${s.id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+      headers: { Authorization: `Bearer ${localStorage.getItem('idasam_admin_token')}` },
     });
     const full = await res.json();
     setForm({
@@ -127,7 +127,7 @@ export default function CrmPage() {
 
   const handleViewDetail = async (s: CrmStakeholder) => {
     const res = await fetch(`/api/admin/crm/stakeholders/${s.id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+      headers: { Authorization: `Bearer ${localStorage.getItem('idasam_admin_token')}` },
     });
     const full = await res.json();
     setSelectedStakeholder(full);
