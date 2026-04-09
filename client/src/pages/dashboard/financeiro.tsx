@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,919 +17,823 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { 
-  Plus, 
-  CalendarIcon, 
-  DollarSign, 
-  TrendingUp, 
-  TrendingDown, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  Download, 
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Plus,
+  CalendarIcon,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Eye,
+  Edit,
+  Trash2,
+  Download,
   Filter,
-  MoreHorizontal,
   Columns,
   Grid3X3,
   Building2,
-  Users,
   FileText,
   Settings,
   Upload,
   CreditCard,
   Target,
-  PieChart
+  PieChart,
+  Loader2
 } from 'lucide-react';
+import type {
+  FinancialAccount,
+  FinancialCategory,
+  FinancialProject,
+  FinancialTransaction,
+  CrmStakeholder,
+} from '@shared/schema';
 
-// Mock data
-const mockTransactions = [
-  { id: 1, date: '2024-01-15', description: 'Doação João Silva', type: 'Receita', amount: 1500, project: 'Projeto Coração Ribeirinho', status: 'Pago', account: 'Bradesco 001', category: 'Doação' },
-  { id: 2, date: '2024-01-14', description: 'Compra de equipamentos', type: 'Despesa', amount: -800, project: 'Infraestrutura', status: 'Pendente', account: 'Caixa 002', category: 'Equipamentos' },
-  { id: 3, date: '2024-01-13', description: 'Salário funcionário', type: 'Despesa', amount: -2500, project: null, status: 'Pago', account: 'Bradesco 001', category: 'Recursos Humanos' },
-  { id: 4, date: '2024-01-12', description: 'Doação Maria Santos', type: 'Receita', amount: 500, project: 'Projeto Educação', status: 'A Vencer', account: 'Caixa 002', category: 'Doação' }
-];
+// ─── Helper types ────────────────────────────────────────────────────────────
+interface ResumoData {
+  totalReceitas: number;
+  totalDespesas: number;
+  saldoAtual: number;
+  totalTransacoes: number;
+}
 
-const mockAccounts = [
-  { id: 1, name: 'Bradesco 001', bank: 'Bradesco', agency: '1234', number: '12345-6', balance: 15000 },
-  { id: 2, name: 'Caixa 002', bank: 'Caixa Econômica', agency: '5678', number: '98765-4', balance: 8500 }
-];
+// ─── Default form states ─────────────────────────────────────────────────────
+const emptyTransactionForm = {
+  tipo: '' as string,
+  descricao: '',
+  valor: '',
+  data: new Date(),
+  contaId: '',
+  categoriaId: '',
+  projetoId: '',
+  tipoCusto: '',
+  fornecedorId: '',
+  doadorId: '',
+  pesquisadorId: '',
+  status: 'pendente',
+  isPublic: false,
+  observacoes: '',
+  documentoAnexo: '',
+};
 
-const mockSuppliers = [
-  { id: 1, name: 'Tech Solutions LTDA', document: '12.345.678/0001-90', contact: '(11) 98765-4321', pix: 'tech@solutions.com' },
-  { id: 2, name: 'Materiais Norte', document: '98.765.432/0001-10', contact: '(11) 91234-5678', pix: '98765432000110' }
-];
+const emptyAccountForm = {
+  nome: '',
+  banco: '',
+  agencia: '',
+  conta: '',
+  saldoInicial: '',
+};
 
-const mockDonors = [
-  { id: 1, name: 'João Silva', document: '123.456.789-00', contact: '(11) 99999-8888', pix: 'joao.silva@email.com' },
-  { id: 2, name: 'Maria Santos', document: '987.654.321-00', contact: '(11) 88888-7777', pix: '11999998888' }
-];
+const emptyCategoryForm = {
+  nome: '',
+  tipo: 'ambos' as string,
+};
 
-const mockCategories = [
-  { id: 1, name: 'Doação', type: 'both' },
-  { id: 2, name: 'Recursos Humanos', type: 'expense' },
-  { id: 3, name: 'Equipamentos', type: 'expense' },
-  { id: 4, name: 'Marketing', type: 'expense' },
-  { id: 5, name: 'Infraestrutura', type: 'expense' }
-];
+// ─── Status labels ───────────────────────────────────────────────────────────
+const STATUS_LABELS: Record<string, string> = {
+  pendente: 'Pendente',
+  pago: 'Pago',
+  a_vencer: 'A Vencer',
+  cancelado: 'Cancelado',
+};
 
-const mockProjects = [
-  { id: 1, name: 'Projeto Coração Ribeirinho' },
-  { id: 2, name: 'Projeto Educação' },
-  { id: 3, name: 'Infraestrutura' }
-];
+const TIPO_LABELS: Record<string, string> = {
+  receita: 'Receita',
+  despesa: 'Despesa',
+};
 
+const CATEGORY_TYPE_LABELS: Record<string, string> = {
+  ambos: 'Ambos',
+  receita: 'Receita',
+  despesa: 'Despesa',
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
 export default function DashboardFinanceiroPage() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  // ─── UI state ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('transacoes');
   const [activeAccountTab, setActiveAccountTab] = useState('add-account');
-  const [activeContactTab, setActiveContactTab] = useState('fornecedores');
-  const [viewMode, setViewMode] = useState('lista'); // 'lista' or 'quadro'
+  const [viewMode, setViewMode] = useState('lista');
   const [isNewTransactionOpen, setIsNewTransactionOpen] = useState(false);
   const [isNewAccountOpen, setIsNewAccountOpen] = useState(false);
-  const [isNewSupplierOpen, setIsNewSupplierOpen] = useState(false);
-  const [isEditSupplierOpen, setIsEditSupplierOpen] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState(null);
-  const [isNewDonorOpen, setIsNewDonorOpen] = useState(false);
-  const [isEditDonorOpen, setIsEditDonorOpen] = useState(false);
-  const [editingDonor, setEditingDonor] = useState(null);
   const [isNewCategoryOpen, setIsNewCategoryOpen] = useState(false);
-  const [editingCategoryId, setEditingCategoryId] = useState(null); // State to track the category being edited
   const [isEditTransactionOpen, setIsEditTransactionOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState(null);
-
-  const [accounts, setAccounts] = useState(mockAccounts);
-  const [suppliers, setSuppliers] = useState(mockSuppliers);
-  const [donors, setDonors] = useState(mockDonors);
-  const [categories, setCategories] = useState(mockCategories);
-  const [transactions, setTransactions] = useState(mockTransactions);
-
-  // Form states
-  const [newTransaction, setNewTransaction] = useState({
-    type: '',
-    description: '',
-    amount: '',
-    date: new Date(),
-    account: '',
-    category: '',
-    project: '',
-    costType: '',
-    supplier: '',
-    donor: '',
-    status: 'Pendente',
-    isPublic: false,
-    document: null
-  });
-
-  const [editTransaction, setEditTransaction] = useState({
-    type: '',
-    description: '',
-    amount: '',
-    date: new Date(),
-    account: '',
-    category: '',
-    project: '',
-    costType: '',
-    supplier: '',
-    donor: '',
-    status: 'Pendente',
-    isPublic: false,
-    document: null
-  });
-
-  const [newAccount, setNewAccount] = useState({
-    name: '',
-    bank: '',
-    agency: '',
-    number: '',
-    balance: ''
-  });
-
-  const [newSupplier, setNewSupplier] = useState({
-    name: '',
-    document: '',
-    contact: '',
-    pix: ''
-  });
-
-  const [editSupplier, setEditSupplier] = useState({
-    name: '',
-    document: '',
-    contact: '',
-    pix: ''
-  });
-
-  const [newDonor, setNewDonor] = useState({
-    name: '',
-    document: '',
-    contact: '',
-    pix: ''
-  });
-
-  const [editDonor, setEditDonor] = useState({
-    name: '',
-    document: '',
-    contact: '',
-    pix: ''
-  });
-
-  const [newCategory, setNewCategory] = useState({
-    name: '',
-    type: 'both'
-  });
-
-  // Estados para filters
+  const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+
+  // ─── Form states ───────────────────────────────────────────────────────────
+  const [newTransaction, setNewTransaction] = useState({ ...emptyTransactionForm });
+  const [editTransaction, setEditTransaction] = useState({ ...emptyTransactionForm });
+  const [newAccount, setNewAccount] = useState({ ...emptyAccountForm });
+  const [newCategory, setNewCategory] = useState({ ...emptyCategoryForm });
+
   const [filters, setFilters] = useState({
-    dateFrom: null,
-    dateTo: null,
-    type: '',
+    dateFrom: null as Date | null,
+    dateTo: null as Date | null,
+    tipo: '',
     status: '',
-    account: '',
-    category: '',
-    project: ''
+    contaId: '',
+    categoriaId: '',
+    projetoId: '',
   });
 
-  // Calculate totals (using filtered transactions for display)
-  const filteredTransactions = transactions.filter(transaction => {
-    // Date filters
-    if (filters.dateFrom) {
-      const transactionDate = new Date(transaction.date);
-      const fromDate = new Date(filters.dateFrom);
-      if (transactionDate < fromDate) return false;
-    }
-
-    if (filters.dateTo) {
-      const transactionDate = new Date(transaction.date);
-      const toDate = new Date(filters.dateTo);
-      if (transactionDate > toDate) return false;
-    }
-
-    // Type filter
-    if (filters.type && transaction.type !== filters.type) return false;
-
-    // Status filter
-    if (filters.status && transaction.status !== filters.status) return false;
-
-    // Account filter
-    if (filters.account && transaction.account !== filters.account) return false;
-
-    // Category filter
-    if (filters.category && transaction.category !== filters.category) return false;
-
-    // Project filter
-    if (filters.project && transaction.project !== filters.project) return false;
-
-    return true;
+  // ─── Queries ───────────────────────────────────────────────────────────────
+  const { data: transacoes = [], isLoading: loadingTx } = useQuery<FinancialTransaction[]>({
+    queryKey: ['/api/admin/financeiro/transacoes'],
   });
 
-  const totalReceitas = filteredTransactions
-    .filter(t => t.type === 'Receita' && t.status === 'Pago')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const { data: contas = [] } = useQuery<FinancialAccount[]>({
+    queryKey: ['/api/admin/financeiro/contas'],
+  });
 
-  const totalDespesas = filteredTransactions
-    .filter(t => t.type === 'Despesa' && t.status === 'Pago')
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const { data: categorias = [] } = useQuery<FinancialCategory[]>({
+    queryKey: ['/api/admin/financeiro/categorias'],
+  });
 
-  const saldoAtual = totalReceitas - totalDespesas;
+  const { data: projetos = [] } = useQuery<FinancialProject[]>({
+    queryKey: ['/api/admin/financeiro/projetos'],
+  });
 
-  // Handlers
-  const handleCreateTransaction = () => {
-    const transaction = {
-      id: Date.now(),
-      date: format(newTransaction.date, 'yyyy-MM-dd'),
-      description: newTransaction.description,
-      type: newTransaction.type,
-      amount: newTransaction.type === 'Despesa' ? -Math.abs(Number(newTransaction.amount)) : Number(newTransaction.amount),
-      project: newTransaction.project || null,
-      status: newTransaction.status,
-      account: newTransaction.account,
-      category: newTransaction.category
-    };
+  const { data: resumo } = useQuery<ResumoData>({
+    queryKey: ['/api/admin/financeiro/relatorios/resumo'],
+  });
 
-    setTransactions([transaction, ...transactions]);
-    setIsNewTransactionOpen(false);
-    setNewTransaction({
-      type: '',
-      description: '',
-      amount: '',
-      date: new Date(),
-      account: '',
-      category: '',
-      project: '',
-      costType: '',
-      supplier: '',
-      donor: '',
-      status: 'Pendente',
-      isPublic: false,
-      document: null
-    });
-  };
+  const { data: porCategoria = [] } = useQuery<any[]>({
+    queryKey: ['/api/admin/financeiro/relatorios/por-categoria'],
+  });
 
-  const handleCreateAccount = () => {
-    const account = {
-      id: Date.now(),
-      name: newAccount.name,
-      bank: newAccount.bank,
-      agency: newAccount.agency,
-      number: newAccount.number,
-      balance: Number(newAccount.balance)
-    };
+  const { data: stakeholders = [] } = useQuery<CrmStakeholder[]>({
+    queryKey: ['/api/admin/crm/stakeholders'],
+  });
 
-    setAccounts([...accounts, account]);
-    setIsNewAccountOpen(false);
-    setNewAccount({ name: '', bank: '', agency: '', number: '', balance: '' });
-    setActiveAccountTab(account.name.toLowerCase().replace(/\s+/g, '-'));
-  };
+  // ─── Derived CRM lists ────────────────────────────────────────────────────
+  const suppliers = useMemo(
+    () => stakeholders.filter((s) => s.tipo === 'pj' && s.status === 'ativo'),
+    [stakeholders],
+  );
+  const donors = useMemo(
+    () => stakeholders.filter((s) => ['doador', 'pf', 'pj'].includes(s.tipo) && s.status === 'ativo'),
+    [stakeholders],
+  );
+  const researchers = useMemo(
+    () => stakeholders.filter((s) => s.tipo === 'pesquisador' && s.status === 'ativo'),
+    [stakeholders],
+  );
 
-  const handleCreateSupplier = () => {
-    const supplier = {
-      id: Date.now(),
-      name: newSupplier.name,
-      document: newSupplier.document,
-      contact: newSupplier.contact,
-      pix: newSupplier.pix
-    };
+  // ─── Lookup helpers ────────────────────────────────────────────────────────
+  const contaMap = useMemo(() => new Map(contas.map((c) => [c.id, c])), [contas]);
+  const categoriaMap = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
+  const projetoMap = useMemo(() => new Map(projetos.map((p) => [p.id, p])), [projetos]);
+  const stakeholderMap = useMemo(() => new Map(stakeholders.map((s) => [s.id, s])), [stakeholders]);
 
-    setSuppliers([...suppliers, supplier]);
-    setIsNewSupplierOpen(false);
-    setNewSupplier({ name: '', document: '', contact: '', pix: '' });
-  };
-
-  const handleCreateDonor = () => {
-    const donor = {
-      id: Date.now(),
-      name: newDonor.name,
-      document: newDonor.document,
-      contact: newDonor.contact,
-      pix: newDonor.pix
-    };
-
-    setDonors([...donors, donor]);
-    setIsNewDonorOpen(false);
-    setNewDonor({ name: '', document: '', contact: '', pix: '' });
-  };
-
-  const handleCreateCategory = () => {
-    if (editingCategoryId) {
-      // Update existing category
-      const updatedCategories = categories.map(cat => 
-        cat.id === editingCategoryId ? { ...cat, name: newCategory.name, type: newCategory.type } : cat
-      );
-      setCategories(updatedCategories);
-    } else {
-      // Create new category
-      const category = {
-        id: Date.now(),
-        name: newCategory.name,
-        type: newCategory.type
-      };
-      setCategories([...categories, category]);
-    }
-    setIsNewCategoryOpen(false);
-    setNewCategory({ name: '', type: 'both' });
-    setEditingCategoryId(null);
-  };
-
-  const handleDeleteAccount = (accountId) => {
-    const accountToDelete = accounts.find(a => a.id === accountId);
-    if (!accountToDelete) {
-      alert('Conta não encontrada.');
-      return;
-    }
-
-    const hasTransactions = transactions.some(t => t.account === accountToDelete.name);
-
-    if (hasTransactions) {
-      alert(`Não é possível excluir a conta "${accountToDelete.name}" pois há transações vinculadas a ela. Exclua ou transfira as transações primeiro.`);
-      return;
-    }
-
-    const confirmMessage = `Tem certeza que deseja excluir a conta "${accountToDelete.name}" do banco ${accountToDelete.bank}?\n\nEsta ação não pode ser desfeita.`;
-
-    if (window.confirm(confirmMessage)) {
-      setAccounts(prevAccounts => prevAccounts.filter(account => account.id !== accountId));
-
-      const accountTab = accountToDelete.name.toLowerCase().replace(/\s+/g, '-');
-      if (activeAccountTab === accountTab) {
-        setActiveAccountTab('add-account');
+  // ─── Client-side filtering ─────────────────────────────────────────────────
+  const filteredTransactions = useMemo(() => {
+    return transacoes.filter((t) => {
+      if (filters.dateFrom) {
+        if (new Date(t.data) < filters.dateFrom) return false;
       }
+      if (filters.dateTo) {
+        if (new Date(t.data) > filters.dateTo) return false;
+      }
+      if (filters.tipo && t.tipo !== filters.tipo) return false;
+      if (filters.status && t.status !== filters.status) return false;
+      if (filters.contaId && t.contaId !== filters.contaId) return false;
+      if (filters.categoriaId && t.categoriaId !== filters.categoriaId) return false;
+      if (filters.projetoId && t.projetoId !== filters.projetoId) return false;
+      return true;
+    });
+  }, [transacoes, filters]);
 
-      alert(`Conta "${accountToDelete.name}" excluída com sucesso!`);
-    }
+  // ─── Totals (from server resumo or fallback to client) ─────────────────────
+  const totalReceitas = resumo?.totalReceitas ?? filteredTransactions
+    .filter((t) => t.tipo === 'receita' && t.status === 'pago')
+    .reduce((sum, t) => sum + Number(t.valor), 0);
+
+  const totalDespesas = resumo?.totalDespesas ?? filteredTransactions
+    .filter((t) => t.tipo === 'despesa' && t.status === 'pago')
+    .reduce((sum, t) => sum + Math.abs(Number(t.valor)), 0);
+
+  const saldoAtual = resumo?.saldoAtual ?? (totalReceitas - totalDespesas);
+
+  // ─── Mutations: Transactions ───────────────────────────────────────────────
+  const createTxMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/admin/financeiro/transacoes', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/transacoes'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/resumo'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/por-categoria'] });
+      setIsNewTransactionOpen(false);
+      setNewTransaction({ ...emptyTransactionForm });
+      toast({ title: 'Transacao criada com sucesso' });
+    },
+    onError: (e: any) => toast({ title: 'Erro ao criar transacao', description: e.message, variant: 'destructive' }),
+  });
+
+  const updateTxMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest('PATCH', `/api/admin/financeiro/transacoes/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/transacoes'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/resumo'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/por-categoria'] });
+      setIsEditTransactionOpen(false);
+      setEditingTransaction(null);
+      setEditTransaction({ ...emptyTransactionForm });
+      toast({ title: 'Transacao atualizada com sucesso' });
+    },
+    onError: (e: any) => toast({ title: 'Erro ao atualizar transacao', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteTxMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/financeiro/transacoes/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/transacoes'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/resumo'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/por-categoria'] });
+      toast({ title: 'Transacao excluida com sucesso' });
+    },
+    onError: (e: any) => toast({ title: 'Erro ao excluir transacao', description: e.message, variant: 'destructive' }),
+  });
+
+  // ─── Mutations: Accounts ───────────────────────────────────────────────────
+  const createAccountMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/admin/financeiro/contas', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/contas'] });
+      setIsNewAccountOpen(false);
+      setNewAccount({ ...emptyAccountForm });
+      setActiveAccountTab('add-account');
+      toast({ title: 'Conta criada com sucesso' });
+    },
+    onError: (e: any) => toast({ title: 'Erro ao criar conta', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/financeiro/contas/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/contas'] });
+      setActiveAccountTab('add-account');
+      toast({ title: 'Conta excluida com sucesso' });
+    },
+    onError: (e: any) => toast({ title: 'Erro ao excluir conta', description: e.message, variant: 'destructive' }),
+  });
+
+  // ─── Mutations: Categories ─────────────────────────────────────────────────
+  const createCategoryMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/admin/financeiro/categorias', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/categorias'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/por-categoria'] });
+      setIsNewCategoryOpen(false);
+      setNewCategory({ ...emptyCategoryForm });
+      setEditingCategoryId(null);
+      toast({ title: 'Categoria criada com sucesso' });
+    },
+    onError: (e: any) => toast({ title: 'Erro ao criar categoria', description: e.message, variant: 'destructive' }),
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest('PATCH', `/api/admin/financeiro/categorias/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/categorias'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/por-categoria'] });
+      setIsNewCategoryOpen(false);
+      setNewCategory({ ...emptyCategoryForm });
+      setEditingCategoryId(null);
+      toast({ title: 'Categoria atualizada com sucesso' });
+    },
+    onError: (e: any) => toast({ title: 'Erro ao atualizar categoria', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/financeiro/categorias/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/categorias'] });
+      qc.invalidateQueries({ queryKey: ['/api/admin/financeiro/relatorios/por-categoria'] });
+      toast({ title: 'Categoria excluida com sucesso' });
+    },
+    onError: (e: any) => toast({ title: 'Erro ao excluir categoria', description: e.message, variant: 'destructive' }),
+  });
+
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+  const handleCreateTransaction = () => {
+    const payload: any = {
+      tipo: newTransaction.tipo,
+      descricao: newTransaction.descricao,
+      valor: newTransaction.valor,
+      data: format(newTransaction.data, 'yyyy-MM-dd'),
+      contaId: newTransaction.contaId || null,
+      categoriaId: newTransaction.categoriaId || null,
+      projetoId: newTransaction.projetoId || null,
+      tipoCusto: newTransaction.tipoCusto || null,
+      fornecedorId: newTransaction.fornecedorId || null,
+      doadorId: newTransaction.doadorId || null,
+      pesquisadorId: newTransaction.pesquisadorId || null,
+      status: newTransaction.status,
+      isPublic: newTransaction.isPublic,
+      observacoes: newTransaction.observacoes || null,
+    };
+    createTxMutation.mutate(payload);
   };
 
-  const handleDeleteTransaction = (transactionId) => {
-    const transactionToDelete = transactions.find(t => t.id === transactionId);
-
-    if (!transactionToDelete) {
-      alert('Transação não encontrada.');
-      return;
-    }
-
-    const confirmMessage = `Tem certeza que deseja excluir a transação "${transactionToDelete.description}"?\n\nValor: R$ ${Math.abs(transactionToDelete.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nData: ${format(new Date(transactionToDelete.date), 'dd/MM/yyyy')}\n\nEsta ação não pode ser desfeita.`;
-
-    if (window.confirm(confirmMessage)) {
-      setTransactions(prevTransactions => prevTransactions.filter(t => t.id !== transactionId));
-      alert('Transação excluída com sucesso!');
-    }
-  };
-
-  const handleEditTransaction = (transaction) => {
+  const handleEditTransaction = (transaction: FinancialTransaction) => {
     setEditingTransaction(transaction);
     setEditTransaction({
-      type: transaction.type,
-      description: transaction.description,
-      amount: Math.abs(transaction.amount).toString(),
-      date: new Date(transaction.date),
-      account: transaction.account,
-      category: transaction.category,
-      project: transaction.project || '',
-      costType: '',
-      supplier: '',
-      donor: '',
+      tipo: transaction.tipo,
+      descricao: transaction.descricao,
+      valor: transaction.valor,
+      data: new Date(transaction.data),
+      contaId: transaction.contaId || '',
+      categoriaId: transaction.categoriaId || '',
+      projetoId: transaction.projetoId || '',
+      tipoCusto: transaction.tipoCusto || '',
+      fornecedorId: transaction.fornecedorId || '',
+      doadorId: transaction.doadorId || '',
+      pesquisadorId: transaction.pesquisadorId || '',
       status: transaction.status,
-      isPublic: false,
-      document: null
+      isPublic: transaction.isPublic,
+      observacoes: transaction.observacoes || '',
     });
     setIsEditTransactionOpen(true);
   };
 
   const handleUpdateTransaction = () => {
     if (!editingTransaction) return;
-
-    const updatedTransaction = {
-      ...editingTransaction,
-      type: editTransaction.type,
-      description: editTransaction.description,
-      amount: editTransaction.type === 'Despesa' ? -Math.abs(Number(editTransaction.amount)) : Number(editTransaction.amount),
-      date: format(editTransaction.date, 'yyyy-MM-dd'),
-      account: editTransaction.account,
-      category: editTransaction.category,
-      project: editTransaction.project || null,
-      status: editTransaction.status
+    const payload: any = {
+      tipo: editTransaction.tipo,
+      descricao: editTransaction.descricao,
+      valor: editTransaction.valor,
+      data: format(editTransaction.data, 'yyyy-MM-dd'),
+      contaId: editTransaction.contaId || null,
+      categoriaId: editTransaction.categoriaId || null,
+      projetoId: editTransaction.projetoId || null,
+      tipoCusto: editTransaction.tipoCusto || null,
+      fornecedorId: editTransaction.fornecedorId || null,
+      doadorId: editTransaction.doadorId || null,
+      pesquisadorId: editTransaction.pesquisadorId || null,
+      status: editTransaction.status,
+      isPublic: editTransaction.isPublic,
+      observacoes: editTransaction.observacoes || null,
     };
+    updateTxMutation.mutate({ id: editingTransaction.id, data: payload });
+  };
 
-    setTransactions(transactions.map(t => 
-      t.id === editingTransaction.id ? updatedTransaction : t
-    ));
+  const handleDeleteTransaction = (tx: FinancialTransaction) => {
+    if (window.confirm(`Tem certeza que deseja excluir a transacao "${tx.descricao}"?\n\nValor: R$ ${Number(tx.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nData: ${format(new Date(tx.data), 'dd/MM/yyyy')}\n\nEsta acao nao pode ser desfeita.`)) {
+      deleteTxMutation.mutate(tx.id);
+    }
+  };
 
-    setIsEditTransactionOpen(false);
-    setEditingTransaction(null);
-    setEditTransaction({
-      type: '',
-      description: '',
-      amount: '',
-      date: new Date(),
-      account: '',
-      category: '',
-      project: '',
-      costType: '',
-      supplier: '',
-      donor: '',
-      status: 'Pendente',
-      isPublic: false,
-      document: null
+  const handleCreateAccount = () => {
+    createAccountMutation.mutate({
+      nome: newAccount.nome,
+      banco: newAccount.banco,
+      agencia: newAccount.agencia,
+      conta: newAccount.conta,
+      saldoInicial: newAccount.saldoInicial || '0',
     });
   };
 
-  const handleEditSupplier = (supplier) => {
-    setEditingSupplier(supplier);
-    setEditSupplier({
-      name: supplier.name,
-      document: supplier.document,
-      contact: supplier.contact,
-      pix: supplier.pix,
-    });
-    setIsEditSupplierOpen(true);
+  const handleDeleteAccount = (account: FinancialAccount) => {
+    const hasTransactions = transacoes.some((t) => t.contaId === account.id);
+    if (hasTransactions) {
+      toast({ title: 'Erro', description: `Nao e possivel excluir a conta "${account.nome}" pois ha transacoes vinculadas.`, variant: 'destructive' });
+      return;
+    }
+    if (window.confirm(`Tem certeza que deseja excluir a conta "${account.nome}"?`)) {
+      deleteAccountMutation.mutate(account.id);
+    }
   };
 
-  const handleUpdateSupplier = () => {
-    if (!editingSupplier) return;
-
-    const updatedSupplier = {
-      ...editingSupplier,
-      name: editSupplier.name,
-      document: editSupplier.document,
-      contact: editSupplier.contact,
-      pix: editSupplier.pix,
-    };
-
-    setSuppliers(suppliers.map(s =>
-      s.id === editingSupplier.id ? updatedSupplier : s
-    ));
-
-    setIsEditSupplierOpen(false);
-    setEditingSupplier(null);
-    setEditSupplier({ name: '', document: '', contact: '', pix: '' });
+  const handleCreateOrUpdateCategory = () => {
+    const payload = { nome: newCategory.nome, tipo: newCategory.tipo };
+    if (editingCategoryId) {
+      updateCategoryMutation.mutate({ id: editingCategoryId, data: payload });
+    } else {
+      createCategoryMutation.mutate(payload);
+    }
   };
 
-  const handleEditDonor = (donor) => {
-    setEditingDonor(donor);
-    setEditDonor({
-      name: donor.name,
-      document: donor.document,
-      contact: donor.contact,
-      pix: donor.pix,
-    });
-    setIsEditDonorOpen(true);
+  const handleEditCategory = (cat: FinancialCategory) => {
+    setEditingCategoryId(cat.id);
+    setNewCategory({ nome: cat.nome, tipo: cat.tipo });
+    setIsNewCategoryOpen(true);
   };
 
-  const handleUpdateDonor = () => {
-    if (!editingDonor) return;
-
-    const updatedDonor = {
-      ...editingDonor,
-      name: editDonor.name,
-      document: editDonor.document,
-      contact: editDonor.contact,
-      pix: editDonor.pix,
-    };
-
-    setDonors(donors.map(d =>
-      d.id === editingDonor.id ? updatedDonor : d
-    ));
-
-    setIsEditDonorOpen(false);
-    setEditingDonor(null);
-    setEditDonor({ name: '', document: '', contact: '', pix: '' });
+  const handleDeleteCategory = (cat: FinancialCategory) => {
+    const usage = transacoes.filter((t) => t.categoriaId === cat.id).length;
+    if (usage > 0) {
+      toast({ title: 'Erro', description: `Nao e possivel excluir a categoria "${cat.nome}" pois ela esta sendo usada em transacoes.`, variant: 'destructive' });
+      return;
+    }
+    if (window.confirm(`Tem certeza que deseja excluir a categoria "${cat.nome}"?`)) {
+      deleteCategoryMutation.mutate(cat.id);
+    }
   };
 
-  // Drag and drop handler
-  const handleOnDragEnd = (result) => {
+  // Drag and drop handler for kanban
+  const handleOnDragEnd = (result: any) => {
     const { destination, source, draggableId } = result;
-
-    if (!destination) {
-      return;
-    }
-
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
-
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
     const newStatus = destination.droppableId;
-    const transactionId = parseInt(draggableId);
-
-    setTransactions(transactions.map(transaction => 
-      transaction.id === transactionId 
-        ? { ...transaction, status: newStatus }
-        : transaction
-    ));
+    updateTxMutation.mutate({ id: draggableId, data: { status: newStatus } });
   };
 
   // Filter transactions by account
-  const getTransactionsByAccount = (accountName) => {
-    return transactions.filter(t => t.account === accountName);
-  };
-
-  // Calculate account balance
-  const getAccountBalance = (accountName) => {
-    const account = accounts.find(a => a.name === accountName);
-    const accountTransactions = getTransactionsByAccount(accountName);
-    const transactionSum = accountTransactions
-      .filter(t => t.status === 'Pago')
-      .reduce((sum, t) => sum + t.amount, 0);
-    return account ? account.balance + transactionSum : 0;
+  const getTransactionsByAccount = (accountId: string) => {
+    return transacoes.filter((t) => t.contaId === accountId);
   };
 
   const clearFilters = () => {
-    setFilters({
-      dateFrom: null,
-      dateTo: null,
-      type: '',
-      status: '',
-      account: '',
-      category: '',
-      project: ''
-    });
+    setFilters({ dateFrom: null, dateTo: null, tipo: '', status: '', contaId: '', categoriaId: '', projetoId: '' });
   };
 
+  // ─── CSV Export ────────────────────────────────────────────────────────────
   const handleExportTransactions = () => {
     if (filteredTransactions.length === 0) {
-      alert('Não há transações para exportar com os filtros aplicados.');
+      toast({ title: 'Nao ha transacoes para exportar com os filtros aplicados.' });
       return;
     }
 
-    // Função para escapar e formatar campos CSV corretamente
-    const formatCsvField = (value) => {
-      if (value === null || value === undefined || value === '') {
-        return '""'; // Campo vazio sempre entre aspas
-      }
-
+    const formatCsvField = (value: any) => {
+      if (value === null || value === undefined || value === '') return '""';
       const stringValue = String(value).trim();
-
-      // Sempre envolver campos em aspas duplas para garantir separação correta
       const escapedValue = stringValue.replace(/"/g, '""');
       return `"${escapedValue}"`;
     };
 
-    // Preparar dados para exportação
-    const csvRows = [];
+    const csvRows: string[] = [];
+    const headers = ['Data', 'Descricao', 'Tipo', 'Valor (R$)', 'Conta Bancaria', 'Categoria', 'Projeto', 'Status'];
+    csvRows.push(headers.map((h) => formatCsvField(h)).join(';'));
 
-    // Cabeçalho - sempre com ponto e vírgula como delimitador (padrão brasileiro)
-    const headers = ['Data', 'Descrição', 'Tipo', 'Valor (R$)', 'Conta Bancária', 'Categoria', 'Projeto', 'Status'];
-    csvRows.push(headers.map(header => formatCsvField(header)).join(';'));
-
-    // Dados das transações
-    filteredTransactions.forEach(transaction => {
-      const valorNumerico = Math.abs(transaction.amount).toFixed(2);
-      const sinalValor = transaction.type === 'Receita' ? '+' : '-';
+    filteredTransactions.forEach((tx) => {
+      const valorNumerico = Math.abs(Number(tx.valor)).toFixed(2);
+      const sinalValor = tx.tipo === 'receita' ? '+' : '-';
       const valorFormatado = `${sinalValor}${valorNumerico}`;
+      const conta = tx.contaId ? contaMap.get(tx.contaId) : null;
+      const categoria = tx.categoriaId ? categoriaMap.get(tx.categoriaId) : null;
+      const projeto = tx.projetoId ? projetoMap.get(tx.projetoId) : null;
 
       const row = [
-        formatCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
-        formatCsvField(transaction.description || ''),
-        formatCsvField(transaction.type || ''),
+        formatCsvField(format(new Date(tx.data), 'dd/MM/yyyy')),
+        formatCsvField(tx.descricao || ''),
+        formatCsvField(TIPO_LABELS[tx.tipo] || tx.tipo),
         formatCsvField(valorFormatado),
-        formatCsvField(transaction.account || ''),
-        formatCsvField(transaction.category || ''),
-        formatCsvField(transaction.project || ''),
-        formatCsvField(transaction.status || '')
+        formatCsvField(conta?.nome || ''),
+        formatCsvField(categoria?.nome || ''),
+        formatCsvField(projeto?.nome || ''),
+        formatCsvField(STATUS_LABELS[tx.status] || tx.status),
       ];
-
-      // Usar ponto e vírgula como delimitador (padrão brasileiro)
       csvRows.push(row.join(';'));
     });
 
-    // Adicionar BOM para UTF-8 e usar \r\n para quebras de linha (padrão CSV)
     const csvContent = '\uFEFF' + csvRows.join('\r\n');
-
-    // Criar arquivo e fazer download com MIME type específico para CSV
-    const blob = new Blob([csvContent], { 
-      type: 'text/csv;charset=utf-8;'
-    });
-
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
 
-    // Nome do arquivo com informações dos filtros
     let fileName = `transacoes_financeiras_${format(new Date(), 'dd-MM-yyyy')}`;
     if (filters.dateFrom || filters.dateTo) {
       const periodo = `${filters.dateFrom ? format(filters.dateFrom, 'dd-MM-yyyy') : 'inicio'}_a_${filters.dateTo ? format(filters.dateTo, 'dd-MM-yyyy') : 'hoje'}`;
       fileName += `_periodo_${periodo}`;
     }
-    if (filters.type) {
-      fileName += `_${filters.type.toLowerCase()}`;
-    }
+    if (filters.tipo) fileName += `_${filters.tipo}`;
     fileName += '.csv';
 
     link.setAttribute('href', url);
     link.setAttribute('download', fileName);
     link.style.visibility = 'hidden';
-
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    // Limpar URL
     URL.revokeObjectURL(url);
 
-    // Feedback para o usuário
-    alert(`✅ Exportação concluída!\n\n📊 ${filteredTransactions.length} transações exportadas\n📁 Arquivo: ${fileName}\n\n💡 Dica: Arquivo formatado com vírgulas como delimitador padrão CSV`);
+    toast({ title: `${filteredTransactions.length} transacoes exportadas com sucesso!` });
   };
 
   const handleExportReport = () => {
-    // Função para escapar caracteres especiais no CSV
-    const formatCsvField = (field) => {
-      if (field === null || field === undefined || field === '') {
-        return '""'; // Campo vazio sempre entre aspas
-      }
-
+    const formatCsvField = (field: any) => {
+      if (field === null || field === undefined || field === '') return '""';
       const stringValue = String(field).trim();
-
-      // Sempre envolver campos em aspas duplas para garantir separação correta
       const escapedValue = stringValue.replace(/"/g, '""');
       return `"${escapedValue}"`;
     };
 
-    // Criar conteúdo CSV estruturado
-    const csvRows = [];
+    const csvRows: string[] = [];
 
-    // CABEÇALHO DO RELATÓRIO
-    csvRows.push(formatCsvField('═══════════════════════════════════════════════════════════'));
-    csvRows.push(formatCsvField('                    RELATÓRIO FINANCEIRO - IDASAM'));
-    csvRows.push(formatCsvField('═══════════════════════════════════════════════════════════'));
-    csvRows.push(formatCsvField(`Data de Geração: ${format(new Date(), 'dd/MM/yyyy - HH:mm:ss')}`));
-    csvRows.push(formatCsvField(`Período Analisado: ${filters.dateFrom ? format(filters.dateFrom, 'dd/MM/yyyy') : 'Início'} até ${filters.dateTo ? format(filters.dateTo, 'dd/MM/yyyy') : 'Hoje'}`));
-    csvRows.push(formatCsvField(`Total de Transações: ${filteredTransactions.length}`));
-    csvRows.push(''); // Linha vazia
+    csvRows.push(formatCsvField('RELATORIO FINANCEIRO - IDASAM'));
+    csvRows.push(formatCsvField(`Data de Geracao: ${format(new Date(), 'dd/MM/yyyy - HH:mm:ss')}`));
+    csvRows.push(formatCsvField(`Total de Transacoes: ${filteredTransactions.length}`));
+    csvRows.push('');
 
-    // SEÇÃO 1: RESUMO EXECUTIVO
-    csvRows.push(formatCsvField('📊 RESUMO EXECUTIVO'));
-    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
-    csvRows.push([formatCsvField('Indicador'), formatCsvField('Valor (R$)'), formatCsvField('Status')].join(';'));
-    csvRows.push([
-      formatCsvField('Total de Receitas'), 
-      formatCsvField(totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
-      formatCsvField(totalReceitas > 0 ? '✅ Positivo' : '⚠️ Sem receitas')
-    ].join(';'));
-    csvRows.push([
-      formatCsvField('Total de Despesas'), 
-      formatCsvField(totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
-      formatCsvField(totalDespesas > 0 ? '📈 Ativo' : '✅ Sem despesas')
-    ].join(';'));
-    csvRows.push([
-      formatCsvField('Saldo Líquido'), 
-      formatCsvField(saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
-      formatCsvField(saldoAtual >= 0 ? '🟢 Positivo' : '🔴 Negativo')
-    ].join(';'));
-    csvRows.push([
-      formatCsvField('Margem Financeira'), 
-      formatCsvField(totalReceitas > 0 ? `${((saldoAtual / totalReceitas) * 100).toFixed(1)}%` : '0%'),
-      formatCsvField(saldoAtual > 0 ? '📊 Saudável' : '⚠️ Atenção')
-    ].join(';'));
-    csvRows.push(''); // Linha vazia
+    csvRows.push([formatCsvField('Indicador'), formatCsvField('Valor (R$)')].join(';'));
+    csvRows.push([formatCsvField('Total de Receitas'), formatCsvField(totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 }))].join(';'));
+    csvRows.push([formatCsvField('Total de Despesas'), formatCsvField(totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 }))].join(';'));
+    csvRows.push([formatCsvField('Saldo Liquido'), formatCsvField(saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 }))].join(';'));
+    csvRows.push('');
 
-    // SEÇÃO 2: ANÁLISE POR CATEGORIA
-    csvRows.push(formatCsvField('🏷️ ANÁLISE DE DESPESAS POR CATEGORIA'));
-    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
-    csvRows.push([
-      formatCsvField('Categoria'), 
-      formatCsvField('Valor (R$)'), 
-      formatCsvField('Participação (%)'),
-      formatCsvField('Qtd. Transações'),
-      formatCsvField('Ticket Médio (R$)')
-    ].join(';'));
-
-    categories.filter(cat => cat.type === 'expense' || cat.type === 'both').forEach((category) => {
-      const categoryTransactions = transactions.filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Pago');
-      const categoryTotal = categoryTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      const percentage = totalDespesas > 0 ? (categoryTotal / totalDespesas) * 100 : 0;
-      const ticketMedio = categoryTransactions.length > 0 ? categoryTotal / categoryTransactions.length : 0;
-
+    csvRows.push([formatCsvField('Data'), formatCsvField('Descricao'), formatCsvField('Tipo'), formatCsvField('Valor (R$)'), formatCsvField('Conta'), formatCsvField('Categoria'), formatCsvField('Projeto'), formatCsvField('Status')].join(';'));
+    filteredTransactions.slice(0, 50).forEach((tx) => {
+      const conta = tx.contaId ? contaMap.get(tx.contaId) : null;
+      const categoria = tx.categoriaId ? categoriaMap.get(tx.categoriaId) : null;
+      const projeto = tx.projetoId ? projetoMap.get(tx.projetoId) : null;
       csvRows.push([
-        formatCsvField(category.name),
-        formatCsvField(categoryTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
-        formatCsvField(`${percentage.toFixed(1)}%`),
-        formatCsvField(categoryTransactions.length),
-        formatCsvField(ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 }))
+        formatCsvField(format(new Date(tx.data), 'dd/MM/yyyy')),
+        formatCsvField(tx.descricao),
+        formatCsvField(TIPO_LABELS[tx.tipo] || tx.tipo),
+        formatCsvField(`${tx.tipo === 'receita' ? '+' : '-'}${Math.abs(Number(tx.valor)).toFixed(2)}`),
+        formatCsvField(conta?.nome || ''),
+        formatCsvField(categoria?.nome || ''),
+        formatCsvField(projeto?.nome || ''),
+        formatCsvField(STATUS_LABELS[tx.status] || tx.status),
       ].join(';'));
     });
 
-    csvRows.push(''); // Linha vazia
-
-    // SEÇÃO 3: POSIÇÃO DAS CONTAS BANCÁRIAS
-    csvRows.push(formatCsvField('🏦 POSIÇÃO DAS CONTAS BANCÁRIAS'));
-    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
-    csvRows.push([
-      formatCsvField('Conta'), 
-      formatCsvField('Banco'), 
-      formatCsvField('Saldo Atual (R$)'),
-      formatCsvField('Movimentação (R$)'),
-      formatCsvField('Status')
-    ].join(';'));
-
-    let totalContas = 0;
-    accounts.forEach(account => {
-      const saldoConta = getAccountBalance(account.name);
-      const movimentacao = getTransactionsByAccount(account.name)
-        .filter(t => t.status === 'Pago')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-      totalContas += saldoConta;
-
-      csvRows.push([
-        formatCsvField(account.name),
-        formatCsvField(account.bank),
-        formatCsvField(saldoConta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
-        formatCsvField(movimentacao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
-        formatCsvField(saldoConta >= 0 ? '🟢 Positivo' : '🔴 Negativo')
-      ].join(';'));
-    });
-
-    // Total das contas
-    csvRows.push([
-      formatCsvField('TOTAL GERAL'),
-      formatCsvField('Todas as contas'),
-      formatCsvField(totalContas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })),
-      formatCsvField(''),
-      formatCsvField(totalContas >= 0 ? '🟢 Saudável' : '🔴 Crítico')
-    ].join(';'));
-
-    csvRows.push(''); // Linha vazia
-
-    // SEÇÃO 4: HISTÓRICO DE TRANSAÇÕES RECENTES
-    csvRows.push(formatCsvField('📋 ÚLTIMAS 15 TRANSAÇÕES'));
-    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
-    csvRows.push([
-      formatCsvField('Data'),
-      formatCsvField('Descrição'),
-      formatCsvField('Tipo'),
-      formatCsvField('Valor (R$)'),
-      formatCsvField('Conta'),
-      formatCsvField('Categoria'),
-      formatCsvField('Projeto'),
-      formatCsvField('Status')
-    ].join(';'));
-
-    const ultimasTransacoes = filteredTransactions.slice(0, 15);
-    ultimasTransacoes.forEach(transaction => {
-      const valorNumerico = Math.abs(transaction.amount).toFixed(2);
-      const sinalValor = transaction.type === 'Receita' ? '+' : '-';
-      const valorFormatado = `${sinalValor}${valorNumerico.replace('.', ',')}`;
-
-      csvRows.push([
-        formatCsvField(format(new Date(transaction.date), 'dd/MM/yyyy')),
-        formatCsvField(transaction.description || ''),
-        formatCsvField(transaction.type === 'Receita' ? '💰 Receita' : '💸 Despesa'),
-        formatCsvField(valorFormatado),
-        formatCsvField(transaction.account || ''),
-        formatCsvField(transaction.category || ''),
-        formatCsvField(transaction.project || 'Sem projeto'),
-        formatCsvField(transaction.status === 'Pago' ? '✅ Pago' : transaction.status === 'Pendente' ? '⏳ Pendente' : '📅 A Vencer')
-      ].join(';'));
-    });
-
-    csvRows.push(''); // Linha vazia
-
-    // SEÇÃO 5: INDICADORES E OBSERVAÇÕES
-    csvRows.push(formatCsvField('📈 INDICADORES E OBSERVAÇÕES'));
-    csvRows.push(formatCsvField('───────────────────────────────────────────────────────────'));
-
-    const receitasPendentes = transactions.filter(t => t.type === 'Receita' && t.status !== 'Pago').reduce((sum, t) => sum + t.amount, 0);
-    const despesasPendentes = transactions.filter(t => t.type === 'Despesa' && t.status !== 'Pago').reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-    csvRows.push([formatCsvField('Indicador'), formatCsvField('Valor'), formatCsvField('Observação')].join(';'));
-    csvRows.push([
-      formatCsvField('Receitas Pendentes'),
-      formatCsvField(`R$ ${receitasPendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
-      formatCsvField(receitasPendentes > 0 ? 'Valores a receber em aberto' : 'Nenhuma receita pendente')
-    ].join(';'));
-    csvRows.push([
-      formatCsvField('Despesas Pendentes'),
-      formatCsvField(`R$ ${despesasPendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
-      formatCsvField(despesasPendentes > 0 ? 'Valores a pagar em aberto' : 'Nenhuma despesa pendente')
-    ].join(';'));
-    csvRows.push([
-      formatCsvField('Fluxo Futuro'),
-      formatCsvField(`R$ ${(receitasPendentes - despesasPendentes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`),
-      formatCsvField((receitasPendentes - despesasPendentes) >= 0 ? 'Projeção positiva' : 'Atenção ao fluxo futuro')
-    ].join(';'));
-
-    csvRows.push(''); // Linha vazia
-
-    // RODAPÉ
-    csvRows.push(formatCsvField('═══════════════════════════════════════════════════════════'));
-    csvRows.push(formatCsvField('                         IDASAM'));
-    csvRows.push(formatCsvField('          Instituto de Desenvolvimento da Amazônia'));
-    csvRows.push(formatCsvField('═══════════════════════════════════════════════════════════'));
-    csvRows.push([
-      formatCsvField('Relatório automático gerado pelo sistema em:'),
-      formatCsvField(format(new Date(), 'dd/MM/yyyy às HH:mm:ss'))
-    ].join(';'));
-
-    // Adicionar BOM para UTF-8 e usar \r\n para quebras de linha (padrão CSV)
     const csvContent = '\uFEFF' + csvRows.join('\r\n');
-
-    // Criar arquivo e fazer download com MIME type específico para CSV
-    const blob = new Blob([csvContent], { 
-      type: 'text/csv;charset=utf-8;'
-    });
-
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-
-    // Nome do arquivo com informações dos filtros
-    let fileName = `relatorio_financeiro_IDASAM_${format(new Date(), 'dd-MM-yyyy_HH-mm')}`;
-    if (filters.dateFrom || filters.dateTo) {
-      const periodo = `${filters.dateFrom ? format(filters.dateFrom, 'dd-MM-yyyy') : 'inicio'}_a_${filters.dateTo ? format(filters.dateTo, 'dd-MM-yyyy') : 'hoje'}`;
-      fileName += `_periodo_${periodo}`;
-    }
-    if (filters.type) {
-      fileName += `_${filters.type.toLowerCase()}`;
-    }
-    fileName += '.csv';
-
+    let fileName = `relatorio_financeiro_IDASAM_${format(new Date(), 'dd-MM-yyyy_HH-mm')}.csv`;
     link.setAttribute('href', url);
     link.setAttribute('download', fileName);
     link.style.visibility = 'hidden';
-
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    // Limpar URL
     URL.revokeObjectURL(url);
-
-    // Feedback detalhado para o usuário
-    const totalTransacoesNoRelatorio = ultimasTransacoes.length;
-    const resumoCategoria = categories.filter(cat => cat.type === 'expense' || cat.type === 'both').length;
-
-    alert(`✅ Relatório Financeiro Exportado com Sucesso!
-
-📊 DETALHES DO RELATÓRIO:
-• ${filteredTransactions.length} transações analisadas
-• ${accounts.length} contas bancárias incluídas  
-• ${resumoCategoria} categorias de despesas
-• ${totalTransacoesNoRelatorio} transações recentes listadas
-
-📁 ARQUIVO: ${fileName}
-
-💡 DICAS:
-• Arquivo formatado com ponto e vírgula (;) para Excel Brasil
-• Inclui resumo executivo, análise por categorias e indicadores
-• Dados organizados em seções para fácil análise
-
-🏦 SALDO ATUAL: R$ ${saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+    toast({ title: 'Relatorio exportado com sucesso!' });
   };
 
-  const handleEditCategory = (category) => {
-    setEditingCategoryId(category.id);
-    setNewCategory({ name: category.name, type: category.type });
-    setIsNewCategoryOpen(true);
-  };
+  // ─── Transaction form renderer (shared between create and edit) ────────────
+  const renderTransactionForm = (
+    formState: typeof emptyTransactionForm,
+    setFormState: React.Dispatch<React.SetStateAction<typeof emptyTransactionForm>>,
+  ) => (
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label>Tipo *</Label>
+        <Select value={formState.tipo} onValueChange={(v) => setFormState({ ...formState, tipo: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="receita">Receita</SelectItem>
+            <SelectItem value="despesa">Despesa</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-  const handleDeleteCategory = (categoryId) => {
-    const categoryToDelete = categories.find(cat => cat.id === categoryId);
-    if (!categoryToDelete) return;
+      <div className="space-y-2">
+        <Label>Valor (R$) *</Label>
+        <Input
+          type="number"
+          placeholder="0,00"
+          value={formState.valor}
+          onChange={(e) => setFormState({ ...formState, valor: e.target.value })}
+        />
+      </div>
 
-    const hasTransactions = transactions.some(t => t.category === categoryToDelete.name);
-    if (hasTransactions) {
-      alert(`Não é possível excluir a categoria "${categoryToDelete.name}" pois ela está sendo usada em transações.`);
-      return;
-    }
+      <div className="col-span-2 space-y-2">
+        <Label>Descricao *</Label>
+        <Input
+          placeholder="Descricao da transacao"
+          value={formState.descricao}
+          onChange={(e) => setFormState({ ...formState, descricao: e.target.value })}
+        />
+      </div>
 
-    if (window.confirm(`Tem certeza que deseja excluir a categoria "${categoryToDelete.name}"?`)) {
-      setCategories(prevCategories => prevCategories.filter(cat => cat.id !== categoryId));
-      alert('Categoria excluída com sucesso!');
-    }
-  };
+      <div className="space-y-2">
+        <Label>Data *</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formState.data && "text-muted-foreground")}>
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {formState.data ? format(formState.data, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={formState.data}
+              onSelect={(date) => setFormState({ ...formState, data: date || new Date() })}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
 
+      <div className="space-y-2">
+        <Label>Conta Bancaria *</Label>
+        <Select value={formState.contaId} onValueChange={(v) => setFormState({ ...formState, contaId: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione a conta" />
+          </SelectTrigger>
+          <SelectContent>
+            {contas.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.nome} - {c.banco}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Categoria *</Label>
+        <Select value={formState.categoriaId} onValueChange={(v) => setFormState({ ...formState, categoriaId: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione a categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            {categorias
+              .filter((cat) => cat.tipo === 'ambos' ||
+                (formState.tipo === 'receita' && cat.tipo === 'receita') ||
+                (formState.tipo === 'despesa' && cat.tipo === 'despesa'))
+              .map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>{cat.nome}</SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Projeto (Opcional)</Label>
+        <Select value={formState.projetoId} onValueChange={(v) => setFormState({ ...formState, projetoId: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o projeto" />
+          </SelectTrigger>
+          <SelectContent>
+            {projetos.filter((p) => p.ativo).map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {formState.tipo === 'despesa' && (
+        <>
+          <div className="space-y-2">
+            <Label>Tipo de Custo</Label>
+            <Select value={formState.tipoCusto} onValueChange={(v) => setFormState({ ...formState, tipoCusto: v })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fixo">Custo Fixo</SelectItem>
+                <SelectItem value="variavel">Custo Variavel</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fornecedor (CRM)</Label>
+            <Select value={formState.fornecedorId} onValueChange={(v) => setFormState({ ...formState, fornecedorId: v })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o fornecedor" />
+              </SelectTrigger>
+              <SelectContent>
+                {suppliers.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+
+      {formState.tipo === 'receita' && (
+        <div className="space-y-2">
+          <Label>Doador (CRM)</Label>
+          <Select value={formState.doadorId} onValueChange={(v) => setFormState({ ...formState, doadorId: v })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o doador" />
+            </SelectTrigger>
+            <SelectContent>
+              {donors.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Pesquisador (Opcional)</Label>
+        <Select value={formState.pesquisadorId} onValueChange={(v) => setFormState({ ...formState, pesquisadorId: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o pesquisador" />
+          </SelectTrigger>
+          <SelectContent>
+            {researchers.map((r) => (
+              <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Status</Label>
+        <Select value={formState.status} onValueChange={(v) => setFormState({ ...formState, status: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pendente">Pendente</SelectItem>
+            <SelectItem value="pago">Pago</SelectItem>
+            <SelectItem value="a_vencer">A Vencer</SelectItem>
+            <SelectItem value="cancelado">Cancelado</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="col-span-2 flex items-center space-x-2">
+        <Switch
+          id="public"
+          checked={formState.isPublic}
+          onCheckedChange={(checked) => setFormState({ ...formState, isPublic: checked })}
+        />
+        <Label htmlFor="public">Tornar publico na transparencia</Label>
+      </div>
+
+      <div className="col-span-2 space-y-2">
+        <Label>Observacoes</Label>
+        <Textarea
+          placeholder="Observacoes adicionais..."
+          value={formState.observacoes}
+          onChange={(e) => setFormState({ ...formState, observacoes: e.target.value })}
+        />
+      </div>
+
+      <div className="col-span-2 space-y-2">
+        <Label>Comprovante</Label>
+        <div className="flex items-center gap-3">
+          <label className="flex-1 cursor-pointer">
+            <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border border-dashed transition-colors ${formState.documentoAnexo ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}>
+              <Upload className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-600">
+                {formState.documentoAnexo ? 'Comprovante anexado' : 'Selecionar arquivo (PDF, imagem)'}
+              </span>
+            </div>
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => setFormState({ ...formState, documentoAnexo: reader.result as string });
+                reader.readAsDataURL(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          {formState.documentoAnexo && (
+            <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setFormState({ ...formState, documentoAnexo: '' })}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═════════════════════════════════════════════════════════════════════════════
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Gestão Financeira</h1>
-          <p className="text-gray-600">Controle completo das finanças da organização</p>
+          <h1 className="text-3xl font-bold">Gestao Financeira</h1>
+          <p className="text-gray-600">Controle completo das financas da organizacao</p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="transacoes" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
-            Transações
+            Transacoes
           </TabsTrigger>
           <TabsTrigger value="contas" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
-            Contas Bancárias
-          </TabsTrigger>
-          <TabsTrigger value="contatos" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Contatos
+            Contas Bancarias
           </TabsTrigger>
           <TabsTrigger value="relatorios" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Relatórios
+            Relatorios
           </TabsTrigger>
           <TabsTrigger value="configuracoes" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            Configurações
+            Configuracoes
           </TabsTrigger>
         </TabsList>
 
-        {/* ABA TRANSAÇÕES */}
+        {/* ══════════════════ ABA TRANSACOES ══════════════════ */}
         <TabsContent value="transacoes" className="space-y-6">
           {/* Cards de Resumo */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -943,7 +847,7 @@ export default function DashboardFinanceiroPage() {
                   R$ {totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  +12% desde o mês passado
+                  {transacoes.filter((t) => t.tipo === 'receita').length} transacoes
                 </p>
               </CardContent>
             </Card>
@@ -958,7 +862,7 @@ export default function DashboardFinanceiroPage() {
                   R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  +5% desde o mês passado
+                  {transacoes.filter((t) => t.tipo === 'despesa').length} transacoes
                 </p>
               </CardContent>
             </Card>
@@ -973,20 +877,24 @@ export default function DashboardFinanceiroPage() {
                   R$ {saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Balanço atual
+                  Balanco atual
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Transparência</CardTitle>
+                <CardTitle className="text-sm font-medium">Transparencia</CardTitle>
                 <Eye className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-600">94%</div>
+                <div className="text-2xl font-bold text-purple-600">
+                  {transacoes.length > 0
+                    ? Math.round((transacoes.filter((t) => t.isPublic).length / transacoes.length) * 100)
+                    : 0}%
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Dados públicos
+                  Dados publicos
                 </p>
               </CardContent>
             </Card>
@@ -999,354 +907,52 @@ export default function DashboardFinanceiroPage() {
                 <DialogTrigger asChild>
                   <Button className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
-                    Nova Transação
+                    Nova Transacao
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Nova Transação</DialogTitle>
-                    <DialogDescription>
-                      Adicione uma nova transação financeira
-                    </DialogDescription>
+                    <DialogTitle>Nova Transacao</DialogTitle>
+                    <DialogDescription>Adicione uma nova transacao financeira</DialogDescription>
                   </DialogHeader>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Tipo *</Label>
-                      <Select value={newTransaction.type} onValueChange={(value) => setNewTransaction({...newTransaction, type: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Receita">Receita</SelectItem>
-                          <SelectItem value="Despesa">Despesa</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="amount">Valor (R$) *</Label>
-                      <Input
-                        type="number"
-                        placeholder="0,00"
-                        value={newTransaction.amount}
-                        onChange={(e) => setNewTransaction({...newTransaction, amount: e.target.value})}
-                      />
-                    </div>
-
-                    <div className="col-span-2 space-y-2">
-                      <Label htmlFor="description">Descrição *</Label>
-                      <Input
-                        placeholder="Descrição da transação"
-                        value={newTransaction.description}
-                        onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Data *</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !newTransaction.date && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {newTransaction.date ? format(newTransaction.date, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={newTransaction.date}
-                            onSelect={(date) => setNewTransaction({...newTransaction, date: date || new Date()})}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="account">Conta Bancária *</Label>
-                      <Select value={newTransaction.account} onValueChange={(value) => setNewTransaction({...newTransaction, account: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a conta" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts.map(account => (
-                            <SelectItem key={account.id} value={account.name}>{account.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Categoria *</Label>
-                      <Select value={newTransaction.category} onValueChange={(value) => setNewTransaction({...newTransaction, category: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories
-                            .filter(cat => cat.type === 'both' || 
-                              (newTransaction.type === 'Receita' && cat.type === 'income') ||
-                              (newTransaction.type === 'Despesa' && cat.type === 'expense'))
-                            .map(category => (
-                              <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="project">Projeto (Opcional)</Label>
-                      <Select value={newTransaction.project} onValueChange={(value) => setNewTransaction({...newTransaction, project: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o projeto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mockProjects.map(project => (
-                            <SelectItem key={project.id} value={project.name}>{project.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {newTransaction.type === 'Despesa' && (
-                      <>
-                        <div className="space-y-2">
-                          <Label htmlFor="costType">Tipo de Custo</Label>
-                          <Select value={newTransaction.costType} onValueChange={(value) => setNewTransaction({...newTransaction, costType: value})}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Custo Fixo">Custo Fixo</SelectItem>
-                              <SelectItem value="Custo Variável">Custo Variável</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="supplier">Fornecedor</Label>
-                          <Select value={newTransaction.supplier} onValueChange={(value) => setNewTransaction({...newTransaction, supplier: value})}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o fornecedor" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {suppliers.map(supplier => (
-                                <SelectItem key={supplier.id} value={supplier.name}>{supplier.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </>
-                    )}
-
-                    {newTransaction.type === 'Receita' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="donor">Doador</Label>
-                        <Select value={newTransaction.donor} onValueChange={(value) => setNewTransaction({...newTransaction, donor: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o doador" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {donors.map(donor => (
-                              <SelectItem key={donor.id} value={donor.name}>{donor.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label htmlFor="status">Status</Label>
-                      <Select value={newTransaction.status} onValueChange={(value) => setNewTransaction({...newTransaction, status: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Pendente">Pendente</SelectItem>
-                          <SelectItem value="Pago">Pago</SelectItem>
-                          <SelectItem value="A Vencer">A Vencer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="col-span-2 flex items-center space-x-2">
-                      <Switch
-                        id="public"
-                        checked={newTransaction.isPublic}
-                        onCheckedChange={(checked) => setNewTransaction({...newTransaction, isPublic: checked})}
-                      />
-                      <Label htmlFor="public">Tornar público na transparência</Label>
-                    </div>
-
-                    <div className="col-span-2 space-y-2">
-                      <Label htmlFor="document">Anexar Documento</Label>
-                      <Button variant="outline" className="w-full">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Selecionar arquivo
-                      </Button>
-                    </div>
-                  </div>
-
+                  {renderTransactionForm(newTransaction, setNewTransaction)}
                   <div className="flex gap-2 pt-4">
                     <Button variant="outline" onClick={() => setIsNewTransactionOpen(false)} className="flex-1">
                       Cancelar
                     </Button>
-                    <Button onClick={handleCreateTransaction} className="flex-1">
-                      Criar Transação
+                    <Button onClick={handleCreateTransaction} className="flex-1" disabled={createTxMutation.isPending}>
+                      {createTxMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Criar Transacao
                     </Button>
                   </div>
                 </DialogContent>
               </Dialog>
 
-              {/* Modal de Edição de Transação */}
+              {/* Modal de Edicao de Transacao */}
               <Dialog open={isEditTransactionOpen} onOpenChange={setIsEditTransactionOpen}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Editar Transação</DialogTitle>
-                    <DialogDescription>
-                      Modifique os dados da transação financeira
-                    </DialogDescription>
+                    <DialogTitle>Editar Transacao</DialogTitle>
+                    <DialogDescription>Modifique os dados da transacao financeira</DialogDescription>
                   </DialogHeader>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-type">Tipo *</Label>
-                      <Select value={editTransaction.type} onValueChange={(value) => setEditTransaction({...editTransaction, type: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Receita">Receita</SelectItem>
-                          <SelectItem value="Despesa">Despesa</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-amount">Valor (R$) *</Label>
-                      <Input
-                        type="number"
-                        placeholder="0,00"
-                        value={editTransaction.amount}
-                        onChange={(e) => setEditTransaction({...editTransaction, amount: e.target.value})}
-                      />
-                    </div>
-
-                    <div className="col-span-2 space-y-2">
-                      <Label htmlFor="edit-description">Descrição *</Label>
-                      <Input
-                        placeholder="Descrição da transação"
-                        value={editTransaction.description}
-                        onChange={(e) => setEditTransaction({...editTransaction, description: e.target.value})}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Data *</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !editTransaction.date && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {editTransaction.date ? format(editTransaction.date, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={editTransaction.date}
-                            onSelect={(date) => setEditTransaction({...editTransaction, date: date || new Date()})}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-account">Conta Bancária *</Label>
-                      <Select value={editTransaction.account} onValueChange={(value) => setEditTransaction({...editTransaction, account: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a conta" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts.map(account => (
-                            <SelectItem key={account.id} value={account.name}>{account.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-category">Categoria *</Label>
-                      <Select value={editTransaction.category} onValueChange={(value) => setEditTransaction({...editTransaction, category: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories
-                            .filter(cat => cat.type === 'both' || 
-                              (editTransaction.type === 'Receita' && cat.type === 'income') ||
-                              (editTransaction.type === 'Despesa' && cat.type === 'expense'))
-                            .map(category => (
-                              <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-project">Projeto (Opcional)</Label>
-                      <Select value={editTransaction.project} onValueChange={(value) => setEditTransaction({...editTransaction, project: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o projeto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mockProjects.map(project => (
-                            <SelectItem key={project.id} value={project.name}>{project.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-status">Status</Label>
-                      <Select value={editTransaction.status} onValueChange={(value) => setEditTransaction({...editTransaction, status: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Pendente">Pendente</SelectItem>
-                          <SelectItem value="Pago">Pago</SelectItem>
-                          <SelectItem value="A Vencer">A Vencer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
+                  {renderTransactionForm(editTransaction, setEditTransaction)}
                   <div className="flex gap-2 pt-4">
                     <Button variant="outline" onClick={() => setIsEditTransactionOpen(false)} className="flex-1">
                       Cancelar
                     </Button>
-                    <Button onClick={handleUpdateTransaction} className="flex-1">
-                      Salvar Alterações
+                    <Button onClick={handleUpdateTransaction} className="flex-1" disabled={updateTxMutation.isPending}>
+                      {updateTxMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Salvar Alteracoes
                     </Button>
                   </div>
                 </DialogContent>
               </Dialog>
 
               <div className="flex items-center gap-2">
-                <Button
-                  variant={viewMode === 'lista' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('lista')}
-                >
+                <Button variant={viewMode === 'lista' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('lista')}>
                   <Columns className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant={viewMode === 'quadro' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('quadro')}
-                >
+                <Button variant={viewMode === 'quadro' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('quadro')}>
                   <Grid3X3 className="h-4 w-4" />
                 </Button>
               </div>
@@ -1358,16 +964,16 @@ export default function DashboardFinanceiroPage() {
                   <Button variant="outline" size="sm">
                     <Filter className="h-4 w-4 mr-2" />
                     Filtros
-                    {(filters.dateFrom || filters.dateTo || filters.type || filters.status || filters.account || filters.category || filters.project) && (
+                    {(filters.dateFrom || filters.dateTo || filters.tipo || filters.status || filters.contaId || filters.categoriaId || filters.projetoId) && (
                       <Badge variant="secondary" className="ml-2 px-1 py-0 text-xs">
-                        {[filters.dateFrom, filters.dateTo, filters.type, filters.status, filters.account, filters.category, filters.project].filter(Boolean).length}
+                        {[filters.dateFrom, filters.dateTo, filters.tipo, filters.status, filters.contaId, filters.categoriaId, filters.projetoId].filter(Boolean).length}
                       </Badge>
                     )}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Filtros de Transação</DialogTitle>
+                    <DialogTitle>Filtros de Transacao</DialogTitle>
                   </DialogHeader>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1381,12 +987,7 @@ export default function DashboardFinanceiroPage() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={filters.dateFrom}
-                            onSelect={(date) => setFilters({...filters, dateFrom: date})}
-                            initialFocus
-                          />
+                          <Calendar mode="single" selected={filters.dateFrom ?? undefined} onSelect={(date) => setFilters({ ...filters, dateFrom: date ?? null })} initialFocus />
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -1401,52 +1002,48 @@ export default function DashboardFinanceiroPage() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={filters.dateTo}
-                            onSelect={(date) => setFilters({...filters, dateTo: date})}
-                            initialFocus
-                          />
+                          <Calendar mode="single" selected={filters.dateTo ?? undefined} onSelect={(date) => setFilters({ ...filters, dateTo: date ?? null })} initialFocus />
                         </PopoverContent>
                       </Popover>
                     </div>
 
                     <div className="space-y-2">
                       <Label>Tipo</Label>
-                      <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
+                      <Select value={filters.tipo} onValueChange={(v) => setFilters({ ...filters, tipo: v })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Todos os tipos" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Receita">Receita</SelectItem>
-                          <SelectItem value="Despesa">Despesa</SelectItem>
+                          <SelectItem value="receita">Receita</SelectItem>
+                          <SelectItem value="despesa">Despesa</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
                       <Label>Status</Label>
-                      <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+                      <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Todos os status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Pendente">Pendente</SelectItem>
-                          <SelectItem value="Pago">Pago</SelectItem>
-                          <SelectItem value="A Vencer">A Vencer</SelectItem>
+                          <SelectItem value="pendente">Pendente</SelectItem>
+                          <SelectItem value="pago">Pago</SelectItem>
+                          <SelectItem value="a_vencer">A Vencer</SelectItem>
+                          <SelectItem value="cancelado">Cancelado</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Conta Bancária</Label>
-                      <Select value={filters.account} onValueChange={(value) => setFilters({...filters, account: value})}>
+                      <Label>Conta Bancaria</Label>
+                      <Select value={filters.contaId} onValueChange={(v) => setFilters({ ...filters, contaId: v })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Todas as contas" />
                         </SelectTrigger>
                         <SelectContent>
-                          {accounts.map(account => (
-                            <SelectItem key={account.id} value={account.name}>{account.name}</SelectItem>
+                          {contas.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1454,13 +1051,13 @@ export default function DashboardFinanceiroPage() {
 
                     <div className="space-y-2">
                       <Label>Categoria</Label>
-                      <Select value={filters.category} onValueChange={(value) => setFilters({...filters, category: value})}>
+                      <Select value={filters.categoriaId} onValueChange={(v) => setFilters({ ...filters, categoriaId: v })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Todas as categorias" />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map(category => (
-                            <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+                          {categorias.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>{cat.nome}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1468,13 +1065,13 @@ export default function DashboardFinanceiroPage() {
 
                     <div className="col-span-2 space-y-2">
                       <Label>Projeto</Label>
-                      <Select value={filters.project} onValueChange={(value) => setFilters({...filters, project: value})}>
+                      <Select value={filters.projetoId} onValueChange={(v) => setFilters({ ...filters, projetoId: v })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Todos os projetos" />
                         </SelectTrigger>
                         <SelectContent>
-                          {mockProjects.map(project => (
-                            <SelectItem key={project.id} value={project.name}>{project.name}</SelectItem>
+                          {projetos.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1498,92 +1095,109 @@ export default function DashboardFinanceiroPage() {
             </div>
           </div>
 
-          {/* Tabela de Transações */}
-          {viewMode === 'lista' ? (
+          {/* Tabela de Transacoes */}
+          {loadingTx ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-gray-400" />
+                <p className="text-gray-500">Carregando transacoes...</p>
+              </CardContent>
+            </Card>
+          ) : viewMode === 'lista' ? (
             <Card>
               <CardHeader>
-                <CardTitle>Transações Recentes</CardTitle>
+                <CardTitle>Transacoes Recentes</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data</TableHead>
-                      <TableHead>Descrição</TableHead>
+                      <TableHead>Descricao</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Valor</TableHead>
                       <TableHead>Banco</TableHead>
                       <TableHead>Projeto</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Ações</TableHead>
+                      <TableHead>Acoes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTransactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{format(new Date(transaction.date), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell>{transaction.description}</TableCell>
-                        <TableCell>
-                          <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
-                            {transaction.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className={transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}>
-                          R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-600">
-                            {accounts.find(acc => acc.name === transaction.account)?.bank || transaction.account}
-                          </span>
-                        </TableCell>
-                        <TableCell>{transaction.project || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            transaction.status === 'Pago' ? 'default' : 
-                            transaction.status === 'Pendente' ? 'secondary' : 'outline'
-                          }>
-                            {transaction.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleEditTransaction(transaction)}
-                              title="Editar transação"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleDeleteTransaction(transaction.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Excluir transação"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                    {filteredTransactions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                          Nenhuma transacao encontrada
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredTransactions.map((tx) => {
+                        const conta = tx.contaId ? contaMap.get(tx.contaId) : null;
+                        const projeto = tx.projetoId ? projetoMap.get(tx.projetoId) : null;
+                        const valor = Number(tx.valor);
+                        return (
+                          <TableRow key={tx.id}>
+                            <TableCell>{format(new Date(tx.data), 'dd/MM/yyyy')}</TableCell>
+                            <TableCell>{tx.descricao}</TableCell>
+                            <TableCell>
+                              <Badge variant={tx.tipo === 'receita' ? 'default' : 'destructive'}>
+                                {TIPO_LABELS[tx.tipo]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className={tx.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}>
+                              R$ {Math.abs(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-gray-600">
+                                {conta?.banco || '-'}
+                              </span>
+                            </TableCell>
+                            <TableCell>{projeto?.nome || '-'}</TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                tx.status === 'pago' ? 'default' :
+                                tx.status === 'pendente' ? 'secondary' :
+                                tx.status === 'cancelado' ? 'destructive' : 'outline'
+                              }>
+                                {STATUS_LABELS[tx.status]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleEditTransaction(tx)} title="Editar transacao">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteTransaction(tx)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="Excluir transacao"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
           ) : (
-            // Visualização Quadro (Kanban) com Drag and Drop
+            // Visualizacao Quadro (Kanban) com Drag and Drop
             <DragDropContext onDragEnd={handleOnDragEnd}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {['Pendente', 'Pago', 'A Vencer'].map((status) => (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {(['pendente', 'pago', 'a_vencer', 'cancelado'] as const).map((status) => (
                   <Card key={status}>
                     <CardHeader>
                       <CardTitle className="text-center flex items-center justify-center gap-2">
-                        {status === 'Pendente' && <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>}
-                        {status === 'Pago' && <div className="w-3 h-3 bg-green-500 rounded-full"></div>}
-                        {status === 'A Vencer' && <div className="w-3 h-3 bg-blue-500 rounded-full"></div>}
-                        {status}
+                        {status === 'pendente' && <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>}
+                        {status === 'pago' && <div className="w-3 h-3 bg-green-500 rounded-full"></div>}
+                        {status === 'a_vencer' && <div className="w-3 h-3 bg-blue-500 rounded-full"></div>}
+                        {status === 'cancelado' && <div className="w-3 h-3 bg-gray-500 rounded-full"></div>}
+                        {STATUS_LABELS[status]}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1597,50 +1211,54 @@ export default function DashboardFinanceiroPage() {
                             }`}
                           >
                             {filteredTransactions
-                              .filter(t => t.status === status)
-                              .map((transaction, index) => (
-                                <Draggable key={transaction.id} draggableId={transaction.id.toString()} index={index}>
-                                  {(provided, snapshot) => (
-                                    <Card
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      className={`p-3 cursor-move transition-shadow ${
-                                        snapshot.isDragging ? 'shadow-lg rotate-3' : 'hover:shadow-md'
-                                      }`}
-                                    >
-                                      <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                          <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
-                                            {transaction.type}
-                                          </Badge>
-                                          <span className={`font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                          </span>
+                              .filter((t) => t.status === status)
+                              .map((tx, index) => {
+                                const projeto = tx.projetoId ? projetoMap.get(tx.projetoId) : null;
+                                const valor = Number(tx.valor);
+                                return (
+                                  <Draggable key={tx.id} draggableId={tx.id} index={index}>
+                                    {(provided, snapshot) => (
+                                      <Card
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={`p-3 cursor-move transition-shadow ${
+                                          snapshot.isDragging ? 'shadow-lg rotate-3' : 'hover:shadow-md'
+                                        }`}
+                                      >
+                                        <div className="space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <Badge variant={tx.tipo === 'receita' ? 'default' : 'destructive'}>
+                                              {TIPO_LABELS[tx.tipo]}
+                                            </Badge>
+                                            <span className={`font-medium ${tx.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
+                                              R$ {Math.abs(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            </span>
+                                          </div>
+                                          <p className="text-sm font-medium">{tx.descricao}</p>
+                                          <p className="text-xs text-gray-500">{format(new Date(tx.data), 'dd/MM/yyyy')}</p>
+                                          {projeto && (
+                                            <p className="text-xs text-blue-600">{projeto.nome}</p>
+                                          )}
                                         </div>
-                                        <p className="text-sm font-medium">{transaction.description}</p>
-                                        <p className="text-xs text-gray-500">{format(new Date(transaction.date), 'dd/MM/yyyy')}</p>
-                                        {transaction.project && (
-                                          <p className="text-xs text-blue-600">{transaction.project}</p>
-                                        )}
-                                      </div>
-                                    </Card>
-                                  )}
-                                </Draggable>
-                              ))}
+                                      </Card>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
                             {provided.placeholder}
                           </div>
                         )}
                       </Droppable>
                     </CardContent>
                   </Card>
-                  ))}
-                </div>
-              </DragDropContext>
-            )}
+                ))}
+              </div>
+            </DragDropContext>
+          )}
         </TabsContent>
 
-        {/* ABA CONTAS BANCÁRIAS */}
+        {/* ══════════════════ ABA CONTAS BANCARIAS ══════════════════ */}
         <TabsContent value="contas" className="space-y-6">
           <Tabs value={activeAccountTab} onValueChange={setActiveAccountTab}>
             <TabsList className="w-full">
@@ -1648,9 +1266,9 @@ export default function DashboardFinanceiroPage() {
                 <Plus className="h-4 w-4" />
                 Adicionar Conta
               </TabsTrigger>
-              {accounts.map((account) => (
-                <TabsTrigger key={account.id} value={account.name.toLowerCase().replace(/\s+/g, '-')}>
-                  {account.name}
+              {contas.map((account) => (
+                <TabsTrigger key={account.id} value={account.id}>
+                  {account.nome}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -1658,548 +1276,185 @@ export default function DashboardFinanceiroPage() {
             <TabsContent value="add-account">
               <Card>
                 <CardHeader>
-                  <CardTitle>Nova Conta Bancária</CardTitle>
-                  <CardDescription>Adicione uma nova conta bancária ao sistema</CardDescription>
+                  <CardTitle>Nova Conta Bancaria</CardTitle>
+                  <CardDescription>Adicione uma nova conta bancaria ao sistema</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="accountName">Nome da Conta</Label>
-                      <Input
-                        placeholder="Ex: Bradesco Principal"
-                        value={newAccount.name}
-                        onChange={(e) => setNewAccount({...newAccount, name: e.target.value})}
-                      />
+                      <Label>Nome da Conta</Label>
+                      <Input placeholder="Ex: Bradesco Principal" value={newAccount.nome} onChange={(e) => setNewAccount({ ...newAccount, nome: e.target.value })} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="bank">Banco</Label>
-                      <Input
-                        placeholder="Ex: Bradesco"
-                        value={newAccount.bank}
-                        onChange={(e) => setNewAccount({...newAccount, bank: e.target.value})}
-                      />
+                      <Label>Banco</Label>
+                      <Input placeholder="Ex: Bradesco" value={newAccount.banco} onChange={(e) => setNewAccount({ ...newAccount, banco: e.target.value })} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="agency">Agência</Label>
-                      <Input
-                        placeholder="Ex: 1234"
-                        value={newAccount.agency}
-                        onChange={(e) => setNewAccount({...newAccount, agency: e.target.value})}
-                      />
+                      <Label>Agencia</Label>
+                      <Input placeholder="Ex: 1234" value={newAccount.agencia} onChange={(e) => setNewAccount({ ...newAccount, agencia: e.target.value })} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="number">Número da Conta</Label>
-                      <Input
-                        placeholder="Ex: 12345-6"
-                        value={newAccount.number}
-                        onChange={(e) => setNewAccount({...newAccount, number: e.target.value})}
-                      />
+                      <Label>Numero da Conta</Label>
+                      <Input placeholder="Ex: 12345-6" value={newAccount.conta} onChange={(e) => setNewAccount({ ...newAccount, conta: e.target.value })} />
                     </div>
                     <div className="col-span-2 space-y-2">
-                      <Label htmlFor="balance">Saldo Inicial</Label>
-                      <Input
-                        type="number"
-                        placeholder="0,00"
-                        value={newAccount.balance}
-                        onChange={(e) => setNewAccount({...newAccount, balance: e.target.value})}
-                      />
+                      <Label>Saldo Inicial</Label>
+                      <Input type="number" placeholder="0,00" value={newAccount.saldoInicial} onChange={(e) => setNewAccount({ ...newAccount, saldoInicial: e.target.value })} />
                     </div>
                   </div>
-                  <Button onClick={handleCreateAccount} className="mt-4">
+                  <Button onClick={handleCreateAccount} className="mt-4" disabled={createAccountMutation.isPending}>
+                    {createAccountMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Criar Conta
                   </Button>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {accounts.map((account) => (
-              <TabsContent key={account.id} value={account.name.toLowerCase().replace(/\s+/g, '-')}>
-                <div className="space-y-6">
-                  {/* Cabeçalho da Conta com Botão de Excluir */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold">{account.name}</h3>
-                      <p className="text-sm text-gray-600">{account.bank} - Agência: {account.agency} - Conta: {account.number}</p>
+            {contas.map((account) => {
+              const accountTxs = getTransactionsByAccount(account.id);
+              const accReceitas = accountTxs.filter((t) => t.tipo === 'receita' && t.status === 'pago').reduce((sum, t) => sum + Number(t.valor), 0);
+              const accDespesas = accountTxs.filter((t) => t.tipo === 'despesa' && t.status === 'pago').reduce((sum, t) => sum + Math.abs(Number(t.valor)), 0);
+              const saldoConta = Number(account.saldoInicial) + accReceitas - accDespesas;
+
+              return (
+                <TabsContent key={account.id} value={account.id}>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-lg font-semibold">{account.nome}</h3>
+                        <p className="text-sm text-gray-600">{account.banco} - Agencia: {account.agencia} - Conta: {account.conta}</p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteAccount(account); }}
+                        className="flex items-center gap-2"
+                        disabled={deleteAccountMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Excluir Conta
+                      </Button>
                     </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDeleteAccount(account.id);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Excluir Conta
-                    </Button>
-                  </div>
 
-                  {/* Resumo da Conta */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Saldo Atual</CardTitle>
-                        <DollarSign className="h-4 w-4 text-blue-600" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">
-                          R$ {getAccountBalance(account.name).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {account.bank} - {account.agency}
-                        </p>
-                      </CardContent>
-                    </Card>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Saldo Atual</CardTitle>
+                          <DollarSign className="h-4 w-4 text-blue-600" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-blue-600">
+                            R$ {saldoConta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{account.banco} - {account.agencia}</p>
+                        </CardContent>
+                      </Card>
 
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Receitas</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-green-600" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold text-green-600">
-                          R$ {getTransactionsByAccount(account.name)
-                            .filter(t => t.type === 'Receita' && t.status === 'Pago')
-                            .reduce((sum, t) => sum + t.amount, 0)
-                            .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </div>
-                      </CardContent>
-                    </Card>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Receitas</CardTitle>
+                          <TrendingUp className="h-4 w-4 text-green-600" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-green-600">
+                            R$ {accReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-                        <TrendingDown className="h-4 w-4 text-red-600" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold text-red-600">
-                          R$ {getTransactionsByAccount(account.name)
-                            .filter(t => t.type === 'Despesa' && t.status === 'Pago')
-                            .reduce((sum, t) => sum + Math.abs(t.amount), 0)
-                            .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </div>
-                      </CardContent>
-                    </Card>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+                          <TrendingDown className="h-4 w-4 text-red-600" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-red-600">
+                            R$ {accDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Transacoes</CardTitle>
+                          <Target className="h-4 w-4 text-purple-600" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-purple-600">{accountTxs.length}</div>
+                          <p className="text-xs text-muted-foreground">Nesta conta</p>
+                        </CardContent>
+                      </Card>
+                    </div>
 
                     <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Transações</CardTitle>
-                        <Target className="h-4 w-4 text-purple-600" />
+                      <CardHeader>
+                        <CardTitle>Extrato - {account.nome}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-purple-600">
-                          {getTransactionsByAccount(account.name).length}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Este mês
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Extrato da Conta */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Extrato - {account.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Descrição</TableHead>
-                            <TableHead>Tipo</TableHead>
-                            <TableHead>Valor</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {getTransactionsByAccount(account.name).map((transaction) => (
-                            <TableRow key={transaction.id}>
-                              <TableCell>{format(new Date(transaction.date), 'dd/MM/yyyy')}</TableCell>
-                              <TableCell>{transaction.description}</TableCell>
-                              <TableCell>
-                                <Badge variant={transaction.type === 'Receita' ? 'default' : 'destructive'}>
-                                  {transaction.type}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className={transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}>
-                                R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={
-                                  transaction.status === 'Pago' ? 'default' : 
-                                  transaction.status === 'Pendente' ? 'secondary' : 'outline'
-                                }>
-                                  {transaction.status}
-                                </Badge>
-                              </TableCell>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Data</TableHead>
+                              <TableHead>Descricao</TableHead>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead>Valor</TableHead>
+                              <TableHead>Status</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            ))}
+                          </TableHeader>
+                          <TableBody>
+                            {accountTxs.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                                  Nenhuma transacao nesta conta
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              accountTxs.map((tx) => {
+                                const valor = Number(tx.valor);
+                                return (
+                                  <TableRow key={tx.id}>
+                                    <TableCell>{format(new Date(tx.data), 'dd/MM/yyyy')}</TableCell>
+                                    <TableCell>{tx.descricao}</TableCell>
+                                    <TableCell>
+                                      <Badge variant={tx.tipo === 'receita' ? 'default' : 'destructive'}>
+                                        {TIPO_LABELS[tx.tipo]}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className={tx.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}>
+                                      R$ {Math.abs(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant={
+                                        tx.status === 'pago' ? 'default' :
+                                        tx.status === 'pendente' ? 'secondary' :
+                                        tx.status === 'cancelado' ? 'destructive' : 'outline'
+                                      }>
+                                        {STATUS_LABELS[tx.status]}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+              );
+            })}
           </Tabs>
         </TabsContent>
 
-        {/* ABA CONTATOS */}
-        <TabsContent value="contatos" className="space-y-6">
-          <Tabs value={activeContactTab} onValueChange={setActiveContactTab}>
-            <TabsList className="w-full">
-              <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
-              <TabsTrigger value="doadores">Doadores</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="fornecedores" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Fornecedores</h3>
-                <Dialog open={isNewSupplierOpen} onOpenChange={setIsNewSupplierOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Novo Fornecedor
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Novo Fornecedor</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Nome/Razão Social</Label>
-                        <Input
-                          placeholder="Nome do fornecedor"
-                          value={newSupplier.name}
-                          onChange={(e) => setNewSupplier({...newSupplier, name: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>CNPJ/CPF</Label>
-                        <Input
-                          placeholder="00.000.000/0000-00"
-                          value={newSupplier.document}
-                          onChange={(e) => setNewSupplier({...newSupplier, document: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Contato</Label>
-                        <Input
-                          placeholder="(11) 99999-9999"
-                          value={newSupplier.contact}
-                          onChange={(e) => setNewSupplier({...newSupplier, contact: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>PIX</Label>
-                        <Input
-                          placeholder="Chave PIX"
-                          value={newSupplier.pix}
-                          onChange={(e) => setNewSupplier({...newSupplier, pix: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setIsNewSupplierOpen(false)} className="flex-1">
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleCreateSupplier} className="flex-1">
-                        Criar
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <Dialog open={isEditSupplierOpen} onOpenChange={setIsEditSupplierOpen}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Editar Fornecedor</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Nome/Razão Social</Label>
-                        <Input
-                          placeholder="Nome do fornecedor"
-                          value={editSupplier.name}
-                          onChange={(e) => setEditSupplier({...editSupplier, name: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>CNPJ/CPF</Label>
-                        <Input
-                          placeholder="00.000.000/0000-00"
-                          value={editSupplier.document}
-                          onChange={(e) => setEditSupplier({...editSupplier, document: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Contato</Label>
-                        <Input
-                          placeholder="(11) 99999-9999"
-                          value={editSupplier.contact}
-                          onChange={(e) => setEditSupplier({...editSupplier, contact: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>PIX</Label>
-                        <Input
-                          placeholder="Chave PIX"
-                          value={editSupplier.pix}
-                          onChange={(e) => setEditSupplier({...editSupplier, pix: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setIsEditSupplierOpen(false)} className="flex-1">
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleUpdateSupplier} className="flex-1">
-                        Salvar
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Documento</TableHead>
-                        <TableHead>Contato</TableHead>
-                        <TableHead>PIX</TableHead>
-                        <TableHead>Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {suppliers.map((supplier) => (
-                        <TableRow key={supplier.id}>
-                          <TableCell className="font-medium">{supplier.name}</TableCell>
-                          <TableCell>{supplier.document}</TableCell>
-                          <TableCell>{supplier.contact}</TableCell>
-                          <TableCell>{supplier.pix}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleEditSupplier(supplier)}
-                                title="Editar fornecedor"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => {
-                                  if (window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) {
-                                    setSuppliers(prev => prev.filter(s => s.id !== supplier.id));
-                                    alert('Fornecedor excluído com sucesso!');
-                                  }
-                                }}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                title="Excluir fornecedor"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="doadores" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Doadores</h3>
-                <Dialog open={isNewDonorOpen} onOpenChange={setIsNewDonorOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Novo Doador
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Novo Doador</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Nome</Label>
-                        <Input
-                          placeholder="Nome do doador"
-                          value={newDonor.name}
-                          onChange={(e) => setNewDonor({...newDonor, name: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>CPF</Label>
-                        <Input
-                          placeholder="000.000.000-00"
-                          value={newDonor.document}
-                          onChange={(e) => setNewDonor({...newDonor, document: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Contato</Label>
-                        <Input
-                          placeholder="(11) 99999-9999"
-                          value={newDonor.contact}
-                          onChange={(e) => setNewDonor({...newDonor, contact: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>PIX</Label>
-                        <Input
-                          placeholder="Chave PIX"
-                          value={newDonor.pix}
-                          onChange={(e) => setNewDonor({...newDonor, pix: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setIsNewDonorOpen(false)} className="flex-1">
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleCreateDonor} className="flex-1">
-                        Criar
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <Dialog open={isEditDonorOpen} onOpenChange={setIsEditDonorOpen}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Editar Doador</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Nome</Label>
-                        <Input
-                          placeholder="Nome do doador"
-                          value={editDonor.name}
-                          onChange={(e) => setEditDonor({...editDonor, name: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>CPF</Label>
-                        <Input
-                          placeholder="000.000.000-00"
-                          value={editDonor.document}
-                          onChange={(e) => setEditDonor({...editDonor, document: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Contato</Label>
-                        <Input
-                          placeholder="(11) 99999-9999"
-                          value={editDonor.contact}
-                          onChange={(e) => setEditDonor({...editDonor, contact: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>PIX</Label>
-                        <Input
-                          placeholder="Chave PIX"
-                          value={editDonor.pix}
-                          onChange={(e) => setEditDonor({...editDonor, pix: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setIsEditDonorOpen(false)} className="flex-1">
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleUpdateDonor} className="flex-1">
-                        Salvar
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>CPF</TableHead>
-                        <TableHead>Contato</TableHead>
-                        <TableHead>PIX</TableHead>
-                        <TableHead>Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {donors.map((donor) => (
-                        <TableRow key={donor.id}>
-                          <TableCell className="font-medium">{donor.name}</TableCell>
-                          <TableCell>{donor.document}</TableCell>
-                          <TableCell>{donor.contact}</TableCell>
-                          <TableCell>{donor.pix}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleEditDonor(donor)}
-                                title="Editar doador"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => {
-                                  if (window.confirm(`Tem certeza que deseja excluir o doador "${donor.name}"?`)) {
-                                    setDonors(prev => prev.filter(d => d.id !== donor.id));
-                                    alert('Doador excluído com sucesso!');
-                                  }
-                                }}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                title="Excluir doador"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </TabsContent>
-
-        {/* ABA RELATÓRIOS (VERSÃO 100% CORRIGIDA) */}
+        {/* ══════════════════ ABA RELATORIOS ══════════════════ */}
         <TabsContent value="relatorios" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Relatórios Financeiros</h3>
+            <h3 className="text-lg font-semibold">Relatorios Financeiros</h3>
             <div className="flex items-center gap-2">
-              <Select defaultValue="este-mes">
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="este-mes">Este Mês</SelectItem>
-                  <SelectItem value="ultimos-90">Últimos 90 dias</SelectItem>
-                  <SelectItem value="personalizado">Período Customizado</SelectItem>
-                </SelectContent>
-              </Select>
               <Button onClick={handleExportReport}>
                 <Download className="h-4 w-4 mr-2" />
-                Exportar Relatório
+                Exportar Relatorio
               </Button>
             </div>
           </div>
@@ -2209,7 +1464,7 @@ export default function DashboardFinanceiroPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <PieChart className="h-5 w-5" />
-                  Resumo Mensal
+                  Resumo
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -2239,23 +1494,20 @@ export default function DashboardFinanceiroPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {categories.filter(cat => cat.type === 'expense' || cat.type === 'both').map((category) => {
-                    const categoryTotal = transactions
-                      .filter(t => t.category === category.name && t.type === 'Despesa' && t.status === 'Pago')
-                      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+                  {categorias.filter((cat) => cat.tipo === 'despesa' || cat.tipo === 'ambos').map((cat) => {
+                    const categoryTotal = transacoes
+                      .filter((t) => t.categoriaId === cat.id && t.tipo === 'despesa' && t.status === 'pago')
+                      .reduce((sum, t) => sum + Math.abs(Number(t.valor)), 0);
                     const percentage = totalDespesas > 0 ? (categoryTotal / totalDespesas) * 100 : 0;
 
                     return (
-                      <div key={category.id} className="space-y-1">
+                      <div key={cat.id} className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span>{category.name}</span>
+                          <span>{cat.nome}</span>
                           <span>R$ {categoryTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${percentage}%` }}
-                          ></div>
+                          <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
                         </div>
                       </div>
                     );
@@ -2266,104 +1518,112 @@ export default function DashboardFinanceiroPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Custos Fixos vs Variáveis</CardTitle>
+                <CardTitle>Custos Fixos vs Variaveis</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">75%</div>
-                    <p className="text-sm text-gray-600">Custos Fixos</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-orange-600">25%</div>
-                    <p className="text-sm text-gray-600">Custos Variáveis</p>
-                  </div>
-                </div>
+                {(() => {
+                  const fixos = transacoes.filter((t) => t.tipo === 'despesa' && t.tipoCusto === 'fixo' && t.status === 'pago').reduce((sum, t) => sum + Math.abs(Number(t.valor)), 0);
+                  const variaveis = transacoes.filter((t) => t.tipo === 'despesa' && t.tipoCusto === 'variavel' && t.status === 'pago').reduce((sum, t) => sum + Math.abs(Number(t.valor)), 0);
+                  const totalCustos = fixos + variaveis;
+                  const percFixos = totalCustos > 0 ? Math.round((fixos / totalCustos) * 100) : 0;
+                  const percVariaveis = totalCustos > 0 ? Math.round((variaveis / totalCustos) * 100) : 0;
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-blue-600">{percFixos}%</div>
+                        <p className="text-sm text-gray-600">Custos Fixos</p>
+                        <p className="text-xs text-gray-400">R$ {fixos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-orange-600">{percVariaveis}%</div>
+                        <p className="text-sm text-gray-600">Custos Variaveis</p>
+                        <p className="text-xs text-gray-400">R$ {variaveis.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Evolução Mensal</CardTitle>
+              <CardTitle>Evolucao Mensal</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-64 flex items-center justify-center text-gray-500">
-                [Gráfico de evolução mensal seria implementado aqui]
+                [Grafico de evolucao mensal sera implementado aqui]
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ABA CONFIGURAÇÕES */}
+        {/* ══════════════════ ABA CONFIGURACOES ══════════════════ */}
         <TabsContent value="configuracoes" className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold">Categorias de Transação</h3>
-              <p className="text-gray-600">Gerencie as categorias disponíveis para classificar as transações</p>
+              <h3 className="text-lg font-semibold">Categorias de Transacao</h3>
+              <p className="text-gray-600">Gerencie as categorias disponiveis para classificar as transacoes</p>
             </div>
-            <Dialog 
-                open={isNewCategoryOpen} 
-                onOpenChange={(open) => {
-                  setIsNewCategoryOpen(open);
-                  if (!open) {
-                    setNewCategory({ name: '', type: 'both' });
-                    setEditingCategoryId(null);
-                  }
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button onClick={() => {
-                    setNewCategory({ name: '', type: 'both' });
-                    setEditingCategoryId(null);
-                  }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nova Categoria
+            <Dialog
+              open={isNewCategoryOpen}
+              onOpenChange={(open) => {
+                setIsNewCategoryOpen(open);
+                if (!open) {
+                  setNewCategory({ ...emptyCategoryForm });
+                  setEditingCategoryId(null);
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button onClick={() => { setNewCategory({ ...emptyCategoryForm }); setEditingCategoryId(null); }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Categoria
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingCategoryId ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nome da Categoria</Label>
+                    <Input
+                      placeholder="Ex: Marketing"
+                      value={newCategory.nome}
+                      onChange={(e) => setNewCategory({ ...newCategory, nome: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select value={newCategory.tipo} onValueChange={(v) => setNewCategory({ ...newCategory, tipo: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ambos">Receita e Despesa</SelectItem>
+                        <SelectItem value="receita">Apenas Receita</SelectItem>
+                        <SelectItem value="despesa">Apenas Despesa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { setIsNewCategoryOpen(false); setNewCategory({ ...emptyCategoryForm }); setEditingCategoryId(null); }} className="flex-1">
+                    Cancelar
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingCategoryId ? 'Editar Categoria' : 'Nova Categoria'}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Nome da Categoria</Label>
-                      <Input
-                        placeholder="Ex: Marketing"
-                        value={newCategory.name}
-                        onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tipo</Label>
-                      <Select value={newCategory.type} onValueChange={(value) => setNewCategory({...newCategory, type: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="both">Receita e Despesa</SelectItem>
-                          <SelectItem value="income">Apenas Receita</SelectItem>
-                          <SelectItem value="expense">Apenas Despesa</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => {
-                      setIsNewCategoryOpen(false);
-                      setNewCategory({ name: '', type: 'both' });
-                      setEditingCategoryId(null);
-                    }} className="flex-1">
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleCreateCategory} className="flex-1">
-                      {editingCategoryId ? 'Salvar Alterações' : 'Criar Categoria'}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  <Button
+                    onClick={handleCreateOrUpdateCategory}
+                    className="flex-1"
+                    disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+                  >
+                    {(createCategoryMutation.isPending || updateCategoryMutation.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {editingCategoryId ? 'Salvar Alteracoes' : 'Criar Categoria'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <Card>
@@ -2374,42 +1634,36 @@ export default function DashboardFinanceiroPage() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Uso</TableHead>
-                    <TableHead>Ações</TableHead>
+                    <TableHead>Acoes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {categories.map((category) => {
-                    const usage = transactions.filter(t => t.category === category.name).length;
+                  {categorias.map((cat) => {
+                    const usage = transacoes.filter((t) => t.categoriaId === cat.id).length;
                     return (
-                      <TableRow key={category.id}>
-                        <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableRow key={cat.id}>
+                        <TableCell className="font-medium">{cat.nome}</TableCell>
                         <TableCell>
                           <Badge variant={
-                            category.type === 'both' ? 'default' : 
-                            category.type === 'income' ? 'secondary' : 'outline'
+                            cat.tipo === 'ambos' ? 'default' :
+                            cat.tipo === 'receita' ? 'secondary' : 'outline'
                           }>
-                            {category.type === 'both' ? 'Ambos' : 
-                             category.type === 'income' ? 'Receita' : 'Despesa'}
+                            {CATEGORY_TYPE_LABELS[cat.tipo] || cat.tipo}
                           </Badge>
                         </TableCell>
-                        <TableCell>{usage} transações</TableCell>
+                        <TableCell>{usage} transacoes</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleEditCategory(category)}
-                              title="Editar categoria"
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleEditCategory(cat)} title="Editar categoria">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleDeleteCategory(category.id)} 
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteCategory(cat)}
                               disabled={usage > 0}
                               className={usage > 0 ? "opacity-50 cursor-not-allowed" : "text-red-600 hover:text-red-700 hover:bg-red-50"}
-                              title={usage > 0 ? "Categoria em uso, não pode ser excluída" : "Excluir categoria"}
+                              title={usage > 0 ? "Categoria em uso, nao pode ser excluida" : "Excluir categoria"}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

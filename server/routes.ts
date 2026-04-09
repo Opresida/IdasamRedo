@@ -1,7 +1,7 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
 import type { ProposalStatus, SignatureType } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import multer from "multer";
@@ -2200,6 +2200,119 @@ export async function registerRoutes(app: Express) {
   app.delete("/api/admin/newsletter/:id", requireAdmin, async (req, res) => {
     await storage.deleteNewsletterSubscriber(req.params.id);
     res.json({ message: "Inscrito removido" });
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // FINANCEIRO
+  // ══════════════════════════════════════════════════════════
+
+  // Accounts
+  app.get("/api/admin/financeiro/contas", requireAdmin, async (_req, res) => {
+    res.json(await storage.getFinancialAccounts());
+  });
+  app.post("/api/admin/financeiro/contas", requireAdmin, async (req, res) => {
+    const parsed = insertFinancialAccountSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+    res.json(await storage.createFinancialAccount(parsed.data));
+  });
+  app.patch("/api/admin/financeiro/contas/:id", requireAdmin, async (req, res) => {
+    const row = await storage.updateFinancialAccount(req.params.id, req.body);
+    if (!row) return res.status(404).json({ message: "Conta não encontrada" });
+    res.json(row);
+  });
+  app.delete("/api/admin/financeiro/contas/:id", requireAdmin, async (req, res) => {
+    await storage.deleteFinancialAccount(req.params.id);
+    res.json({ message: "Conta removida" });
+  });
+
+  // Categories
+  app.get("/api/admin/financeiro/categorias", requireAdmin, async (_req, res) => {
+    res.json(await storage.getFinancialCategories());
+  });
+  app.post("/api/admin/financeiro/categorias", requireAdmin, async (req, res) => {
+    const parsed = insertFinancialCategorySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+    res.json(await storage.createFinancialCategory(parsed.data));
+  });
+  app.patch("/api/admin/financeiro/categorias/:id", requireAdmin, async (req, res) => {
+    const row = await storage.updateFinancialCategory(req.params.id, req.body);
+    if (!row) return res.status(404).json({ message: "Categoria não encontrada" });
+    res.json(row);
+  });
+  app.delete("/api/admin/financeiro/categorias/:id", requireAdmin, async (req, res) => {
+    await storage.deleteFinancialCategory(req.params.id);
+    res.json({ message: "Categoria removida" });
+  });
+
+  // Projects
+  app.get("/api/admin/financeiro/projetos", requireAdmin, async (_req, res) => {
+    res.json(await storage.getFinancialProjects());
+  });
+  app.post("/api/admin/financeiro/projetos", requireAdmin, async (req, res) => {
+    const parsed = insertFinancialProjectSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+    res.json(await storage.createFinancialProject(parsed.data));
+  });
+  app.patch("/api/admin/financeiro/projetos/:id", requireAdmin, async (req, res) => {
+    const row = await storage.updateFinancialProject(req.params.id, req.body);
+    if (!row) return res.status(404).json({ message: "Projeto não encontrado" });
+    res.json(row);
+  });
+  app.delete("/api/admin/financeiro/projetos/:id", requireAdmin, async (req, res) => {
+    await storage.deleteFinancialProject(req.params.id);
+    res.json({ message: "Projeto removido" });
+  });
+
+  // Transactions
+  app.get("/api/admin/financeiro/transacoes", requireAdmin, async (_req, res) => {
+    res.json(await storage.getFinancialTransactions());
+  });
+  app.post("/api/admin/financeiro/transacoes", requireAdmin, async (req, res) => {
+    const parsed = insertFinancialTransactionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+    res.json(await storage.createFinancialTransaction(parsed.data));
+  });
+  app.patch("/api/admin/financeiro/transacoes/:id", requireAdmin, async (req, res) => {
+    const row = await storage.updateFinancialTransaction(req.params.id, req.body);
+    if (!row) return res.status(404).json({ message: "Transação não encontrada" });
+    res.json(row);
+  });
+  app.delete("/api/admin/financeiro/transacoes/:id", requireAdmin, async (req, res) => {
+    await storage.deleteFinancialTransaction(req.params.id);
+    res.json({ message: "Transação removida" });
+  });
+
+  // Reports
+  app.get("/api/admin/financeiro/relatorios/resumo", requireAdmin, async (_req, res) => {
+    const txs = await storage.getFinancialTransactions();
+    const pagos = txs.filter(t => t.status === 'pago');
+    const totalReceitas = pagos.filter(t => t.tipo === 'receita').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+    const totalDespesas = pagos.filter(t => t.tipo === 'despesa').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+    const custosFixos = pagos.filter(t => t.tipo === 'despesa' && t.tipoCusto === 'fixo').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+    const custosVariaveis = pagos.filter(t => t.tipo === 'despesa' && t.tipoCusto === 'variavel').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+    res.json({ totalReceitas, totalDespesas, saldo: totalReceitas - totalDespesas, custosFixos, custosVariaveis });
+  });
+
+  app.get("/api/admin/financeiro/relatorios/por-categoria", requireAdmin, async (_req, res) => {
+    const txs = await storage.getFinancialTransactions();
+    const cats = await storage.getFinancialCategories();
+    const catMap = new Map(cats.map(c => [c.id, c.nome]));
+    const result: Record<string, { receitas: number; despesas: number }> = {};
+    for (const t of txs.filter(t => t.status === 'pago' && t.categoriaId)) {
+      const nome = catMap.get(t.categoriaId!) || 'Sem categoria';
+      if (!result[nome]) result[nome] = { receitas: 0, despesas: 0 };
+      const val = parseFloat(t.valor || '0');
+      if (t.tipo === 'receita') result[nome].receitas += val;
+      else result[nome].despesas += val;
+    }
+    res.json(Object.entries(result).map(([categoria, vals]) => ({ categoria, ...vals })));
+  });
+
+  // Public transparency
+  app.get("/api/public/financeiro/transparencia", async (_req, res) => {
+    const txs = await storage.getFinancialTransactions();
+    const publicas = txs.filter(t => t.isPublic && t.status === 'pago');
+    res.json(publicas);
   });
 
   const httpServer = createServer(app);

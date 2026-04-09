@@ -691,3 +691,90 @@ export const crmDadosBancarios = pgTable("crm_dados_bancarios", {
   criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
 });
 export type CrmDadosBancarios = typeof crmDadosBancarios.$inferSelect;
+
+// ══════════════════════════════════════════════════════════════
+// FINANCEIRO
+// ══════════════════════════════════════════════════════════════
+
+export const financialAccounts = pgTable("financial_accounts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  nome: text("nome").notNull(),
+  banco: text("banco").notNull(),
+  agencia: text("agencia").notNull(),
+  conta: text("conta").notNull(),
+  saldoInicial: text("saldo_inicial").notNull().default("0"),
+  ativo: boolean("ativo").notNull().default(true),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export const insertFinancialAccountSchema = createInsertSchema(financialAccounts).omit({ id: true, criadoEm: true, atualizadoEm: true }).extend({
+  nome: z.string().min(1), banco: z.string().min(1), agencia: z.string().min(1), conta: z.string().min(1),
+});
+export type InsertFinancialAccount = z.infer<typeof insertFinancialAccountSchema>;
+export type FinancialAccount = typeof financialAccounts.$inferSelect;
+
+export const FINANCIAL_CATEGORY_TYPES = ['receita', 'despesa', 'ambos'] as const;
+export type FinancialCategoryType = typeof FINANCIAL_CATEGORY_TYPES[number];
+
+export const financialCategories = pgTable("financial_categories", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  nome: text("nome").notNull(),
+  tipo: text("tipo").$type<FinancialCategoryType>().notNull().default("ambos"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export const insertFinancialCategorySchema = createInsertSchema(financialCategories).omit({ id: true, criadoEm: true }).extend({
+  nome: z.string().min(1),
+  tipo: z.enum(FINANCIAL_CATEGORY_TYPES).optional().default("ambos"),
+});
+export type InsertFinancialCategory = z.infer<typeof insertFinancialCategorySchema>;
+export type FinancialCategory = typeof financialCategories.$inferSelect;
+
+export const financialProjects = pgTable("financial_projects", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  nome: text("nome").notNull(),
+  descricao: text("descricao"),
+  ativo: boolean("ativo").notNull().default(true),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export const insertFinancialProjectSchema = createInsertSchema(financialProjects).omit({ id: true, criadoEm: true }).extend({
+  nome: z.string().min(1), descricao: z.string().optional().nullable(),
+});
+export type InsertFinancialProject = z.infer<typeof insertFinancialProjectSchema>;
+export type FinancialProject = typeof financialProjects.$inferSelect;
+
+export const FINANCIAL_TX_TYPES = ['receita', 'despesa'] as const;
+export type FinancialTxType = typeof FINANCIAL_TX_TYPES[number];
+export const FINANCIAL_TX_STATUSES = ['pendente', 'pago', 'a_vencer', 'cancelado'] as const;
+export type FinancialTxStatus = typeof FINANCIAL_TX_STATUSES[number];
+export const FINANCIAL_COST_TYPES = ['fixo', 'variavel'] as const;
+export type FinancialCostType = typeof FINANCIAL_COST_TYPES[number];
+
+export const financialTransactions = pgTable("financial_transactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  tipo: text("tipo").$type<FinancialTxType>().notNull(),
+  descricao: text("descricao").notNull(),
+  valor: text("valor").notNull(),
+  data: text("data").notNull(),
+  contaId: uuid("conta_id").references(() => financialAccounts.id),
+  categoriaId: uuid("categoria_id").references(() => financialCategories.id),
+  projetoId: uuid("projeto_id").references(() => financialProjects.id),
+  tipoCusto: text("tipo_custo").$type<FinancialCostType>(),
+  fornecedorId: uuid("fornecedor_id").references(() => crmStakeholders.id),
+  doadorId: uuid("doador_id").references(() => crmStakeholders.id),
+  pesquisadorId: uuid("pesquisador_id").references(() => crmStakeholders.id),
+  status: text("status").$type<FinancialTxStatus>().notNull().default("pendente"),
+  isPublic: boolean("is_public").notNull().default(false),
+  documentoAnexo: text("documento_anexo"),
+  observacoes: text("observacoes"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export const insertFinancialTransactionSchema = createInsertSchema(financialTransactions).omit({ id: true, criadoEm: true, atualizadoEm: true }).extend({
+  tipo: z.enum(FINANCIAL_TX_TYPES),
+  descricao: z.string().min(1),
+  valor: z.string().min(1),
+  data: z.string().min(1),
+  status: z.enum(FINANCIAL_TX_STATUSES).optional().default("pendente"),
+});
+export type InsertFinancialTransaction = z.infer<typeof insertFinancialTransactionSchema>;
+export type FinancialTransaction = typeof financialTransactions.$inferSelect;
