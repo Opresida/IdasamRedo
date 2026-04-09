@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ExternalLink, QrCode, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ExternalLink, QrCode, Copy, Check, Shield, TrendingUp, Eye } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
@@ -268,6 +268,13 @@ const ProjectIcons = {
       <circle cx="32" cy="20" r="6" fill="#888"/>
       <path d="M29 17H35M32 14V23" stroke="#FFF" strokeWidth="2"/>
     </svg>
+  ),
+  default: (
+    <svg viewBox="0 0 64 64" className="w-16 h-16" fill="none">
+      <rect width="64" height="64" rx="16" fill="#F0F7F4"/>
+      <circle cx="32" cy="28" r="10" fill="#2A5B46" opacity="0.2"/>
+      <path d="M24 40L32 32L40 40" stroke="#2A5B46" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
   )
 };
 
@@ -477,11 +484,32 @@ export default function ProjetosPage() {
   const [selectedPixValue, setSelectedPixValue] = useState(0);
   const [pixCode, setPixCode] = useState('');
   const [pixCopied, setPixCopied] = useState(false);
+  const [portfolioProjects, setPortfolioProjects] = useState<Project[]>(projects);
+
+  // Buscar portfólio da API (fallback para hardcoded)
+  useEffect(() => {
+    fetch('/api/public/portfolio')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.length > 0) {
+          const mapped: Project[] = data.map((p: any) => ({
+            id: p.id,
+            title: p.titulo,
+            shortDescription: p.descricaoCurta,
+            fullDescription: p.descricaoCompleta,
+            category: p.categoria,
+            icon: ProjectIcons[p.icone as keyof typeof ProjectIcons] || ProjectIcons.default || ProjectIcons.mandioca,
+          }));
+          setPortfolioProjects(mapped);
+        }
+      })
+      .catch(() => {}); // Keep hardcoded fallback
+  }, []);
 
   // Filtrar projetos por categoria
   const filteredProjects = selectedCategory === 'Todos'
-    ? projects
-    : projects.filter(project => project.category === selectedCategory);
+    ? portfolioProjects
+    : portfolioProjects.filter(project => project.category === selectedCategory);
 
   // Função para lidar com doação PIX
   const handlePixDonation = (value: number) => {
@@ -575,10 +603,10 @@ export default function ProjetosPage() {
 
         <div className="max-w-7xl mx-auto px-4 text-center relative z-10 text-white">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 font-montserrat animate-fade-in-up">
-            Projetos 2025
+            Nosso Portfólio de Projetos
           </h1>
           <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto opacity-90 animate-fade-in-up animation-delay-200">
-            Inovação, sustentabilidade e impacto social para transformar a Amazônia.
+            Conheça as iniciativas do IDASAM que transformam a Amazônia através da inovação, sustentabilidade e impacto social.
           </p>
 
           {/* Barra de Filtros */}
@@ -783,6 +811,29 @@ export default function ProjetosPage() {
 
     
 
+      {/* CTA para Projetos em Execução */}
+      <section className="py-16 bg-gradient-to-r from-idasam-green-dark to-idasam-green-medium">
+        <div className="max-w-4xl mx-auto px-4 text-center text-white">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-montserrat">
+            Conheça nossos Projetos em Execução
+          </h2>
+          <p className="text-lg opacity-90 mb-8 max-w-2xl mx-auto">
+            Acompanhe os projetos que estão sendo desenvolvidos pelo IDASAM com total transparência sobre recursos e resultados.
+          </p>
+          <button
+            onClick={() => document.getElementById('projetos-execucao')?.scrollIntoView({ behavior: 'smooth' })}
+            className="bg-white text-idasam-green-dark px-8 py-4 rounded-xl font-semibold hover:bg-idasam-yellow-accent transition-colors shadow-lg text-lg"
+          >
+            Ver Projetos em Execução
+          </button>
+        </div>
+      </section>
+
+      {/* Projetos em Execução */}
+      <div id="projetos-execucao">
+        <ExecutedProjectsSection />
+      </div>
+
       {/* Globe Feature Section */}
       <GlobeFeatureSection />
 
@@ -985,5 +1036,182 @@ export default function ProjetosPage() {
 
       <ShadcnblocksComFooter2 />
     </div>
+  );
+}
+
+function ExecutedProjectsSection() {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedExec, setSelectedExec] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/public/projetos')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setProjects(data))
+      .catch(() => setProjects([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleViewDetail = async (project: any) => {
+    try {
+      const res = await fetch(`/api/public/projetos/${project.id}`);
+      if (res.ok) {
+        const full = await res.json();
+        setSelectedExec(full);
+      }
+    } catch { setSelectedExec(project); }
+  };
+
+  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'em_andamento': return { label: 'Em Execução', cls: 'bg-green-100 text-green-700' };
+      case 'concluido': return { label: 'Concluído', cls: 'bg-blue-100 text-blue-700' };
+      default: return { label: 'Planejamento', cls: 'bg-gray-100 text-gray-600' };
+    }
+  };
+
+  if (loading) return null;
+  if (projects.length === 0) return null;
+
+  return (
+    <>
+      <section className="py-20 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-10 h-10 bg-idasam-green-dark/10 rounded-full flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-idasam-green-dark" />
+              </div>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-idasam-text-main mb-4">
+              Projetos em Execução
+            </h2>
+            <p className="text-lg text-idasam-gray-text max-w-2xl mx-auto">
+              Acompanhe os projetos que estão sendo executados pelo IDASAM com total transparência.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {projects.map((project) => {
+              const badge = getStatusBadge(project.status);
+              return (
+                <div
+                  key={project.id}
+                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 group"
+                >
+                  {project.imagemUrl && (
+                    <div className="h-48 overflow-hidden">
+                      <img src={project.imagemUrl} alt={project.nome} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${badge.cls}`}>{badge.label}</span>
+                      {project.categoria && (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-idasam-green-dark/10 text-idasam-green-dark">{project.categoria}</span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold text-idasam-text-main mb-2">{project.nome}</h3>
+                    <p className="text-sm text-idasam-gray-text mb-4 line-clamp-3">{project.descricaoCurta || project.descricao}</p>
+
+                    {project.visivelTransparencia && (
+                      <div className="flex items-center gap-1.5 text-xs text-idasam-green-dark mb-4">
+                        <Shield className="w-3.5 h-3.5" />
+                        <span>Transparência pública ativa</span>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => handleViewDetail(project)}
+                      className="w-full bg-idasam-green-dark text-white py-3 rounded-xl font-semibold hover:bg-idasam-green-medium transition-colors text-sm"
+                    >
+                      Ver Detalhes
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Modal Projeto Executado */}
+      {selectedExec && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-idasam-text-main">{selectedExec.nome}</h2>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(selectedExec.status).cls}`}>
+                      {getStatusBadge(selectedExec.status).label}
+                    </span>
+                    {selectedExec.categoria && (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-idasam-green-dark/10 text-idasam-green-dark">{selectedExec.categoria}</span>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => setSelectedExec(null)} className="text-gray-400 hover:text-gray-600 p-2">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {selectedExec.imagemUrl && (
+                <img src={selectedExec.imagemUrl} alt={selectedExec.nome} className="w-full h-56 object-cover rounded-xl mb-6" />
+              )}
+
+              <p className="text-idasam-gray-text leading-relaxed mb-6 whitespace-pre-line">
+                {selectedExec.descricaoCompleta || selectedExec.descricaoCurta || selectedExec.descricao}
+              </p>
+
+              {/* Financial summary */}
+              {(selectedExec.receitas !== undefined || selectedExec.orcamentoTotal) && (
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Eye className="w-4 h-4" /> Dados Financeiros Públicos
+                  </h4>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-lg font-bold text-green-600">{formatCurrency(selectedExec.receitas || 0)}</p>
+                      <p className="text-xs text-gray-500">Arrecadado</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-blue-600">{formatCurrency(selectedExec.despesas || 0)}</p>
+                      <p className="text-xs text-gray-500">Investido</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-purple-600">{formatCurrency((selectedExec.receitas || 0) - (selectedExec.despesas || 0))}</p>
+                      <p className="text-xs text-gray-500">Saldo</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex flex-col gap-3">
+                {selectedExec.visivelTransparencia && (
+                  <a
+                    href={`/transparencia?projeto=${selectedExec.id}`}
+                    className="flex items-center justify-center gap-2 bg-idasam-green-dark text-white py-3 rounded-xl font-semibold hover:bg-idasam-green-medium transition-colors"
+                  >
+                    <Shield className="w-5 h-5" />
+                    Ver Portal de Transparência
+                  </a>
+                )}
+                <button
+                  onClick={() => setSelectedExec(null)}
+                  className="w-full py-3 rounded-xl font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

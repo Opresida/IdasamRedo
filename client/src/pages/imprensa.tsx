@@ -30,12 +30,15 @@ import {
   User,
   CheckCircle,
   Calendar,
-  Newspaper
+  Newspaper,
+  Mail,
+  Users,
+  Copy
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 
 interface Article {
   id: string;
@@ -340,7 +343,7 @@ export default function ImprensaPage() {
       </div>
 
       <Tabs defaultValue="articles" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="articles">Artigos</TabsTrigger>
           <TabsTrigger value="comments">
             Comentários
@@ -348,6 +351,7 @@ export default function ImprensaPage() {
               <Badge variant="destructive" className="ml-2 text-xs">{pendingComments}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="newsletter">Newsletter</TabsTrigger>
           <TabsTrigger value="categories">Categorias</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
@@ -597,6 +601,10 @@ export default function ImprensaPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="newsletter" className="space-y-6">
+          <NewsletterTab />
+        </TabsContent>
+
         <TabsContent value="categories" className="space-y-6">
           <Card>
             <CardHeader>
@@ -779,6 +787,109 @@ export default function ImprensaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function NewsletterTab() {
+  const { data: subscribers = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/admin/newsletter'],
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) =>
+      apiRequest('PATCH', `/api/admin/newsletter/${id}/toggle`, { ativo }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/admin/newsletter'] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/newsletter/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/admin/newsletter'] }),
+  });
+
+  const copyEmails = () => {
+    const emails = subscribers.filter(s => s.ativo).map(s => s.email).join(', ');
+    navigator.clipboard.writeText(emails);
+  };
+
+  const ativos = subscribers.filter(s => s.ativo).length;
+  const inativos = subscribers.filter(s => !s.ativo).length;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-gray-900">{subscribers.length}</p>
+          <p className="text-xs text-gray-500">Total Inscritos</p>
+        </Card>
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-green-600">{ativos}</p>
+          <p className="text-xs text-gray-500">Ativos</p>
+        </Card>
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-gray-400">{inativos}</p>
+          <p className="text-xs text-gray-500">Inativos</p>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-idasam-green-dark" />
+              <CardTitle className="text-lg">Inscritos na Newsletter</CardTitle>
+            </div>
+            <Button variant="outline" size="sm" onClick={copyEmails} disabled={ativos === 0}>
+              <Copy className="w-4 h-4 mr-1" /> Copiar E-mails Ativos
+            </Button>
+          </div>
+          <CardDescription>
+            Pessoas inscritas via formulário na página de notícias. Disponíveis como público no módulo de Marketing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p className="text-center text-gray-400 py-8">Carregando...</p>
+          ) : subscribers.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-400">Nenhum inscrito ainda</p>
+              <p className="text-xs text-gray-300 mt-1">Os inscritos aparecerão aqui quando se cadastrarem em /noticias</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {subscribers.map((sub: any) => (
+                <div key={sub.id} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${sub.ativo ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{sub.name}</p>
+                      <p className="text-xs text-gray-500">{sub.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">
+                      {new Date(sub.createdAt).toLocaleDateString('pt-BR')}
+                    </span>
+                    <Switch
+                      checked={sub.ativo}
+                      onCheckedChange={(checked) => toggleMutation.mutate({ id: sub.id, ativo: checked })}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 h-8 w-8 p-0"
+                      onClick={() => { if (confirm('Remover este inscrito?')) deleteMutation.mutate(sub.id); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

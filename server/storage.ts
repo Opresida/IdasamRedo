@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, newsletterSubscribers, financialAccounts, financialCategories, financialProjects, financialTransactions, portfolioProjects, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios, type NewsletterSubscriber, type InsertNewsletterSubscriber, type FinancialAccount, type InsertFinancialAccount, type FinancialCategory, type InsertFinancialCategory, type FinancialProject, type InsertFinancialProject, type FinancialTransaction, type InsertFinancialTransaction, type PortfolioProject, type InsertPortfolioProject } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -200,6 +200,36 @@ export interface IStorage {
   createCrmDadosBancarios(data: Omit<CrmDadosBancarios, 'id' | 'criadoEm'>): Promise<CrmDadosBancarios>;
   updateCrmDadosBancarios(id: string, data: Partial<CrmDadosBancarios>): Promise<CrmDadosBancarios | undefined>;
   deleteCrmDadosBancarios(id: string): Promise<void>;
+
+  // Newsletter
+  getNewsletterSubscribers(): Promise<NewsletterSubscriber[]>;
+  createNewsletterSubscriber(data: InsertNewsletterSubscriber): Promise<NewsletterSubscriber>;
+  deleteNewsletterSubscriber(id: string): Promise<void>;
+  toggleNewsletterSubscriber(id: string, ativo: boolean): Promise<NewsletterSubscriber | undefined>;
+
+  // Financeiro
+  getFinancialAccounts(): Promise<FinancialAccount[]>;
+  createFinancialAccount(data: InsertFinancialAccount): Promise<FinancialAccount>;
+  updateFinancialAccount(id: string, data: Partial<InsertFinancialAccount>): Promise<FinancialAccount | undefined>;
+  deleteFinancialAccount(id: string): Promise<void>;
+  getFinancialCategories(): Promise<FinancialCategory[]>;
+  createFinancialCategory(data: InsertFinancialCategory): Promise<FinancialCategory>;
+  updateFinancialCategory(id: string, data: Partial<InsertFinancialCategory>): Promise<FinancialCategory | undefined>;
+  deleteFinancialCategory(id: string): Promise<void>;
+  getFinancialProjects(): Promise<FinancialProject[]>;
+  createFinancialProject(data: InsertFinancialProject): Promise<FinancialProject>;
+  updateFinancialProject(id: string, data: Partial<InsertFinancialProject>): Promise<FinancialProject | undefined>;
+  deleteFinancialProject(id: string): Promise<void>;
+  getFinancialTransactions(): Promise<FinancialTransaction[]>;
+  createFinancialTransaction(data: InsertFinancialTransaction): Promise<FinancialTransaction>;
+  updateFinancialTransaction(id: string, data: Partial<InsertFinancialTransaction>): Promise<FinancialTransaction | undefined>;
+  deleteFinancialTransaction(id: string): Promise<void>;
+
+  // Portfólio
+  getPortfolioProjects(): Promise<PortfolioProject[]>;
+  createPortfolioProject(data: InsertPortfolioProject): Promise<PortfolioProject>;
+  updatePortfolioProject(id: string, data: Partial<InsertPortfolioProject>): Promise<PortfolioProject | undefined>;
+  deletePortfolioProject(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1119,6 +1149,99 @@ export class DatabaseStorage implements IStorage {
   }
   async deleteCrmDadosBancarios(id: string): Promise<void> {
     await db.delete(crmDadosBancarios).where(eq(crmDadosBancarios.id, id));
+  }
+
+  // Newsletter
+  async getNewsletterSubscribers(): Promise<NewsletterSubscriber[]> {
+    return db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt));
+  }
+  async createNewsletterSubscriber(data: InsertNewsletterSubscriber): Promise<NewsletterSubscriber> {
+    const [row] = await db.insert(newsletterSubscribers).values(data).returning();
+    return row;
+  }
+  async deleteNewsletterSubscriber(id: string): Promise<void> {
+    await db.delete(newsletterSubscribers).where(eq(newsletterSubscribers.id, id));
+  }
+  async toggleNewsletterSubscriber(id: string, ativo: boolean): Promise<NewsletterSubscriber | undefined> {
+    const [row] = await db.update(newsletterSubscribers).set({ ativo }).where(eq(newsletterSubscribers.id, id)).returning();
+    return row || undefined;
+  }
+
+  // ── Financeiro ──
+  async getFinancialAccounts(): Promise<FinancialAccount[]> {
+    return db.select().from(financialAccounts).orderBy(desc(financialAccounts.criadoEm));
+  }
+  async createFinancialAccount(data: InsertFinancialAccount): Promise<FinancialAccount> {
+    const [row] = await db.insert(financialAccounts).values(data).returning();
+    return row;
+  }
+  async updateFinancialAccount(id: string, data: Partial<InsertFinancialAccount>): Promise<FinancialAccount | undefined> {
+    const [row] = await db.update(financialAccounts).set({ ...data, atualizadoEm: new Date() }).where(eq(financialAccounts.id, id)).returning();
+    return row || undefined;
+  }
+  async deleteFinancialAccount(id: string): Promise<void> {
+    await db.delete(financialAccounts).where(eq(financialAccounts.id, id));
+  }
+
+  async getFinancialCategories(): Promise<FinancialCategory[]> {
+    return db.select().from(financialCategories).orderBy(financialCategories.nome);
+  }
+  async createFinancialCategory(data: InsertFinancialCategory): Promise<FinancialCategory> {
+    const [row] = await db.insert(financialCategories).values(data).returning();
+    return row;
+  }
+  async updateFinancialCategory(id: string, data: Partial<InsertFinancialCategory>): Promise<FinancialCategory | undefined> {
+    const [row] = await db.update(financialCategories).set(data).where(eq(financialCategories.id, id)).returning();
+    return row || undefined;
+  }
+  async deleteFinancialCategory(id: string): Promise<void> {
+    await db.delete(financialCategories).where(eq(financialCategories.id, id));
+  }
+
+  async getFinancialProjects(): Promise<FinancialProject[]> {
+    return db.select().from(financialProjects).orderBy(financialProjects.nome);
+  }
+  async createFinancialProject(data: InsertFinancialProject): Promise<FinancialProject> {
+    const [row] = await db.insert(financialProjects).values(data).returning();
+    return row;
+  }
+  async updateFinancialProject(id: string, data: Partial<InsertFinancialProject>): Promise<FinancialProject | undefined> {
+    const [row] = await db.update(financialProjects).set({ ...data, atualizadoEm: new Date() }).where(eq(financialProjects.id, id)).returning();
+    return row || undefined;
+  }
+  async deleteFinancialProject(id: string): Promise<void> {
+    await db.delete(financialProjects).where(eq(financialProjects.id, id));
+  }
+
+  async getFinancialTransactions(): Promise<FinancialTransaction[]> {
+    return db.select().from(financialTransactions).orderBy(desc(financialTransactions.criadoEm));
+  }
+  async createFinancialTransaction(data: InsertFinancialTransaction): Promise<FinancialTransaction> {
+    const [row] = await db.insert(financialTransactions).values(data).returning();
+    return row;
+  }
+  async updateFinancialTransaction(id: string, data: Partial<InsertFinancialTransaction>): Promise<FinancialTransaction | undefined> {
+    const [row] = await db.update(financialTransactions).set({ ...data, atualizadoEm: new Date() }).where(eq(financialTransactions.id, id)).returning();
+    return row || undefined;
+  }
+  async deleteFinancialTransaction(id: string): Promise<void> {
+    await db.delete(financialTransactions).where(eq(financialTransactions.id, id));
+  }
+
+  // Portfólio
+  async getPortfolioProjects(): Promise<PortfolioProject[]> {
+    return db.select().from(portfolioProjects).orderBy(portfolioProjects.ordem);
+  }
+  async createPortfolioProject(data: InsertPortfolioProject): Promise<PortfolioProject> {
+    const [row] = await db.insert(portfolioProjects).values(data).returning();
+    return row;
+  }
+  async updatePortfolioProject(id: string, data: Partial<InsertPortfolioProject>): Promise<PortfolioProject | undefined> {
+    const [row] = await db.update(portfolioProjects).set(data).where(eq(portfolioProjects.id, id)).returning();
+    return row || undefined;
+  }
+  async deletePortfolioProject(id: string): Promise<void> {
+    await db.delete(portfolioProjects).where(eq(portfolioProjects.id, id));
   }
 }
 
