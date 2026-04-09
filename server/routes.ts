@@ -576,16 +576,15 @@ export async function registerRoutes(app: Express) {
       if (!course) {
         return res.status(404).json({ message: "Curso não encontrado" });
       }
+      let isAdmin = false;
       const authHeader = req.headers.authorization;
-      const isAdmin = authHeader?.startsWith("Bearer ") && (() => {
+      if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.slice(7);
-        const session = adminSessions.get(token);
-        if (!session || session.expiresAt < Date.now()) {
-          adminSessions.delete(token);
-          return false;
+        const session = await storage.getAdminSession(token);
+        if (session && new Date(session.expiresAt) > new Date()) {
+          isAdmin = true;
         }
-        return true;
-      })();
+      }
       if (!isAdmin && course.status !== "open") {
         return res.status(403).json({ message: "Inscrições não estão abertas para este curso" });
       }
@@ -937,16 +936,15 @@ export async function registerRoutes(app: Express) {
 
   app.get("/api/articles", async (req, res) => {
     try {
+      let isAdmin = false;
       const authHeader = req.headers.authorization;
-      const isAdmin = authHeader?.startsWith("Bearer ") && (() => {
+      if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.slice(7);
-        const session = adminSessions.get(token);
-        if (!session || session.expiresAt < Date.now()) {
-          adminSessions.delete(token);
-          return false;
+        const session = await storage.getAdminSession(token);
+        if (session && new Date(session.expiresAt) > new Date()) {
+          isAdmin = true;
         }
-        return true;
-      })();
+      }
       const arts = await storage.getArticles(!isAdmin);
       res.json(arts);
     } catch (err) {
@@ -1050,16 +1048,15 @@ export async function registerRoutes(app: Express) {
 
   app.get("/api/articles/:id/comments", async (req, res) => {
     try {
+      let isAdmin = false;
       const authHeader = req.headers.authorization;
-      const isAdmin = authHeader?.startsWith("Bearer ") && (() => {
+      if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.slice(7);
-        const session = adminSessions.get(token);
-        if (!session || session.expiresAt < Date.now()) {
-          adminSessions.delete(token);
-          return false;
+        const session = await storage.getAdminSession(token);
+        if (session && new Date(session.expiresAt) > new Date()) {
+          isAdmin = true;
         }
-        return true;
-      })();
+      }
       const comments = await storage.getArticleComments(req.params.id, !isAdmin);
       res.json(comments);
     } catch (err) {
