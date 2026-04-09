@@ -32,6 +32,8 @@ import {
   TreePine,
   GraduationCap,
   Loader2,
+  Layers,
+  BookOpen,
 } from 'lucide-react';
 import type {
   FinancialProject,
@@ -118,6 +120,29 @@ const emptyTxForm = {
   observacoes: '',
 };
 
+interface PortfolioProject {
+  id: string;
+  titulo: string;
+  descricaoCurta: string | null;
+  descricaoCompleta: string | null;
+  categoria: string | null;
+  icone: string | null;
+  ordem: number;
+  ativo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const emptyPortfolioForm = {
+  titulo: '',
+  descricaoCurta: '',
+  descricaoCompleta: '',
+  categoria: 'Bioeconomia',
+  icone: 'default',
+  ordem: 0,
+  ativo: true,
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ProjetosAdminPage() {
@@ -132,6 +157,12 @@ export default function ProjetosAdminPage() {
   const [txForm, setTxForm] = useState(emptyTxForm);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // ─── Portfolio UI state ──────────────────────────────────────────────────
+  const [showPortfolioDialog, setShowPortfolioDialog] = useState(false);
+  const [editingPortfolio, setEditingPortfolio] = useState<PortfolioProject | null>(null);
+  const [portfolioForm, setPortfolioForm] = useState(emptyPortfolioForm);
+  const [deletePortfolioConfirmId, setDeletePortfolioConfirmId] = useState<string | null>(null);
+
   // ─── Queries ──────────────────────────────────────────────────────────────
   const { data: projetos = [], isLoading: loadingProjects } = useQuery<FinancialProject[]>({
     queryKey: ['/api/admin/financeiro/projetos'],
@@ -143,6 +174,48 @@ export default function ProjetosAdminPage() {
 
   const { data: categorias = [] } = useQuery<FinancialCategory[]>({
     queryKey: ['/api/admin/financeiro/categorias'],
+  });
+
+  const { data: portfolioProjects = [], isLoading: loadingPortfolio } = useQuery<PortfolioProject[]>({
+    queryKey: ['/api/admin/portfolio'],
+  });
+
+  // ─── Mutations: Portfolio ─────────────────────────────────────────────────
+  const createPortfolioMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/admin/portfolio', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/portfolio'] });
+      toast({ title: 'Projeto de portfólio criado com sucesso' });
+      setShowPortfolioDialog(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao criar projeto de portfólio', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const updatePortfolioMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      apiRequest('PATCH', `/api/admin/portfolio/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/portfolio'] });
+      toast({ title: 'Projeto de portfólio atualizado com sucesso' });
+      setShowPortfolioDialog(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao atualizar projeto de portfólio', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const deletePortfolioMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/portfolio/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/portfolio'] });
+      toast({ title: 'Projeto de portfólio excluído com sucesso' });
+      setDeletePortfolioConfirmId(null);
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao excluir projeto de portfólio', description: err.message, variant: 'destructive' });
+    },
   });
 
   // ─── Mutations: Projects ──────────────────────────────────────────────────
@@ -299,6 +372,52 @@ export default function ProjetosAdminPage() {
     });
   };
 
+  // ─── Portfolio form handlers ──────────────────────────────────────────────
+  const openNewPortfolio = () => {
+    setEditingPortfolio(null);
+    setPortfolioForm(emptyPortfolioForm);
+    setShowPortfolioDialog(true);
+  };
+
+  const openEditPortfolio = (project: PortfolioProject) => {
+    setEditingPortfolio(project);
+    setPortfolioForm({
+      titulo: project.titulo || '',
+      descricaoCurta: project.descricaoCurta || '',
+      descricaoCompleta: project.descricaoCompleta || '',
+      categoria: project.categoria || 'Bioeconomia',
+      icone: project.icone || '',
+      ordem: project.ordem ?? 0,
+      ativo: project.ativo ?? true,
+    });
+    setShowPortfolioDialog(true);
+  };
+
+  const handlePortfolioSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      ...portfolioForm,
+      descricaoCurta: portfolioForm.descricaoCurta || null,
+      descricaoCompleta: portfolioForm.descricaoCompleta || null,
+      icone: portfolioForm.icone || null,
+    };
+    if (editingPortfolio) {
+      updatePortfolioMutation.mutate({ id: editingPortfolio.id, data: payload });
+    } else {
+      createPortfolioMutation.mutate(payload);
+    }
+  };
+
+  // ─── Portfolio derived data ───────────────────────────────────────────────
+  const portfolioByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    portfolioProjects.forEach((p) => {
+      const cat = p.categoria || 'Sem categoria';
+      map[cat] = (map[cat] || 0) + 1;
+    });
+    return map;
+  }, [portfolioProjects]);
+
   // ─── Loading state ────────────────────────────────────────────────────────
   if (loadingProjects) {
     return (
@@ -312,16 +431,337 @@ export default function ProjetosAdminPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <FolderKanban className="w-8 h-8 text-green-600" />
+          Gestão de Projetos
+        </h1>
+        <p className="text-gray-600 mt-2">
+          Administre todos os projetos do IDASAM e suas configurações de visibilidade
+        </p>
+      </div>
+
+      {/* ─── Top-level Tabs ─────────────────────────────────────────────────── */}
+      <Tabs defaultValue="portfolio" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="portfolio" className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Portfólio de Pesquisa
+          </TabsTrigger>
+          <TabsTrigger value="execucao" className="flex items-center gap-2">
+            <Layers className="w-4 h-4" />
+            Projetos em Execução
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* ─── Tab: Portfólio de Pesquisa ──────────────────────────────────── */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="portfolio" className="space-y-6">
+          {/* Portfolio header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Portfólio de Pesquisa</h2>
+              <p className="text-sm text-gray-600 mt-1">Projetos de pesquisa do IDASAM exibidos no site</p>
+            </div>
+            <Button onClick={openNewPortfolio} size="lg" className="bg-green-600 hover:bg-green-700">
+              <Plus className="w-5 h-5 mr-2" />
+              Novo Projeto
+            </Button>
+          </div>
+
+          {/* Portfolio stats */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Total</p>
+                    <p className="text-2xl font-bold text-gray-900">{portfolioProjects.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            {['Bioeconomia', 'Sustentabilidade', 'Saúde e Social', 'Capacitação'].map((cat) => (
+              <Card key={cat}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      cat === 'Bioeconomia' ? 'bg-green-100' :
+                      cat === 'Sustentabilidade' ? 'bg-blue-100' :
+                      cat === 'Saúde e Social' ? 'bg-red-100' : 'bg-purple-100'
+                    }`}>
+                      {getCategoryIcon(cat)}
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">{cat}</p>
+                      <p className="text-2xl font-bold text-gray-900">{portfolioByCategory[cat] || 0}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Portfolio loading state */}
+          {loadingPortfolio && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+              <span className="ml-3 text-gray-600">Carregando portfólio...</span>
+            </div>
+          )}
+
+          {/* Portfolio project grid */}
+          {!loadingPortfolio && portfolioProjects.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {portfolioProjects.map((project) => (
+                <Card key={project.id} className={`hover:shadow-lg transition-all duration-300 ${!project.ativo ? 'opacity-60' : ''}`}>
+                  <CardHeader className="pb-4">
+                    <div className="flex justify-center mb-4">
+                      <div className="w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border">
+                        {getCategoryIcon(project.categoria)}
+                      </div>
+                    </div>
+                    <CardTitle className="text-lg text-center leading-tight">
+                      {project.titulo}
+                    </CardTitle>
+                    <div className="flex justify-center gap-2 mt-2">
+                      <Badge variant="outline" className={`text-xs ${getCategoryColor(project.categoria)}`}>
+                        {project.categoria || 'Sem categoria'}
+                      </Badge>
+                      {project.icone && (
+                        <Badge variant="outline" className="text-xs bg-gray-50">
+                          {project.icone}
+                        </Badge>
+                      )}
+                      {!project.ativo && (
+                        <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                          Inativo
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-gray-600 leading-relaxed line-clamp-3">
+                      {project.descricaoCurta || 'Sem descrição'}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Ordem: {project.ordem}</span>
+                      <Badge variant={project.ativo ? 'default' : 'outline'} className={`text-xs ${project.ativo ? 'bg-green-100 text-green-800' : ''}`}>
+                        {project.ativo ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="border-t border-gray-100 pt-4 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditPortfolio(project)}
+                        className="flex-1"
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Dialog open={deletePortfolioConfirmId === project.id} onOpenChange={(open) => setDeletePortfolioConfirmId(open ? project.id : null)}>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Excluir
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Confirmar Exclusão</DialogTitle>
+                            <DialogDescription>
+                              Tem certeza que deseja excluir o projeto "{project.titulo}"? Esta ação não pode ser desfeita.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="flex justify-end gap-3 pt-4">
+                            <Button variant="outline" onClick={() => setDeletePortfolioConfirmId(null)}>Cancelar</Button>
+                            <Button
+                              variant="destructive"
+                              onClick={() => deletePortfolioMutation.mutate(project.id)}
+                              disabled={deletePortfolioMutation.isPending}
+                            >
+                              {deletePortfolioMutation.isPending ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                              ) : (
+                                <Trash2 className="w-4 h-4 mr-1" />
+                              )}
+                              Excluir
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Portfolio empty state */}
+          {!loadingPortfolio && portfolioProjects.length === 0 && (
+            <Card className="p-12 text-center">
+              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600">Nenhum projeto no portfólio</h3>
+              <p className="text-gray-500 mt-1">Crie seu primeiro projeto de pesquisa clicando no botão acima.</p>
+            </Card>
+          )}
+
+          {/* ─── Portfolio Create/Edit Dialog ──────────────────────────────────── */}
+          <Dialog open={showPortfolioDialog} onOpenChange={setShowPortfolioDialog}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl flex items-center gap-3">
+                  <BookOpen className="w-6 h-6 text-green-600" />
+                  {editingPortfolio ? 'Editar Projeto do Portfólio' : 'Novo Projeto do Portfólio'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingPortfolio
+                    ? 'Atualize as informações do projeto de pesquisa'
+                    : 'Adicione um novo projeto ao portfólio de pesquisa'}
+                </DialogDescription>
+              </DialogHeader>
+
+              <form onSubmit={handlePortfolioSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="portfolio-titulo">Título *</Label>
+                  <Input
+                    id="portfolio-titulo"
+                    value={portfolioForm.titulo}
+                    onChange={(e) => setPortfolioForm({ ...portfolioForm, titulo: e.target.value })}
+                    placeholder="Ex: Monitoramento de Biodiversidade Amazônica"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="portfolio-descricaoCurta">Descrição Curta *</Label>
+                  <Textarea
+                    id="portfolio-descricaoCurta"
+                    value={portfolioForm.descricaoCurta}
+                    onChange={(e) => setPortfolioForm({ ...portfolioForm, descricaoCurta: e.target.value })}
+                    placeholder="Breve descrição do projeto de pesquisa..."
+                    className="min-h-[80px]"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="portfolio-descricaoCompleta">Descrição Completa *</Label>
+                  <Textarea
+                    id="portfolio-descricaoCompleta"
+                    value={portfolioForm.descricaoCompleta}
+                    onChange={(e) => setPortfolioForm({ ...portfolioForm, descricaoCompleta: e.target.value })}
+                    placeholder="Descrição detalhada do projeto de pesquisa..."
+                    className="min-h-[150px]"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="portfolio-categoria">Categoria *</Label>
+                    <Select
+                      value={portfolioForm.categoria}
+                      onValueChange={(value) => setPortfolioForm({ ...portfolioForm, categoria: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Bioeconomia">Bioeconomia</SelectItem>
+                        <SelectItem value="Sustentabilidade">Sustentabilidade</SelectItem>
+                        <SelectItem value="Saúde e Social">Saúde e Social</SelectItem>
+                        <SelectItem value="Capacitação">Capacitação</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="portfolio-icone">Ícone</Label>
+                    <Input
+                      id="portfolio-icone"
+                      value={portfolioForm.icone}
+                      onChange={(e) => setPortfolioForm({ ...portfolioForm, icone: e.target.value })}
+                      placeholder="Ex: Leaf, TreePine, Heart..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="portfolio-ordem">Ordem de Exibição</Label>
+                    <Input
+                      id="portfolio-ordem"
+                      type="number"
+                      value={portfolioForm.ordem}
+                      onChange={(e) => setPortfolioForm({ ...portfolioForm, ordem: parseInt(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <Switch
+                      id="portfolio-ativo"
+                      checked={portfolioForm.ativo}
+                      onCheckedChange={(checked) => setPortfolioForm({ ...portfolioForm, ativo: checked })}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor="portfolio-ativo" className="text-sm font-medium">
+                        Ativo
+                      </Label>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Projetos inativos não aparecem no site
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowPortfolioDialog(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-green-600 hover:bg-green-700"
+                    disabled={createPortfolioMutation.isPending || updatePortfolioMutation.isPending}
+                  >
+                    {(createPortfolioMutation.isPending || updatePortfolioMutation.isPending) && (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    )}
+                    {editingPortfolio ? 'Atualizar Projeto' : 'Criar Projeto'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* ─── Tab: Projetos em Execução ───────────────────────────────────── */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="execucao" className="space-y-6">
+
+      {/* Execucao header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <FolderKanban className="w-8 h-8 text-green-600" />
-            Gestão de Projetos
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Administre todos os projetos do IDASAM e suas configurações de visibilidade
-          </p>
+          <h2 className="text-xl font-semibold text-gray-900">Projetos em Execução</h2>
+          <p className="text-sm text-gray-600 mt-1">Projetos financeiros com transparência e transações</p>
         </div>
         <Button onClick={openNewProject} size="lg" className="bg-green-600 hover:bg-green-700">
           <Plus className="w-5 h-5 mr-2" />
@@ -1036,6 +1476,9 @@ export default function ProjetosAdminPage() {
       </Dialog>
 
       {/* ─── Transaction Dialog (within project edit context) ────────────────── */}
+      </TabsContent>
+      </Tabs>
+
       <Dialog open={showTxDialog} onOpenChange={setShowTxDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

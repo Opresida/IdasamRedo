@@ -1,7 +1,7 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, insertPortfolioProjectSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
 import type { ProposalStatus, SignatureType } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import multer from "multer";
@@ -2389,6 +2389,37 @@ export async function registerRoutes(app: Express) {
     const txs = await storage.getFinancialTransactions();
     const publicas = txs.filter(t => t.isPublic && t.status === 'pago');
     res.json(publicas);
+  });
+
+  // Portfolio
+  app.get("/api/public/portfolio", async (_req, res) => {
+    try {
+      const all = await storage.getPortfolioProjects();
+      res.json(all.filter(p => p.ativo));
+    } catch (e: any) { res.status(500).json({ message: "Erro ao buscar portfólio" }); }
+  });
+  app.get("/api/admin/portfolio", requireAdmin, async (_req, res) => {
+    try { res.json(await storage.getPortfolioProjects()); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao buscar portfólio" }); }
+  });
+  app.post("/api/admin/portfolio", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertPortfolioProjectSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+      res.json(await storage.createPortfolioProject(parsed.data));
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao criar projeto" }); }
+  });
+  app.patch("/api/admin/portfolio/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id: _, criadoEm: _c, ...data } = req.body;
+      const row = await storage.updatePortfolioProject(req.params.id, data);
+      if (!row) return res.status(404).json({ message: "Projeto não encontrado" });
+      res.json(row);
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao atualizar" }); }
+  });
+  app.delete("/api/admin/portfolio/:id", requireAdmin, async (req, res) => {
+    try { await storage.deletePortfolioProject(req.params.id); res.json({ message: "Projeto removido" }); }
+    catch (e: any) { res.status(500).json({ message: e.message || "Erro ao remover" }); }
   });
 
   const httpServer = createServer(app);

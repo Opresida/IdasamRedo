@@ -806,3 +806,29 @@ export const insertFinancialTransactionSchema = createInsertSchema(financialTran
 });
 export type InsertFinancialTransaction = z.infer<typeof insertFinancialTransactionSchema>;
 export type FinancialTransaction = typeof financialTransactions.$inferSelect;
+
+// ══════════════════════════════════════════════════════════════
+// PORTFÓLIO DE PROJETOS (pesquisa/catálogo)
+// ══════════════════════════════════════════════════════════════
+
+export const portfolioProjects = pgTable("portfolio_projects", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  titulo: text("titulo").notNull(),
+  descricaoCurta: text("descricao_curta").notNull(),
+  descricaoCompleta: text("descricao_completa").notNull(),
+  categoria: text("categoria").notNull(),
+  icone: text("icone").notNull().default("default"),
+  ativo: boolean("ativo").notNull().default(true),
+  ordem: integer("ordem").notNull().default(0),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export const insertPortfolioProjectSchema = createInsertSchema(portfolioProjects).omit({ id: true, criadoEm: true }).extend({
+  titulo: z.string().min(1),
+  descricaoCurta: z.string().min(1),
+  descricaoCompleta: z.string().min(1),
+  categoria: z.string().min(1),
+  icone: z.string().optional().default("default"),
+  ordem: z.number().optional().default(0),
+});
+export type InsertPortfolioProject = z.infer<typeof insertPortfolioProjectSchema>;
+export type PortfolioProject = typeof portfolioProjects.$inferSelect;

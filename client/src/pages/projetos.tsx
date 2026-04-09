@@ -268,6 +268,13 @@ const ProjectIcons = {
       <circle cx="32" cy="20" r="6" fill="#888"/>
       <path d="M29 17H35M32 14V23" stroke="#FFF" strokeWidth="2"/>
     </svg>
+  ),
+  default: (
+    <svg viewBox="0 0 64 64" className="w-16 h-16" fill="none">
+      <rect width="64" height="64" rx="16" fill="#F0F7F4"/>
+      <circle cx="32" cy="28" r="10" fill="#2A5B46" opacity="0.2"/>
+      <path d="M24 40L32 32L40 40" stroke="#2A5B46" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
   )
 };
 
@@ -477,11 +484,32 @@ export default function ProjetosPage() {
   const [selectedPixValue, setSelectedPixValue] = useState(0);
   const [pixCode, setPixCode] = useState('');
   const [pixCopied, setPixCopied] = useState(false);
+  const [portfolioProjects, setPortfolioProjects] = useState<Project[]>(projects);
+
+  // Buscar portfólio da API (fallback para hardcoded)
+  useEffect(() => {
+    fetch('/api/public/portfolio')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.length > 0) {
+          const mapped: Project[] = data.map((p: any) => ({
+            id: p.id,
+            title: p.titulo,
+            shortDescription: p.descricaoCurta,
+            fullDescription: p.descricaoCompleta,
+            category: p.categoria,
+            icon: ProjectIcons[p.icone as keyof typeof ProjectIcons] || ProjectIcons.default || ProjectIcons.mandioca,
+          }));
+          setPortfolioProjects(mapped);
+        }
+      })
+      .catch(() => {}); // Keep hardcoded fallback
+  }, []);
 
   // Filtrar projetos por categoria
   const filteredProjects = selectedCategory === 'Todos'
-    ? projects
-    : projects.filter(project => project.category === selectedCategory);
+    ? portfolioProjects
+    : portfolioProjects.filter(project => project.category === selectedCategory);
 
   // Função para lidar com doação PIX
   const handlePixDonation = (value: number) => {
@@ -575,10 +603,10 @@ export default function ProjetosPage() {
 
         <div className="max-w-7xl mx-auto px-4 text-center relative z-10 text-white">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 font-montserrat animate-fade-in-up">
-            Projetos 2025
+            Nosso Portfólio de Projetos
           </h1>
           <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto opacity-90 animate-fade-in-up animation-delay-200">
-            Inovação, sustentabilidade e impacto social para transformar a Amazônia.
+            Conheça as iniciativas do IDASAM que transformam a Amazônia através da inovação, sustentabilidade e impacto social.
           </p>
 
           {/* Barra de Filtros */}
@@ -783,8 +811,28 @@ export default function ProjetosPage() {
 
     
 
+      {/* CTA para Projetos em Execução */}
+      <section className="py-16 bg-gradient-to-r from-idasam-green-dark to-idasam-green-medium">
+        <div className="max-w-4xl mx-auto px-4 text-center text-white">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-montserrat">
+            Conheça nossos Projetos em Execução
+          </h2>
+          <p className="text-lg opacity-90 mb-8 max-w-2xl mx-auto">
+            Acompanhe os projetos que estão sendo desenvolvidos pelo IDASAM com total transparência sobre recursos e resultados.
+          </p>
+          <button
+            onClick={() => document.getElementById('projetos-execucao')?.scrollIntoView({ behavior: 'smooth' })}
+            className="bg-white text-idasam-green-dark px-8 py-4 rounded-xl font-semibold hover:bg-idasam-yellow-accent transition-colors shadow-lg text-lg"
+          >
+            Ver Projetos em Execução
+          </button>
+        </div>
+      </section>
+
       {/* Projetos em Execução */}
-      <ExecutedProjectsSection />
+      <div id="projetos-execucao">
+        <ExecutedProjectsSection />
+      </div>
 
       {/* Globe Feature Section */}
       <GlobeFeatureSection />
