@@ -27,6 +27,8 @@ import {
   MapPin,
   GraduationCap,
   Store,
+  Mail,
+  CheckCircle,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useAnalytics } from '@/hooks/use-analytics';
@@ -743,6 +745,9 @@ export default function NoticiasPage() {
         )}
       </div>
 
+      {/* Newsletter Banner */}
+      <NewsletterBanner />
+
       {/* Article Modal */}
       <Dialog open={selectedArticle !== null} onOpenChange={(open) => { if (!open) handleArticleClose(); }}>
         <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[95dvh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
@@ -846,5 +851,88 @@ export default function NoticiasPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function NewsletterBanner() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) return;
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email }),
+      });
+      const data = await res.json();
+      setStatus('success');
+      setMessage(data.message);
+      setName('');
+      setEmail('');
+    } catch {
+      setStatus('error');
+      setMessage('Erro ao processar. Tente novamente.');
+    }
+  };
+
+  return (
+    <section className="my-12 mx-auto max-w-4xl px-4">
+      <div className="bg-gradient-to-br from-idasam-green-dark to-idasam-green-medium rounded-2xl p-8 md:p-12 text-white text-center relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/20 -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/10 translate-y-1/2 -translate-x-1/4" />
+        </div>
+        <div className="relative z-10">
+          <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Mail className="w-7 h-7 text-white" />
+          </div>
+          <h3 className="text-2xl md:text-3xl font-bold mb-3">Newsletter IDASAM</h3>
+          <p className="text-white/80 mb-6 max-w-lg mx-auto">
+            Receba as novidades, projetos e conquistas do IDASAM diretamente no seu e-mail.
+          </p>
+
+          {status === 'success' ? (
+            <div className="flex items-center justify-center gap-2 text-white bg-white/20 rounded-xl py-4 px-6 max-w-md mx-auto">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-medium">{message}</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
+              <input
+                type="text"
+                placeholder="Seu nome"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
+                className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/40"
+              />
+              <input
+                type="email"
+                placeholder="Seu e-mail"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/40"
+              />
+              <button
+                type="submit"
+                disabled={status === 'loading'}
+                className="px-6 py-3 bg-white text-idasam-green-dark font-bold rounded-xl hover:bg-white/90 transition-colors disabled:opacity-50"
+              >
+                {status === 'loading' ? 'Enviando...' : 'Inscrever'}
+              </button>
+            </form>
+          )}
+          {status === 'error' && <p className="text-red-200 text-sm mt-3">{message}</p>}
+          <p className="text-white/50 text-xs mt-4">Sem spam. Você pode cancelar a qualquer momento.</p>
+        </div>
+      </div>
+    </section>
   );
 }

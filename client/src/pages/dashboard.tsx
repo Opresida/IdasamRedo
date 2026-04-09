@@ -26,6 +26,7 @@ import { formatDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 import type { ContactSubmission } from '@shared/schema';
 
 // Interfaces para tipagem
@@ -54,90 +55,45 @@ interface Statistics {
   engagement_rate: number;
 }
 
-// Dados mocados - simulando um sistema real
-const MOCK_ARTICLES: Article[] = [
-  {
-    id: '1',
-    title: 'IDASAM Lança Novo Projeto de Bioeconomia na Amazônia',
-    published: true,
-    featured: true,
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    author_name: 'Dr. Maria Silva',
-    views: 1245,
-    likes: 89
-  },
-  {
-    id: '2',
-    title: 'Capacitação em Tecnologias Sustentáveis para Comunidades',
-    published: true,
-    featured: false,
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    author_name: 'Prof. João Santos',
-    views: 892,
-    likes: 67
-  },
-  {
-    id: '3',
-    title: 'Workshop de Agricultura Regenerativa - Rascunho',
-    published: false,
-    featured: false,
-    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    author_name: 'Ana Costa',
-    views: 0,
-    likes: 0
-  },
-  {
-    id: '4',
-    title: 'Parceria Estratégica com Universidades Europeias',
-    published: true,
-    featured: true,
-    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    author_name: 'Dr. Carlos Mendes',
-    views: 2341,
-    likes: 156
-  },
-  {
-    id: '5',
-    title: 'Relatório Anual de Impacto Social 2024',
-    published: true,
-    featured: false,
-    created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    author_name: 'Equipe IDASAM',
-    views: 567,
-    likes: 43
-  }
-];
-
-const MOCK_COMMENTS: Comment[] = [
-  {
-    id: '1',
-    is_approved: false,
-    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    article_title: 'IDASAM Lança Novo Projeto de Bioeconomia na Amazônia'
-  },
-  {
-    id: '2',
-    is_approved: false,
-    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    article_title: 'Capacitação em Tecnologias Sustentáveis para Comunidades'
-  },
-  {
-    id: '3',
-    is_approved: true,
-    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    article_title: 'Parceria Estratégica com Universidades Europeias'
-  }
-];
+// Mocks removidos — dados reais via API
 
 export default function DashboardPage() {
   const { user, adminToken } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  const { data: articlesRaw = [], isLoading: loadingArticles } = useQuery<any[]>({
+    queryKey: ['/api/articles'],
+  });
+  const articles: Article[] = articlesRaw.map((a: any) => ({
+    id: a.id,
+    title: a.title,
+    published: a.published === 'true' || a.published === true,
+    featured: a.featured === 'true' || a.featured === true,
+    created_at: a.createdAt || a.created_at,
+    author_name: a.authorName || a.author_name || 'Admin',
+    views: a.views || 0,
+    likes: 0,
+  }));
+
+  const { data: commentsRaw = [] } = useQuery<any[]>({
+    queryKey: ['/api/admin/comments'],
+  });
+  const comments: Comment[] = commentsRaw.map((c: any) => ({
+    id: c.id,
+    is_approved: c.isApproved === 'true' || c.isApproved === true,
+    created_at: c.createdAt || c.created_at,
+    article_title: c.articleTitle || c.article_title || '',
+  }));
+
+  const loading = loadingArticles;
+
+  const { data: newsletterSubs = [] } = useQuery<any[]>({
+    queryKey: ['/api/admin/newsletter'],
+  });
+  const newsletterCount = newsletterSubs.filter((s: any) => s.ativo).length;
 
   const { data: contactSubmissions = [], isLoading: loadingSubmissions } = useQuery<ContactSubmission[]>({
     queryKey: ['/api/contact'],
@@ -151,37 +107,14 @@ export default function DashboardPage() {
     },
   });
 
-  // Simular carregamento de dados
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    if (!loadingArticles) setLastUpdate(new Date());
+  }, [loadingArticles]);
 
-  const loadInitialData = async () => {
-    setLoading(true);
-    
-    // Simular delay de carregamento
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    try {
-      // "Carregar" dados mocados
-      setArticles(MOCK_ARTICLES);
-      setComments(MOCK_COMMENTS);
-      setLastUpdate(new Date());
-      
-      toast({
-        title: 'Dados atualizados',
-        description: 'Dashboard atualizado com sucesso',
-      });
-    } catch (error) {
-      console.error('Erro simulado:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao carregar dados do dashboard',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+  const loadInitialData = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/articles'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/comments'] });
+    toast({ title: 'Dados atualizados', description: 'Dashboard atualizado com sucesso' });
   };
 
   // Cálculos baseados nos dados mocados
@@ -511,6 +444,22 @@ export default function DashboardPage() {
                 <div className="text-right">
                   <p className="text-lg font-bold">{totalLikes}</p>
                   <p className="text-xs text-gray-500">likes</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-50 rounded-lg">
+                    <Mail className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Newsletter</p>
+                    <p className="text-xs text-gray-600">Inscritos na newsletter</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold">{newsletterCount}</p>
+                  <p className="text-xs text-gray-500">inscritos</p>
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
 import type { ProposalStatus, SignatureType } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import multer from "multer";
@@ -2154,6 +2154,52 @@ export async function registerRoutes(app: Express) {
     } else {
       res.status(500).json({ message: "Erro ao enviar e-mail. Verifique a configuração do RESEND_API_KEY." });
     }
+  });
+
+  // Newsletter
+  app.post("/api/newsletter/subscribe", async (req, res) => {
+    try {
+      const parsed = insertNewsletterSubscriberSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message || "Dados inválidos" });
+      const subscriber = await storage.createNewsletterSubscriber(parsed.data);
+
+      // Sync with Marketing — add to "Newsletter IDASAM" audience
+      try {
+        const audiences = await storage.getEmailAudiences();
+        let newsletterAudience = audiences.find(a => a.name === 'Newsletter IDASAM');
+        if (!newsletterAudience) {
+          newsletterAudience = await storage.createEmailAudience({ name: 'Newsletter IDASAM' });
+        }
+        await storage.addAudienceLead({
+          audienceId: newsletterAudience.id,
+          name: parsed.data.name,
+          email: parsed.data.email,
+        });
+      } catch (_syncErr) {
+        // Sync failure shouldn't block subscription
+      }
+
+      res.json({ message: "Inscrição realizada com sucesso!", id: subscriber.id });
+    } catch (e: any) {
+      if (e.code === '23505') return res.json({ message: "Você já está inscrito na newsletter!" });
+      res.status(500).json({ message: "Erro ao processar inscrição" });
+    }
+  });
+
+  app.get("/api/admin/newsletter", requireAdmin, async (_req, res) => {
+    res.json(await storage.getNewsletterSubscribers());
+  });
+
+  app.patch("/api/admin/newsletter/:id/toggle", requireAdmin, async (req, res) => {
+    const { ativo } = req.body;
+    const sub = await storage.toggleNewsletterSubscriber(req.params.id, ativo);
+    if (!sub) return res.status(404).json({ message: "Inscrito não encontrado" });
+    res.json(sub);
+  });
+
+  app.delete("/api/admin/newsletter/:id", requireAdmin, async (req, res) => {
+    await storage.deleteNewsletterSubscriber(req.params.id);
+    res.json({ message: "Inscrito removido" });
   });
 
   const httpServer = createServer(app);
