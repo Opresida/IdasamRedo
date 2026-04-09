@@ -729,15 +729,43 @@ export const insertFinancialCategorySchema = createInsertSchema(financialCategor
 export type InsertFinancialCategory = z.infer<typeof insertFinancialCategorySchema>;
 export type FinancialCategory = typeof financialCategories.$inferSelect;
 
+export const PROJECT_CATEGORIES = ['Bioeconomia', 'Sustentabilidade', 'Saúde e Social', 'Capacitação'] as const;
+export type ProjectCategory = typeof PROJECT_CATEGORIES[number];
+export const PROJECT_STATUSES = ['planejamento', 'em_andamento', 'concluido'] as const;
+export type ProjectStatus = typeof PROJECT_STATUSES[number];
+export const TRANSPARENCY_LEVELS = ['basico', 'detalhado', 'completo'] as const;
+export type TransparencyLevel = typeof TRANSPARENCY_LEVELS[number];
+
 export const financialProjects = pgTable("financial_projects", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: text("nome").notNull(),
   descricao: text("descricao"),
+  descricaoCurta: text("descricao_curta"),
+  descricaoCompleta: text("descricao_completa"),
+  categoria: text("categoria").$type<ProjectCategory>(),
+  imagemUrl: text("imagem_url"),
+  status: text("status").$type<ProjectStatus>().default("planejamento"),
+  orcamentoTotal: text("orcamento_total"),
+  visivelSite: boolean("visivel_site").notNull().default(true),
+  visivelTransparencia: boolean("visivel_transparencia").notNull().default(false),
+  mostrarOrcamento: boolean("mostrar_orcamento").notNull().default(false),
+  mostrarTransacoes: boolean("mostrar_transacoes").notNull().default(false),
+  nivelTransparencia: text("nivel_transparencia").$type<TransparencyLevel>().default("basico"),
+  pixKey: text("pix_key"),
   ativo: boolean("ativo").notNull().default(true),
   criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).default(sql`NOW()`),
 });
-export const insertFinancialProjectSchema = createInsertSchema(financialProjects).omit({ id: true, criadoEm: true }).extend({
-  nome: z.string().min(1), descricao: z.string().optional().nullable(),
+export const insertFinancialProjectSchema = createInsertSchema(financialProjects).omit({ id: true, criadoEm: true, atualizadoEm: true }).extend({
+  nome: z.string().min(1),
+  descricao: z.string().optional().nullable(),
+  descricaoCurta: z.string().optional().nullable(),
+  descricaoCompleta: z.string().optional().nullable(),
+  categoria: z.string().optional().nullable(),
+  imagemUrl: z.string().optional().nullable(),
+  status: z.string().optional().nullable(),
+  orcamentoTotal: z.string().optional().nullable(),
+  pixKey: z.string().optional().nullable(),
 });
 export type InsertFinancialProject = z.infer<typeof insertFinancialProjectSchema>;
 export type FinancialProject = typeof financialProjects.$inferSelect;
@@ -759,9 +787,9 @@ export const financialTransactions = pgTable("financial_transactions", {
   categoriaId: uuid("categoria_id").references(() => financialCategories.id),
   projetoId: uuid("projeto_id").references(() => financialProjects.id),
   tipoCusto: text("tipo_custo").$type<FinancialCostType>(),
-  fornecedorId: uuid("fornecedor_id").references(() => crmStakeholders.id),
-  doadorId: uuid("doador_id").references(() => crmStakeholders.id),
-  pesquisadorId: uuid("pesquisador_id").references(() => crmStakeholders.id),
+  fornecedorId: uuid("fornecedor_id").references(() => crmStakeholders.id, { onDelete: 'set null' }),
+  doadorId: uuid("doador_id").references(() => crmStakeholders.id, { onDelete: 'set null' }),
+  pesquisadorId: uuid("pesquisador_id").references(() => crmStakeholders.id, { onDelete: 'set null' }),
   status: text("status").$type<FinancialTxStatus>().notNull().default("pendente"),
   isPublic: boolean("is_public").notNull().default(false),
   documentoAnexo: text("documento_anexo"),

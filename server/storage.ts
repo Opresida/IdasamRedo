@@ -1200,7 +1200,7 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
   async updateFinancialProject(id: string, data: Partial<InsertFinancialProject>): Promise<FinancialProject | undefined> {
-    const [row] = await db.update(financialProjects).set(data).where(eq(financialProjects.id, id)).returning();
+    const [row] = await db.update(financialProjects).set({ ...data, atualizadoEm: new Date() }).where(eq(financialProjects.id, id)).returning();
     return row || undefined;
   }
   async deleteFinancialProject(id: string): Promise<void> {

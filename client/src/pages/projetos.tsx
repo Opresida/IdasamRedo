@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ExternalLink, QrCode, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ExternalLink, QrCode, Copy, Check, Shield, TrendingUp, Eye } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
@@ -783,6 +783,9 @@ export default function ProjetosPage() {
 
     
 
+      {/* Projetos em Execução */}
+      <ExecutedProjectsSection />
+
       {/* Globe Feature Section */}
       <GlobeFeatureSection />
 
@@ -985,5 +988,182 @@ export default function ProjetosPage() {
 
       <ShadcnblocksComFooter2 />
     </div>
+  );
+}
+
+function ExecutedProjectsSection() {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedExec, setSelectedExec] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/public/projetos')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setProjects(data))
+      .catch(() => setProjects([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleViewDetail = async (project: any) => {
+    try {
+      const res = await fetch(`/api/public/projetos/${project.id}`);
+      if (res.ok) {
+        const full = await res.json();
+        setSelectedExec(full);
+      }
+    } catch { setSelectedExec(project); }
+  };
+
+  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'em_andamento': return { label: 'Em Execução', cls: 'bg-green-100 text-green-700' };
+      case 'concluido': return { label: 'Concluído', cls: 'bg-blue-100 text-blue-700' };
+      default: return { label: 'Planejamento', cls: 'bg-gray-100 text-gray-600' };
+    }
+  };
+
+  if (loading) return null;
+  if (projects.length === 0) return null;
+
+  return (
+    <>
+      <section className="py-20 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-10 h-10 bg-idasam-green-dark/10 rounded-full flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-idasam-green-dark" />
+              </div>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-idasam-text-main mb-4">
+              Projetos em Execução
+            </h2>
+            <p className="text-lg text-idasam-gray-text max-w-2xl mx-auto">
+              Acompanhe os projetos que estão sendo executados pelo IDASAM com total transparência.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {projects.map((project) => {
+              const badge = getStatusBadge(project.status);
+              return (
+                <div
+                  key={project.id}
+                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 group"
+                >
+                  {project.imagemUrl && (
+                    <div className="h-48 overflow-hidden">
+                      <img src={project.imagemUrl} alt={project.nome} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${badge.cls}`}>{badge.label}</span>
+                      {project.categoria && (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-idasam-green-dark/10 text-idasam-green-dark">{project.categoria}</span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold text-idasam-text-main mb-2">{project.nome}</h3>
+                    <p className="text-sm text-idasam-gray-text mb-4 line-clamp-3">{project.descricaoCurta || project.descricao}</p>
+
+                    {project.visivelTransparencia && (
+                      <div className="flex items-center gap-1.5 text-xs text-idasam-green-dark mb-4">
+                        <Shield className="w-3.5 h-3.5" />
+                        <span>Transparência pública ativa</span>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => handleViewDetail(project)}
+                      className="w-full bg-idasam-green-dark text-white py-3 rounded-xl font-semibold hover:bg-idasam-green-medium transition-colors text-sm"
+                    >
+                      Ver Detalhes
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Modal Projeto Executado */}
+      {selectedExec && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-idasam-text-main">{selectedExec.nome}</h2>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(selectedExec.status).cls}`}>
+                      {getStatusBadge(selectedExec.status).label}
+                    </span>
+                    {selectedExec.categoria && (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-idasam-green-dark/10 text-idasam-green-dark">{selectedExec.categoria}</span>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => setSelectedExec(null)} className="text-gray-400 hover:text-gray-600 p-2">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {selectedExec.imagemUrl && (
+                <img src={selectedExec.imagemUrl} alt={selectedExec.nome} className="w-full h-56 object-cover rounded-xl mb-6" />
+              )}
+
+              <p className="text-idasam-gray-text leading-relaxed mb-6 whitespace-pre-line">
+                {selectedExec.descricaoCompleta || selectedExec.descricaoCurta || selectedExec.descricao}
+              </p>
+
+              {/* Financial summary */}
+              {(selectedExec.receitas !== undefined || selectedExec.orcamentoTotal) && (
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Eye className="w-4 h-4" /> Dados Financeiros Públicos
+                  </h4>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-lg font-bold text-green-600">{formatCurrency(selectedExec.receitas || 0)}</p>
+                      <p className="text-xs text-gray-500">Arrecadado</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-blue-600">{formatCurrency(selectedExec.despesas || 0)}</p>
+                      <p className="text-xs text-gray-500">Investido</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-purple-600">{formatCurrency((selectedExec.receitas || 0) - (selectedExec.despesas || 0))}</p>
+                      <p className="text-xs text-gray-500">Saldo</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex flex-col gap-3">
+                {selectedExec.visivelTransparencia && (
+                  <a
+                    href={`/transparencia?projeto=${selectedExec.id}`}
+                    className="flex items-center justify-center gap-2 bg-idasam-green-dark text-white py-3 rounded-xl font-semibold hover:bg-idasam-green-medium transition-colors"
+                  >
+                    <Shield className="w-5 h-5" />
+                    Ver Portal de Transparência
+                  </a>
+                )}
+                <button
+                  onClick={() => setSelectedExec(null)}
+                  className="w-full py-3 rounded-xl font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

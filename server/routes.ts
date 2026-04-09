@@ -2216,70 +2216,91 @@ export async function registerRoutes(app: Express) {
     res.json(await storage.createFinancialAccount(parsed.data));
   });
   app.patch("/api/admin/financeiro/contas/:id", requireAdmin, async (req, res) => {
-    const row = await storage.updateFinancialAccount(req.params.id, req.body);
-    if (!row) return res.status(404).json({ message: "Conta não encontrada" });
-    res.json(row);
+    try {
+      const { id: _, criadoEm: _c, atualizadoEm: _a, ...data } = req.body;
+      const row = await storage.updateFinancialAccount(req.params.id, data);
+      if (!row) return res.status(404).json({ message: "Conta não encontrada" });
+      res.json(row);
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao atualizar conta" }); }
   });
   app.delete("/api/admin/financeiro/contas/:id", requireAdmin, async (req, res) => {
-    await storage.deleteFinancialAccount(req.params.id);
-    res.json({ message: "Conta removida" });
+    try { await storage.deleteFinancialAccount(req.params.id); res.json({ message: "Conta removida" }); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao remover conta. Verifique se não há transações vinculadas." }); }
   });
 
   // Categories
   app.get("/api/admin/financeiro/categorias", requireAdmin, async (_req, res) => {
-    res.json(await storage.getFinancialCategories());
+    try { res.json(await storage.getFinancialCategories()); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao buscar categorias" }); }
   });
   app.post("/api/admin/financeiro/categorias", requireAdmin, async (req, res) => {
-    const parsed = insertFinancialCategorySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
-    res.json(await storage.createFinancialCategory(parsed.data));
+    try {
+      const parsed = insertFinancialCategorySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+      res.json(await storage.createFinancialCategory(parsed.data));
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao criar categoria" }); }
   });
   app.patch("/api/admin/financeiro/categorias/:id", requireAdmin, async (req, res) => {
-    const row = await storage.updateFinancialCategory(req.params.id, req.body);
-    if (!row) return res.status(404).json({ message: "Categoria não encontrada" });
-    res.json(row);
+    try {
+      const { id: _, criadoEm: _c, ...data } = req.body;
+      const row = await storage.updateFinancialCategory(req.params.id, data);
+      if (!row) return res.status(404).json({ message: "Categoria não encontrada" });
+      res.json(row);
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao atualizar categoria" }); }
   });
   app.delete("/api/admin/financeiro/categorias/:id", requireAdmin, async (req, res) => {
-    await storage.deleteFinancialCategory(req.params.id);
-    res.json({ message: "Categoria removida" });
+    try { await storage.deleteFinancialCategory(req.params.id); res.json({ message: "Categoria removida" }); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao remover categoria. Verifique se não há transações vinculadas." }); }
   });
 
   // Projects
   app.get("/api/admin/financeiro/projetos", requireAdmin, async (_req, res) => {
-    res.json(await storage.getFinancialProjects());
+    try { res.json(await storage.getFinancialProjects()); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao buscar projetos" }); }
   });
   app.post("/api/admin/financeiro/projetos", requireAdmin, async (req, res) => {
-    const parsed = insertFinancialProjectSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
-    res.json(await storage.createFinancialProject(parsed.data));
+    try {
+      const parsed = insertFinancialProjectSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+      res.json(await storage.createFinancialProject(parsed.data));
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao criar projeto" }); }
   });
   app.patch("/api/admin/financeiro/projetos/:id", requireAdmin, async (req, res) => {
-    const row = await storage.updateFinancialProject(req.params.id, req.body);
-    if (!row) return res.status(404).json({ message: "Projeto não encontrado" });
-    res.json(row);
+    try {
+      const { id: _, criadoEm: _c, atualizadoEm: _a, ...data } = req.body;
+      const row = await storage.updateFinancialProject(req.params.id, data);
+      if (!row) return res.status(404).json({ message: "Projeto não encontrado" });
+      res.json(row);
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao atualizar projeto" }); }
   });
   app.delete("/api/admin/financeiro/projetos/:id", requireAdmin, async (req, res) => {
-    await storage.deleteFinancialProject(req.params.id);
-    res.json({ message: "Projeto removido" });
+    try { await storage.deleteFinancialProject(req.params.id); res.json({ message: "Projeto removido" }); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao remover projeto. Verifique se não há transações vinculadas." }); }
   });
 
   // Transactions
   app.get("/api/admin/financeiro/transacoes", requireAdmin, async (_req, res) => {
-    res.json(await storage.getFinancialTransactions());
+    try { res.json(await storage.getFinancialTransactions()); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao buscar transações" }); }
   });
   app.post("/api/admin/financeiro/transacoes", requireAdmin, async (req, res) => {
-    const parsed = insertFinancialTransactionSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
-    res.json(await storage.createFinancialTransaction(parsed.data));
+    try {
+      const parsed = insertFinancialTransactionSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+      res.json(await storage.createFinancialTransaction(parsed.data));
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao criar transação" }); }
   });
   app.patch("/api/admin/financeiro/transacoes/:id", requireAdmin, async (req, res) => {
-    const row = await storage.updateFinancialTransaction(req.params.id, req.body);
-    if (!row) return res.status(404).json({ message: "Transação não encontrada" });
-    res.json(row);
+    try {
+      const { id: _, criadoEm: _c, atualizadoEm: _a, ...data } = req.body;
+      const row = await storage.updateFinancialTransaction(req.params.id, data);
+      if (!row) return res.status(404).json({ message: "Transação não encontrada" });
+      res.json(row);
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao atualizar transação" }); }
   });
   app.delete("/api/admin/financeiro/transacoes/:id", requireAdmin, async (req, res) => {
-    await storage.deleteFinancialTransaction(req.params.id);
-    res.json({ message: "Transação removida" });
+    try { await storage.deleteFinancialTransaction(req.params.id); res.json({ message: "Transação removida" }); }
+    catch (e: any) { res.status(500).json({ message: e.message || "Erro ao remover transação" }); }
   });
 
   // Reports
@@ -2308,7 +2329,62 @@ export async function registerRoutes(app: Express) {
     res.json(Object.entries(result).map(([categoria, vals]) => ({ categoria, ...vals })));
   });
 
-  // Public transparency
+  // Public: projects visible on site
+  app.get("/api/public/projetos", async (_req, res) => {
+    const projects = await storage.getFinancialProjects();
+    const visible = projects.filter(p => p.visivelSite && p.ativo);
+    res.json(visible);
+  });
+
+  app.get("/api/public/projetos/:id", async (req, res) => {
+    const projects = await storage.getFinancialProjects();
+    const project = projects.find(p => p.id === req.params.id);
+    if (!project) return res.status(404).json({ message: "Projeto não encontrado" });
+    const txs = await storage.getFinancialTransactions();
+    const projectTxs = txs.filter(t => t.projetoId === project.id && t.status === 'pago' && t.isPublic);
+    const receitas = projectTxs.filter(t => t.tipo === 'receita').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+    const despesas = projectTxs.filter(t => t.tipo === 'despesa').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+    res.json({ ...project, receitas, despesas, saldo: receitas - despesas });
+  });
+
+  // Public transparency: projects + transactions
+  app.get("/api/public/transparencia", async (_req, res) => {
+    const projects = await storage.getFinancialProjects();
+    const transparentes = projects.filter(p => p.visivelTransparencia && p.ativo);
+    const txs = await storage.getFinancialTransactions();
+    const cats = await storage.getFinancialCategories();
+    const catMap = new Map(cats.map(c => [c.id, c.nome]));
+
+    const result = transparentes.map(p => {
+      const projectTxs = txs.filter(t => t.projetoId === p.id && t.isPublic && t.status === 'pago');
+      const receitas = projectTxs.filter(t => t.tipo === 'receita').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+      const despesas = projectTxs.filter(t => t.tipo === 'despesa').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+      return {
+        id: p.id,
+        nome: p.nome,
+        descricao: p.descricaoCurta || p.descricao || '',
+        categoria: p.categoria || '',
+        orcamentoTotal: parseFloat(p.orcamentoTotal || '0'),
+        receitas,
+        despesas,
+        saldo: receitas - despesas,
+        mostrarOrcamento: p.mostrarOrcamento,
+        mostrarTransacoes: p.mostrarTransacoes,
+        nivelTransparencia: p.nivelTransparencia,
+        transacoes: p.mostrarTransacoes ? projectTxs.map(t => ({
+          id: t.id,
+          data: t.data,
+          descricao: t.descricao,
+          valor: parseFloat(t.valor || '0'),
+          tipo: t.tipo,
+          categoria: t.categoriaId ? catMap.get(t.categoriaId) || '' : '',
+        })) : [],
+      };
+    });
+    res.json(result);
+  });
+
+  // Keep old endpoint for backwards compat
   app.get("/api/public/financeiro/transparencia", async (_req, res) => {
     const txs = await storage.getFinancialTransactions();
     const publicas = txs.filter(t => t.isPublic && t.status === 'pago');
