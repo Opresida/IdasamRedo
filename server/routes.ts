@@ -1,12 +1,14 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
 import type { ProposalStatus, SignatureType } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import multer from "multer";
 import { createServer } from "http";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || "IDASAM <onboarding@resend.dev>";
@@ -299,6 +301,27 @@ Os resultados mostram aumento de 40% na produtividade e melhoria significativa n
   },
 ];
 
+async function runIncrementalMigrations() {
+  const migrationsDir = path.resolve("migrations/incremental");
+  let files: string[];
+  try {
+    files = fs.readdirSync(migrationsDir).filter(f => f.endsWith(".sql")).sort();
+  } catch (err) {
+    console.error("Erro ao ler diretório de migrations:", err);
+    return;
+  }
+  for (const file of files) {
+    const filePath = path.join(migrationsDir, file);
+    try {
+      const sql = fs.readFileSync(filePath, "utf-8");
+      await pool.query(sql);
+      console.log(`Migration aplicada: ${file}`);
+    } catch (err) {
+      console.error(`Erro ao aplicar migration ${file}:`, err);
+    }
+  }
+}
+
 async function seedArticles() {
   try {
     const existingCats = await storage.getArticleCategories();
@@ -347,6 +370,7 @@ async function deduplicateExistingEnrollments() {
 }
 
 export async function registerRoutes(app: Express) {
+  await runIncrementalMigrations();
   await seedCourses();
   await seedArticles();
   await storage.backfillAuthCodes();
@@ -950,6 +974,7 @@ export async function registerRoutes(app: Express) {
       const arts = await storage.getArticles(!isAdmin);
       res.json(arts);
     } catch (err) {
+      console.error("Erro ao buscar artigos:", err);
       res.status(500).json({ message: "Erro ao buscar artigos" });
     }
   });
@@ -960,6 +985,7 @@ export async function registerRoutes(app: Express) {
       if (!art) return res.status(404).json({ message: "Artigo não encontrado" });
       res.json(art);
     } catch (err) {
+      console.error("Erro ao buscar artigo:", err);
       res.status(500).json({ message: "Erro ao buscar artigo" });
     }
   });
