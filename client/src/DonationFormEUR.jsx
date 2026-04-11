@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 const DonationFormEUR = () => {
-  const [amount, setAmount] = useState(25); // Valor padrão em EUR
+  const [amount, setAmount] = useState(25);
   const [succeeded, setSucceeded] = useState(false);
   const [error, setError] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -13,25 +12,30 @@ const DonationFormEUR = () => {
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     if (!stripe || !elements) {
-      // Stripe.js ainda não carregou.
       return;
     }
     setProcessing(true);
 
-    // 1. Chama a Edge Function no Supabase para criar a intenção de pagamento em EUR
-    const { data, error: funcError } = await supabase.functions.invoke('stripe-payment-intent-eur', {
-      body: { amount: amount, currency: 'eur' }
-    });
-
-    if (funcError) {
-      setError(`Erro no servidor: ${funcError.message}`);
+    let clientSecret;
+    try {
+      const response = await fetch('/api/create-payment-intent-eur', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(`Erro no servidor: ${data.message || 'Erro desconhecido'}`);
+        setProcessing(false);
+        return;
+      }
+      clientSecret = data.clientSecret;
+    } catch (fetchErr) {
+      setError(`Erro ao conectar ao servidor: ${fetchErr.message}`);
       setProcessing(false);
       return;
     }
 
-    const { clientSecret } = data;
-
-    // 2. Usa o clientSecret para confirmar o pagamento no front-end
     const payload = await stripe.confirmCardPayment(clientSecret, {
       payment_method: {
         card: elements.getElement(CardElement),
@@ -58,7 +62,7 @@ const DonationFormEUR = () => {
           <div className="text-6xl mb-4">🎉</div>
           <h3 className="text-2xl font-bold text-green-600 mb-4">Obrigado pela sua doação!</h3>
           <p className="text-gray-600 mb-6">
-            Sua contribuição de <strong>€{amount}</strong> foi processada com sucesso. 
+            Sua contribuição de <strong>€{amount}</strong> foi processada com sucesso.
             Você receberá um comprovante por email.
           </p>
           <p className="text-sm text-gray-500">
@@ -78,7 +82,6 @@ const DonationFormEUR = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Seleção de Valor */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Valor da Doação (EUR)
@@ -99,8 +102,7 @@ const DonationFormEUR = () => {
               </button>
             ))}
           </div>
-          
-          {/* Valor personalizado */}
+
           <div className="relative">
             <span className="absolute left-3 top-3 text-gray-500">€</span>
             <input
@@ -114,7 +116,6 @@ const DonationFormEUR = () => {
           </div>
         </div>
 
-        {/* Informações do Cartão */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Informações do Cartão
@@ -136,14 +137,12 @@ const DonationFormEUR = () => {
           </div>
         </div>
 
-        {/* Mensagem de Erro */}
         {error && (
           <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
             <p className="text-red-600 text-sm">{error}</p>
           </div>
         )}
 
-        {/* Botão de Submissão */}
         <button
           type="submit"
           disabled={!stripe || processing}
@@ -162,7 +161,6 @@ const DonationFormEUR = () => {
           )}
         </button>
 
-        {/* Informações de Segurança */}
         <div className="text-center">
           <p className="text-xs text-gray-500 leading-relaxed">
             🔒 Pagamento seguro processado pelo Stripe.<br/>

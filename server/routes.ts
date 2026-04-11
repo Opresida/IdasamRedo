@@ -358,6 +358,52 @@ export async function registerRoutes(app: Express) {
     res.json({ status: "ok", message: "Server is running" });
   });
 
+  app.post("/api/create-payment-intent", async (req, res) => {
+    const { amount } = req.body;
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      return res.status(400).json({ message: "Valor inválido" });
+    }
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecretKey) {
+      return res.status(500).json({ message: "Stripe não configurado" });
+    }
+    try {
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-03-31.basil" });
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(Number(amount) * 100),
+        currency: "usd",
+      });
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (err: any) {
+      console.error("Stripe USD error:", err);
+      res.status(500).json({ message: err.message || "Erro ao criar pagamento" });
+    }
+  });
+
+  app.post("/api/create-payment-intent-eur", async (req, res) => {
+    const { amount } = req.body;
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      return res.status(400).json({ message: "Valor inválido" });
+    }
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecretKey) {
+      return res.status(500).json({ message: "Stripe não configurado" });
+    }
+    try {
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-03-31.basil" });
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(Number(amount) * 100),
+        currency: "eur",
+      });
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (err: any) {
+      console.error("Stripe EUR error:", err);
+      res.status(500).json({ message: err.message || "Erro ao criar pagamento" });
+    }
+  });
+
   const isSocialBot = (userAgent: string = ''): boolean => {
     const botPatterns = [
       'facebookexternalhit', 'facebookbot', 'twitterbot', 'linkedinbot',
