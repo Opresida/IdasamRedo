@@ -393,33 +393,88 @@ export async function registerRoutes(app: Express) {
     if (numAmount > 50000) {
       return res.status(400).json({ message: "O valor máximo para doação via Pix é R$ 50.000,00" });
     }
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeSecretKey) {
-      return res.status(500).json({ message: "Stripe não configurado" });
+    const merchantId = process.env.CIELO_MERCHANT_ID;
+    const merchantKey = process.env.CIELO_MERCHANT_KEY;
+    if (!merchantId || !merchantKey) {
+      return res.status(500).json({ message: "Cielo não configurada" });
     }
     try {
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-03-31.basil" });
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(Number(amount) * 100),
-        currency: "brl",
-        payment_method_types: ["pix"],
-        confirm: true,
-        payment_method_data: { type: "pix" },
+      const cieloBody = {
+        MerchantOrderId: `DON-${Date.now()}`,
+        Customer: { Name: "Doador IDASAM" },
+        Payment: {
+          Type: "Pix",
+          Amount: Math.round(numAmount * 100),
+        },
+      };
+      const cieloResp = await fetch("https://api.cieloecommerce.cielo.com.br/1/sales", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "MerchantId": merchantId,
+          "MerchantKey": merchantKey,
+        },
+        body: JSON.stringify(cieloBody),
       });
-      const nextAction = paymentIntent.next_action;
-      if (nextAction?.type !== "pix_display_qr_code") {
-        return res.status(500).json({ message: "QR Code Pix não gerado pelo Stripe" });
+      interface CieloPixResponse {
+        Payment?: {
+          PaymentId?: string;
+          QrCodeBase64Image?: string;
+          QrCodeString?: string;
+        };
       }
-      const pixDisplay = nextAction.pix_display_qr_code;
-      res.json({
-        qrCodeUrl: pixDisplay?.image_url_png ?? null,
-        pixCode: pixDisplay?.data ?? null,
-        expiresAt: pixDisplay?.expires_at ?? null,
-      });
+      interface CieloErrorItem {
+        Message?: string;
+      }
+      const cieloData = (await cieloResp.json()) as CieloPixResponse | CieloErrorItem[];
+      if (!cieloResp.ok) {
+        const errMsg = Array.isArray(cieloData) && (cieloData as CieloErrorItem[])[0]?.Message
+          ? (cieloData as CieloErrorItem[])[0].Message!
+          : "Erro ao criar pagamento Pix na Cielo";
+        return res.status(500).json({ message: errMsg });
+      }
+      const pixResponse = cieloData as CieloPixResponse;
+      const qrCodeBase64 = pixResponse.Payment?.QrCodeBase64Image ?? null;
+      const pixCode = pixResponse.Payment?.QrCodeString ?? null;
+      const paymentId = pixResponse.Payment?.PaymentId ?? null;
+      if (!qrCodeBase64 || !pixCode || !paymentId) {
+        return res.status(500).json({ message: "QR Code Pix não gerado pela Cielo" });
+      }
+      res.json({ qrCodeBase64, pixCode, paymentId });
     } catch (err: any) {
-      console.error("Stripe PIX error:", err);
+      console.error("Cielo PIX error:", err);
       res.status(500).json({ message: err.message || "Erro ao criar pagamento Pix" });
+    }
+  });
+
+  app.get("/api/pix-status/:paymentId", async (req, res) => {
+    const { paymentId } = req.params;
+    const merchantId = process.env.CIELO_MERCHANT_ID;
+    const merchantKey = process.env.CIELO_MERCHANT_KEY;
+    if (!merchantId || !merchantKey) {
+      return res.status(500).json({ message: "Cielo não configurada" });
+    }
+    try {
+      interface CieloStatusResponse {
+        Payment?: {
+          Status?: number;
+        };
+      }
+      const statusResp = await fetch(
+        `https://apiquery.cieloecommerce.cielo.com.br/1/sales/${paymentId}`,
+        {
+          headers: {
+            "MerchantId": merchantId,
+            "MerchantKey": merchantKey,
+          },
+        }
+      );
+      const statusData = (await statusResp.json()) as CieloStatusResponse;
+      const status = statusData.Payment?.Status ?? 0;
+      res.json({ status, confirmed: status === 2 });
+    } catch (err: any) {
+      console.error("Cielo status error:", err);
+      res.status(500).json({ message: err.message || "Erro ao consultar status do pagamento" });
     }
   });
 

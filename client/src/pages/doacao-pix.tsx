@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, QrCode, Copy, Check, ArrowLeft, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Heart, QrCode, Copy, Check, ArrowLeft, Clock, CheckCircle2 } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
@@ -11,9 +11,10 @@ const presetValues = [
 ];
 
 interface PixData {
-  qrCodeUrl: string;
+  qrCodeBase64: string;
   pixCode: string;
   expiresAt: number;
+  paymentId: string;
 }
 
 export default function DoacaoPix() {
@@ -24,6 +25,10 @@ export default function DoacaoPix() {
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
+  const [paid, setPaid] = useState(false);
+  const [paidAmount, setPaidAmount] = useState(0);
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const effectiveAmount = customValue ? Number(customValue) : selectedValue;
 
@@ -47,6 +52,30 @@ export default function DoacaoPix() {
     return () => clearInterval(interval);
   }, [pixData]);
 
+  useEffect(() => {
+    if (!pixData) return;
+
+    const checkStatus = async () => {
+      try {
+        const resp = await fetch(`/api/pix-status/${pixData.paymentId}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.confirmed) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setPaidAmount(effectiveAmount);
+          setPaid(true);
+          setPixData(null);
+        }
+      } catch {
+      }
+    };
+
+    pollRef.current = setInterval(checkStatus, 5000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [pixData]);
+
   const handleGenerate = async () => {
     if (!effectiveAmount || effectiveAmount <= 0) {
       setError('Por favor, informe um valor válido.');
@@ -55,6 +84,7 @@ export default function DoacaoPix() {
     setError('');
     setIsLoading(true);
     setPixData(null);
+    setPaid(false);
     try {
       const resp = await fetch('/api/create-payment-intent-pix', {
         method: 'POST',
@@ -66,11 +96,12 @@ export default function DoacaoPix() {
         setError(data.message || 'Erro ao gerar QR Code. Tente novamente.');
         return;
       }
-      if (!data.qrCodeUrl || !data.pixCode) {
+      if (!data.qrCodeBase64 || !data.pixCode || !data.paymentId) {
         setError('O QR Code Pix não foi gerado corretamente. Tente novamente.');
         return;
       }
-      setPixData(data);
+      const expiresAt = Math.floor(Date.now() / 1000) + 30 * 60;
+      setPixData({ ...data, expiresAt });
     } catch (e) {
       setError('Erro de conexão. Verifique sua internet e tente novamente.');
     } finally {
@@ -95,9 +126,11 @@ export default function DoacaoPix() {
   };
 
   const handleReset = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
     setPixData(null);
     setError('');
     setCopied(false);
+    setPaid(false);
   };
 
   return (
@@ -123,7 +156,25 @@ export default function DoacaoPix() {
         </div>
 
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {!pixData ? (
+          {paid ? (
+            <div className="bg-white rounded-3xl p-8 shadow-xl space-y-6 text-center">
+              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+              <h2 className="text-2xl font-bold text-[#2A5B46]">
+                Pagamento confirmado!
+              </h2>
+              <p className="text-gray-600 text-lg">
+                Recebemos sua doação de <strong>R$ {paidAmount}</strong>.<br />
+                Muito obrigado por apoiar a Amazônia e as comunidades do IDASAM!
+              </p>
+              <button
+                onClick={handleReset}
+                className="flex items-center justify-center gap-2 text-[#4E8D7C] hover:text-[#2A5B46] font-medium transition-colors mx-auto"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Fazer outra doação
+              </button>
+            </div>
+          ) : !pixData ? (
             <div className="bg-white rounded-3xl p-8 shadow-xl space-y-6">
               <h2 className="text-2xl font-bold text-[#2A5B46] text-center">
                 Escolha o valor da sua doação
@@ -195,7 +246,7 @@ export default function DoacaoPix() {
               </button>
 
               <p className="text-xs text-center text-gray-500">
-                QR Code gerado pelo Stripe — válido por 24h, aceito por Nubank, Itaú, Bradesco e demais bancos.
+                QR Code PIX válido por 30 minutos, aceito por Nubank, Itaú, Bradesco e demais bancos.
               </p>
             </div>
           ) : (
@@ -211,8 +262,8 @@ export default function DoacaoPix() {
 
               <div className="flex justify-center p-4 bg-gray-50 rounded-2xl border-2 border-gray-100">
                 <img
-                  src={pixData.qrCodeUrl}
-                  alt="QR Code PIX gerado pelo Stripe"
+                  src={`data:image/png;base64,${pixData.qrCodeBase64}`}
+                  alt="QR Code PIX"
                   className="w-52 h-52 object-contain"
                 />
               </div>
@@ -223,6 +274,14 @@ export default function DoacaoPix() {
                   <span>Válido por: {timeLeft}</span>
                 </div>
               )}
+
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span>Aguardando confirmação do pagamento…</span>
+              </div>
 
               <div className="space-y-2">
                 <p className="text-sm text-gray-500">Ou use o código copia-e-cola:</p>
