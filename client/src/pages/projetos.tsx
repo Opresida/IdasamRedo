@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, QrCode, Copy, Check, Shield, TrendingUp, Eye } from 'lucide-react';
+import { X, ExternalLink, Shield, TrendingUp, Eye } from 'lucide-react';
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
@@ -465,25 +465,10 @@ const projects: Project[] = [
 // Categorias para filtros
 const categories = ['Todos', 'Bioeconomia', 'Sustentabilidade', 'Saúde e Social', 'Capacitação'];
 
-// Códigos PIX para diferentes valores
-const pixCodes = {
-  25: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam520400005303986540525.005802BR5906IDASAM6006MANAUS62070503***630430D9',
-  50: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam520400005303986540550.005802BR5906IDASAM6006MANAUS62070503***6304EE99',
-  100: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam5204000053039865406100.005802BR5906IDASAM6006MANAUS62070503***6304A22E',
-  200: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam5204000053039865406200.005802BR5906IDASAM6006MANAUS62070503***6304E429',
-  500: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam5204000053039865406500.005802BR5906IDASAM6006MANAUS62070503***6304A5C5',
-  1000: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam52040000530398654071000.005802BR5906IDASAM6006MANAUS62070503***630409EB',
-  noValue: '00020126460014BR.GOV.BCB.PIX0114029061770001870206Idasam5204000053039865802BR5906IDASAM6006MANAUS62070503***63046351'
-};
 
 export default function ProjetosPage() {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [showPixModal, setShowPixModal] = useState(false);
-  const [showPixValueModal, setShowPixValueModal] = useState(false);
-  const [selectedPixValue, setSelectedPixValue] = useState(0);
-  const [pixCode, setPixCode] = useState('');
-  const [pixCopied, setPixCopied] = useState(false);
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>(projects);
 
   // Buscar portfólio da API (fallback para hardcoded)
@@ -510,43 +495,6 @@ export default function ProjetosPage() {
   const filteredProjects = selectedCategory === 'Todos'
     ? portfolioProjects
     : portfolioProjects.filter(project => project.category === selectedCategory);
-
-  // Função para lidar com doação PIX
-  const handlePixDonation = (value: number) => {
-    setSelectedPixValue(value);
-    const finalPixCode = pixCodes[value] || pixCodes.noValue;
-    setPixCode(finalPixCode);
-    setShowPixValueModal(false); // Fecha o modal de seleção de valores
-    setShowPixModal(true); // Abre o modal do QR Code
-  };
-
-  // Função para copiar código PIX
-  const handleCopyPixCode = async () => {
-    try {
-      await navigator.clipboard.writeText(pixCode);
-      setPixCopied(true);
-      setTimeout(() => setPixCopied(false), 3000);
-    } catch (err) {
-      console.error('Erro ao copiar código PIX:', err);
-      const textArea = document.createElement('textarea');
-      textArea.value = pixCode;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setPixCopied(true);
-      setTimeout(() => setPixCopied(false), 3000);
-    }
-  };
-
-  // Função para finalizar doação
-  const handlePixDonationComplete = () => {
-    setShowPixModal(false);
-    setShowPixValueModal(false);
-    setPixCopied(false);
-    setSelectedPixValue(0);
-    setPixCode('');
-  };
 
   // Função para obter cor da categoria
   const getCategoryColor = (category: string) => {
@@ -892,50 +840,14 @@ export default function ProjetosPage() {
                 
                 {/* Botões de Doação */}
                 <div className="grid grid-cols-2 gap-3">
-                  <Dialog open={showPixValueModal} onOpenChange={setShowPixValueModal}>
-                    <DialogTrigger asChild>
-                      <button 
-                        onClick={() => setShowPixValueModal(true)}
-                        className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <span className="text-lg">🇧🇷</span>
-                        <span>Doar em Real</span>
-                      </button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-md">
-                      <DialogHeader>
-                        <DialogTitle className="text-2xl text-center text-green-600 mb-4">
-                          <svg className="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                          </svg>
-                          Escolha o Valor da Doação
-                        </DialogTitle>
-                      </DialogHeader>
+                  <button
+                    onClick={() => window.location.href = '/doacao-pix'}
+                    className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="text-lg">🇧🇷</span>
+                    <span>Doar via PIX</span>
+                  </button>
 
-                      <div className="space-y-4 p-2">
-                        <p className="text-center text-gray-600 mb-6">
-                          Selecione um valor para sua doação em reais:
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          {[25, 50, 100, 200, 500, 1000].map((value) => (
-                            <button
-                              key={value}
-                              onClick={() => handlePixDonation(value)}
-                              className="p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:bg-green-100 hover:border-green-300 transition-all"
-                            >
-                              <div className="font-semibold text-green-700">R$ {value}</div>
-                            </button>
-                          ))}
-                        </div>
-
-                        <p className="text-xs text-center text-gray-500 mt-4">
-                          Clique no valor para gerar o PIX
-                        </p>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  
                   <button
                     onClick={() => window.location.href = '/doacao-usd'}
                     className="bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
@@ -943,7 +855,7 @@ export default function ProjetosPage() {
                     <span className="text-lg">$</span>
                     <span>Doar em Dólar</span>
                   </button>
-                  
+
                   <button
                     onClick={() => window.location.href = '/doacao-eur'}
                     className="bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
@@ -961,75 +873,6 @@ export default function ProjetosPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Doação PIX */}
-      {showPixModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full p-8 relative text-center space-y-4">
-            <button
-              onClick={handlePixDonationComplete}
-              className="absolute top-4 right-4 p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            <svg className="w-12 h-12 text-red-500 mx-auto" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
-
-            <h3 className="text-2xl font-bold text-green-600">
-              Obrigado por apoiar nossos projetos!
-            </h3>
-
-            <p className="text-gray-600">
-              Abra o app do seu banco, escolha a opção PIX e escaneie o código abaixo para doar 
-              <span className="font-bold"> R$ {selectedPixValue}</span>.
-            </p>
-
-            <div className="space-y-4">
-              <div className="flex justify-center p-4 bg-gray-50 rounded-lg border">
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixCode)}`} 
-                  alt="QR Code PIX" 
-                />
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600 text-center">
-                  Ou copie o código PIX:
-                </p>
-                <button
-                  onClick={handleCopyPixCode}
-                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${
-                    pixCopied 
-                      ? 'bg-green-50 border-green-300 text-green-700' 
-                      : 'bg-gray-50 border-gray-300 hover:border-green-400 hover:bg-green-50'
-                  }`}
-                >
-                  {pixCopied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span className="font-medium">Código copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span className="font-medium">Copiar código PIX</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={handlePixDonationComplete}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-            >
-              Já fiz a doação!
-            </button>
           </div>
         </div>
       )}

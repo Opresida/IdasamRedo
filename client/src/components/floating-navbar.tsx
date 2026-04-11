@@ -90,21 +90,7 @@ export default function FloatingNavbar() {
     setShowDonationModal(false);
     // Aqui você pode implementar a lógica específica para cada moeda
     if (currency === 'BRL') {
-      // Redirecionar para doação em Real - pode ser PIX ou outro método
-      console.log('Doação em Real selecionada');
-      // Exemplo: redirecionar para seção Coração Ribeirinho
-      if (window.location.pathname === '/') {
-        const element = document.querySelector('#coracao-ribeirinho');
-        if (element) {
-          const offsetTop = (element as HTMLElement).offsetTop - 100;
-          window.scrollTo({
-            top: offsetTop,
-            behavior: 'smooth'
-          });
-        }
-      } else {
-        window.location.href = '/#coracao-ribeirinho';
-      }
+      window.location.href = '/doacao-pix';
     } else if (currency === 'USD') {
       // Redirecionar para doação em Dólar - Stripe
       console.log('Doação em Dólar selecionada');

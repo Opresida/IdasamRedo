@@ -381,6 +381,48 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.post("/api/create-payment-intent-pix", async (req, res) => {
+    const { amount } = req.body;
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ message: "Valor inválido" });
+    }
+    if (numAmount < 1) {
+      return res.status(400).json({ message: "O valor mínimo para doação via Pix é R$ 1,00" });
+    }
+    if (numAmount > 50000) {
+      return res.status(400).json({ message: "O valor máximo para doação via Pix é R$ 50.000,00" });
+    }
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecretKey) {
+      return res.status(500).json({ message: "Stripe não configurado" });
+    }
+    try {
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-03-31.basil" });
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(Number(amount) * 100),
+        currency: "brl",
+        payment_method_types: ["pix"],
+        confirm: true,
+        payment_method_data: { type: "pix" },
+      });
+      const nextAction = paymentIntent.next_action;
+      if (nextAction?.type !== "pix_display_qr_code") {
+        return res.status(500).json({ message: "QR Code Pix não gerado pelo Stripe" });
+      }
+      const pixDisplay = nextAction.pix_display_qr_code;
+      res.json({
+        qrCodeUrl: pixDisplay?.image_url_png ?? null,
+        pixCode: pixDisplay?.data ?? null,
+        expiresAt: pixDisplay?.expires_at ?? null,
+      });
+    } catch (err: any) {
+      console.error("Stripe PIX error:", err);
+      res.status(500).json({ message: err.message || "Erro ao criar pagamento Pix" });
+    }
+  });
+
   app.post("/api/create-payment-intent-eur", async (req, res) => {
     const { amount } = req.body;
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
