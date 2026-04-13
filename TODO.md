@@ -15,15 +15,31 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
 ### Alta prioridade
 - [ ] Configurar `STRIPE_SECRET_KEY` e `VITE_STRIPE_PUBLISHABLE_KEY` para pagamentos
 - [ ] Configurar `RESEND_API_KEY` para envio de e-mails
+- [ ] **/dashboard/usuarios — Implementar backend completo** (página 100% mock, nada persiste)
+  - [ ] BD: Adicionar campos `name`, `email`, `status`, `sectorId` na tabela `users`
+  - [ ] BD: Criar tabela `sectors` (id, name, createdAt)
+  - [ ] BD: Criar tabela `sector_permissions` (id, sectorId, permission, createdAt)
+  - [ ] BD: Criar migration
+  - [ ] API: CRUD `/api/admin/users` (GET, POST, PUT, DELETE)
+  - [ ] API: CRUD `/api/admin/sectors` (GET, POST, PUT, DELETE)
+  - [ ] Storage: `getAllUsers`, `updateUser`, `deleteUser`, CRUD setores/permissões
+  - [ ] Frontend: Substituir mocks por `useQuery`/`useMutation` + loading/error states
 
 ### Média prioridade
 - [ ] Configurar `SUPABASE_URL` e `SUPABASE_ANON_KEY` para storage de arquivos
 - [ ] Testar fluxo completo de matrícula → certificado
 - [ ] Testar geração de PDF dos certificados
+- [ ] Consolidar 5 componentes de doação em 1-2 (economia ~25KB)
+- [ ] Implementar proteção CSRF em operações POST/PUT/DELETE
+- [ ] Sanitização de uploads (validar nomes, quota por usuário)
+- [ ] Code splitting no SuiteDocumental.tsx (3.642 linhas, sem lazy loading)
 
 ### Baixa prioridade
 - [ ] Documentar todas as rotas da API em `server/routes.ts`
 - [ ] Adicionar testes automatizados
+- [ ] Otimizar favicon.png (106KB → WebP)
+- [ ] Acessibilidade: aria-labels em elementos interativos
+- [ ] Validar variáveis de ambiente obrigatórias no startup do servidor
 
 ---
 
@@ -58,3 +74,6 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
 - [x] Vice-Presidente pode assinar sem delegação formal (Parágrafo Único Art. 22) ✓ *2026-04-07*
 - [x] Sistema de rascunhos editáveis para todos os tipos de documento (contrato, orçamento, ofício, relatório, projeto) ✓ *2026-04-07*
 - [x] Rota PATCH /api/admin/proposals/:id para atualizar propostas existentes ✓ *2026-04-07*
+- [x] Limpeza: deletar attached_assets/ (22MB), SQLs raiz, SVGs, componentes órfãos, fonts ✓ *2026-04-13*
+- [x] Segurança: DOMPurify, bcrypt, rate limiting, error handling, console.logs ✓ *2026-04-13*
+- [x] Infra: cache headers, auto-reload por versão, proteção Google Translate ✓ *2026-04-13*

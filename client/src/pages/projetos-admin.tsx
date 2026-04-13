@@ -180,6 +180,47 @@ export default function ProjetosAdminPage() {
     queryKey: ['/api/admin/portfolio'],
   });
 
+  const { data: projectCategories = [] } = useQuery<{ id: string; nome: string; cor: string }[]>({
+    queryKey: ['/api/admin/project-categories'],
+  });
+
+  // Merge: categorias do banco + defaults caso banco esteja vazio
+  const allProjectCategories = useMemo(() => {
+    if (projectCategories.length > 0) return projectCategories;
+    return ['Bioeconomia', 'Sustentabilidade', 'Saúde e Social', 'Capacitação'].map(name => ({
+      id: name, nome: name, cor: '#6b7280',
+    }));
+  }, [projectCategories]);
+
+  // ─── Category management state ─────────────────────────────────────────────
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryCor, setNewCategoryCor] = useState('#6b7280');
+
+  // ─── Mutations: Project Categories ──────────────────────────────────────
+  const createCategoryMutation = useMutation({
+    mutationFn: (data: { nome: string; cor: string }) =>
+      apiRequest('POST', '/api/admin/project-categories', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/project-categories'] });
+      toast({ title: 'Categoria criada com sucesso!' });
+      setShowCategoryDialog(false);
+      setNewCategoryName('');
+      setNewCategoryCor('#6b7280');
+    },
+    onError: () => toast({ title: 'Erro ao criar categoria', variant: 'destructive' }),
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest('DELETE', `/api/admin/project-categories/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/project-categories'] });
+      toast({ title: 'Categoria removida!' });
+    },
+    onError: () => toast({ title: 'Erro ao remover categoria', variant: 'destructive' }),
+  });
+
   // ─── Mutations: Portfolio ─────────────────────────────────────────────────
   const createPortfolioMutation = useMutation({
     mutationFn: (data: any) => apiRequest('POST', '/api/admin/portfolio', data),
@@ -674,20 +715,30 @@ export default function ProjetosAdminPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="portfolio-categoria">Categoria *</Label>
-                    <Select
-                      value={portfolioForm.categoria}
-                      onValueChange={(value) => setPortfolioForm({ ...portfolioForm, categoria: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Bioeconomia">Bioeconomia</SelectItem>
-                        <SelectItem value="Sustentabilidade">Sustentabilidade</SelectItem>
-                        <SelectItem value="Saúde e Social">Saúde e Social</SelectItem>
-                        <SelectItem value="Capacitação">Capacitação</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select
+                        value={portfolioForm.categoria}
+                        onValueChange={(value) => setPortfolioForm({ ...portfolioForm, categoria: value })}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allProjectCategories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowCategoryDialog(true)}
+                        title="Nova categoria"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="portfolio-icone">Ícone</Label>
@@ -1111,20 +1162,30 @@ export default function ProjetosAdminPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="project-categoria">Categoria</Label>
-                    <Select
-                      value={projectForm.categoria}
-                      onValueChange={(value) => setProjectForm({ ...projectForm, categoria: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Bioeconomia">Bioeconomia</SelectItem>
-                        <SelectItem value="Sustentabilidade">Sustentabilidade</SelectItem>
-                        <SelectItem value="Saúde e Social">Saúde e Social</SelectItem>
-                        <SelectItem value="Capacitação">Capacitação</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select
+                        value={projectForm.categoria}
+                        onValueChange={(value) => setProjectForm({ ...projectForm, categoria: value })}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allProjectCategories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowCategoryDialog(true)}
+                        title="Nova categoria"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -1611,6 +1672,89 @@ export default function ProjetosAdminPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Nova Categoria de Projeto */}
+      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova Categoria de Projeto</DialogTitle>
+            <DialogDescription>
+              Crie uma nova categoria para organizar seus projetos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nome da Categoria *</Label>
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Ex: Educação Ambiental"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Cor</Label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  value={newCategoryCor}
+                  onChange={(e) => setNewCategoryCor(e.target.value)}
+                  className="w-10 h-10 rounded cursor-pointer border"
+                />
+                <span className="text-sm text-muted-foreground">{newCategoryCor}</span>
+              </div>
+            </div>
+
+            {/* Lista de categorias existentes */}
+            {projectCategories.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs">Categorias existentes</Label>
+                <div className="flex flex-wrap gap-1">
+                  {projectCategories.map((cat) => (
+                    <Badge
+                      key={cat.id}
+                      variant="outline"
+                      className="flex items-center gap-1 pr-1"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full inline-block"
+                        style={{ backgroundColor: cat.cor }}
+                      />
+                      {cat.nome}
+                      <button
+                        type="button"
+                        className="ml-1 text-red-500 hover:text-red-700 text-xs"
+                        onClick={() => {
+                          if (confirm(`Remover a categoria "${cat.nome}"?`)) {
+                            deleteCategoryMutation.mutate(cat.id);
+                          }
+                        }}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!newCategoryName.trim()) return;
+                  createCategoryMutation.mutate({ nome: newCategoryName.trim(), cor: newCategoryCor });
+                }}
+                disabled={!newCategoryName.trim() || createCategoryMutation.isPending}
+              >
+                {createCategoryMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                Criar Categoria
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

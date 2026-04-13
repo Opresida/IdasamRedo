@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1675,7 +1676,7 @@ export default function AdminDashboard() {
               <div
                 className="prose prose-lg max-w-none"
                 dangerouslySetInnerHTML={{
-                  __html: previewArticle.content?.replace(/\n/g, '<br>') || ''
+                  __html: sanitizeHtml(previewArticle.content?.replace(/\n/g, '<br>') || '')
                 }}
               />
 

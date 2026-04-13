@@ -22,6 +22,19 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Auto-recover from Google Translate / browser translator DOM manipulation crashes
+    const isTranslatorCrash =
+      error.message?.includes('removeChild') ||
+      error.message?.includes('insertBefore') ||
+      error.message?.includes('NotFoundError') ||
+      error.message?.includes('not a child');
+
+    if (isTranslatorCrash) {
+      console.warn('[ErrorBoundary] Translator DOM conflict detected, recovering...');
+      this.setState({ hasError: false, error: undefined });
+      return;
+    }
+
     console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 

@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, newsletterSubscribers, financialAccounts, financialCategories, financialProjects, financialTransactions, portfolioProjects, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios, type NewsletterSubscriber, type InsertNewsletterSubscriber, type FinancialAccount, type InsertFinancialAccount, type FinancialCategory, type InsertFinancialCategory, type FinancialProject, type InsertFinancialProject, type FinancialTransaction, type InsertFinancialTransaction, type PortfolioProject, type InsertPortfolioProject } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, newsletterSubscribers, financialAccounts, financialCategories, financialProjects, financialTransactions, portfolioProjects, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios, type NewsletterSubscriber, type InsertNewsletterSubscriber, type FinancialAccount, type InsertFinancialAccount, type FinancialCategory, type InsertFinancialCategory, type FinancialProject, type InsertFinancialProject, type FinancialTransaction, type InsertFinancialTransaction, type PortfolioProject, type InsertPortfolioProject, projectCategories, type ProjectCategoryRecord, type InsertProjectCategory } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -216,6 +216,10 @@ export interface IStorage {
   createFinancialCategory(data: InsertFinancialCategory): Promise<FinancialCategory>;
   updateFinancialCategory(id: string, data: Partial<InsertFinancialCategory>): Promise<FinancialCategory | undefined>;
   deleteFinancialCategory(id: string): Promise<void>;
+  getProjectCategories(): Promise<ProjectCategoryRecord[]>;
+  createProjectCategory(data: InsertProjectCategory): Promise<ProjectCategoryRecord>;
+  updateProjectCategory(id: string, data: Partial<InsertProjectCategory>): Promise<ProjectCategoryRecord | undefined>;
+  deleteProjectCategory(id: string): Promise<void>;
   getFinancialProjects(): Promise<FinancialProject[]>;
   createFinancialProject(data: InsertFinancialProject): Promise<FinancialProject>;
   updateFinancialProject(id: string, data: Partial<InsertFinancialProject>): Promise<FinancialProject | undefined>;
@@ -1196,6 +1200,21 @@ export class DatabaseStorage implements IStorage {
   }
   async deleteFinancialCategory(id: string): Promise<void> {
     await db.delete(financialCategories).where(eq(financialCategories.id, id));
+  }
+
+  async getProjectCategories(): Promise<ProjectCategoryRecord[]> {
+    return db.select().from(projectCategories).orderBy(projectCategories.nome);
+  }
+  async createProjectCategory(data: InsertProjectCategory): Promise<ProjectCategoryRecord> {
+    const [row] = await db.insert(projectCategories).values(data).returning();
+    return row;
+  }
+  async updateProjectCategory(id: string, data: Partial<InsertProjectCategory>): Promise<ProjectCategoryRecord | undefined> {
+    const [row] = await db.update(projectCategories).set(data).where(eq(projectCategories.id, id)).returning();
+    return row || undefined;
+  }
+  async deleteProjectCategory(id: string): Promise<void> {
+    await db.delete(projectCategories).where(eq(projectCategories.id, id));
   }
 
   async getFinancialProjects(): Promise<FinancialProject[]> {

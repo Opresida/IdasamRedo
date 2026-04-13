@@ -8,6 +8,7 @@ import { AuthProvider } from '@/contexts/auth-context';
 import PageLoader from '@/components/page-loader';
 import ProtectedRoute from '@/components/protected-route';
 import ErrorBoundary from '@/components/error-boundary';
+import { useVersionCheck } from '@/hooks/use-version-check';
 import Home from '@/pages/home';
 import Projetos from '@/pages/projetos';
 import NoticiasPage from '@/pages/noticias';
@@ -43,6 +44,7 @@ import MeuCertificadoPage from '@/pages/meu-certificado';
 function AppContent() {
   const [location] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  useVersionCheck();
 
   useEffect(() => {
     setIsLoading(true);

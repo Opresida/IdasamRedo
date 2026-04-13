@@ -1,12 +1,14 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, insertPortfolioProjectSchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, insertPortfolioProjectSchema, insertProjectCategorySchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
 import type { ProposalStatus, SignatureType } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import multer from "multer";
 import { createServer } from "http";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import rateLimit from "express-rate-limit";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || "IDASAM <onboarding@resend.dev>";
@@ -83,15 +85,26 @@ const EDITOR_EMAIL = process.env.EDITOR_EMAIL;
 const EDITOR_PASSWORD = process.env.EDITOR_PASSWORD;
 
 if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-  console.warn("WARNING: ADMIN_EMAIL and ADMIN_PASSWORD environment variables are not set. Admin login will be disabled. Set these in Replit Secrets to enable admin access.");
-} else {
-  console.log("Admin authentication configured via environment variables.");
+  console.warn("ADMIN credentials not set. Admin login disabled.");
 }
 
-const ADMIN_CREDENTIALS: Record<string, string> = {
-  ...(ADMIN_EMAIL && ADMIN_PASSWORD ? { [ADMIN_EMAIL]: ADMIN_PASSWORD } : {}),
-  ...(EDITOR_EMAIL && EDITOR_PASSWORD ? { [EDITOR_EMAIL]: EDITOR_PASSWORD } : {}),
-};
+// Hash passwords at startup for secure comparison
+const ADMIN_CREDENTIALS: Record<string, string> = {};
+if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+  ADMIN_CREDENTIALS[ADMIN_EMAIL] = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+}
+if (EDITOR_EMAIL && EDITOR_PASSWORD) {
+  ADMIN_CREDENTIALS[EDITOR_EMAIL] = bcrypt.hashSync(EDITOR_PASSWORD, 10);
+}
+
+// Rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // max 10 attempts per window
+  message: { message: "Muitas tentativas de login. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const ADMIN_ROLES: Record<string, string> = {
   ...(ADMIN_EMAIL ? { [ADMIN_EMAIL]: "admin" } : {}),
@@ -195,7 +208,7 @@ async function seedCourses() {
       for (const course of INITIAL_COURSES) {
         await storage.createCourse(course);
       }
-      console.log("Cursos iniciais inseridos com sucesso.");
+      /* cursos iniciais inseridos */
     }
   } catch (err) {
     console.error("Erro ao popular cursos:", err);
@@ -306,7 +319,7 @@ async function seedArticles() {
       for (const cat of INITIAL_ARTICLE_CATEGORIES) {
         await storage.createArticleCategory(cat);
       }
-      console.log("Categorias de artigos inseridas com sucesso.");
+      /* categorias inseridas */
     }
 
     const existingArts = await storage.getArticles();
@@ -317,7 +330,7 @@ async function seedArticles() {
         const { categorySlug, ...rest } = art;
         await storage.createArticle({ ...rest, categoryId: catMap[categorySlug] || null });
       }
-      console.log("Artigos iniciais inseridos com sucesso.");
+      /* artigos inseridos */
     }
   } catch (err) {
     console.error("Erro ao popular artigos:", err);
@@ -328,7 +341,7 @@ async function migrateEnrollmentNames() {
   try {
     const count = await storage.migrateEnrollmentNamesToTitleCase();
     if (count > 0) {
-      console.log(`Migrated ${count} enrollment name(s) to Title Case.`);
+      /* migrated names */
     }
   } catch (err) {
     console.error("Erro ao migrar nomes dos alunos para Title Case:", err);
@@ -339,7 +352,7 @@ async function deduplicateExistingEnrollments() {
   try {
     const count = await storage.deduplicateEnrollments();
     if (count > 0) {
-      console.log(`Removed ${count} duplicate enrollment(s) on startup.`);
+      /* duplicates removed */
     }
   } catch (err) {
     console.error("Erro ao deduplicar inscrições:", err);
@@ -645,13 +658,13 @@ export async function registerRoutes(app: Express) {
     return injectArticleOgTags(req, res, next, id);
   });
 
-  app.post("/api/admin/login", async (req, res) => {
+  app.post("/api/admin/login", authLimiter, async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: "E-mail e senha são obrigatórios" });
     }
-    const validPassword = ADMIN_CREDENTIALS[email as string];
-    if (!validPassword || validPassword !== password) {
+    const hashedPassword = ADMIN_CREDENTIALS[email as string];
+    if (!hashedPassword || !bcrypt.compareSync(password as string, hashedPassword)) {
       return res.status(401).json({ message: "Credenciais inválidas" });
     }
     try {
@@ -2481,6 +2494,31 @@ export async function registerRoutes(app: Express) {
   app.delete("/api/admin/financeiro/categorias/:id", requireAdmin, async (req, res) => {
     try { await storage.deleteFinancialCategory(req.params.id); res.json({ message: "Categoria removida" }); }
     catch (e: any) { res.status(500).json({ message: "Erro ao remover categoria. Verifique se não há transações vinculadas." }); }
+  });
+
+  // Project Categories
+  app.get("/api/admin/project-categories", requireAdmin, async (_req, res) => {
+    try { res.json(await storage.getProjectCategories()); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao buscar categorias de projetos" }); }
+  });
+  app.post("/api/admin/project-categories", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertProjectCategorySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+      res.json(await storage.createProjectCategory(parsed.data));
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao criar categoria" }); }
+  });
+  app.patch("/api/admin/project-categories/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id: _, criadoEm: _c, ...data } = req.body;
+      const row = await storage.updateProjectCategory(req.params.id, data);
+      if (!row) return res.status(404).json({ message: "Categoria não encontrada" });
+      res.json(row);
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao atualizar categoria" }); }
+  });
+  app.delete("/api/admin/project-categories/:id", requireAdmin, async (req, res) => {
+    try { await storage.deleteProjectCategory(req.params.id); res.json({ message: "Categoria removida" }); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao remover categoria." }); }
   });
 
   // Projects

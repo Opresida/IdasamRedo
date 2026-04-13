@@ -6,6 +6,27 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
+// ── Cache Control: HTML pages never cache, assets cache with revalidation ──
+app.use((req, res, next) => {
+  const url = req.path;
+  if (url.startsWith('/api/')) {
+    res.set('Cache-Control', 'no-store');
+  } else if (url.match(/\.(js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|ico)$/)) {
+    res.set('Cache-Control', 'public, max-age=86400, must-revalidate');
+  } else {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
+
+// ── App version endpoint for auto-reload ──
+const APP_VERSION = Date.now().toString();
+app.get('/api/version', (_req, res) => {
+  res.json({ version: APP_VERSION });
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;

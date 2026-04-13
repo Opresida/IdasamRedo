@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { sanitizeHtml } from '@/lib/sanitize'
 import { useLocation } from 'wouter'
 import {
   Copy, Check, ArrowLeft, Palette, Type, Layout, Image, Grid3X3, Layers,
@@ -561,7 +562,7 @@ export default function BrandbookPage() {
 
             {/* Preview */}
             <div className="border border-gray-200 rounded-xl p-6 max-w-xl mb-6">
-              <div dangerouslySetInnerHTML={{ __html: EMAIL_SIGNATURE_HTML }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(EMAIL_SIGNATURE_HTML) }} />
             </div>
 
             {/* Codigo HTML */}

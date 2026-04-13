@@ -35,11 +35,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedUser = localStorage.getItem('idasam_auth_user');
     const savedToken = localStorage.getItem('idasam_admin_token');
     if (savedUser && savedToken) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        fetch('/api/admin/verify', {
-          headers: { Authorization: `Bearer ${savedToken}` },
-        }).then((res) => {
+      const parsedUser = JSON.parse(savedUser);
+      (async () => {
+        try {
+          const res = await fetch('/api/admin/verify', {
+            headers: { Authorization: `Bearer ${savedToken}` },
+          });
           if (res.ok) {
             setUser(parsedUser);
             setAdminToken(savedToken);
@@ -51,18 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(parsedUser);
             setAdminToken(savedToken);
           }
-          setIsLoading(false);
-        }).catch(() => {
+        } catch {
           setUser(parsedUser);
           setAdminToken(savedToken);
+        } finally {
           setIsLoading(false);
-        });
-      } catch (error) {
-        console.error('Erro ao carregar sessão:', error);
-        localStorage.removeItem('idasam_auth_user');
-        localStorage.removeItem('idasam_admin_token');
-        setIsLoading(false);
-      }
+        }
+      })();
     } else {
       setIsLoading(false);
     }

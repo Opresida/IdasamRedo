@@ -729,8 +729,21 @@ export const insertFinancialCategorySchema = createInsertSchema(financialCategor
 export type InsertFinancialCategory = z.infer<typeof insertFinancialCategorySchema>;
 export type FinancialCategory = typeof financialCategories.$inferSelect;
 
-export const PROJECT_CATEGORIES = ['Bioeconomia', 'Sustentabilidade', 'Saúde e Social', 'Capacitação'] as const;
-export type ProjectCategory = typeof PROJECT_CATEGORIES[number];
+export const PROJECT_CATEGORIES_DEFAULT = ['Bioeconomia', 'Sustentabilidade', 'Saúde e Social', 'Capacitação'] as const;
+export type ProjectCategory = string;
+
+export const projectCategories = pgTable("project_categories", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  nome: text("nome").notNull(),
+  cor: text("cor").notNull().default("#6b7280"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export const insertProjectCategorySchema = createInsertSchema(projectCategories).omit({ id: true, criadoEm: true }).extend({
+  nome: z.string().min(1),
+  cor: z.string().optional().default("#6b7280"),
+});
+export type InsertProjectCategory = z.infer<typeof insertProjectCategorySchema>;
+export type ProjectCategoryRecord = typeof projectCategories.$inferSelect;
 export const PROJECT_STATUSES = ['planejamento', 'em_andamento', 'concluido'] as const;
 export type ProjectStatus = typeof PROJECT_STATUSES[number];
 export const TRANSPARENCY_LEVELS = ['basico', 'detalhado', 'completo'] as const;

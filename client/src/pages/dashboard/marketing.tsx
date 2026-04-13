@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -749,7 +750,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
                     <p className="text-sm font-medium text-gray-700 mb-2">Preview HTML</p>
                     <div
                       className="border border-gray-200 rounded-md p-4 overflow-y-auto text-sm leading-relaxed prose prose-sm max-w-none min-h-[360px] bg-white"
-                      dangerouslySetInnerHTML={{ __html: preview || '<p class="text-gray-400">Nenhum conteúdo ainda...</p>' }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(preview || '<p class="text-gray-400">Nenhum conteúdo ainda...</p>') }}
                     />
                   </div>
                 </div>

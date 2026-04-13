@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -764,7 +765,7 @@ export default function ImprensaPage() {
               {previewArticle.excerpt && (
                 <p className="text-xl text-gray-600 font-medium border-l-4 border-idasam-green pl-4">{previewArticle.excerpt}</p>
               )}
-              <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: previewArticle.content?.replace(/\n/g, '<br>') || '' }} />
+              <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewArticle.content?.replace(/\n/g, '<br>') || '') }} />
               {previewArticle.tags && previewArticle.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {previewArticle.tags.map((tag, index) => (
