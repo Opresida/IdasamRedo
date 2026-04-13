@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import Footer from '@/components/shadcnblocks-com-footer2';
 import {
   Eye,
   Shield,
@@ -365,6 +366,8 @@ export default function TransparenciaPage() {
           </>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }

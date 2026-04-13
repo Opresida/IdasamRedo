@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Heart, QrCode } from 'lucide-react';
+import { Heart } from 'lucide-react';
 
 const projectImages = [
   'https://i.imgur.com/Y5VDCBT.jpeg',
@@ -49,7 +49,7 @@ const CoracaoRibeirinhoSection = () => {
               <div className="flex items-center gap-3">
                 <Heart className="w-10 h-10 text-[#FBBF24]" />
                 <h2 className="text-4xl md:text-5xl font-bold text-[#2A5B46]">
-                  Projeto Coração Ribeirinho
+                  Projeto Comunidade Ativa
                 </h2>
               </div>
 
@@ -62,7 +62,7 @@ const CoracaoRibeirinhoSection = () => {
                   Nas margens dos rios da Amazônia, milhares de famílias enfrentam um desafio diário: a insegurança alimentar. A distância e as dificuldades sazonais tornam o acesso a alimentos uma luta constante.
                 </p>
                 <p>
-                  Desde 2021, o projeto Coração Ribeirinho atua como uma ponte de solidariedade. Com a sua ajuda, transformamos doações em cestas básicas completas que chegam a quem mais precisa.
+                  Desde 2021, o Projeto Comunidade Ativa atua como uma ponte de solidariedade. Com a sua ajuda, transformamos doações em cestas básicas completas que chegam a quem mais precisa.
                 </p>
               </div>
 
@@ -72,7 +72,7 @@ const CoracaoRibeirinhoSection = () => {
                     <div key={index} className="w-1/2 md:w-1/3 flex-shrink-0 p-1">
                       <img
                         src={src}
-                        alt={`Foto da ação do projeto Coração Ribeirinho ${index + 1}`}
+                        alt={`Foto da ação do Projeto Comunidade Ativa ${index + 1}`}
                         className="w-full h-full object-cover aspect-video rounded-lg"
                       />
                     </div>
@@ -112,11 +112,11 @@ const CoracaoRibeirinhoSection = () => {
                 </p>
 
                 <button
-                  onClick={() => window.location.href = '/doacao-pix'}
+                  onClick={() => window.location.href = '/doacao-real'}
                   className="w-full bg-white hover:bg-green-50 text-[#4E8D7C] border-2 border-[#4E8D7C] font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-3"
                 >
-                  <QrCode className="w-6 h-6" />
-                  <span>QUERO DOAR VIA PIX</span>
+                  <span className="text-xl font-bold">R$</span>
+                  <span>DOAR EM REAL</span>
                 </button>
 
                 <button

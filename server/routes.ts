@@ -447,6 +447,93 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.post("/api/create-payment-intent-card", async (req, res) => {
+    const { amount, customerName, cardNumber, holder, expirationDate, securityCode, brand } = req.body;
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ message: "Valor inválido" });
+    }
+    if (numAmount < 1) {
+      return res.status(400).json({ message: "O valor mínimo para doação via cartão é R$ 1,00" });
+    }
+    if (numAmount > 50000) {
+      return res.status(400).json({ message: "O valor máximo para doação via cartão é R$ 50.000,00" });
+    }
+    if (!cardNumber || !holder || !expirationDate || !securityCode || !brand) {
+      return res.status(400).json({ message: "Preencha todos os dados do cartão" });
+    }
+    const merchantId = process.env.CIELO_MERCHANT_ID;
+    const merchantKey = process.env.CIELO_MERCHANT_KEY;
+    if (!merchantId || !merchantKey) {
+      return res.status(500).json({ message: "Cielo não configurada" });
+    }
+    try {
+      const cieloBody = {
+        MerchantOrderId: `DON-${Date.now()}`,
+        Customer: { Name: customerName || "Doador IDASAM" },
+        Payment: {
+          Type: "CreditCard",
+          Amount: Math.round(numAmount * 100),
+          Installments: 1,
+          Capture: true,
+          CreditCard: {
+            CardNumber: cardNumber.replace(/\s/g, ""),
+            Holder: holder,
+            ExpirationDate: expirationDate,
+            SecurityCode: securityCode,
+            Brand: brand,
+          },
+        },
+      };
+      const cieloResp = await fetch("https://api.cieloecommerce.cielo.com.br/1/sales", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          MerchantId: merchantId,
+          MerchantKey: merchantKey,
+        },
+        body: JSON.stringify(cieloBody),
+      });
+      interface CieloCardResponse {
+        Payment?: {
+          PaymentId?: string;
+          Status?: number;
+          ReturnMessage?: string;
+          ReturnCode?: string;
+        };
+      }
+      interface CieloErrorItem {
+        Message?: string;
+      }
+      const cieloData = (await cieloResp.json()) as CieloCardResponse | CieloErrorItem[];
+      if (!cieloResp.ok) {
+        const errMsg =
+          Array.isArray(cieloData) && (cieloData as CieloErrorItem[])[0]?.Message
+            ? (cieloData as CieloErrorItem[])[0].Message!
+            : "Erro ao processar pagamento com cartão";
+        return res.status(500).json({ message: errMsg });
+      }
+      const cardResponse = cieloData as CieloCardResponse;
+      const status = cardResponse.Payment?.Status;
+      const paymentId = cardResponse.Payment?.PaymentId;
+      // Status 1 = Autorizado, Status 2 = Capturado/Pago
+      if (status === 1 || status === 2) {
+        return res.json({
+          success: true,
+          paymentId,
+          status,
+          returnMessage: cardResponse.Payment?.ReturnMessage || "Pagamento aprovado",
+        });
+      }
+      return res.status(400).json({
+        message: cardResponse.Payment?.ReturnMessage || "Pagamento não autorizado. Verifique os dados do cartão.",
+      });
+    } catch (err: any) {
+      console.error("Cielo Card error:", err);
+      res.status(500).json({ message: err.message || "Erro ao processar pagamento com cartão" });
+    }
+  });
+
   app.get("/api/pix-status/:paymentId", async (req, res) => {
     const { paymentId } = req.params;
     const merchantId = process.env.CIELO_MERCHANT_ID;
@@ -2418,7 +2505,7 @@ export async function registerRoutes(app: Express) {
   });
   app.delete("/api/admin/financeiro/projetos/:id", requireAdmin, async (req, res) => {
     try { await storage.deleteFinancialProject(req.params.id); res.json({ message: "Projeto removido" }); }
-    catch (e: any) { res.status(500).json({ message: "Erro ao remover projeto. Verifique se não há transações vinculadas." }); }
+    catch (e: any) { console.error("Erro ao deletar projeto:", e); res.status(500).json({ message: e.message || "Erro ao remover projeto." }); }
   });
 
   // Transactions

@@ -1210,6 +1210,7 @@ export class DatabaseStorage implements IStorage {
     return row || undefined;
   }
   async deleteFinancialProject(id: string): Promise<void> {
+    await db.delete(financialTransactions).where(eq(financialTransactions.projetoId, id));
     await db.delete(financialProjects).where(eq(financialProjects.id, id));
   }
 

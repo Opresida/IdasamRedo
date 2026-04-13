@@ -22,6 +22,7 @@ import RegistroPublicoPage from './pages/registro-publico';
 import PaginaDeDoacao from '@/PaginaDeDoacao';
 import PaginaDeDoacaoEUR from '@/PaginaDeDoacaoEUR';
 import DoacaoPixPage from '@/pages/doacao-pix';
+import DoacaoRealPage from '@/pages/doacao-real';
 import AdminLayout from '@/components/admin-layout';
 import DashboardPage from '@/pages/dashboard';
 import ImprensaPage from '@/pages/imprensa';
@@ -139,7 +140,8 @@ function AppContent() {
         </Route>
         <Route path="/capacitacao" component={CapacitacaoPage} />
         <Route path="/meu-certificado" component={MeuCertificadoPage} />
-        <Route path="/doacao-pix" component={DoacaoPixPage} />
+        <Route path="/doacao-real" component={DoacaoRealPage} />
+        <Route path="/doacao-pix" component={DoacaoRealPage} />
         <Route path="/doacao-usd" component={PaginaDeDoacao} />
         <Route path="/doacao-eur" component={PaginaDeDoacaoEUR} />
         <Route path="/transparencia" component={TransparenciaPage} />
