@@ -394,6 +394,61 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.post("/api/create-payment-intent-stripe-brl", async (req, res) => {
+    const { amount } = req.body;
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ message: "Valor inválido" });
+    }
+    if (numAmount < 1) {
+      return res.status(400).json({ message: "O valor mínimo para doação é R$ 1,00" });
+    }
+    if (numAmount > 50000) {
+      return res.status(400).json({ message: "O valor máximo para doação é R$ 50.000,00" });
+    }
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecretKey) {
+      return res.status(500).json({ message: "Stripe não configurado" });
+    }
+    try {
+      let rate = 5.0;
+      try {
+        const fxResp = await fetch("https://economia.awesomeapi.com.br/last/USD-BRL");
+        if (fxResp.ok) {
+          const fxData: any = await fxResp.json();
+          const bid = Number(fxData?.USDBRL?.bid);
+          if (bid && bid > 0) rate = bid;
+        }
+      } catch {
+        // mantém fallback
+      }
+      const usdAmount = Number((numAmount / rate).toFixed(2));
+      if (usdAmount < 0.5) {
+        return res.status(400).json({ message: "Valor convertido em USD muito baixo (mínimo US$ 0,50)" });
+      }
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-03-31.basil" });
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(usdAmount * 100),
+        currency: "usd",
+        metadata: {
+          original_amount_brl: String(numAmount),
+          exchange_rate_usd_brl: String(rate),
+          source: "doacao-real-stripe",
+        },
+      });
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        usdAmount,
+        rate,
+        brlAmount: numAmount,
+      });
+    } catch (err: any) {
+      console.error("Stripe BRL→USD error:", err);
+      res.status(500).json({ message: err.message || "Erro ao criar pagamento Stripe" });
+    }
+  });
+
   app.post("/api/create-payment-intent-pix", async (req, res) => {
     const { amount } = req.body;
     const numAmount = Number(amount);

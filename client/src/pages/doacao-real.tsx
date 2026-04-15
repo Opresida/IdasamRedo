@@ -3,6 +3,151 @@ import { Heart, QrCode, Copy, Check, ArrowLeft, Clock, CheckCircle2, CreditCard,
 import FloatingNavbar from '@/components/floating-navbar';
 import WhatsAppFloat from '@/components/whatsapp-float';
 import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+type CardProcessor = 'cielo' | 'stripe';
+
+function StripeCardSection({
+  amount,
+  onSuccess,
+}: {
+  amount: number;
+  onSuccess: (brl: number) => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState('');
+  const [preview, setPreview] = useState<{ usd: number; rate: number } | null>(null);
+  const [holder, setHolder] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!amount || amount <= 0) {
+      setPreview(null);
+      return;
+    }
+    fetch('https://economia.awesomeapi.com.br/last/USD-BRL')
+      .then((r) => r.json())
+      .then((d: any) => {
+        const rate = Number(d?.USDBRL?.bid);
+        if (cancelled || !rate) return;
+        setPreview({ usd: Number((amount / rate).toFixed(2)), rate });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [amount]);
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!stripe || !elements) return;
+    if (!holder.trim()) {
+      setError('Informe o nome do titular.');
+      return;
+    }
+    setProcessing(true);
+    try {
+      const resp = await fetch('/api/create-payment-intent-stripe-brl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setError(data.message || 'Erro ao iniciar pagamento.');
+        setProcessing(false);
+        return;
+      }
+      const cardEl = elements.getElement(CardElement);
+      if (!cardEl) {
+        setError('Formulario do cartao nao carregado.');
+        setProcessing(false);
+        return;
+      }
+      const payload = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: {
+          card: cardEl,
+          billing_details: { name: holder.trim() },
+        },
+      });
+      if (payload.error) {
+        setError(payload.error.message || 'Pagamento nao autorizado.');
+        setProcessing(false);
+        return;
+      }
+      onSuccess(amount);
+    } catch (e: any) {
+      setError(e?.message || 'Erro de conexao.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 pt-2 border-t border-gray-100">
+      {preview && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
+          R$ {amount} sera cobrado como <strong>US$ {preview.usd.toFixed(2)}</strong>{' '}
+          <span className="text-blue-600">(cotacao USD/BRL {preview.rate.toFixed(4)})</span>.
+          O valor em reais aparecera na sua fatura conforme a conversao do cartao.
+        </div>
+      )}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Nome do titular (como no cartao)
+        </label>
+        <input
+          type="text"
+          placeholder="NOME COMPLETO"
+          value={holder}
+          onChange={(e) => setHolder(e.target.value.toUpperCase())}
+          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-[#FBBF24] focus:ring-1 focus:ring-[#FBBF24] focus:outline-none transition"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Dados do cartao
+        </label>
+        <div className="p-3 border-2 border-gray-300 rounded-xl">
+          <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
+        </div>
+      </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+      <button
+        onClick={handleSubmit}
+        disabled={processing || !stripe || !amount || amount <= 0}
+        className="w-full bg-[#2A5B46] hover:bg-[#1e4434] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+      >
+        {processing ? (
+          <>
+            <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span>Processando pagamento...</span>
+          </>
+        ) : (
+          <>
+            <CreditCard className="w-6 h-6" />
+            <span>Pagar com Cartao (Stripe)</span>
+          </>
+        )}
+      </button>
+      <p className="text-xs text-center text-gray-500">
+        Pagamento internacional processado pela Stripe. Cobranca em USD com conversao automatica para reais pelo seu banco.
+      </p>
+    </div>
+  );
+}
 
 const presetValues = [
   { value: 25, label: 'R$ 25' },
@@ -41,6 +186,7 @@ function formatExpiry(value: string): string {
 
 export default function DoacaoReal() {
   const [method, setMethod] = useState<PaymentMethod>('pix');
+  const [processor, setProcessor] = useState<CardProcessor>('cielo');
   const [selectedValue, setSelectedValue] = useState<number>(50);
   const [customValue, setCustomValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -434,8 +580,52 @@ export default function DoacaoReal() {
                 </div>
               </div>
 
-              {/* Card Form */}
+              {/* Processor selector (Cielo vs Stripe) — only when card is chosen */}
               {method === 'card' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Processador do cartao
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => { setProcessor('cielo'); setError(''); }}
+                      className={`p-3 rounded-xl border-2 font-semibold transition-all text-sm ${
+                        processor === 'cielo'
+                          ? 'border-[#FBBF24] bg-yellow-50 text-[#2A5B46] ring-2 ring-[#FBBF24]'
+                          : 'border-gray-300 bg-white hover:border-[#FBBF24] text-gray-600'
+                      }`}
+                    >
+                      Cielo (BRL)
+                    </button>
+                    <button
+                      onClick={() => { setProcessor('stripe'); setError(''); }}
+                      className={`p-3 rounded-xl border-2 font-semibold transition-all text-sm ${
+                        processor === 'stripe'
+                          ? 'border-[#FBBF24] bg-yellow-50 text-[#2A5B46] ring-2 ring-[#FBBF24]'
+                          : 'border-gray-300 bg-white hover:border-[#FBBF24] text-gray-600'
+                      }`}
+                    >
+                      Stripe (USD)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Stripe Card Form (BRL→USD) */}
+              {method === 'card' && processor === 'stripe' && (
+                <Elements stripe={stripePromise}>
+                  <StripeCardSection
+                    amount={effectiveAmount}
+                    onSuccess={(brl) => {
+                      setPaidAmount(brl);
+                      setPaid(true);
+                    }}
+                  />
+                </Elements>
+              )}
+
+              {/* Card Form (Cielo) */}
+              {method === 'card' && processor === 'cielo' && (
                 <div className="space-y-4 pt-2 border-t border-gray-100">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -511,6 +701,8 @@ export default function DoacaoReal() {
                 </div>
               )}
 
+              {!(method === 'card' && processor === 'stripe') && (
+              <>
               <button
                 onClick={method === 'pix' ? handleGeneratePix : handlePayCard}
                 disabled={isLoading || !effectiveAmount || effectiveAmount <= 0}
@@ -542,6 +734,8 @@ export default function DoacaoReal() {
                   ? 'QR Code PIX valido por 30 minutos, aceito por Nubank, Itau, Bradesco e demais bancos.'
                   : 'Pagamento seguro processado pela Cielo. Aceitamos Visa, Mastercard, Elo e Amex.'}
               </p>
+              </>
+              )}
             </div>
           )}
         </div>
