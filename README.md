@@ -23,6 +23,8 @@ O Instituto de Desenvolvimento Ambiental e Social da Amazônia (IDASAM) é uma o
 | **Pagamentos** | Stripe |
 | **Armazenamento de arquivos** | Supabase Storage |
 | **Geração de PDF** | pdf-lib, jsPDF |
+| **Parsing de PDF** | pdfjs-dist (extração server-side de texto e imagens) |
+| **IA / LLM** | Anthropic Claude Sonnet 4.6 (`@anthropic-ai/sdk`) |
 | **Formulários** | react-hook-form + Zod |
 
 ---
@@ -44,6 +46,7 @@ O Instituto de Desenvolvimento Ambiental e Social da Amazônia (IDASAM) é uma o
 - **Capacitação** (`/dashboard/capacitacao`) — Gestão de cursos, inscrições e emissão de certificados em lote
 - **Marketing** (`/dashboard/marketing`) — Gerenciamento de audiências, templates de e-mail e campanhas com tracking de abertura
 - **Documentos** (`/dashboard/documentos`) — Suite Documental completa: contratos, orçamentos, ofícios, relatórios e projetos com assinatura digital (interna e externa), delegação de poderes e geração de PDF
+  - **Importador de Proposta de Projeto via PDF (IA)** — upload de PDF em folha A4 em branco → Claude Sonnet 4.6 extrai título, responsável, organização, tabelas e imagens e preenche o formulário da aba "Projeto" automaticamente. Fluxo manual de digitação permanece inalterado; a importação é opcional. Tabelas grandes são quebradas em múltiplas páginas preservando o cabeçalho. Painel de saldo da API no modal: barra de progresso, alerta ≥70%/90%/100%, projeção de documentos restantes com base na média histórica de uso.
 - **Financeiro** (`/dashboard/financeiro`) — Controle financeiro com transações, contas bancárias, fornecedores e doadores
 - **Projetos** (`/dashboard/projetos`) — Gestão de projetos institucionais
 - **Usuários** (`/dashboard/usuarios`) — Gestão de usuários com permissões por setor
@@ -95,6 +98,8 @@ STRIPE_SECRET_KEY=sk_...
 VITE_STRIPE_PUBLISHABLE_KEY=pk_...
 SUPABASE_URL=https://<projeto>.supabase.co
 SUPABASE_ANON_KEY=...
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_BUDGET_USD=5
 ```
 
 ### 4. Execute as migrações do banco de dados
@@ -128,6 +133,8 @@ O servidor estará disponível em `http://localhost:5000`.
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Chave pública do Stripe (frontend) | Para doações |
 | `SUPABASE_URL` | URL do projeto Supabase | Não (integração parcial) |
 | `SUPABASE_ANON_KEY` | Chave anônima do Supabase | Não (integração parcial) |
+| `ANTHROPIC_API_KEY` | Chave da API Anthropic (Claude Sonnet 4.6) — usada pelo Importador de Projeto via PDF | Para importação de PDF |
+| `ANTHROPIC_BUDGET_USD` | Orçamento total carregado na Anthropic (USD). Usado apenas para exibir projeção de documentos restantes no painel do modal | Não |
 
 ---
 

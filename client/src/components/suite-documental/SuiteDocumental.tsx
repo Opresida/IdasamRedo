@@ -25,6 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import type { Proposal, ProposalStatus, Signatario, Delegacao, SignatarioRole, PoderDelegavel } from '@shared/schema'
 import { SIGNATARIO_ROLES, PODERES_DELEGAVEIS } from '@shared/schema'
+import ImportarProjetoPdf, { type ProjetoImportado } from './ImportarProjetoPdf'
 import './suite.css'
 
 interface Clause  { id: string; title: string; body: string }
@@ -195,6 +196,103 @@ function createA4Page(docType: string, isOrc = false): HTMLElement {
   return page
 }
 
+/**
+ * Quebra uma tabela (dentro de um wrapper) em múltiplas páginas.
+ * Cada página ganha uma cópia do wrapper+tabela contendo:
+ *   - o cabeçalho da tabela (se houver <th> na primeira linha)
+ *   - apenas as linhas que cabem sem estourar LIMIT
+ * A última página fica em `contentBox` final (retornada).
+ */
+async function splitTableAcrossPages(
+  originalWrapper: HTMLElement,
+  originalTable: HTMLTableElement,
+  initialBox: HTMLElement,
+  LIMIT: number,
+  makeNewPage: () => HTMLElement,
+): Promise<HTMLElement> {
+  const raf2 = async () => {
+    await new Promise(r => requestAnimationFrame(r))
+    await new Promise(r => requestAnimationFrame(r))
+  }
+
+  const allRows = Array.from(originalTable.querySelectorAll('tr'))
+  if (allRows.length === 0) {
+    initialBox.appendChild(originalWrapper)
+    return initialBox
+  }
+
+  const firstHasTh = allRows[0].querySelector('th') !== null
+  const headerRow = firstHasTh ? allRows[0] : null
+  const dataRows = firstHasTh ? allRows.slice(1) : allRows
+
+  const buildWrapperSkeleton = (): { wrapper: HTMLElement; tbody: HTMLElement } => {
+    const wrapper = originalWrapper.cloneNode(false) as HTMLElement
+    const table = originalTable.cloneNode(false) as HTMLTableElement
+    if (headerRow) table.appendChild(headerRow.cloneNode(true))
+    // Se a tabela original tinha <tbody>, manter a estrutura
+    const originalTbody = originalTable.querySelector('tbody')
+    let tbody: HTMLElement
+    if (originalTbody) {
+      const tb = originalTbody.cloneNode(false) as HTMLElement
+      table.appendChild(tb)
+      tbody = tb
+    } else {
+      tbody = table
+    }
+    // Reconstruir a cadeia de ancestrais entre o wrapper original e a tabela
+    // (caso o table não seja filho direto do wrapper)
+    const chain: HTMLElement[] = []
+    let cur: HTMLElement | null = originalTable.parentElement
+    while (cur && cur !== originalWrapper) {
+      chain.unshift(cur)
+      cur = cur.parentElement
+    }
+    let attachPoint: HTMLElement = wrapper
+    for (const anc of chain) {
+      const c = anc.cloneNode(false) as HTMLElement
+      attachPoint.appendChild(c)
+      attachPoint = c
+    }
+    attachPoint.appendChild(table)
+    return { wrapper, tbody }
+  }
+
+  let { wrapper, tbody } = buildWrapperSkeleton()
+  let contentBox = initialBox
+  contentBox.appendChild(wrapper)
+  await raf2()
+
+  for (const row of dataRows) {
+    const rowClone = row.cloneNode(true) as HTMLElement
+    tbody.appendChild(rowClone)
+    await raf2()
+
+    if (contentBox.scrollHeight > LIMIT) {
+      // Desfaz — essa linha não coube
+      tbody.removeChild(rowClone)
+
+      // Se o wrapper na página atual ficou sem linhas de dados (caso a
+      // primeira linha sozinha já estoure), deixa extravasar pra não
+      // entrar em loop infinito.
+      if (tbody.querySelector('tr:not(:has(th))') === null && !headerRow) {
+        tbody.appendChild(rowClone)
+        continue
+      }
+
+      // Nova página com novo wrapper (e header, se houver)
+      contentBox = makeNewPage()
+      const skel = buildWrapperSkeleton()
+      wrapper = skel.wrapper
+      tbody = skel.tbody
+      contentBox.appendChild(wrapper)
+      tbody.appendChild(rowClone)
+      await raf2()
+    }
+  }
+
+  return contentBox
+}
+
 async function autoPaginate(
   source: HTMLElement,
   container: HTMLElement,
@@ -233,19 +331,37 @@ async function autoPaginate(
 
   let pageCount = 1
 
+  const raf2 = async () => {
+    await new Promise(r => requestAnimationFrame(r))
+    await new Promise(r => requestAnimationFrame(r))
+  }
+
   for (const el of Array.from(source.children)) {
     const clone = el.cloneNode(true) as HTMLElement
     contentBox.appendChild(clone)
-
-    await new Promise(r => requestAnimationFrame(r))
-    await new Promise(r => requestAnimationFrame(r))
+    await raf2()
 
     if (contentBox.scrollHeight > LIMIT) {
       contentBox.removeChild(clone)
       pageCount++
       contentBox = newPage()
       contentBox.appendChild(clone)
-      await new Promise(r => requestAnimationFrame(r))
+      await raf2()
+
+      // Se o bloco ainda excede sozinho uma página E é uma tabela,
+      // quebra ela por linhas mantendo o cabeçalho em cada página.
+      if (contentBox.scrollHeight > LIMIT) {
+        const table = clone.querySelector('table') as HTMLTableElement | null
+        if (table) {
+          contentBox.removeChild(clone)
+          const result = await splitTableAcrossPages(clone, table, contentBox, LIMIT, () => {
+            pageCount++
+            contentBox = newPage()
+            return contentBox
+          })
+          contentBox = result
+        }
+      }
     }
   }
 
@@ -335,6 +451,30 @@ export function SuiteDocumental() {
   const [salvandoProjeto, setSalvandoProjeto]     = useState(false)
   const [projetoSalvo, setProjetoSalvo]           = useState(false)
   const [projView, setProjView]                   = useState<'form' | 'preview'>('form')
+  const [importarProjetoOpen, setImportarProjetoOpen] = useState(false)
+
+  const handleProjetoImportado = (imp: ProjetoImportado) => {
+    const blocos: BlocoRelatorio[] = imp.blocos.map(b => {
+      if (b.tipo === 'texto') {
+        return { id: uid(), tipo: 'texto', titulo: b.titulo, corpo: b.corpo }
+      }
+      if (b.tipo === 'tabela') {
+        return { id: uid(), tipo: 'tabela', titulo: b.titulo, cabecalho: b.cabecalho, linhas: b.linhas }
+      }
+      return { id: uid(), tipo: 'imagem', url: b.url, caption: b.caption }
+    })
+    setProjData({
+      titulo: imp.titulo,
+      responsavel: imp.responsavel,
+      cargo: imp.cargo,
+      organizacao: imp.organizacao,
+      parceiro: imp.parceiro,
+      valorEstimado: imp.valorEstimado,
+      prazoExecucao: imp.prazoExecucao,
+      blocos,
+    })
+    setProjView('form')
+  }
 
   const handleFormChange = (field: keyof Omit<RelatorioData, 'blocos'>, value: string) =>
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -2521,9 +2661,22 @@ export function SuiteDocumental() {
                 <div className="max-w-2xl mx-auto space-y-5">
 
                   {/* Header */}
-                  <div className="flex items-center gap-2">
-                    <FolderOpen size={16} className="text-[#1E40AF]" />
-                    <h3 className="text-sm font-bold text-[#374151] tracking-wide uppercase">Dados da Proposta de Projeto</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <FolderOpen size={16} className="text-[#1E40AF]" />
+                      <h3 className="text-sm font-bold text-[#374151] tracking-wide uppercase">Dados da Proposta de Projeto</h3>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setImportarProjetoOpen(true)}
+                      className="h-8 gap-1.5 border-[#1a5c38]/30 text-[#1a5c38] hover:bg-[#1a5c38]/5 hover:text-[#1a5c38]"
+                      title="Importar proposta a partir de um PDF (IA extrai e preenche o formulário)"
+                    >
+                      <Upload size={14} />
+                      <span className="text-xs font-medium">Importar PDF</span>
+                    </Button>
                   </div>
 
                   {/* Título */}
@@ -2802,6 +2955,12 @@ export function SuiteDocumental() {
                     title="Pré-visualização da Proposta de Projeto" />
                 </div>
               )}
+
+              <ImportarProjetoPdf
+                open={importarProjetoOpen}
+                onClose={() => setImportarProjetoOpen(false)}
+                onImported={handleProjetoImportado}
+              />
             </TabsContent>
 
             <TabsContent value="relatorios">

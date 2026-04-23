@@ -22,7 +22,9 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 | Storage | Supabase Storage | — |
 | PDF | pdf-lib + jsPDF + html2canvas | — |
 | Preview PDF | react-pdf | — |
+| Parsing de PDF (server) | pdfjs-dist (legacy build) | 5.x |
 | QR Code | qrcode (npm) | — |
+| IA / LLM | Anthropic Claude Sonnet 4.6 (`@anthropic-ai/sdk`) | 0.90+ |
 
 ---
 
@@ -61,6 +63,19 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 - Se for delegação, registra `delegacaoId` no log de auditoria
 - Delegação pode ser revogada a qualquer momento pelo Presidente
 - Tabela `delegacoes` armazena tudo; status: `ativa`, `revogada`, `expirada`
+
+### Importador de Proposta de Projeto via PDF (IA)
+- Botão "Importar PDF" na aba "Projeto" da Suite Documental abre modal de upload
+- Backend recebe PDF, extrai texto e imagens com `pdfjs-dist` (`server/services/pdfParser.ts`)
+- Claude Sonnet 4.6 recebe o PDF nativo via content block `document` e retorna JSON estruturado (título, responsável, organização, valor, blocos tipo `texto`/`tabela`/`imagem`) no mesmo formato do `projData` manual — `server/services/anthropic.ts`
+- Servidor substitui placeholders `IMG_0`, `IMG_1`, … pelos data URLs das imagens extraídas
+- Frontend popula o formulário existente via `setProjData(...)` — admin revisa e gera PDF pelo fluxo manual normal
+- **Regra de ouro:** o fluxo manual de digitação NÃO é alterado; a importação é aditiva
+- Paginação de tabela: quando uma tabela não cabe em uma página, o paginador quebra linha por linha repetindo o cabeçalho na próxima página (`splitTableAcrossPages` em `SuiteDocumental.tsx`)
+- **Tracking de custo local:** tabela `anthropic_usage` registra input/output/cache tokens + custo em USD (preços Sonnet 4.6: $3/M input, $15/M output, $3.75/M cache write, $0.30/M cache read) por operação
+- Rota `GET /api/admin/anthropic-usage` retorna total gasto, gasto do mês, média $/doc de 10 páginas, restante (se `ANTHROPIC_BUDGET_USD` estiver setado) e projeção de docs restantes
+- Modal do importador exibe barra de progresso do saldo com alertas ≥70% / ≥90% / 100%; botão de submit é desabilitado quando saldo ≤ $0
+- Vars necessárias: `ANTHROPIC_API_KEY` (obrigatória pra funcionar) e `ANTHROPIC_BUDGET_USD` (opcional, só pra projeção)
 
 ### Rascunhos Editáveis
 - Documentos podem ser salvos como rascunho (`status: 'rascunho'`) sem gerar PDF

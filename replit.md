@@ -63,6 +63,12 @@ Preferred communication style: Simple, everyday language.
 - **Fonts**: Google Fonts integration for Inter typography
 - **Icons**: Lucide React for consistent iconography throughout the application
 
+### AI / LLM Integration
+- **Anthropic Claude Sonnet 4.6** (`@anthropic-ai/sdk`) powers the PDF Import feature on the "Project Proposal" tab of the Documental Suite.
+- Server-side PDF parsing with `pdfjs-dist` (legacy build) extracts text and images before sending the PDF natively to Claude for structured JSON extraction.
+- Usage tracking table `anthropic_usage` persists input/output/cache tokens and USD cost per operation; modal displays remaining budget and projected documents remaining.
+- Required env vars: `ANTHROPIC_API_KEY` (mandatory for the feature), `ANTHROPIC_BUDGET_USD` (optional, enables the remaining-docs projection panel).
+
 ### Deployment Configuration
 - **Production Build**: Optimized builds with separate client and server bundling
 - **Environment Variables**: Database URL and NODE_ENV configuration

@@ -1,6 +1,6 @@
 
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, uuid, timestamp, integer, unique, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, uuid, timestamp, integer, unique, boolean, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -496,6 +496,22 @@ export const adminSessions = pgTable("admin_sessions", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 export type AdminSession = typeof adminSessions.$inferSelect;
+
+// ── Anthropic Usage (tracking local de custo) ──
+export const anthropicUsage = pgTable("anthropic_usage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  operation: text("operation").notNull(),                         // ex: 'import-projeto-pdf'
+  model: text("model").notNull(),
+  inputTokens: integer("input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  cacheCreationTokens: integer("cache_creation_tokens").notNull().default(0),
+  cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+  pageCount: integer("page_count").notNull().default(0),
+  costUsd: doublePrecision("cost_usd").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export type AnthropicUsage = typeof anthropicUsage.$inferSelect;
+export type InsertAnthropicUsage = Omit<AnthropicUsage, 'id' | 'createdAt'>;
 
 // ══════════════════════════════════════════════════════════════
 // CRM — Gestão de Stakeholders

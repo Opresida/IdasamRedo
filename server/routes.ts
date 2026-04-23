@@ -1824,6 +1824,130 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Importar proposta de projeto a partir de PDF via Claude Sonnet 4.6
+  app.post(
+    "/api/admin/proposals/import-projeto-pdf",
+    requireAdmin,
+    upload.single("pdf"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Envie o PDF no campo 'pdf'." });
+        }
+        const { parsePdf } = await import("./services/pdfParser");
+        const { extractProjetoFromPdf, resolveImagePlaceholders } = await import(
+          "./services/anthropic"
+        );
+        const { anthropicUsage } = await import("@shared/schema");
+
+        const parsed = await parsePdf(req.file.buffer);
+        const { projeto: estruturado, usage } = await extractProjetoFromPdf(
+          req.file.buffer,
+          parsed.images,
+        );
+        const resolvido = resolveImagePlaceholders(estruturado, parsed.images);
+
+        // Grava uso no banco (best-effort — não falha o request se der erro)
+        try {
+          await db.insert(anthropicUsage).values({
+            operation: "import-projeto-pdf",
+            model: usage.model,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            cacheCreationTokens: usage.cacheCreationTokens,
+            cacheReadTokens: usage.cacheReadTokens,
+            pageCount: parsed.pageCount,
+            costUsd: usage.costUsd,
+          });
+        } catch (e) {
+          console.error("[import-projeto-pdf] falha ao gravar usage:", e);
+        }
+
+        res.json({
+          projeto: resolvido,
+          meta: {
+            pageCount: parsed.pageCount,
+            imagesDetected: parsed.images.length,
+            imagesResolved: resolvido.blocos.filter((b) => b.tipo === "imagem").length,
+          },
+          usage,
+        });
+      } catch (err: any) {
+        const msg = err?.message || "Erro ao processar PDF";
+        console.error("[import-projeto-pdf] erro:", err);
+        const status = /ANTHROPIC_API_KEY/.test(msg) ? 503 : 500;
+        res.status(status).json({ message: msg });
+      }
+    },
+  );
+
+  // Estatísticas de uso da Anthropic API
+  app.get("/api/admin/anthropic-usage", requireAdmin, async (_req, res) => {
+    try {
+      const { anthropicUsage } = await import("@shared/schema");
+      const { sql } = await import("drizzle-orm");
+      const budgetUsd = parseFloat(process.env.ANTHROPIC_BUDGET_USD || "0") || 0;
+
+      const startOfMonth = new Date();
+      startOfMonth.setUTCDate(1);
+      startOfMonth.setUTCHours(0, 0, 0, 0);
+
+      // Totais consolidados
+      const [total] = await db
+        .select({
+          totalRuns: sql<number>`COUNT(*)::int`,
+          totalCostUsd: sql<number>`COALESCE(SUM(${anthropicUsage.costUsd}), 0)::float`,
+          totalPages: sql<number>`COALESCE(SUM(${anthropicUsage.pageCount}), 0)::int`,
+        })
+        .from(anthropicUsage);
+
+      const [month] = await db
+        .select({
+          monthRuns: sql<number>`COUNT(*)::int`,
+          monthCostUsd: sql<number>`COALESCE(SUM(${anthropicUsage.costUsd}), 0)::float`,
+          monthPages: sql<number>`COALESCE(SUM(${anthropicUsage.pageCount}), 0)::int`,
+        })
+        .from(anthropicUsage)
+        .where(sql`${anthropicUsage.createdAt} >= ${startOfMonth.toISOString()}`);
+
+      const totalRuns = total?.totalRuns ?? 0;
+      const totalCostUsd = Number(total?.totalCostUsd ?? 0);
+      const totalPages = total?.totalPages ?? 0;
+      const monthRuns = month?.monthRuns ?? 0;
+      const monthCostUsd = Number(month?.monthCostUsd ?? 0);
+
+      // Custo médio por página, com fallback heurístico se ainda não houve runs
+      // Heurística: ~$0.008/página (baseado em preços atuais Sonnet 4.6,
+      // ~2000 input + 600 output por página)
+      const avgCostPerPage = totalPages > 0 ? totalCostUsd / totalPages : 0.008;
+      const avgCostPer10Pages = avgCostPerPage * 10;
+
+      const remainingUsd = Math.max(0, budgetUsd - totalCostUsd);
+      const estimatedDocsRemaining =
+        avgCostPer10Pages > 0 ? Math.floor(remainingUsd / avgCostPer10Pages) : null;
+      const percentUsed =
+        budgetUsd > 0 ? Math.min(100, (totalCostUsd / budgetUsd) * 100) : 0;
+
+      res.json({
+        budgetUsd,
+        totalRuns,
+        totalCostUsd,
+        totalPages,
+        monthRuns,
+        monthCostUsd,
+        avgCostPerPage,
+        avgCostPer10Pages,
+        avgCostPer10PagesIsHeuristic: totalPages === 0,
+        remainingUsd,
+        estimatedDocsRemaining,
+        percentUsed,
+      });
+    } catch (err: any) {
+      console.error("[anthropic-usage] erro:", err);
+      res.status(500).json({ message: err?.message || "Erro ao buscar uso" });
+    }
+  });
+
   // Salvar PDF base64 em uma proposal existente
   app.patch("/api/admin/proposals/:id/pdf", requireAdmin, async (req, res) => {
     try {

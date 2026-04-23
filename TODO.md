@@ -77,3 +77,6 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
 - [x] Limpeza: deletar attached_assets/ (22MB), SQLs raiz, SVGs, componentes órfãos, fonts ✓ *2026-04-13*
 - [x] Segurança: DOMPurify, bcrypt, rate limiting, error handling, console.logs ✓ *2026-04-13*
 - [x] Infra: cache headers, auto-reload por versão, proteção Google Translate ✓ *2026-04-13*
+- [x] **Importador de Proposta de Projeto via PDF (IA — Claude Sonnet 4.6)** — upload de PDF em folha A4 branca, extração automática de texto/tabelas/imagens e preenchimento do formulário de Projeto; fluxo manual preservado ✓ *2026-04-23*
+- [x] Paginador de tabelas: tabelas grandes agora quebram linha a linha entre páginas repetindo o cabeçalho (`splitTableAcrossPages`) ✓ *2026-04-23*
+- [x] Tracking local de uso da Anthropic API: tabela `anthropic_usage`, rota `/api/admin/anthropic-usage`, painel de saldo no modal com alertas e projeção de docs restantes ✓ *2026-04-23*
