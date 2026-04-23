@@ -19,7 +19,7 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 | Formulários | React Hook Form + Zod | — |
 | E-mail | Resend | — |
 | Pagamentos | Stripe | — |
-| Storage | Supabase Storage | — |
+| Storage | Neon PostgreSQL (bytea/base64) | — |
 | PDF | pdf-lib + jsPDF + html2canvas | — |
 | Preview PDF | react-pdf | — |
 | Parsing de PDF (server) | pdfjs-dist (legacy build) | 5.x |

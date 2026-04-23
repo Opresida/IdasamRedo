@@ -21,7 +21,7 @@ O Instituto de Desenvolvimento Ambiental e Social da Amazônia (IDASAM) é uma o
 | **Autenticação** | Sessões customizadas com tokens Bearer (admin) |
 | **E-mail** | Resend API |
 | **Pagamentos** | Stripe |
-| **Armazenamento de arquivos** | Supabase Storage |
+| **Armazenamento de arquivos** | Neon PostgreSQL (base64/bytea em colunas) |
 | **Geração de PDF** | pdf-lib, jsPDF |
 | **Parsing de PDF** | pdfjs-dist (extração server-side de texto e imagens) |
 | **IA / LLM** | Anthropic Claude Sonnet 4.6 (`@anthropic-ai/sdk`) |
@@ -96,8 +96,6 @@ ADMIN_PASSWORD=senha-segura
 RESEND_API_KEY=re_...
 STRIPE_SECRET_KEY=sk_...
 VITE_STRIPE_PUBLISHABLE_KEY=pk_...
-SUPABASE_URL=https://<projeto>.supabase.co
-SUPABASE_ANON_KEY=...
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_BUDGET_USD=5
 ```
@@ -131,8 +129,6 @@ O servidor estará disponível em `http://localhost:5000`.
 | `EMAIL_FROM` | Endereço de envio de e-mails (padrão: `IDASAM <onboarding@resend.dev>`) | Não |
 | `STRIPE_SECRET_KEY` | Chave secreta do Stripe para pagamentos | Para doações |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Chave pública do Stripe (frontend) | Para doações |
-| `SUPABASE_URL` | URL do projeto Supabase | Não (integração parcial) |
-| `SUPABASE_ANON_KEY` | Chave anônima do Supabase | Não (integração parcial) |
 | `ANTHROPIC_API_KEY` | Chave da API Anthropic (Claude Sonnet 4.6) — usada pelo Importador de Projeto via PDF | Para importação de PDF |
 | `ANTHROPIC_BUDGET_USD` | Orçamento total carregado na Anthropic (USD). Usado apenas para exibir projeção de documentos restantes no painel do modal | Não |
 
@@ -183,8 +179,8 @@ O servidor estará disponível em `http://localhost:5000`.
 
 - **Stripe** — Processamento de doações em dólar (USD) e euro (EUR)
 - **Resend** — Envio transacional e de campanhas de e-mail
-- **Supabase** — Integração parcial para armazenamento de arquivos e consultas financeiras
-- **Neon Database** — Banco de dados PostgreSQL serverless
+- **Anthropic Claude Sonnet 4.6** — Importação automatizada de propostas de projeto em PDF
+- **Neon Database** — Banco de dados PostgreSQL serverless (inclui armazenamento de arquivos como base64/bytea)
 
 ---
 
@@ -290,4 +286,3 @@ Browser (React + Wouter)
 ### Pendente
 - [ ] Configurar STRIPE_SECRET_KEY e VITE_STRIPE_PUBLISHABLE_KEY para pagamentos
 - [ ] Configurar RESEND_API_KEY para envio de e-mails
-- [ ] Configurar SUPABASE_URL e SUPABASE_ANON_KEY para storage de arquivos

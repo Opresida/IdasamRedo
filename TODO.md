@@ -6,7 +6,7 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
 
 ## Em andamento
 
-- [ ] Configurar variáveis de ambiente das integrações externas (Stripe, Resend, Supabase)
+- [ ] Configurar variáveis de ambiente das integrações externas (Stripe, Resend, Anthropic)
 
 ---
 
@@ -26,7 +26,6 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
   - [ ] Frontend: Substituir mocks por `useQuery`/`useMutation` + loading/error states
 
 ### Média prioridade
-- [ ] Configurar `SUPABASE_URL` e `SUPABASE_ANON_KEY` para storage de arquivos
 - [ ] Testar fluxo completo de matrícula → certificado
 - [ ] Testar geração de PDF dos certificados
 - [ ] Consolidar 5 componentes de doação em 1-2 (economia ~25KB)
