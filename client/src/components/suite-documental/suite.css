@@ -462,6 +462,20 @@
 .sd-sig-cargo { font-size: 11px; color: #4A7260; margin-top: 2px; }
 .sd-sig-inst  { font-size: 10px; color: #2A5B46; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px; font-family: 'Rajdhani', sans-serif; }
 
+/* ── Guarda html2canvas ──
+   Barras decorativas em gradiente são renderizadas pelo html2canvas via createPattern.
+   Se qualquer uma colapsar para largura/altura 0 no momento da captura off-screen, o
+   canvas-fonte fica 0×0 e createPattern lança InvalidStateError, quebrando a geração do PDF.
+   min-width/min-height de 1px garante que o pattern nunca seja 0×0. Inócuo na tela. */
+.sd-topo-stripe,
+.sd-stripe,
+.sd-sig-line,
+.sd-orc-sig-line,
+.sd-sig-grad-line {
+  min-width: 1px;
+  min-height: 1px;
+}
+
 body.sd-exporting .sd-page-a4 {
   box-shadow: none !important;
   margin: 0 !important;

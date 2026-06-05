@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast'
 import type { Proposal, ProposalStatus, Signatario, Delegacao, SignatarioRole, PoderDelegavel } from '@shared/schema'
 import { SIGNATARIO_ROLES, PODERES_DELEGAVEIS } from '@shared/schema'
 import ImportarProjetoPdf, { type ProjetoImportado } from './ImportarProjetoPdf'
+import ImportarContratoPdf, { type ContratoImportado } from './ImportarContratoPdf'
 import './suite.css'
 
 interface Clause  { id: string; title: string; body: string }
@@ -94,6 +95,17 @@ async function buildWhiteLogoDataUrl(): Promise<string> {
       reject(new Error('logo load failed'))
     }
     img.src = blobUrl
+  })
+}
+
+// Blindagem html2canvas: no DOM clonado para captura, reforça min-width/min-height nos
+// elementos decorativos em gradiente. Se algum colapsar para 0, o createPattern interno do
+// html2canvas lança InvalidStateError ("canvas with width or height of 0") e quebra o PDF.
+function sdSanitizeClone(clonedDoc: Document) {
+  const sel = '.sd-topo-stripe, .sd-stripe, .sd-sig-line, .sd-orc-sig-line, .sd-sig-grad-line'
+  clonedDoc.querySelectorAll<HTMLElement>(sel).forEach(el => {
+    el.style.minWidth = '1px'
+    el.style.minHeight = '1px'
   })
 }
 
@@ -476,6 +488,61 @@ export function SuiteDocumental() {
     setProjView('form')
   }
 
+  const [importarContratoOpen, setImportarContratoOpen] = useState(false)
+
+  const handleContratoImportado = async (imp: ContratoImportado) => {
+    // Mescla os campos vindos do PDF com os atuais (mantém defaults do IDASAM
+    // como contratante quando o PDF não trouxer o dado).
+    const mergedC = {
+      ...cData,
+      data:        imp.data        || cData.data,
+      docId:       imp.docId       || cData.docId,
+      titulo:      imp.titulo      || cData.titulo,
+      ctanteNome:  imp.ctanteNome  || cData.ctanteNome,
+      ctanteCnpj:  imp.ctanteCnpj  || cData.ctanteCnpj,
+      ctanteEnd:   imp.ctanteEnd   || cData.ctanteEnd,
+      ctanteRep:   imp.ctanteRep   || cData.ctanteRep,
+      ctanteCargo: imp.ctanteCargo || cData.ctanteCargo,
+      ctadoNome:   imp.ctadoNome   || cData.ctadoNome,
+      ctadoQual:   imp.ctadoQual   || cData.ctadoQual,
+      ctadoRg:     imp.ctadoRg     || cData.ctadoRg,
+      ctadoCpf:    imp.ctadoCpf    || cData.ctadoCpf,
+      ctadoEnd:    imp.ctadoEnd    || cData.ctadoEnd,
+    }
+    const mergedClauses = imp.clausulas.length > 0
+      ? imp.clausulas.map(c => ({ id: uid(), title: c.title, body: c.body }))
+      : clauses
+    const mergedSigs = imp.sigs.length > 0
+      ? imp.sigs.map(s => ({ id: uid(), name: s.name, role: s.role }))
+      : sigs
+
+    setCData(mergedC)
+    setClauses(mergedClauses)
+    setSigs(mergedSigs)
+    setCMode('estruturado')
+
+    // Registra automaticamente em "Emitidos" como rascunho e vincula o editingProposalId,
+    // de modo que ao gerar/salvar o PDF depois o mesmo registro seja atualizado (sem duplicar).
+    try {
+      const body = {
+        tipo:    'contrato',
+        numero:  mergedC.docId,
+        titulo:  mergedC.titulo,
+        cliNome: mergedC.ctadoNome || 'Contratado',
+        emissao: new Date().toISOString().slice(0, 10),
+        status:  'rascunho',
+        dados:   JSON.stringify({ cData: mergedC, clauses: mergedClauses, sigs: mergedSigs, cMode: 'estruturado' }),
+      }
+      const res = await adminFetch('POST', '/api/admin/proposals', body)
+      const created = await res.json()
+      setEditingProposalId(created.id)
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/proposals'] })
+      toast({ title: 'Contrato registrado em Emitidos', description: 'Importado como rascunho — gere o PDF para finalizar.' })
+    } catch {
+      toast({ title: 'Importado, mas falhou ao registrar em Emitidos', variant: 'destructive' })
+    }
+  }
+
   const handleFormChange = (field: keyof Omit<RelatorioData, 'blocos'>, value: string) =>
     setFormData(prev => ({ ...prev, [field]: value }))
 
@@ -655,6 +722,7 @@ export function SuiteDocumental() {
         setLoadingText(`Renderizando página ${i + 1} de ${pages.length}...`)
         const canvas = await html2canvas(pages[i] as HTMLElement, {
           scale: 2, useCORS: true, logging: false, width: W, height: H, windowWidth: W,
+          onclone: sdSanitizeClone,
         })
         if (i > 0) jspdfDoc.addPage([W, H], 'portrait')
         jspdfDoc.addImage(canvas.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H)
@@ -899,6 +967,7 @@ export function SuiteDocumental() {
         setLoadingText(`Renderizando página ${i + 1} de ${pages.length}...`)
         const canvas = await html2canvas(pages[i] as HTMLElement, {
           scale: 2, useCORS: true, logging: false, width: W, height: H, windowWidth: W,
+          onclone: sdSanitizeClone,
         })
         if (i > 0) jspdfDoc.addPage([W, H], 'portrait')
         jspdfDoc.addImage(canvas.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H)
@@ -1598,6 +1667,7 @@ export function SuiteDocumental() {
         onProgress?.(`Renderizando página ${i + 1} de ${pages.length}...`)
         const canvas = await html2canvas(pages[i] as HTMLElement, {
           scale: 2, useCORS: true, logging: false, width: W, height: H, windowWidth: W,
+          onclone: sdSanitizeClone,
         })
         if (i > 0) pdf.addPage([W, H], 'portrait')
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H)
@@ -1763,7 +1833,7 @@ export function SuiteDocumental() {
           cliNome:    cData.ctadoNome || 'Contratado',
           emissao:    new Date().toISOString().slice(0, 10),
           status:     'enviada' as ProposalStatus,
-          dados:      JSON.stringify({ cData, clauses, sigs }),
+          dados:      JSON.stringify({ cData, clauses, sigs, cMode }),
           pdfData:    pdfBase64,
         }
       } else if (tipo === 'orcamentos') {
@@ -1923,6 +1993,14 @@ export function SuiteDocumental() {
             </TabsList>
 
             <TabsContent value="contratos" className="space-y-4">
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm"
+                  onClick={() => setImportarContratoOpen(true)}
+                  title="Importar contrato a partir de um PDF (IA extrai e preenche o formulário)"
+                  className="h-8 gap-1.5 border-[#1a5c38]/30 text-[#1a5c38] hover:bg-[#1a5c38]/5">
+                  <Upload size={14} /> Importar PDF
+                </Button>
+              </div>
               <SdCard title="Identificação do Documento">
                 <div className="grid grid-cols-3 gap-4">
                   <SdField label="Cidade e Data">
@@ -2051,6 +2129,12 @@ export function SuiteDocumental() {
                   Visualizar Contrato <ArrowLeft size={15} className="rotate-180" />
                 </Button>
               </div>
+
+              <ImportarContratoPdf
+                open={importarContratoOpen}
+                onClose={() => setImportarContratoOpen(false)}
+                onImported={handleContratoImportado}
+              />
             </TabsContent>
 
             <TabsContent value="orcamentos" className="space-y-4">

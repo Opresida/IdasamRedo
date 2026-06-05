@@ -1881,6 +1881,57 @@ export async function registerRoutes(app: Express) {
     },
   );
 
+  // Importar contrato a partir de PDF via Claude Sonnet 4.6
+  app.post(
+    "/api/admin/proposals/import-contrato-pdf",
+    requireAdmin,
+    upload.single("pdf"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Envie o PDF no campo 'pdf'." });
+        }
+        const { parsePdf } = await import("./services/pdfParser");
+        const { extractContratoFromPdf } = await import("./services/anthropic");
+        const { anthropicUsage } = await import("@shared/schema");
+
+        const parsed = await parsePdf(req.file.buffer);
+        const { contrato, usage } = await extractContratoFromPdf(req.file.buffer);
+
+        // Grava uso no banco (best-effort — não falha o request se der erro)
+        try {
+          await db.insert(anthropicUsage).values({
+            operation: "import-contrato-pdf",
+            model: usage.model,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            cacheCreationTokens: usage.cacheCreationTokens,
+            cacheReadTokens: usage.cacheReadTokens,
+            pageCount: parsed.pageCount,
+            costUsd: usage.costUsd,
+          });
+        } catch (e) {
+          console.error("[import-contrato-pdf] falha ao gravar usage:", e);
+        }
+
+        res.json({
+          contrato,
+          meta: {
+            pageCount: parsed.pageCount,
+            clausulas: contrato.clausulas.length,
+            sigs: contrato.sigs.length,
+          },
+          usage,
+        });
+      } catch (err: any) {
+        const msg = err?.message || "Erro ao processar PDF";
+        console.error("[import-contrato-pdf] erro:", err);
+        const status = /ANTHROPIC_API_KEY/.test(msg) ? 503 : 500;
+        res.status(status).json({ message: msg });
+      }
+    },
+  );
+
   // Estatísticas de uso da Anthropic API
   app.get("/api/admin/anthropic-usage", requireAdmin, async (_req, res) => {
     try {
