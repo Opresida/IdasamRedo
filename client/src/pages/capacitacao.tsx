@@ -801,10 +801,19 @@ export default function CapacitacaoPage() {
   const { toast } = useToast();
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [enrolled, setEnrolled] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'open' | 'coming_soon' | 'completed'>('open');
 
   const { data: courses = [], isLoading } = useQuery<Course[]>({
     queryKey: ['/api/courses'],
   });
+
+  const statusCounts = courses.reduce<Record<string, number>>((acc, c) => {
+    const s = c.status ?? 'open';
+    acc[s] = (acc[s] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const filteredCourses = courses.filter((c) => (c.status ?? 'open') === statusFilter);
 
   const form = useForm<EnrollmentForm>({
     resolver: zodResolver(enrollmentSchema),
@@ -817,8 +826,21 @@ export default function CapacitacaoPage() {
       setEnrolled(true);
       toast({ title: 'Inscrição realizada!', description: 'Sua inscrição foi confirmada com sucesso.' });
     },
-    onError: () => {
-      toast({ title: 'Erro', description: 'Não foi possível realizar a inscrição. Tente novamente.', variant: 'destructive' });
+    onError: (error: Error) => {
+      // O backend envia o erro como "<status>: <corpo>". Para 409 (já matriculado),
+      // extraímos a mensagem específica para o aluno entender em vez de tentar de novo em loop.
+      let description = 'Não foi possível realizar a inscrição. Tente novamente.';
+      const match = error?.message?.match(/^(\d{3}):\s*([\s\S]*)$/);
+      if (match) {
+        const body = match[2];
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed?.message) description = parsed.message;
+        } catch {
+          if (body) description = body;
+        }
+      }
+      toast({ title: 'Erro', description, variant: 'destructive' });
     },
   });
 
@@ -858,6 +880,37 @@ export default function CapacitacaoPage() {
             </h2>
           </FadeIn>
 
+          {!isLoading && courses.length > 0 && (
+            <FadeIn delay={80} className="flex flex-wrap justify-center gap-2 mb-8">
+              {([
+                { value: 'open', label: 'Abertos' },
+                { value: 'coming_soon', label: 'Em Breve' },
+                { value: 'completed', label: 'Concluídos' },
+              ] as const).map((f) => {
+                const active = statusFilter === f.value;
+                const count = statusCounts[f.value] ?? 0;
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setStatusFilter(f.value)}
+                    aria-pressed={active}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      active
+                        ? 'bg-forest text-white border-forest shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-forest/40 hover:text-forest'
+                    }`}
+                  >
+                    {f.label}
+                    <span className={`ml-2 text-xs ${active ? 'text-white/80' : 'text-gray-400'}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </FadeIn>
+          )}
+
           {isLoading ? (
             <div className="flex justify-center py-16">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest" />
@@ -868,9 +921,19 @@ export default function CapacitacaoPage() {
               <p className="text-lg font-medium">Nenhum curso disponível no momento</p>
               <p className="text-sm mt-1">Em breve novos cursos serão publicados.</p>
             </FadeIn>
+          ) : filteredCourses.length === 0 ? (
+            <FadeIn delay={100} className="text-center py-16 text-gray-500">
+              <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p className="text-lg font-medium">
+                {statusFilter === 'open' && 'Nenhum curso com inscrições abertas no momento'}
+                {statusFilter === 'coming_soon' && 'Nenhum curso em breve no momento'}
+                {statusFilter === 'completed' && 'Nenhum curso concluído ainda'}
+              </p>
+              <p className="text-sm mt-1">Confira as outras abas acima.</p>
+            </FadeIn>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course, i) => (
+              {filteredCourses.map((course, i) => (
                 <FadeIn key={course.id} delay={i * 80} className="h-full">
                   <CourseCard course={course} onEnroll={openEnrollDialog} />
                 </FadeIn>
