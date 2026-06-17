@@ -2871,7 +2871,7 @@ export function SuiteDocumental() {
                                   onChange={e => updateProjBlocoField(bloco.id, 'corpo', e.target.value)}
                                   placeholder="Digite o conteúdo desta seção..."
                                   rows={4}
-                                  className="w-full text-sm border border-[#BFDBFE] rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/30 bg-[#FAFBFA] placeholder:text-gray-400" />
+                                  className="w-full text-sm border border-[#BFDBFE] rounded-lg px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/30 bg-[#FAFBFA] placeholder:text-gray-400" />
                               </>
                             ) : bloco.tipo === 'tabela' ? (
                               <>
@@ -2942,7 +2942,7 @@ export function SuiteDocumental() {
                                     onChange={e => updateProjBlocoField(bloco.id, 'caption', e.target.value)}
                                     placeholder="Descreva esta imagem..."
                                     rows={3}
-                                    className="w-full text-sm border border-[#BFDBFE] rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#C86A3B]/30 bg-[#FAFBFA] placeholder:text-gray-400" />
+                                    className="w-full text-sm border border-[#BFDBFE] rounded-lg px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-[#C86A3B]/30 bg-[#FAFBFA] placeholder:text-gray-400" />
                                 </div>
                               </div>
                             )}
@@ -3165,7 +3165,7 @@ export function SuiteDocumental() {
                                   onChange={e => updateBlocoField(bloco.id, 'corpo', e.target.value)}
                                   placeholder="Digite o conteúdo desta seção..."
                                   rows={4}
-                                  className="w-full text-sm border border-[#C8DDD5] rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#2A5B46]/30 bg-[#FAFBFA] placeholder:text-gray-400" />
+                                  className="w-full text-sm border border-[#C8DDD5] rounded-lg px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-[#2A5B46]/30 bg-[#FAFBFA] placeholder:text-gray-400" />
                               </>
                             ) : bloco.tipo === 'tabela' ? (
                               <>
@@ -3236,7 +3236,7 @@ export function SuiteDocumental() {
                                     onChange={e => updateBlocoField(bloco.id, 'caption', e.target.value)}
                                     placeholder="Descreva esta imagem..."
                                     rows={3}
-                                    className="w-full text-sm border border-[#C8DDD5] rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#C86A3B]/30 bg-[#FAFBFA] placeholder:text-gray-400" />
+                                    className="w-full text-sm border border-[#C8DDD5] rounded-lg px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-[#C86A3B]/30 bg-[#FAFBFA] placeholder:text-gray-400" />
                                 </div>
                               </div>
                             )}
