@@ -28,6 +28,7 @@ export async function parsePdf(buffer: Buffer): Promise<ParsedPdf> {
   let imgCounter = 0
 
   for (let p = 1; p <= pageCount; p++) {
+    console.log(`[pdfParser] processando página ${p}/${pageCount}…`)
     const page = await doc.getPage(p)
 
     const content = await page.getTextContent()
@@ -61,9 +62,20 @@ export async function parsePdf(buffer: Buffer): Promise<ParsedPdf> {
           if (!imgName || seenImgNames.has(imgName)) continue
           seenImgNames.add(imgName)
 
-          const obj = await new Promise<any>((resolve) => {
-            page.objs.get(imgName, resolve)
-          }).catch(() => null)
+          // page.objs.get só dispara o callback quando o objeto está pronto.
+          // Para certas imagens (que exigiriam render da página), ele NUNCA
+          // fica pronto e a Promise penduraria pra sempre. Limita a 4s por
+          // imagem: se não vier, segue sem ela em vez de travar o request.
+          const obj = await Promise.race([
+            new Promise<any>((resolve) => {
+              try {
+                page.objs.get(imgName, resolve)
+              } catch {
+                resolve(null)
+              }
+            }),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+          ]).catch(() => null)
 
           if (!obj) continue
           const pngDataUrl = await imageObjToPngDataUrl(obj)

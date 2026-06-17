@@ -90,7 +90,9 @@ function getClient(): Anthropic {
     if (!apiKey) {
       throw new Error('ANTHROPIC_API_KEY não configurada no .env — o importador de PDF não funciona sem a chave.')
     }
-    client = new Anthropic({ apiKey })
+    // timeout generoso (documentos grandes levam minutos) e poucos retries —
+    // sem isso o SDK usa 10min + retry automático, criando laço infinito em PDFs pesados
+    client = new Anthropic({ apiKey, timeout: 15 * 60 * 1000, maxRetries: 1 })
   }
   return client
 }
@@ -105,9 +107,89 @@ export async function extractProjetoFromPdf(
     ? `Foram detectadas ${images.length} imagens no PDF (ordenadas da página 1 em diante). Use exatamente estes placeholders na ordem: ${images.map((_, i) => `IMG_${i}`).join(', ')}.`
     : 'Nenhuma imagem foi detectada no PDF. Não inclua blocos do tipo "imagem".'
 
-  const response = await c.messages.create({
+  // Saída estruturada via tool use: a API monta o JSON e GARANTE que é válido,
+  // eliminando erros de parse (aspas/vírgulas soltas em textos longos do PDF).
+  // Streaming porque PDFs grandes levam minutos — sem stream o SDK estoura o
+  // timeout e re-tenta, criando laço infinito.
+  // strict: true → a API CONSTRANGE a geração ao schema: é impossível sair JSON
+  // inválido ou "blocos" que não seja array. Cada tipo de bloco é uma variante
+  // completa (anyOf) com additionalProperties:false e todos os campos required,
+  // como exige o modo estruturado estrito.
+  const blocoTexto = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      tipo: { const: 'texto' },
+      titulo: { type: 'string' },
+      corpo: { type: 'string' },
+    },
+    required: ['tipo', 'titulo', 'corpo'],
+  }
+  const blocoTabela = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      tipo: { const: 'tabela' },
+      titulo: { type: 'string' },
+      cabecalho: { type: 'boolean' },
+      linhas: { type: 'array', items: { type: 'array', items: { type: 'string' } } },
+    },
+    required: ['tipo', 'titulo', 'cabecalho', 'linhas'],
+  }
+  const blocoImagem = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      tipo: { const: 'imagem' },
+      url: { type: 'string' },
+      caption: { type: 'string' },
+    },
+    required: ['tipo', 'url', 'caption'],
+  }
+  const tool = {
+    name: 'registrar_projeto',
+    description:
+      'Registra a proposta de projeto extraída do PDF no formato estruturado do IDASAM. Preencha todos os campos; use "" quando ausente. Os blocos devem seguir a ordem original do documento.',
+    strict: true,
+    input_schema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        titulo: { type: 'string' },
+        responsavel: { type: 'string' },
+        cargo: { type: 'string' },
+        organizacao: { type: 'string' },
+        parceiro: { type: 'string' },
+        valorEstimado: { type: 'string' },
+        prazoExecucao: { type: 'string' },
+        blocos: {
+          type: 'array',
+          items: { anyOf: [blocoTexto, blocoTabela, blocoImagem] },
+        },
+      },
+      required: [
+        'titulo',
+        'responsavel',
+        'cargo',
+        'organizacao',
+        'parceiro',
+        'valorEstimado',
+        'prazoExecucao',
+        'blocos',
+      ],
+    },
+  } as any
+
+  const t0 = Date.now()
+  let firstTokenAt = 0
+  let deltaCount = 0
+  const stream = c.messages.stream({
     model: MODEL,
-    max_tokens: 16000,
+    // Sonnet 4.6 suporta até 64K de saída. Documentos longos (20+ páginas com
+    // texto preservado) estouravam 16K, cortando o JSON antes do campo "blocos".
+    max_tokens: 32000,
+    tools: [tool],
+    tool_choice: { type: 'tool', name: 'registrar_projeto' },
     system: [
       { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
     ],
@@ -125,47 +207,51 @@ export async function extractProjetoFromPdf(
           } as any,
           {
             type: 'text',
-            text: `${imageHint}\n\nExtraia este PDF para o JSON estruturado definido no system prompt. Retorne APENAS o JSON (sem markdown, sem \`\`\`, sem explicações).`,
+            text: `${imageHint}\n\nExtraia este PDF e devolva o resultado chamando a ferramenta registrar_projeto.`,
           },
         ],
       },
     ],
   })
 
-  const textBlock = response.content.find((b) => b.type === 'text') as { type: 'text'; text: string } | undefined
-  if (!textBlock) {
-    throw new Error('Claude retornou resposta sem conteúdo de texto.')
-  }
+  // Com tool use o conteúdo chega como deltas de JSON parcial (não 'text').
+  stream.on('inputJson', () => {
+    if (firstTokenAt === 0) {
+      firstTokenAt = Date.now()
+      console.log(`[anthropic] primeiro token em ${((firstTokenAt - t0) / 1000).toFixed(1)}s`)
+    }
+    deltaCount++
+    if (deltaCount % 200 === 0) {
+      console.log(`[anthropic] streaming… ${deltaCount} deltas (${((Date.now() - t0) / 1000).toFixed(0)}s)`)
+    }
+  })
+
+  const response = await stream.finalMessage()
+  console.log(`[anthropic] resposta completa em ${((Date.now() - t0) / 1000).toFixed(1)}s`)
 
   const stopReason = response.stop_reason
   console.log(`[anthropic] stop_reason=${stopReason} input_tokens=${response.usage?.input_tokens} output_tokens=${response.usage?.output_tokens}`)
 
-  let raw = textBlock.text.trim()
-
-  // Remove cercas markdown ```json ... ``` ou ``` ... ```
-  const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-  if (fenceMatch) raw = fenceMatch[1].trim()
-
-  // Extrai o maior bloco {...} plausível
-  const firstBrace = raw.indexOf('{')
-  const lastBrace = raw.lastIndexOf('}')
-  if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+  const toolBlock = response.content.find((b) => b.type === 'tool_use') as
+    | { type: 'tool_use'; input: unknown }
+    | undefined
+  if (!toolBlock) {
     if (stopReason === 'max_tokens') {
       throw new Error('Resposta do Claude foi cortada por limite de tokens. Tente um PDF menor.')
     }
-    throw new Error('Claude não retornou JSON válido. Primeiros 300 chars: ' + raw.slice(0, 300))
+    throw new Error('Claude não retornou a saída estruturada (sem tool_use). stop_reason=' + stopReason)
   }
 
-  const jsonStr = raw.slice(firstBrace, lastBrace + 1)
-
-  let parsed: ProjetoEstruturadoOut
-  try {
-    parsed = JSON.parse(jsonStr)
-  } catch (e) {
+  const parsed = toolBlock.input as ProjetoEstruturadoOut
+  if (!parsed || !Array.isArray((parsed as any).blocos)) {
+    const b = (parsed as any)?.blocos
+    console.error(
+      `[anthropic] "blocos" não é array — stop_reason=${stopReason} typeof=${typeof b} isArray=${Array.isArray(b)} blocosPreview=${JSON.stringify(b).slice(0, 1500)}`,
+    )
     if (stopReason === 'max_tokens') {
-      throw new Error('Resposta do Claude foi cortada por limite de tokens (JSON incompleto). Tente um PDF menor.')
+      throw new Error('Resposta cortada por limite de tokens (documento muito grande). Tente dividir o PDF.')
     }
-    throw new Error('Falha ao fazer parse do JSON do Claude: ' + (e as Error).message + ' | primeiros 300 chars: ' + jsonStr.slice(0, 300))
+    throw new Error('Saída estruturada inválida: campo "blocos" ausente.')
   }
 
   const u: any = response.usage || {}
