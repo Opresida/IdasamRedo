@@ -161,6 +161,7 @@ export default function ImportarProjetoPdf({ open, onClose, onImported }: Props)
   const { toast } = useToast()
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [usage, setUsage] = useState<UsageStats | null>(null)
   const [usageLoading, setUsageLoading] = useState(false)
@@ -196,6 +197,7 @@ export default function ImportarProjetoPdf({ open, onClose, onImported }: Props)
   const reset = () => {
     setFile(null)
     setLoading(false)
+    setProgress('')
     setDragOver(false)
   }
 
@@ -221,6 +223,7 @@ export default function ImportarProjetoPdf({ open, onClose, onImported }: Props)
   const submit = async () => {
     if (!file) return
     setLoading(true)
+    setProgress('Enviando o PDF…')
     try {
       const form = new FormData()
       form.append('pdf', file)
@@ -229,8 +232,9 @@ export default function ImportarProjetoPdf({ open, onClose, onImported }: Props)
         headers: { ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}) },
         body: form,
       })
-      if (!res.ok) {
-        const text = (await res.text()) || res.statusText
+      // Erro antes do stream começar (ex.: auth, 413, 503 sem chave)
+      if (!res.ok || !res.body) {
+        const text = (await res.text().catch(() => '')) || res.statusText
         let msg = text
         try {
           const j = JSON.parse(text)
@@ -238,14 +242,51 @@ export default function ImportarProjetoPdf({ open, onClose, onImported }: Props)
         } catch {}
         throw new Error(msg)
       }
-      const json = await res.json()
-      onImported(json.projeto, json.meta)
-      const costNote = json.usage?.costUsd ? ` · custo: ${fmtUsd(json.usage.costUsd)}` : ''
+
+      // Lê o stream SSE (event: progress | done | error)
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let result: { projeto: any; meta: any; usage: any } | null = null
+      let errMsg: string | null = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const chunks = buffer.split('\n\n')
+        buffer = chunks.pop() ?? ''
+        for (const chunk of chunks) {
+          let event = 'message'
+          let dataStr = ''
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('event:')) event = line.slice(6).trim()
+            else if (line.startsWith('data:')) dataStr += line.slice(5).trim()
+            // linhas iniciadas por ':' são heartbeats — ignoradas
+          }
+          if (!dataStr) continue
+          let data: any
+          try {
+            data = JSON.parse(dataStr)
+          } catch {
+            continue
+          }
+          if (event === 'progress') setProgress(data.message || '')
+          else if (event === 'done') result = data
+          else if (event === 'error') errMsg = data.message || 'Erro ao processar o PDF.'
+        }
+      }
+
+      if (errMsg) throw new Error(errMsg)
+      if (!result) throw new Error('A conexão foi interrompida antes de concluir. Tente novamente.')
+
+      onImported(result.projeto, result.meta)
+      const costNote = result.usage?.costUsd ? ` · custo: ${fmtUsd(result.usage.costUsd)}` : ''
       reset()
       onClose()
       toast({
         title: 'Projeto importado',
-        description: `${json.meta.pageCount} página(s), ${json.projeto.blocos.length} bloco(s), ${json.meta.imagesResolved} imagem(ns)${costNote}.`,
+        description: `${result.meta.pageCount} página(s), ${result.projeto.blocos.length} bloco(s), ${result.meta.imagesResolved} imagem(ns)${costNote}.`,
       })
     } catch (err: any) {
       toast({
@@ -255,6 +296,7 @@ export default function ImportarProjetoPdf({ open, onClose, onImported }: Props)
       })
     } finally {
       setLoading(false)
+      setProgress('')
     }
   }
 
@@ -337,8 +379,8 @@ export default function ImportarProjetoPdf({ open, onClose, onImported }: Props)
 
           {loading && (
             <div className="mt-4 flex items-center gap-3 rounded-lg bg-[#1a5c38]/5 px-4 py-3 text-sm text-[#1a5c38]">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Claude analisando o conteúdo… isso pode levar até 1 minuto.</span>
+              <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin" />
+              <span>{progress || 'Claude analisando o conteúdo…'}</span>
             </div>
           )}
         </div>

@@ -1830,9 +1830,27 @@ export async function registerRoutes(app: Express) {
     requireAdmin,
     upload.single("pdf"),
     async (req, res) => {
+      // ── Server-Sent Events: progresso ao vivo + heartbeat ──
+      // O processamento (Claude lendo o PDF) pode passar de 60s. Sem tráfego no
+      // socket, o Google Frontend (Replit Autoscale) derruba a conexão com 504.
+      // Streamando eventos + pings periódicos a linha nunca fica ociosa.
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders?.();
+
+      const send = (event: string, data: unknown) => {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+      const heartbeat = setInterval(() => {
+        res.write(`: ping\n\n`);
+      }, 10000);
+
       try {
         if (!req.file) {
-          return res.status(400).json({ message: "Envie o PDF no campo 'pdf'." });
+          send("error", { message: "Envie o PDF no campo 'pdf'." });
+          return;
         }
         const { parsePdf } = await import("./services/pdfParser");
         const { extractProjetoFromPdf, resolveImagePlaceholders } = await import(
@@ -1840,11 +1858,22 @@ export async function registerRoutes(app: Express) {
         );
         const { anthropicUsage } = await import("@shared/schema");
 
+        send("progress", {
+          stage: "parsing",
+          message: "Lendo o PDF e extraindo texto e imagens…",
+        });
         const parsed = await parsePdf(req.file.buffer);
+
+        send("progress", {
+          stage: "extracting",
+          message: `Claude estruturando o conteúdo (${parsed.pageCount} página(s), ${parsed.images.length} imagem(ns))… pode levar alguns minutos.`,
+        });
         const { projeto: estruturado, usage } = await extractProjetoFromPdf(
           req.file.buffer,
           parsed.images,
         );
+
+        send("progress", { stage: "finalizing", message: "Montando o resultado…" });
         const resolvido = resolveImagePlaceholders(estruturado, parsed.images);
 
         // Grava uso no banco (best-effort — não falha o request se der erro)
@@ -1863,7 +1892,7 @@ export async function registerRoutes(app: Express) {
           console.error("[import-projeto-pdf] falha ao gravar usage:", e);
         }
 
-        res.json({
+        send("done", {
           projeto: resolvido,
           meta: {
             pageCount: parsed.pageCount,
@@ -1875,8 +1904,10 @@ export async function registerRoutes(app: Express) {
       } catch (err: any) {
         const msg = err?.message || "Erro ao processar PDF";
         console.error("[import-projeto-pdf] erro:", err);
-        const status = /ANTHROPIC_API_KEY/.test(msg) ? 503 : 500;
-        res.status(status).json({ message: msg });
+        send("error", { message: msg });
+      } finally {
+        clearInterval(heartbeat);
+        res.end();
       }
     },
   );
