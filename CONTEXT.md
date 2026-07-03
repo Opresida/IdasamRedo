@@ -17,7 +17,7 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 | Roteamento frontend | Wouter | 3.x |
 | Requisições | TanStack Query | 5.x |
 | Formulários | React Hook Form + Zod | — |
-| E-mail | Resend | — |
+| E-mail | SMTP agnóstico (nodemailer) ou Resend | — |
 | Pagamentos | Stripe | — |
 | Storage | Neon PostgreSQL (bytea/base64) | — |
 | PDF | pdf-lib + jsPDF + html2canvas | — |
@@ -38,6 +38,13 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 - Admin: token Bearer gerado no login (`/api/auth/login`), válido por 8h, armazenado em `localStorage`
 - Variáveis obrigatórias: `ADMIN_EMAIL` + `ADMIN_PASSWORD` no `.env`
 - Sem essas variáveis, login admin fica **desabilitado**
+
+### Envio de E-mail (agnóstico de provedor)
+- Função única `sendEmail(to, subject, htmlBody, attachments?)` em `server/routes.ts` — todos os envios passam por ela (matrícula, campanhas, LGPD, notificações, propostas com PDF anexo)
+- **Prioridade SMTP:** se `SMTP_HOST` estiver definido no `.env`, envia por SMTP (nodemailer) — funciona com qualquer provedor (Brevo, Mailjet, SMTP2GO, etc.). Vars: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`
+- **Fallback Resend:** sem `SMTP_HOST`, usa `RESEND_API_KEY` (comportamento anterior preservado)
+- `EMAIL_FROM` deve ser um **remetente verificado** no provedor escolhido (senão o envio é rejeitado — não é paywall, é anti-spam). Trocar de provedor = editar `.env`, sem mexer no código
+- `EMAIL_ENABLED = !!(SMTP_HOST || RESEND_API_KEY)` gate os endpoints que exigem e-mail configurado
 
 ### Cursos e Matrículas
 - Cursos têm status: `open` | `closed` | `coming_soon` | `completed`

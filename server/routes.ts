@@ -13,6 +13,15 @@ import rateLimit from "express-rate-limit";
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || "IDASAM <onboarding@resend.dev>";
 
+// Envio agnóstico de provedor: se SMTP_HOST estiver definido, usa qualquer provedor
+// via SMTP (Brevo, Mailjet, SMTP2GO, etc.); senão cai de volta na Resend API.
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const SMTP_SECURE = process.env.SMTP_SECURE === "true"; // true = porta 465 (SSL); false = 587 (STARTTLS)
+const EMAIL_ENABLED = !!(SMTP_HOST || RESEND_API_KEY);
+
 function wrapEmailHtml(body: string): string {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -37,25 +46,72 @@ function wrapEmailHtml(body: string): string {
 </html>`;
 }
 
-async function sendEmailViaResend(to: string, subject: string, htmlBody: string): Promise<boolean> {
-  if (!RESEND_API_KEY) {
-    console.warn("RESEND_API_KEY not set, skipping email send");
-    return false;
-  }
-  try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(RESEND_API_KEY);
-    const result = await resend.emails.send({
-      from: EMAIL_FROM,
-      to,
-      subject,
-      html: wrapEmailHtml(htmlBody),
+type EmailAttachment = { filename: string; content: string }; // content = PDF em base64
+
+let smtpTransporter: import("nodemailer").Transporter | null = null;
+async function getSmtpTransporter() {
+  if (!smtpTransporter) {
+    const nodemailer = (await import("nodemailer")).default;
+    smtpTransporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_SECURE,
+      auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
     });
-    return !result.error;
-  } catch (e) {
-    console.error("Error sending email via Resend:", e);
-    return false;
   }
+  return smtpTransporter;
+}
+
+// Envio único e agnóstico de provedor. Prioriza SMTP (qualquer provedor) e, na
+// ausência de config SMTP, usa a Resend API — mantendo a chave atual funcionando.
+async function sendEmail(
+  to: string,
+  subject: string,
+  htmlBody: string,
+  attachments?: EmailAttachment[],
+): Promise<boolean> {
+  const html = wrapEmailHtml(htmlBody);
+
+  if (SMTP_HOST) {
+    try {
+      const transporter = await getSmtpTransporter();
+      const info = await transporter.sendMail({
+        from: EMAIL_FROM,
+        to,
+        subject,
+        html,
+        attachments: attachments?.map((a) => ({
+          filename: a.filename,
+          content: Buffer.from(a.content, "base64"),
+        })),
+      });
+      return (info.accepted?.length ?? 0) > 0;
+    } catch (e) {
+      console.error("Error sending email via SMTP:", e);
+      return false;
+    }
+  }
+
+  if (RESEND_API_KEY) {
+    try {
+      const { Resend } = await import("resend");
+      const resend = new Resend(RESEND_API_KEY);
+      const result = await resend.emails.send({
+        from: EMAIL_FROM,
+        to,
+        subject,
+        html,
+        ...(attachments ? { attachments } : {}),
+      });
+      return !result.error;
+    } catch (e) {
+      console.error("Error sending email via Resend:", e);
+      return false;
+    }
+  }
+
+  console.warn("Nenhum provedor de e-mail configurado (defina SMTP_* ou RESEND_API_KEY), pulando envio");
+  return false;
 }
 
 function renderTemplate(body: string, vars: Record<string, string>): string {
@@ -923,14 +979,14 @@ export async function registerRoutes(app: Express) {
             const tpl = mdTemplates[0];
             const rendered = renderTemplate(tpl.body, vars);
             const html = await markdownToHtml(rendered);
-            await sendEmailViaResend(enrollment.email, tpl.subject, html);
+            await sendEmail(enrollment.email, tpl.subject, html);
           }
           const htmlTemplates = await storage.getCustomHtmlTemplatesByTrigger("course_signup");
           if (htmlTemplates.length > 0) {
             const htmlTpl = htmlTemplates[0];
             const rendered = renderTemplate(htmlTpl.htmlContent, vars);
             const subject = htmlTpl.name;
-            await sendEmailViaResend(enrollment.email, subject, rendered);
+            await sendEmail(enrollment.email, subject, rendered);
           }
         } catch (emailErr) {
           console.error("Error sending course_signup email:", emailErr);
@@ -1751,7 +1807,7 @@ export async function registerRoutes(app: Express) {
           bodyWithTracking = htmlBody + trackingPixel;
         }
         const rendered = renderTemplate(bodyWithTracking, { nome: lead.name, email: lead.email });
-        const ok = await sendEmailViaResend(lead.email, emailSubject, rendered);
+        const ok = await sendEmail(lead.email, emailSubject, rendered);
         if (ok) sent++; else failed++;
       }
 
@@ -1774,7 +1830,7 @@ export async function registerRoutes(app: Express) {
       let failed = 0;
       for (const email of emails) {
         const rendered = renderTemplate(htmlBody, { email, nome: email, ...(vars ?? {}) });
-        const ok = await sendEmailViaResend(email, tpl.subject, rendered);
+        const ok = await sendEmail(email, tpl.subject, rendered);
         if (ok) sent++; else failed++;
       }
       res.json({ message: "E-mails enviados", sent, failed });
@@ -2134,10 +2190,7 @@ export async function registerRoutes(app: Express) {
       const pdfContent = p.pdfAssinado || p.pdfData;
       if (!pdfContent) return res.status(400).json({ message: "Este documento não possui PDF salvo" });
 
-      if (!RESEND_API_KEY) return res.status(400).json({ message: "RESEND_API_KEY não configurada" });
-
-      const { Resend } = await import("resend");
-      const resend = new Resend(RESEND_API_KEY);
+      if (!EMAIL_ENABLED) return res.status(400).json({ message: "Nenhum provedor de e-mail configurado (defina SMTP_* ou RESEND_API_KEY)" });
 
       const tipoLabel = p.tipo === 'contrato' ? 'Contrato' : p.tipo === 'orcamento' ? 'Orçamento' : p.tipo === 'oficio' ? 'Ofício' : p.tipo === 'relatorio' ? 'Relatório' : 'Proposta de Projeto';
       const emailSubject = subject || `${tipoLabel} ${p.numero} — IDASAM`;
@@ -2146,18 +2199,9 @@ export async function registerRoutes(app: Express) {
       const suffix = p.pdfAssinado ? '_assinado' : '';
       const filename = `${p.tipo}_${p.numero.replace(/\//g, '-')}${suffix}.pdf`;
 
-      const result = await resend.emails.send({
-        from: EMAIL_FROM,
-        to,
-        subject: emailSubject,
-        html: wrapEmailHtml(emailBody.replace(/\n/g, '<br>')),
-        attachments: [{
-          filename,
-          content: pdfContent,
-        }],
-      });
+      const ok = await sendEmail(to, emailSubject, emailBody.replace(/\n/g, '<br>'), [{ filename, content: pdfContent }]);
 
-      if (result.error) return res.status(500).json({ message: "Erro ao enviar e-mail", error: result.error });
+      if (!ok) return res.status(500).json({ message: "Erro ao enviar e-mail" });
 
       // Marcar como enviado na timeline
       await storage.markProposalSent(req.params.id);
@@ -2346,9 +2390,9 @@ export async function registerRoutes(app: Express) {
       const fullLink = `${baseUrl}/assinar/${token}`;
 
       // Enviar email com o link se tiver cliEmail
-      if (proposal.cliEmail && RESEND_API_KEY) {
+      if (proposal.cliEmail && EMAIL_ENABLED) {
         const tipoLabel = proposal.tipo === 'contrato' ? 'Contrato' : proposal.tipo === 'orcamento' ? 'Orçamento' : proposal.tipo === 'oficio' ? 'Ofício' : proposal.tipo === 'relatorio' ? 'Relatório' : 'Proposta de Projeto';
-        await sendEmailViaResend(
+        await sendEmail(
           proposal.cliEmail,
           `Assinatura solicitada — ${tipoLabel} ${proposal.numero}`,
           `Prezado(a) ${proposal.cliNome},<br><br>O IDASAM solicita sua assinatura no documento <strong>${tipoLabel} nº ${proposal.numero}</strong> — ${proposal.titulo}.<br><br><a href="${fullLink}" style="display:inline-block;background:#1a5c38;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;">Assinar Documento</a><br><br>Este link expira em 7 dias.<br><br>Atenciosamente,<br>IDASAM`
@@ -2632,11 +2676,11 @@ export async function registerRoutes(app: Express) {
       <p style="font-size:12px;color:#999">Este e-mail foi enviado pelo sistema IDASAM. Caso não reconheça este contato, desconsidere esta mensagem.</p>
     `;
 
-    const ok = await sendEmailViaResend(stakeholder.email, 'IDASAM — Consentimento LGPD', htmlBody);
+    const ok = await sendEmail(stakeholder.email, 'IDASAM — Consentimento LGPD', htmlBody);
     if (ok) {
       res.json({ message: `E-mail enviado para ${stakeholder.email}` });
     } else {
-      res.status(500).json({ message: "Erro ao enviar e-mail. Verifique a configuração do RESEND_API_KEY." });
+      res.status(500).json({ message: "Erro ao enviar e-mail. Verifique a configuração do provedor (SMTP_* ou RESEND_API_KEY)." });
     }
   });
 
@@ -2666,7 +2710,7 @@ export async function registerRoutes(app: Express) {
       `;
     }
 
-    const ok = await sendEmailViaResend(email, subject, htmlBody);
+    const ok = await sendEmail(email, subject, htmlBody);
     if (ok) {
       // Register interaction
       await storage.createCrmInteracao({
@@ -2678,7 +2722,7 @@ export async function registerRoutes(app: Express) {
       });
       res.json({ message: `E-mail enviado para ${email}` });
     } else {
-      res.status(500).json({ message: "Erro ao enviar e-mail. Verifique a configuração do RESEND_API_KEY." });
+      res.status(500).json({ message: "Erro ao enviar e-mail. Verifique a configuração do provedor (SMTP_* ou RESEND_API_KEY)." });
     }
   });
 

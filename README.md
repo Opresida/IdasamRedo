@@ -94,6 +94,15 @@ Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis (veja a se
 DATABASE_URL=postgresql://usuario:senha@host/banco
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=senha-segura
+# E-mail — escolha UM provedor:
+#   (a) SMTP agnóstico (Brevo, Mailjet, SMTP2GO, etc.) — recomendado:
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=login-da-conta@provedor.com
+SMTP_PASS=chave-smtp-do-provedor
+EMAIL_FROM=IDASAM <remetente-verificado@idasam.org>
+#   (b) OU Resend (usado como fallback se SMTP_HOST não estiver definido):
 RESEND_API_KEY=re_...
 STRIPE_SECRET_KEY=sk_...
 VITE_STRIPE_PUBLISHABLE_KEY=pk_...
@@ -126,8 +135,13 @@ O servidor estará disponível em `http://localhost:5000`.
 | `ADMIN_PASSWORD` | Senha do administrador principal | Sim |
 | `EDITOR_EMAIL` | E-mail de um editor secundário | Não |
 | `EDITOR_PASSWORD` | Senha do editor secundário | Não |
-| `RESEND_API_KEY` | Chave da API Resend para envio de e-mails | Recomendado |
-| `EMAIL_FROM` | Endereço de envio de e-mails (padrão: `IDASAM <onboarding@resend.dev>`) | Não |
+| `SMTP_HOST` | Host SMTP do provedor de e-mail (ex.: `smtp-relay.brevo.com`). Se definido, o SMTP tem prioridade sobre a Resend | Para SMTP |
+| `SMTP_PORT` | Porta SMTP (padrão `587` com STARTTLS; use `465` com SSL) | Não |
+| `SMTP_SECURE` | `true` para porta 465 (SSL), `false` para 587 (STARTTLS). Padrão `false` | Não |
+| `SMTP_USER` | Login/usuário SMTP (no Brevo, o e-mail de login da conta) | Para SMTP |
+| `SMTP_PASS` | Senha/chave SMTP do provedor | Para SMTP |
+| `RESEND_API_KEY` | Chave da API Resend — usada como **fallback** quando `SMTP_HOST` não está definido | Se não usar SMTP |
+| `EMAIL_FROM` | Remetente dos e-mails. **Deve ser um remetente verificado** no provedor escolhido (padrão: `IDASAM <onboarding@resend.dev>`) | Recomendado |
 | `STRIPE_SECRET_KEY` | Chave secreta do Stripe para pagamentos | Para doações |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Chave pública do Stripe (frontend) | Para doações |
 | `ANTHROPIC_API_KEY` | Chave da API Anthropic (Claude Sonnet 4.6) — usada pelo Importador de Projeto via PDF | Para importação de PDF |
@@ -179,7 +193,7 @@ O servidor estará disponível em `http://localhost:5000`.
 ## Integrações Externas
 
 - **Stripe** — Processamento de doações em dólar (USD) e euro (EUR)
-- **Resend** — Envio transacional e de campanhas de e-mail
+- **E-mail (agnóstico de provedor)** — Envio transacional e de campanhas via **SMTP** (nodemailer) com qualquer provedor (Brevo, Mailjet, SMTP2GO, etc.) ou via **Resend** como fallback. Basta configurar as variáveis no `.env` — sem mudar código
 - **Anthropic Claude Sonnet 4.6** — Importação automatizada de propostas de projeto em PDF
 - **Neon Database** — Banco de dados PostgreSQL serverless (inclui armazenamento de arquivos como base64/bytea)
 
