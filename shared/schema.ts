@@ -307,6 +307,7 @@ export const emailTemplates = pgTable("email_templates", {
   subject: text("subject").notNull(),
   body: text("body").notNull(),
   trigger: text("trigger").notNull().default("manual"),
+  courseId: uuid("course_id").references(() => courses.id), // gatilho course_signup direcionado a um curso; null = todos
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
@@ -315,6 +316,7 @@ export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit
   subject: z.string().min(1, "Assunto é obrigatório"),
   body: z.string().min(1, "Corpo é obrigatório"),
   trigger: z.enum(EMAIL_TRIGGER_TYPES).default("manual"),
+  courseId: z.string().uuid().optional().nullable(),
 });
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
@@ -348,6 +350,7 @@ export const customHtmlTemplates = pgTable("custom_html_templates", {
   htmlContent: text("html_content").notNull(),
   campaignIds: text("campaign_ids").array(),
   triggerType: text("trigger_type").default("manual"),
+  courseId: uuid("course_id").references(() => courses.id), // gatilho course_signup direcionado a um curso; null = todos
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 
@@ -356,6 +359,7 @@ export const insertCustomHtmlTemplateSchema = createInsertSchema(customHtmlTempl
   htmlContent: z.string().min(1, "Conteúdo HTML é obrigatório"),
   campaignIds: z.array(z.string()).optional().nullable(),
   triggerType: z.enum(EMAIL_TRIGGER_TYPES).optional().default("manual"),
+  courseId: z.string().uuid().optional().nullable(),
 });
 export type InsertCustomHtmlTemplate = z.infer<typeof insertCustomHtmlTemplateSchema>;
 export type CustomHtmlTemplate = typeof customHtmlTemplates.$inferSelect;

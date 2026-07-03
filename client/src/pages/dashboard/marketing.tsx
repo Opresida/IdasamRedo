@@ -550,6 +550,7 @@ const templateFormSchema = z.object({
   subject: z.string().min(1, 'Assunto é obrigatório'),
   body: z.string().min(1, 'Corpo é obrigatório'),
   trigger: z.enum(EMAIL_TRIGGER_TYPES),
+  courseId: z.string().optional().nullable(),
 });
 type TemplateFormData = z.infer<typeof templateFormSchema>;
 
@@ -571,18 +572,23 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
     enabled: !!adminToken,
   });
 
+  const { data: courses = [] } = useQuery<{ id: string; title: string }[]>({
+    queryKey: ['/api/courses'],
+    enabled: !!adminToken,
+  });
+
   const form = useForm<TemplateFormData>({
     resolver: zodResolver(templateFormSchema),
-    defaultValues: { name: '', subject: '', body: '', trigger: 'manual' },
+    defaultValues: { name: '', subject: '', body: '', trigger: 'manual', courseId: null },
   });
 
   React.useEffect(() => {
     if (sheetOpen) {
       if (editingTemplate) {
-        form.reset({ name: editingTemplate.name, subject: editingTemplate.subject, body: editingTemplate.body, trigger: (EMAIL_TRIGGER_TYPES as ReadonlyArray<string>).includes(editingTemplate.trigger) ? (editingTemplate.trigger as EmailTriggerType) : 'manual' });
+        form.reset({ name: editingTemplate.name, subject: editingTemplate.subject, body: editingTemplate.body, trigger: (EMAIL_TRIGGER_TYPES as ReadonlyArray<string>).includes(editingTemplate.trigger) ? (editingTemplate.trigger as EmailTriggerType) : 'manual', courseId: editingTemplate.courseId ?? null });
         setPreviewMd(editingTemplate.body);
       } else {
-        form.reset({ name: '', subject: '', body: '', trigger: 'manual' });
+        form.reset({ name: '', subject: '', body: '', trigger: 'manual', courseId: null });
         setPreviewMd('');
         setPreview('');
       }
@@ -605,7 +611,7 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, courseId: data.trigger === 'course_signup' ? (data.courseId ?? null) : null }),
       });
       if (!res.ok) throw new Error('Erro');
       return res.json();
@@ -729,6 +735,27 @@ function TemplatesTab({ adminToken }: { adminToken: string }) {
                   )} />
                 </div>
 
+                {form.watch('trigger') === 'course_signup' && (
+                  <FormField control={form.control} name="courseId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Curso direcionado</FormLabel>
+                      <Select onValueChange={(v) => field.onChange(v === '__all__' ? null : v)} value={field.value ?? '__all__'}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="__all__">Todos os cursos (coringa)</SelectItem>
+                          {courses.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-400 mt-1">Este e-mail dispara ao se matricular no curso escolhido. "Todos os cursos" vale como padrão; um template específico do curso tem prioridade.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="body" render={({ field }) => (
                     <FormItem className="flex flex-col">
@@ -777,6 +804,7 @@ const htmlTemplateFormSchema = z.object({
   htmlContent: z.string().min(1, 'Conteúdo HTML é obrigatório'),
   campaignIds: z.array(z.string()).optional().nullable(),
   triggerType: z.enum(EMAIL_TRIGGER_TYPES).optional(),
+  courseId: z.string().optional().nullable(),
 });
 type HtmlTemplateFormData = z.infer<typeof htmlTemplateFormSchema>;
 
@@ -810,9 +838,14 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
     enabled: !!adminToken,
   });
 
+  const { data: courses = [] } = useQuery<{ id: string; title: string }[]>({
+    queryKey: ['/api/courses'],
+    enabled: !!adminToken,
+  });
+
   const form = useForm<HtmlTemplateFormData>({
     resolver: zodResolver(htmlTemplateFormSchema),
-    defaultValues: { name: '', htmlContent: '', triggerType: 'manual' },
+    defaultValues: { name: '', htmlContent: '', triggerType: 'manual', courseId: null },
   });
 
   React.useEffect(() => {
@@ -823,11 +856,12 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
           htmlContent: editingTemplate.htmlContent,
           campaignIds: editingTemplate.campaignIds ?? [],
           triggerType: (EMAIL_TRIGGER_TYPES as ReadonlyArray<string>).includes(editingTemplate.triggerType ?? '') ? (editingTemplate.triggerType as EmailTriggerType) : 'manual',
+          courseId: editingTemplate.courseId ?? null,
         });
         setPreviewHtml(editingTemplate.htmlContent);
         setSelectedCampaignIds(editingTemplate.campaignIds ?? []);
       } else {
-        form.reset({ name: '', htmlContent: '', campaignIds: [], triggerType: 'manual' });
+        form.reset({ name: '', htmlContent: '', campaignIds: [], triggerType: 'manual', courseId: null });
         setPreviewHtml('');
         setSelectedCampaignIds([]);
       }
@@ -842,7 +876,7 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
-        body: JSON.stringify({ ...data, campaignIds: selectedCampaignIds }),
+        body: JSON.stringify({ ...data, campaignIds: selectedCampaignIds, courseId: data.triggerType === 'course_signup' ? (data.courseId ?? null) : null }),
       });
       if (!res.ok) throw new Error('Erro');
       return res.json();
@@ -1007,6 +1041,26 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
                       <FormMessage />
                     </FormItem>
                   )} />
+                  {form.watch('triggerType') === 'course_signup' && (
+                    <FormField control={form.control} name="courseId" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Curso direcionado</FormLabel>
+                        <Select onValueChange={(v) => field.onChange(v === '__all__' ? null : v)} value={field.value ?? '__all__'}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="__all__">Todos os cursos (coringa)</SelectItem>
+                            {courses.map(c => (
+                              <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-400 mt-1">Dispara ao se matricular no curso escolhido. "Todos os cursos" vale como padrão; um template específico do curso tem prioridade.</p>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
                   <div>
                     <p className="text-sm font-medium text-gray-700 mb-2">Campanhas Associadas <span className="text-gray-400 font-normal text-xs">(opcional)</span></p>
                     {campaigns.length === 0 ? (

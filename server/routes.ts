@@ -974,19 +974,20 @@ export async function registerRoutes(app: Express) {
             nome: enrollment.fullName ?? enrollment.email,
             curso: course.title,
           };
+          // Direcionamento por curso: prefere o template específico do curso;
+          // se não houver, usa um template "coringa" (courseId nulo = todos os cursos).
           const mdTemplates = await storage.getEmailTemplatesByTrigger("course_signup");
-          if (mdTemplates.length > 0) {
-            const tpl = mdTemplates[0];
-            const rendered = renderTemplate(tpl.body, vars);
+          const mdTpl = mdTemplates.find((t) => t.courseId === course.id) ?? mdTemplates.find((t) => !t.courseId);
+          if (mdTpl) {
+            const rendered = renderTemplate(mdTpl.body, vars);
             const html = await markdownToHtml(rendered);
-            await sendEmail(enrollment.email, tpl.subject, html);
+            await sendEmail(enrollment.email, mdTpl.subject, html);
           }
           const htmlTemplates = await storage.getCustomHtmlTemplatesByTrigger("course_signup");
-          if (htmlTemplates.length > 0) {
-            const htmlTpl = htmlTemplates[0];
+          const htmlTpl = htmlTemplates.find((t) => t.courseId === course.id) ?? htmlTemplates.find((t) => !t.courseId);
+          if (htmlTpl) {
             const rendered = renderTemplate(htmlTpl.htmlContent, vars);
-            const subject = htmlTpl.name;
-            await sendEmail(enrollment.email, subject, rendered);
+            await sendEmail(enrollment.email, htmlTpl.name, rendered);
           }
         } catch (emailErr) {
           console.error("Error sending course_signup email:", emailErr);
