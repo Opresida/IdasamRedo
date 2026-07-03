@@ -1796,9 +1796,14 @@ export async function registerRoutes(app: Express) {
         subject: emailSubject,
       });
 
+      // Base pública para o pixel de rastreio de abertura. Prioriza APP_URL / domínio
+      // do Replit; se nada estiver setado, cai no host da própria requisição (mesmo
+      // padrão dos links de assinatura). Só é rastreável se a base for acessível pela
+      // internet — envios a partir de localhost não conseguem registrar abertura.
       const appBaseUrl = process.env.APP_URL
         || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null)
-        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null);
+        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null)
+        || `${req.protocol}://${req.get('host')}`;
 
       for (const lead of leads) {
         let bodyWithTracking = htmlBody;

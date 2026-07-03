@@ -45,6 +45,7 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 - **Fallback Resend:** sem `SMTP_HOST`, usa `RESEND_API_KEY` (comportamento anterior preservado)
 - `EMAIL_FROM` deve ser um **remetente verificado** no provedor escolhido (senão o envio é rejeitado — não é paywall, é anti-spam). Trocar de provedor = editar `.env`, sem mexer no código
 - `EMAIL_ENABLED = !!(SMTP_HOST || RESEND_API_KEY)` gate os endpoints que exigem e-mail configurado
+- **Rastreio de abertura (analytics de campanha):** cada campanha injeta um pixel invisível `<img src="{base}/api/marketing/track/open/:campaignId/:leadId">`. A `{base}` vem de `APP_URL` → domínio do Replit → host da requisição. **Só rastreia se a base for pública** — campanhas disparadas de `localhost` não registram abertura (o cliente de e-mail não alcança `localhost`). Em produção defina `APP_URL=https://<domínio>` nos Secrets. Limite inerente: clientes que bloqueiam imagens não contam abertura (toda ferramenta de e-mail subestima)
 
 ### Cursos e Matrículas
 - Cursos têm status: `open` | `closed` | `coming_soon` | `completed`
