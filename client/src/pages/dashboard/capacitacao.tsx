@@ -316,6 +316,7 @@ function EnrollmentFormDialog({
     onSuccess: () => {
       toast({ title: isEditing ? 'Aluno atualizado!' : 'Aluno adicionado!', description: isEditing ? 'Os dados foram salvos.' : 'O aluno foi inscrito no curso.' });
       qc.invalidateQueries({ queryKey: ['/api/enrollments/course', courseId] });
+      qc.invalidateQueries({ queryKey: ['/api/courses'] });
       onClose();
     },
     onError: (err: unknown) => {
@@ -405,6 +406,7 @@ function DeleteEnrollmentDialog({
     onSuccess: () => {
       toast({ title: 'Aluno excluído', description: `"${enrollment?.fullName}" foi removido.` });
       qc.invalidateQueries({ queryKey: ['/api/enrollments/course', courseId] });
+      qc.invalidateQueries({ queryKey: ['/api/courses'] });
       onClose();
     },
     onError: () => {
@@ -459,6 +461,8 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
   const [sendingEmail, setSendingEmail] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const hasCertConfig = !!(course.certTemplate && course.certBlockConfig);
+  // Todos os inscritos já têm certificado emitido → não mostrar "Disparar Certificados"
+  const allCertsSent = course.enrolledCount > 0 && course.certifiedCount >= course.enrolledCount;
 
   const { data: emailTemplates = [] } = useQuery<{ id: string; name: string; subject: string; trigger?: string }[]>({
     queryKey: ['/api/marketing/templates', 'course_notification_manual'],
@@ -539,6 +543,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       if (!res.ok) throw new Error('Upload failed');
       toast({ title: 'Certificado enviado!', description: 'PDF carregado com sucesso.' });
       qc.invalidateQueries({ queryKey: ['/api/enrollments/course', course.id] });
+      qc.invalidateQueries({ queryKey: ['/api/courses'] });
     } catch {
       toast({ title: 'Erro', description: 'Falha ao enviar o certificado.', variant: 'destructive' });
     } finally {
@@ -601,6 +606,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
         return;
       }
       qc.invalidateQueries({ queryKey: ['/api/enrollments/course', course.id] });
+      qc.invalidateQueries({ queryKey: ['/api/courses'] });
       const skipped = result.skipped ?? 0;
       const errCount = result.errors?.length ?? 0;
       toast({
@@ -688,6 +694,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
         setDispatchProgress({ done, total: courseEnrollments.length });
       }
       qc.invalidateQueries({ queryKey: ['/api/enrollments/course', course.id] });
+      qc.invalidateQueries({ queryKey: ['/api/courses'] });
       if (errors === 0) {
         toast({ title: 'Certificados disparados!', description: `${courseEnrollments.length} certificado(s) enviados com sucesso.` });
       } else {
@@ -774,18 +781,25 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                 </Badge>
               )}
               {hasCertConfig && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs text-forest border-forest/40 hover:bg-forest/10"
-                  disabled={dispatching}
-                  onClick={handleDispatchFromCourse}
-                >
-                  <Upload className="w-3 h-3 mr-1" />
-                  {dispatching
-                    ? (dispatchProgress ? `${dispatchProgress.done}/${dispatchProgress.total}` : '...')
-                    : 'Disparar Certificados'}
-                </Button>
+                allCertsSent && !dispatching ? (
+                  <Badge variant="outline" className="h-8 gap-1 px-3 text-xs text-green-700 border-green-300 bg-green-50">
+                    <Check className="w-3 h-3" />
+                    Certificados enviados
+                  </Badge>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs text-forest border-forest/40 hover:bg-forest/10"
+                    disabled={dispatching}
+                    onClick={handleDispatchFromCourse}
+                  >
+                    <Upload className="w-3 h-3 mr-1" />
+                    {dispatching
+                      ? (dispatchProgress ? `${dispatchProgress.done}/${dispatchProgress.total}` : '...')
+                      : 'Disparar Certificados'}
+                  </Button>
+                )
               )}
               <Button
                 size="sm"

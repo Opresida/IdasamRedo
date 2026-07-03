@@ -263,7 +263,19 @@ export class DatabaseStorage implements IStorage {
       .from(enrollments)
       .groupBy(enrollments.courseId);
     const countMap = new Map(counts.map((c) => [c.courseId, c.count]));
-    return allCourses.map((c) => ({ ...c, enrolledCount: countMap.get(c.id) ?? 0 }));
+    // certifiedCount = inscritos que já têm certificado com arquivo (mesma regra do badge "Enviado")
+    const certCounts = await db
+      .select({ courseId: enrollments.courseId, count: sql<number>`count(*)::int` })
+      .from(certificates)
+      .innerJoin(enrollments, eq(certificates.enrollmentId, enrollments.id))
+      .where(sql`${certificates.fileData} is not null and ${certificates.fileData} <> ''`)
+      .groupBy(enrollments.courseId);
+    const certMap = new Map(certCounts.map((c) => [c.courseId, c.count]));
+    return allCourses.map((c) => ({
+      ...c,
+      enrolledCount: countMap.get(c.id) ?? 0,
+      certifiedCount: certMap.get(c.id) ?? 0,
+    }));
   }
 
   async getCourse(id: string): Promise<Course | undefined> {
@@ -278,7 +290,12 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(*)::int` })
       .from(enrollments)
       .where(eq(enrollments.courseId, id));
-    return { ...course, enrolledCount: row?.count ?? 0 };
+    const [certRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(certificates)
+      .innerJoin(enrollments, eq(certificates.enrollmentId, enrollments.id))
+      .where(sql`${enrollments.courseId} = ${id} and ${certificates.fileData} is not null and ${certificates.fileData} <> ''`);
+    return { ...course, enrolledCount: row?.count ?? 0, certifiedCount: certRow?.count ?? 0 };
   }
 
   async getCourseByAuthCode(code: string): Promise<Course | undefined> {

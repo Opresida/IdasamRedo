@@ -61,7 +61,7 @@ export const updateCourseSchema = insertCourseSchema.extend({
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
 export type UpdateCourse = z.infer<typeof updateCourseSchema>;
 export type Course = typeof courses.$inferSelect;
-export type CourseWithEnrollment = Course & { enrolledCount: number };
+export type CourseWithEnrollment = Course & { enrolledCount: number; certifiedCount: number };
 
 export const coursesRelations = relations(courses, ({ many }) => ({
   enrollments: many(enrollments),
