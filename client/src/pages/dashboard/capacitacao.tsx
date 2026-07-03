@@ -780,27 +780,27 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                   {course.enrolledCount} inscritos
                 </Badge>
               )}
-              {hasCertConfig && (
-                allCertsSent && !dispatching ? (
-                  <Badge variant="outline" className="h-8 gap-1 px-3 text-xs text-green-700 border-green-300 bg-green-50">
-                    <Check className="w-3 h-3" />
-                    Certificados enviados
-                  </Badge>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs text-forest border-forest/40 hover:bg-forest/10"
-                    disabled={dispatching}
-                    onClick={handleDispatchFromCourse}
-                  >
-                    <Upload className="w-3 h-3 mr-1" />
-                    {dispatching
-                      ? (dispatchProgress ? `${dispatchProgress.done}/${dispatchProgress.total}` : '...')
-                      : 'Disparar Certificados'}
-                  </Button>
-                )
-              )}
+              {/* Selo aparece sempre que todos têm certificado (mesmo sem template salvo);
+                  botão de disparo em lote só quando há template e ainda falta alguém */}
+              {allCertsSent && !dispatching ? (
+                <Badge variant="outline" className="h-8 gap-1 px-3 text-xs text-green-700 border-green-300 bg-green-50">
+                  <Check className="w-3 h-3" />
+                  Certificados enviados
+                </Badge>
+              ) : hasCertConfig ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs text-forest border-forest/40 hover:bg-forest/10"
+                  disabled={dispatching}
+                  onClick={handleDispatchFromCourse}
+                >
+                  <Upload className="w-3 h-3 mr-1" />
+                  {dispatching
+                    ? (dispatchProgress ? `${dispatchProgress.done}/${dispatchProgress.total}` : '...')
+                    : 'Disparar Certificados'}
+                </Button>
+              ) : null}
               <Button
                 size="sm"
                 variant="ghost"
