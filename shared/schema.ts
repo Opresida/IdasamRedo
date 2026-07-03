@@ -323,7 +323,7 @@ export type EmailTemplate = typeof emailTemplates.$inferSelect;
 
 export const emailCampaigns = pgTable("email_campaigns", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  audienceId: uuid("audience_id").notNull().references(() => emailAudiences.id),
+  audienceId: uuid("audience_id").references(() => emailAudiences.id), // null = campanha de automação (sem audiência)
   templateId: uuid("template_id").references(() => emailTemplates.id),
   customHtmlTemplateId: uuid("custom_html_template_id"),
   sentAt: timestamp("sent_at", { withTimezone: true }).default(sql`NOW()`),
@@ -334,7 +334,7 @@ export const emailCampaigns = pgTable("email_campaigns", {
 });
 
 export const insertEmailCampaignSchema = createInsertSchema(emailCampaigns).omit({ id: true, sentAt: true }).extend({
-  audienceId: z.string().min(1, "Audiência é obrigatória"),
+  audienceId: z.string().optional().nullable(),
   templateId: z.string().optional().nullable(),
   customHtmlTemplateId: z.string().optional().nullable(),
   errorCount: z.number().optional(),

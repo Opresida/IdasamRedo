@@ -121,6 +121,7 @@ export interface IStorage {
   getEmailCampaigns(): Promise<EmailCampaign[]>;
   getEmailCampaign(id: string): Promise<EmailCampaign | undefined>;
   createEmailCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign>;
+  recordAutomationSend(opts: { templateId?: string | null; customHtmlTemplateId?: string | null; subject: string }): Promise<EmailCampaign>;
   updateEmailCampaign(id: string, campaign: Partial<InsertEmailCampaign>): Promise<EmailCampaign | undefined>;
   deleteEmailCampaign(id: string): Promise<void>;
   trackCampaignOpen(campaignId: string, leadId: string): Promise<void>;
@@ -782,6 +783,30 @@ export class DatabaseStorage implements IStorage {
 
   async createEmailCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign> {
     const [created] = await db.insert(emailCampaigns).values(campaign).returning();
+    return created;
+  }
+
+  // Registra um envio de automação: agrega numa "campanha de automação" única por template
+  // (audienceId nulo). Se já existir, incrementa sentCount; senão cria. Retorna a campanha
+  // para que o pixel de rastreio use o id dela.
+  async recordAutomationSend(opts: { templateId?: string | null; customHtmlTemplateId?: string | null; subject: string }): Promise<EmailCampaign> {
+    const match = opts.customHtmlTemplateId
+      ? and(isNull(emailCampaigns.audienceId), eq(emailCampaigns.customHtmlTemplateId, opts.customHtmlTemplateId))
+      : and(isNull(emailCampaigns.audienceId), eq(emailCampaigns.templateId, opts.templateId!));
+    const [existing] = await db.select().from(emailCampaigns).where(match).limit(1);
+    if (existing) {
+      await db.execute(sql`UPDATE email_campaigns SET sent_count = sent_count + 1 WHERE id = ${existing.id}`);
+      return { ...existing, sentCount: existing.sentCount + 1 };
+    }
+    const [created] = await db.insert(emailCampaigns).values({
+      audienceId: null,
+      templateId: opts.templateId ?? null,
+      customHtmlTemplateId: opts.customHtmlTemplateId ?? null,
+      subject: opts.subject,
+      sentCount: 1,
+      errorCount: 0,
+      openCount: 0,
+    }).returning();
     return created;
   }
 

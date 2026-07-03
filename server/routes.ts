@@ -974,20 +974,31 @@ export async function registerRoutes(app: Express) {
             nome: enrollment.fullName ?? enrollment.email,
             curso: course.title,
           };
+          // Base pública para o pixel de rastreio de abertura das automações.
+          const appBaseUrl = process.env.APP_URL
+            || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null)
+            || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null)
+            || `${req.protocol}://${req.get('host')}`;
+          const trackingPixel = (campaignId: string) =>
+            `<img src="${appBaseUrl}/api/marketing/track/open/${campaignId}/${enrollment.id}" width="1" height="1" style="display:none" alt="" />`;
+
           // Direcionamento por curso: prefere o template específico do curso;
           // se não houver, usa um template "coringa" (courseId nulo = todos os cursos).
+          // Cada envio de automação é contabilizado numa campanha de automação (Analytics).
           const mdTemplates = await storage.getEmailTemplatesByTrigger("course_signup");
           const mdTpl = mdTemplates.find((t) => t.courseId === course.id) ?? mdTemplates.find((t) => !t.courseId);
           if (mdTpl) {
+            const campaign = await storage.recordAutomationSend({ templateId: mdTpl.id, subject: mdTpl.subject });
             const rendered = renderTemplate(mdTpl.body, vars);
             const html = await markdownToHtml(rendered);
-            await sendEmail(enrollment.email, mdTpl.subject, html);
+            await sendEmail(enrollment.email, mdTpl.subject, html + trackingPixel(campaign.id));
           }
           const htmlTemplates = await storage.getCustomHtmlTemplatesByTrigger("course_signup");
           const htmlTpl = htmlTemplates.find((t) => t.courseId === course.id) ?? htmlTemplates.find((t) => !t.courseId);
           if (htmlTpl) {
+            const campaign = await storage.recordAutomationSend({ customHtmlTemplateId: htmlTpl.id, subject: htmlTpl.name });
             const rendered = renderTemplate(htmlTpl.htmlContent, vars);
-            await sendEmail(enrollment.email, htmlTpl.name, rendered);
+            await sendEmail(enrollment.email, htmlTpl.name, rendered + trackingPixel(campaign.id));
           }
         } catch (emailErr) {
           console.error("Error sending course_signup email:", emailErr);
@@ -1534,6 +1545,30 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Adiciona vários leads de uma vez (botão "Adicionar todos"); pula duplicados por e-mail.
+  app.post("/api/marketing/audiences/:id/leads/bulk", requireAdmin, async (req, res) => {
+    try {
+      const audienceId = req.params.id;
+      const incoming = Array.isArray(req.body?.leads) ? req.body.leads : [];
+      if (incoming.length === 0) return res.status(400).json({ message: "Nenhum lead informado" });
+      const existing = await storage.getAudienceLeads(audienceId);
+      const seen = new Set(existing.map((l) => (l.email ?? "").toLowerCase()));
+      let added = 0;
+      let skipped = 0;
+      for (const item of incoming) {
+        const parsed = insertAudienceLeadSchema.safeParse({ name: item?.name, email: item?.email, audienceId });
+        const emailKey = (parsed.success ? parsed.data.email ?? "" : "").toLowerCase();
+        if (!parsed.success || !emailKey || seen.has(emailKey)) { skipped++; continue; }
+        await storage.addAudienceLead(parsed.data);
+        seen.add(emailKey);
+        added++;
+      }
+      res.status(201).json({ added, skipped });
+    } catch {
+      res.status(500).json({ message: "Erro ao adicionar leads" });
+    }
+  });
+
   app.delete("/api/marketing/leads/:id", requireAdmin, async (req, res) => {
     try {
       await storage.removeAudienceLead(req.params.id);
@@ -1719,10 +1754,14 @@ export async function registerRoutes(app: Express) {
       const { campaignId, leadId } = req.params;
       const campaign = await storage.getEmailCampaign(campaignId);
       if (campaign) {
-        const leads = await storage.getAudienceLeads(campaign.audienceId);
-        const leadBelongs = leads.some(l => l.id === leadId);
-        if (leadBelongs) {
+        if (!campaign.audienceId) {
+          // Campanha de automação (sem audiência): leadId = id da matrícula, rastreia direto.
           await storage.trackCampaignOpen(campaignId, leadId);
+        } else {
+          const leads = await storage.getAudienceLeads(campaign.audienceId);
+          if (leads.some(l => l.id === leadId)) {
+            await storage.trackCampaignOpen(campaignId, leadId);
+          }
         }
       }
     } catch {

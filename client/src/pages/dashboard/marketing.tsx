@@ -204,6 +204,26 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
     onError: () => toast({ title: 'Erro ao adicionar lead', variant: 'destructive' }),
   });
 
+  const addAllLeads = useMutation({
+    mutationFn: async (leadsToAdd: { name: string; email: string }[]) => {
+      const res = await fetch(`/api/marketing/audiences/${selectedAudienceId}/leads/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ leads: leadsToAdd }),
+      });
+      if (!res.ok) throw new Error('Erro');
+      return res.json() as Promise<{ added: number; skipped: number }>;
+    },
+    onSuccess: (data) => {
+      toast({ title: 'Leads adicionados!', description: `${data.added} adicionado(s) · ${data.skipped} já na audiência` });
+      setSearchQuery('');
+      setDebouncedQuery('');
+      qc.invalidateQueries({ queryKey: ['/api/marketing/audiences', selectedAudienceId, 'leads'] });
+      qc.invalidateQueries({ queryKey: ['/api/marketing/audiences'] });
+    },
+    onError: () => toast({ title: 'Erro ao adicionar leads', variant: 'destructive' }),
+  });
+
   const removeLead = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/marketing/leads/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminToken}` } });
@@ -403,10 +423,22 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
                 )}
 
                 {/* Search results */}
-                {activeResults.length > 0 && (
+                {activeResults.length > 0 && (() => {
+                  const notAdded = activeResults.filter(r => !leads.some(l => l.email.toLowerCase() === r.email.toLowerCase()));
+                  return (
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="p-2 bg-gray-50 border-b border-gray-100">
+                    <div className="p-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
                       <p className="text-xs text-gray-500 font-medium">{activeResults.length} resultado{activeResults.length !== 1 ? 's' : ''} encontrado{activeResults.length !== 1 ? 's' : ''}</p>
+                      <Button
+                        size="sm"
+                        className="h-6 text-xs px-2 bg-forest hover:bg-forest/90 text-white shrink-0"
+                        disabled={!selectedAudienceId || notAdded.length === 0 || addAllLeads.isPending}
+                        onClick={() => addAllLeads.mutate(notAdded.map(r => ({ name: r.name, email: r.email })))}
+                        title={!selectedAudienceId ? 'Selecione uma audiência primeiro' : ''}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        {addAllLeads.isPending ? 'Adicionando...' : `Adicionar todos${notAdded.length > 0 ? ` (${notAdded.length})` : ''}`}
+                      </Button>
                     </div>
                     <div className="divide-y divide-gray-50 max-h-40 overflow-y-auto">
                       {activeResults.map((r, i) => {
@@ -430,7 +462,8 @@ function AudiencesTab({ adminToken }: { adminToken: string }) {
                       })}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {searchMode === 'text' && debouncedQuery.length > 1 && searchResults.length === 0 && (
                   <p className="text-xs text-gray-400 text-center py-2">Nenhum resultado para "{debouncedQuery}"</p>
@@ -1784,7 +1817,11 @@ function AnalyticsTab({ adminToken }: { adminToken: string }) {
                           <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
                             {c.sentAt ? new Date(c.sentAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                           </td>
-                          <td className="py-3 px-4 max-w-[140px] truncate">{audienceMap[c.audienceId] ?? c.audienceId.slice(0, 8)}</td>
+                          <td className="py-3 px-4 max-w-[140px] truncate">
+                            {c.audienceId
+                              ? (audienceMap[c.audienceId] ?? c.audienceId.slice(0, 8))
+                              : <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">⚡ Automação</Badge>}
+                          </td>
                           <td className="py-3 px-4 max-w-[180px] truncate text-gray-700">{displayLabel}</td>
                           <td className="py-3 px-4">
                             <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">{c.sentCount}</Badge>
