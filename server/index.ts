@@ -3,6 +3,9 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+// Atrás do proxy do Replit (e de qualquer 1 proxy reverso): confia no X-Forwarded-For
+// para o express-rate-limit identificar o cliente e para req.protocol/req.ip corretos.
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
