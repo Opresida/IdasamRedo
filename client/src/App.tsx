@@ -39,6 +39,7 @@ import TransparenciaPage from './pages/transparencia';
 import BioPage from './pages/bio';
 import TelegramFloat from '@/components/telegram-float';
 import CapacitacaoPage from '@/pages/capacitacao';
+import MatriculaPage from '@/pages/matricula';
 import MeuCertificadoPage from '@/pages/meu-certificado';
 
 function AppContent() {
@@ -141,6 +142,7 @@ function AppContent() {
           </ProtectedRoute>
         </Route>
         <Route path="/capacitacao" component={CapacitacaoPage} />
+        <Route path="/matricula/:courseId" component={MatriculaPage} />
         <Route path="/meu-certificado" component={MeuCertificadoPage} />
         <Route path="/doacao-real" component={DoacaoRealPage} />
         <Route path="/doacao-pix" component={DoacaoRealPage} />

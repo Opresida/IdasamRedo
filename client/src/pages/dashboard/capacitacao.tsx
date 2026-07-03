@@ -46,7 +46,7 @@ import fontkit from '@pdf-lib/fontkit';
 import { Progress } from '@/components/ui/progress';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import type { Course, Enrollment, CourseNotificationSubscription } from '@shared/schema';
+import type { Course, CourseWithEnrollment, Enrollment, CourseNotificationSubscription } from '@shared/schema';
 import { COURSE_STATUSES } from '@shared/schema';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -438,7 +438,7 @@ function DeleteEnrollmentDialog({
 }
 
 function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
-  course: Course;
+  course: CourseWithEnrollment;
   adminToken: string;
   onEdit: (course: Course) => void;
   onDelete: (course: Course) => void;
@@ -735,6 +735,21 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                   </Button>
                 </div>
               )}
+              <div className="flex items-center gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                <span className="text-xs text-gray-400">Link de matrícula:</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-5 gap-1 px-1.5 text-xs text-gray-400 hover:text-forest"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(`${window.location.origin}/matricula/${course.id}`);
+                    toast({ title: 'Link copiado!', description: 'Link de matrícula copiado para enviar aos interessados.' });
+                  }}
+                >
+                  <Clipboard className="w-3 h-3" /> Copiar
+                </Button>
+              </div>
             </div>
             <div className="flex items-center gap-2 ml-4 flex-wrap justify-end">
               <Badge className={`text-xs border ${STATUS_BADGE_CLASSES[course.status] ?? STATUS_BADGE_CLASSES.open}`}>
@@ -746,9 +761,16 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                   {enrollments.length} inscritos
                 </Badge>
               )}
-              {course.vacancies && (
+              {course.vacancies != null ? (
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${course.enrolledCount >= course.vacancies ? 'border-red-300 text-red-600' : ''}`}
+                >
+                  {course.enrolledCount}/{course.vacancies} vagas
+                </Badge>
+              ) : (
                 <Badge variant="outline" className="text-xs">
-                  {course.vacancies} vagas
+                  {course.enrolledCount} inscritos
                 </Badge>
               )}
               {hasCertConfig && (
@@ -2314,7 +2336,7 @@ export default function DashboardCapacitacao() {
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'coming_soon' | 'completed'>('all');
 
-  const { data: courses = [], isLoading } = useQuery<Course[]>({
+  const { data: courses = [], isLoading } = useQuery<CourseWithEnrollment[]>({
     queryKey: ['/api/courses'],
   });
 

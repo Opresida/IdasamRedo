@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, newsletterSubscribers, financialAccounts, financialCategories, financialProjects, financialTransactions, portfolioProjects, type User, type InsertUser, type Course, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios, type NewsletterSubscriber, type InsertNewsletterSubscriber, type FinancialAccount, type InsertFinancialAccount, type FinancialCategory, type InsertFinancialCategory, type FinancialProject, type InsertFinancialProject, type FinancialTransaction, type InsertFinancialTransaction, type PortfolioProject, type InsertPortfolioProject, projectCategories, type ProjectCategoryRecord, type InsertProjectCategory } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, newsletterSubscribers, financialAccounts, financialCategories, financialProjects, financialTransactions, portfolioProjects, type User, type InsertUser, type Course, type CourseWithEnrollment, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios, type NewsletterSubscriber, type InsertNewsletterSubscriber, type FinancialAccount, type InsertFinancialAccount, type FinancialCategory, type InsertFinancialCategory, type FinancialProject, type InsertFinancialProject, type FinancialTransaction, type InsertFinancialTransaction, type PortfolioProject, type InsertPortfolioProject, projectCategories, type ProjectCategoryRecord, type InsertProjectCategory } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -45,8 +45,9 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
-  getCourses(): Promise<Course[]>;
+  getCourses(): Promise<CourseWithEnrollment[]>;
   getCourse(id: string): Promise<Course | undefined>;
+  getCourseWithCount(id: string): Promise<CourseWithEnrollment | undefined>;
   getCourseByAuthCode(code: string): Promise<Course | undefined>;
   createCourse(course: InsertCourse): Promise<Course>;
   updateCourse(id: string, course: Partial<InsertCourse>): Promise<Course | undefined>;
@@ -255,13 +256,29 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getCourses(): Promise<Course[]> {
-    return db.select().from(courses);
+  async getCourses(): Promise<CourseWithEnrollment[]> {
+    const allCourses = await db.select().from(courses);
+    const counts = await db
+      .select({ courseId: enrollments.courseId, count: sql<number>`count(*)::int` })
+      .from(enrollments)
+      .groupBy(enrollments.courseId);
+    const countMap = new Map(counts.map((c) => [c.courseId, c.count]));
+    return allCourses.map((c) => ({ ...c, enrolledCount: countMap.get(c.id) ?? 0 }));
   }
 
   async getCourse(id: string): Promise<Course | undefined> {
     const [course] = await db.select().from(courses).where(eq(courses.id, id));
     return course || undefined;
+  }
+
+  async getCourseWithCount(id: string): Promise<CourseWithEnrollment | undefined> {
+    const [course] = await db.select().from(courses).where(eq(courses.id, id));
+    if (!course) return undefined;
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(enrollments)
+      .where(eq(enrollments.courseId, id));
+    return { ...course, enrolledCount: row?.count ?? 0 };
   }
 
   async getCourseByAuthCode(code: string): Promise<Course | undefined> {

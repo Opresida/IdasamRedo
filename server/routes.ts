@@ -790,6 +790,22 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/courses/:id", async (req, res) => {
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id);
+      if (!isUuid) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      const course = await storage.getCourseWithCount(req.params.id);
+      if (!course) {
+        return res.status(404).json({ message: "Curso não encontrado" });
+      }
+      res.json(course);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar curso" });
+    }
+  });
+
   app.post("/api/courses", requireAdmin, async (req, res) => {
     try {
       const parsed = insertCourseSchema.safeParse(req.body);
@@ -885,6 +901,12 @@ export async function registerRoutes(app: Express) {
       }
       if (!isAdmin && course.status !== "open") {
         return res.status(403).json({ message: "Inscrições não estão abertas para este curso" });
+      }
+      if (!isAdmin && course.vacancies != null) {
+        const existing = await storage.getEnrollmentsByCourse(course.id);
+        if (existing.length >= course.vacancies) {
+          return res.status(409).json({ message: "Vagas esgotadas para este curso" });
+        }
       }
       const enrollment = await storage.createEnrollment(parsed.data);
       res.status(201).json(enrollment);

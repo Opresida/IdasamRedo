@@ -43,6 +43,9 @@ Regras, stack e lógica de negócio. Leia antes de fazer qualquer alteração.
 - Cursos têm status: `open` | `closed` | `coming_soon` | `completed`
 - Cada curso pode ter código de autenticação (`authCode`) para validação de certificados
 - Inscrições em `/capacitacao` — públicas, sem login
+- **Link de matrícula por curso** — cada curso tem uma página pública dedicada `/matricula/:courseId` que usa o `id` (UUID) do próprio curso, **sem slug nem coluna nova**. O dashboard (`/dashboard/capacitacao`) tem botão "Copiar link de matrícula" por curso para enviar aos interessados. A página mostra as vagas restantes e abre o **mesmo** modal + tela de confirmação de `/capacitacao` — ambos usam o componente compartilhado `client/src/components/enrollment-dialog.tsx`
+- **Contagem de vagas (preenchidas × disponíveis)** — `enrolledCount` é **derivado em tempo real, não é coluna**: `storage.getCourses()` e `storage.getCourseWithCount(id)` contam `enrollments` por curso (`count(*)::int`). Exposto no público via `GET /api/courses` (lista, um count agrupado) e `GET /api/courses/:id` (curso único). O card de `/capacitacao` e a página de matrícula mostram "preenchidas/total · N restantes"; quando `vacancies` é nulo (= ilimitado), mostram "N inscritos". Tipo compartilhado: `CourseWithEnrollment = Course & { enrolledCount: number }`
+- **Trava de lotação** — `POST /api/enrollments` retorna **409 "Vagas esgotadas para este curso"** quando os inscritos atingem `vacancies`, exceto para admin (Bearer token válido). Curso sem `vacancies` nunca trava. Enforcement no backend (não só na tela) — funciona inclusive pelo link direto
 - Certificados gerados em lote pelo admin ou consultados publicamente via `authCode`
 
 ### Assinatura Digital (Lei 14.063/2020)

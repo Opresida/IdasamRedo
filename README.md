@@ -35,7 +35,8 @@ O Instituto de Desenvolvimento Ambiental e Social da Amazônia (IDASAM) é uma o
 - **Página Inicial** (`/`) — Apresentação do instituto, missão, áreas de atuação e destaques
 - **Projetos** (`/projetos`) — Portfólio de projetos e iniciativas do IDASAM
 - **Notícias** (`/noticias`) — Blog com artigos categorizados, comentários e reações
-- **Capacitação** (`/capacitacao`) — Catálogo de cursos abertos, inscrições online e emissão de certificados
+- **Capacitação** (`/capacitacao`) — Catálogo de cursos com vagas **preenchidas × disponíveis**, inscrições online e emissão de certificados
+- **Matrícula por Link** (`/matricula/:courseId`) — Página de inscrição dedicada a um curso, acessível por link compartilhável gerado no painel; mostra as vagas restantes, abre o mesmo modal/confirmação de `/capacitacao` e trava quando o curso lota
 - **Meu Certificado** (`/meu-certificado`) — Consulta e download de certificados por código de autenticação
 - **Transparência** (`/transparencia`) — Dados de transparência pública da organização
 - **Doação** (`/doacao-usd`, `/doacao-eur`) — Fluxos de doação em USD e EUR via Stripe
@@ -43,7 +44,7 @@ O Instituto de Desenvolvimento Ambiental e Social da Amazônia (IDASAM) é uma o
 ### Painel Administrativo (protegido)
 - **Dashboard** (`/dashboard`) — Visão geral com métricas e resumo de atividades
 - **CRM** (`/dashboard/crm`) — Gestão de stakeholders (PJ, PF, Doadores, Órgãos Públicos, Pesquisadores), dados bancários, documentos, recibos, interações, envio de e-mail, PDF timbrado e consentimento LGPD
-- **Capacitação** (`/dashboard/capacitacao`) — Gestão de cursos, inscrições e emissão de certificados em lote
+- **Capacitação** (`/dashboard/capacitacao`) — Gestão de cursos, inscrições e emissão de certificados em lote, com botão **"Copiar link de matrícula"** por curso e contador de vagas preenchidas/total
 - **Marketing** (`/dashboard/marketing`) — Gerenciamento de audiências, templates de e-mail e campanhas com tracking de abertura
 - **Documentos** (`/dashboard/documentos`) — Suite Documental completa: contratos, orçamentos, ofícios, relatórios e projetos com assinatura digital (interna e externa), delegação de poderes e geração de PDF
   - **Importador de Proposta de Projeto via PDF (IA)** — upload de PDF em folha A4 em branco → Claude Sonnet 4.6 extrai título, responsável, organização, tabelas e imagens e preenche o formulário da aba "Projeto" automaticamente. Fluxo manual de digitação permanece inalterado; a importação é opcional. Tabelas grandes são quebradas em múltiplas páginas preservando o cabeçalho. Painel de saldo da API no modal: barra de progresso, alerta ≥70%/90%/100%, projeção de documentos restantes com base na média histórica de uso.
@@ -230,8 +231,8 @@ Browser (React + Wouter)
 | Tabela | Descrição |
 |--------|-----------|
 | `users` | Usuários do sistema |
-| `courses` | Cursos (título, instrutor, carga horária, datas, vagas, status) |
-| `enrollments` | Matrículas de usuários em cursos |
+| `courses` | Cursos (título, instrutor, carga horária, datas, vagas, status). Contagem de inscritos é **derivada** de `enrollments` (`enrolledCount`), não é coluna |
+| `enrollments` | Matrículas em cursos (inscrição pública em `/capacitacao` ou pelo link `/matricula/:courseId`) |
 | `certificates` | Certificados gerados por conclusão de curso |
 | `articles` | Artigos/notícias do blog institucional |
 | `email_campaigns` | Campanhas de e-mail marketing |
@@ -282,6 +283,7 @@ Browser (React + Wouter)
 - [x] Módulo de delegação de poderes (Art. 22 Estatuto) com Ato de Designação em PDF ✓ *2026-04-07*
 - [x] Validação de poderes na assinatura interna (cargo direto ou delegação ativa) ✓ *2026-04-07*
 - [x] Sistema de rascunhos editáveis para todos os tipos de documento ✓ *2026-04-07*
+- [x] Matrícula via link por curso (`/matricula/:courseId`) + contagem de vagas preenchidas × disponíveis no `/capacitacao` + trava de lotação no backend + botão "Copiar link" no dashboard (sem migração de schema) ✓ *2026-07-03*
 
 ### Pendente
 - [ ] Configurar STRIPE_SECRET_KEY e VITE_STRIPE_PUBLISHABLE_KEY para pagamentos

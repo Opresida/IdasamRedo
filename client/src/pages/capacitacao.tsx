@@ -37,7 +37,8 @@ import {
   ChevronDown, ChevronUp, AlignLeft, Users, ShieldCheck, ShieldX, Search,
   Star, Award, GraduationCap, Bell,
 } from 'lucide-react';
-import type { Course } from '@shared/schema';
+import type { Course, CourseWithEnrollment } from '@shared/schema';
+import EnrollmentDialog from '@/components/enrollment-dialog';
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Aberto',
@@ -232,20 +233,11 @@ function VerifySection() {
   );
 }
 
-const enrollmentSchema = z.object({
-  courseId: z.string().uuid(),
-  fullName: z.string().optional(),
-  cpf: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
-});
-
 const notificationSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('E-mail inválido'),
 });
 
-type EnrollmentForm = z.infer<typeof enrollmentSchema>;
 type NotificationForm = z.infer<typeof notificationSchema>;
 
 function formatDate(dateStr: string) {
@@ -254,10 +246,13 @@ function formatDate(dateStr: string) {
   return `${day}/${month}/${year}`;
 }
 
-function CourseCard({ course, onEnroll }: { course: Course; onEnroll: (c: Course) => void }) {
+function CourseCard({ course, onEnroll }: { course: CourseWithEnrollment; onEnroll: (c: CourseWithEnrollment) => void }) {
   const [expanded, setExpanded] = useState(false);
   const courseStatus = course.status ?? 'open';
-  const canEnroll = courseStatus === 'open';
+  const filled = course.enrolledCount ?? 0;
+  const available = course.vacancies != null ? Math.max(0, course.vacancies - filled) : null;
+  const isFull = available === 0;
+  const canEnroll = courseStatus === 'open' && !isFull;
 
   return (
     <Card className="flex flex-col h-full border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-forest/40 group">
@@ -270,10 +265,19 @@ function CourseCard({ course, onEnroll }: { course: Course; onEnroll: (c: Course
             <Badge className={`text-xs border ${STATUS_BADGE_CLASSES[courseStatus] ?? STATUS_BADGE_CLASSES.open}`}>
               {STATUS_LABELS[courseStatus] ?? 'Aberto'}
             </Badge>
-            {course.vacancies && (
+            {course.vacancies != null ? (
+              <Badge
+                variant="outline"
+                className={`text-xs ${isFull ? 'border-red-300 text-red-600' : 'border-forest/30 text-forest'}`}
+              >
+                <Users className="w-3 h-3 mr-1" />
+                {filled}/{course.vacancies} vagas
+                {isFull ? ' • esgotadas' : ` • ${available} restantes`}
+              </Badge>
+            ) : (
               <Badge variant="outline" className="text-xs border-forest/30 text-forest">
                 <Users className="w-3 h-3 mr-1" />
-                {course.vacancies} vagas
+                {filled} inscritos
               </Badge>
             )}
           </div>
@@ -342,6 +346,7 @@ function CourseCard({ course, onEnroll }: { course: Course; onEnroll: (c: Course
               disabled
             >
               <BookOpen className="w-4 h-4 mr-2" />
+              {courseStatus === 'open' && isFull && 'Vagas Esgotadas'}
               {courseStatus === 'closed' && 'Inscrições Encerradas'}
               {courseStatus === 'coming_soon' && 'Em Breve'}
               {courseStatus === 'completed' && 'Curso Concluído'}
@@ -798,12 +803,10 @@ function PartnersAndNotificationsSection() {
 }
 
 export default function CapacitacaoPage() {
-  const { toast } = useToast();
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [enrolled, setEnrolled] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<CourseWithEnrollment | null>(null);
   const [statusFilter, setStatusFilter] = useState<'open' | 'coming_soon' | 'completed'>('open');
 
-  const { data: courses = [], isLoading } = useQuery<Course[]>({
+  const { data: courses = [], isLoading } = useQuery<CourseWithEnrollment[]>({
     queryKey: ['/api/courses'],
   });
 
@@ -815,39 +818,8 @@ export default function CapacitacaoPage() {
 
   const filteredCourses = courses.filter((c) => (c.status ?? 'open') === statusFilter);
 
-  const form = useForm<EnrollmentForm>({
-    resolver: zodResolver(enrollmentSchema),
-    defaultValues: { courseId: '', fullName: '', cpf: '', phone: '', email: '' },
-  });
-
-  const mutation = useMutation({
-    mutationFn: (data: EnrollmentForm) => apiRequest('POST', '/api/enrollments', data),
-    onSuccess: () => {
-      setEnrolled(true);
-      toast({ title: 'Inscrição realizada!', description: 'Sua inscrição foi confirmada com sucesso.' });
-    },
-    onError: (error: Error) => {
-      // O backend envia o erro como "<status>: <corpo>". Para 409 (já matriculado),
-      // extraímos a mensagem específica para o aluno entender em vez de tentar de novo em loop.
-      let description = 'Não foi possível realizar a inscrição. Tente novamente.';
-      const match = error?.message?.match(/^(\d{3}):\s*([\s\S]*)$/);
-      if (match) {
-        const body = match[2];
-        try {
-          const parsed = JSON.parse(body);
-          if (parsed?.message) description = parsed.message;
-        } catch {
-          if (body) description = body;
-        }
-      }
-      toast({ title: 'Erro', description, variant: 'destructive' });
-    },
-  });
-
-  const openEnrollDialog = (course: Course) => {
+  const openEnrollDialog = (course: CourseWithEnrollment) => {
     setSelectedCourse(course);
-    setEnrolled(false);
-    form.reset({ courseId: course.id, fullName: '', cpf: '', phone: '', email: '' });
   };
 
   return (
@@ -953,103 +925,11 @@ export default function CapacitacaoPage() {
       <PartnersAndNotificationsSection />
 
       {/* Enrollment Dialog */}
-      <Dialog open={!!selectedCourse} onOpenChange={(open) => !open && setSelectedCourse(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-forest">
-              {enrolled ? 'Inscrição Confirmada!' : 'Inscrição no Curso'}
-            </DialogTitle>
-          </DialogHeader>
-
-          {enrolled ? (
-            <div className="flex flex-col items-center py-6 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Inscrição realizada com sucesso!</h3>
-              <p className="text-gray-600 text-sm mb-2">Você está inscrito em:</p>
-              <p className="font-medium text-forest mb-4">{selectedCourse?.title}</p>
-              <p className="text-sm text-gray-500">
-                Após a conclusão do curso, acesse{' '}
-                <a href="/meu-certificado" className="text-forest underline">Meu Certificado</a>{' '}
-                para baixar seu diploma.
-              </p>
-              <Button className="mt-6 bg-forest hover:bg-forest/90 text-white" onClick={() => setSelectedCourse(null)}>
-                Fechar
-              </Button>
-            </div>
-          ) : selectedCourse && (selectedCourse.status ?? 'open') !== 'open' ? (
-            <div className="flex flex-col items-center py-6 text-center">
-              <BookOpen className="w-12 h-12 text-gray-300 mb-4" />
-              <p className="font-medium text-gray-900 mb-1">{selectedCourse.title}</p>
-              <p className="text-sm text-gray-500 mt-2">
-                {(selectedCourse.status === 'closed') && 'As inscrições para este curso estão encerradas.'}
-                {(selectedCourse.status === 'coming_soon') && 'Este curso ainda não está disponível para inscrições.'}
-                {(selectedCourse.status === 'completed') && 'Este curso já foi concluído.'}
-              </p>
-              <Button className="mt-6" variant="outline" onClick={() => setSelectedCourse(null)}>
-                Fechar
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="text-sm text-gray-600 mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium text-forest mb-1">{selectedCourse?.title}</p>
-                {selectedCourse?.schedule && (
-                  <p className="text-xs text-gray-500">
-                    <Clock className="w-3 h-3 inline mr-1" />
-                    {selectedCourse.schedule}
-                  </p>
-                )}
-                {selectedCourse?.startDate && (
-                  <p className="text-xs text-gray-500">
-                    <Calendar className="w-3 h-3 inline mr-1" />
-                    {formatDate(selectedCourse.startDate)} a {formatDate(selectedCourse.endDate)}
-                  </p>
-                )}
-              </div>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
-                  <FormField control={form.control} name="fullName" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome Completo</FormLabel>
-                      <FormControl><Input placeholder="Seu nome completo" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="cpf" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CPF</FormLabel>
-                      <FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="phone" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone</FormLabel>
-                      <FormControl><Input placeholder="(92) 99999-9999" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="email" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>E-mail</FormLabel>
-                      <FormControl><Input type="email" placeholder="seu@email.com" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <div className="flex gap-3 pt-2">
-                    <Button type="button" variant="outline" className="flex-1" onClick={() => setSelectedCourse(null)}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" className="flex-1 bg-forest hover:bg-forest/90 text-white" disabled={mutation.isPending}>
-                      {mutation.isPending ? 'Inscrevendo...' : 'Confirmar Inscrição'}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <EnrollmentDialog
+        course={selectedCourse}
+        open={!!selectedCourse}
+        onOpenChange={(open) => !open && setSelectedCourse(null)}
+      />
 
       <VerifySection />
       <ShadcnblocksComFooter2 />
