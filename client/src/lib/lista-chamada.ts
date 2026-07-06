@@ -72,6 +72,7 @@ const STYLE = `
   thead { display: table-header-group; }
   tfoot { display: table-footer-group; }
   tfoot td { border: none; height: 16mm; padding: 0; }
+  .closing td { border: none; background: #fff; padding: 18px 6px 0; }
   .page-footer {
     position: fixed;
     left: 0; right: 0; bottom: 0;
@@ -135,16 +136,16 @@ export function buildListaChamadaHtml(course: ChamadaCurso, alunos: ChamadaAluno
     <thead><tr><th class="num">Nº</th><th>Nome Completo</th><th>CPF</th><th>Assinatura</th></tr></thead>
     <tbody>
 ${rows}
+      <tr class="closing"><td colspan="4">
+        <div class="foot">
+          <div class="sign"><div class="ln">Assinatura do(a) Instrutor(a)</div></div>
+          <div class="sign"><div class="ln">Coordenação IDASAM</div></div>
+        </div>
+        <div class="legend">Documento gerado para controle de frequência · ${ordenados.length} inscritos · Carga horária total de ${course.workload}h · Imprimir uma via por dia de aula.</div>
+      </td></tr>
     </tbody>
     <tfoot><tr><td colspan="4"></td></tr></tfoot>
   </table>
-
-  <div class="foot">
-    <div class="sign"><div class="ln">Assinatura do(a) Instrutor(a)</div></div>
-    <div class="sign"><div class="ln">Coordenação IDASAM</div></div>
-  </div>
-
-  <div class="legend">Documento gerado para controle de frequência · ${ordenados.length} inscritos · Carga horária total de ${course.workload}h · Imprimir uma via por dia de aula.</div>
 
   <div class="page-footer">
     <div class="site">www.idasam.org</div>
