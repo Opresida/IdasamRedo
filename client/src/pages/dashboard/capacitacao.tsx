@@ -38,9 +38,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
-  Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, Check, Bell, Eye,
+  Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, ClipboardList, Check, Bell, Eye,
   AlignLeft, AlignCenter, AlignRight, Search, Mail,
 } from 'lucide-react';
+import { printListaChamada } from '@/lib/lista-chamada';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { Progress } from '@/components/ui/progress';
@@ -456,6 +457,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
   const [importing, setImporting] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [dispatchProgress, setDispatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [generatingList, setGeneratingList] = useState(false);
   const [emailDialogTarget, setEmailDialogTarget] = useState<'turma' | EnrollmentWithCert | null>(null);
   const [emailTemplateId, setEmailTemplateId] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -618,6 +620,23 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
     } finally {
       setImporting(false);
       if (csvInputRef.current) csvInputRef.current.value = '';
+    }
+  };
+
+  const handleListaChamada = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setGeneratingList(true);
+    try {
+      const alunos = await fetchEnrollmentsWithCerts(course.id, adminToken);
+      if (alunos.length === 0) {
+        toast({ title: 'Nenhum aluno inscrito neste curso', variant: 'destructive' });
+        return;
+      }
+      printListaChamada(course, alunos);
+    } catch {
+      toast({ title: 'Erro ao gerar a lista de chamada', variant: 'destructive' });
+    } finally {
+      setGeneratingList(false);
     }
   };
 
@@ -801,6 +820,17 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                     : 'Disparar Certificados'}
                 </Button>
               ) : null}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs text-forest border-forest/40 hover:bg-forest/10"
+                disabled={generatingList}
+                onClick={handleListaChamada}
+                title="Gerar lista de chamada (presença) deste curso"
+              >
+                <ClipboardList className="w-3 h-3 mr-1" />
+                {generatingList ? 'Gerando...' : 'Lista de Chamada'}
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
