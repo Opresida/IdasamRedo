@@ -1791,6 +1791,16 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Capacitação: indicadores consolidados (sub-aba Analytics)
+  app.get("/api/capacitacao/analytics", requireAdmin, async (_req, res) => {
+    try {
+      const data = await storage.getCapacitacaoAnalytics();
+      res.json(data);
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar analytics da capacitação" });
+    }
+  });
+
   // Marketing: Send campaign
   app.post("/api/marketing/send", requireAdmin, async (req, res) => {
     try {

@@ -74,6 +74,7 @@ export const enrollments = pgTable("enrollments", {
   cpf: text("cpf"),
   phone: text("phone"),
   email: text("email"),
+  company: text("company"), // empresa de origem do inscrito (opcional) — filtro/analytics PD&i
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`NOW()`),
 });
 

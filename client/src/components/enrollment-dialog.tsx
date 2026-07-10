@@ -19,9 +19,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Calendar, Clock, CheckCircle, BookOpen } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, BookOpen, HelpCircle } from 'lucide-react';
 import type { Course, CourseWithEnrollment } from '@shared/schema';
 
 const enrollmentSchema = z.object({
@@ -30,6 +31,7 @@ const enrollmentSchema = z.object({
   cpf: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  company: z.string().optional(),
 });
 
 type EnrollmentForm = z.infer<typeof enrollmentSchema>;
@@ -52,14 +54,14 @@ export default function EnrollmentDialog({ course, open, onOpenChange }: Enrollm
 
   const form = useForm<EnrollmentForm>({
     resolver: zodResolver(enrollmentSchema),
-    defaultValues: { courseId: '', fullName: '', cpf: '', phone: '', email: '' },
+    defaultValues: { courseId: '', fullName: '', cpf: '', phone: '', email: '', company: '' },
   });
 
   // Reseta o formulário e a tela de confirmação sempre que o curso muda ou o modal reabre.
   useEffect(() => {
     if (open && course) {
       setEnrolled(false);
-      form.reset({ courseId: course.id, fullName: '', cpf: '', phone: '', email: '' });
+      form.reset({ courseId: course.id, fullName: '', cpf: '', phone: '', email: '', company: '' });
     }
   }, [open, course?.id]);
 
@@ -173,6 +175,25 @@ export default function EnrollmentDialog({ course, open, onOpenChange }: Enrollm
                   <FormItem>
                     <FormLabel>E-mail</FormLabel>
                     <FormControl><Input type="email" placeholder="seu@email.com" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="company" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1.5">
+                      Empresa <span className="text-xs font-normal text-gray-400">(opcional)</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-gray-400 hover:text-forest" aria-label="Ajuda sobre o campo Empresa">
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[240px] text-center">
+                          Esse campo é opcional, mas caso venha de alguma empresa, favor preencher o nome abaixo.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FormLabel>
+                    <FormControl><Input placeholder="Nome da empresa (se houver)" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

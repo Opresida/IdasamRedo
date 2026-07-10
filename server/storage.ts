@@ -40,7 +40,20 @@ function normalizeName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+export type CapacitacaoAnalytics = {
+  certificadosEmitidos: number;
+  alunosFormados: number;
+  cursosConcluidos: number;
+  totalCursos: number;
+  totalMatriculas: number;
+  matriculasComEmpresa: number;
+  matriculasSemEmpresa: number;
+  rankingCursos: { id: string; title: string; enrolledCount: number; certifiedCount: number; status: string }[];
+  rankingEmpresas: { empresa: string; count: number }[];
+};
+
 export interface IStorage {
+  getCapacitacaoAnalytics(): Promise<CapacitacaoAnalytics>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -297,6 +310,69 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(enrollments, eq(certificates.enrollmentId, enrollments.id))
       .where(sql`${enrollments.courseId} = ${id} and ${certificates.fileData} is not null and ${certificates.fileData} <> ''`);
     return { ...course, enrolledCount: row?.count ?? 0, certifiedCount: certRow?.count ?? 0 };
+  }
+
+  // Indicadores consolidados da Capacitação (sub-aba Analytics).
+  async getCapacitacaoAnalytics(): Promise<CapacitacaoAnalytics> {
+    const cursos = await this.getCourses(); // já traz enrolledCount, certifiedCount, status
+    const allEnrollments = await db.select().from(enrollments);
+
+    // Certificados emitidos = certificados com arquivo (mesma regra do certifiedCount)
+    const certificadosEmitidos = cursos.reduce((s, c) => s + c.certifiedCount, 0);
+
+    // IDs das inscrições que têm certificado com arquivo → para o distinct de formados
+    const certRows = await db
+      .select({ enrollmentId: certificates.enrollmentId })
+      .from(certificates)
+      .where(sql`${certificates.fileData} is not null and ${certificates.fileData} <> ''`);
+    const certifiedIds = new Set(certRows.map((r) => r.enrollmentId));
+
+    // Alunos formados = pessoas distintas (CPF → e-mail → nome como chave) entre os certificados
+    const formados = new Set<string>();
+    for (const e of allEnrollments) {
+      if (!certifiedIds.has(e.id)) continue;
+      const key = (e.cpf && normalizeIdentifier(e.cpf))
+        || (e.email && normalizeIdentifier(e.email))
+        || (e.fullName && normalizeName(e.fullName))
+        || e.id;
+      formados.add(key);
+    }
+    const alunosFormados = formados.size;
+
+    // Empresa: com × sem, e ranking por empresa
+    let matriculasComEmpresa = 0;
+    let matriculasSemEmpresa = 0;
+    const empresaCount = new Map<string, number>();
+    for (const e of allEnrollments) {
+      const emp = (e.company ?? '').trim();
+      if (emp) {
+        matriculasComEmpresa++;
+        empresaCount.set(emp, (empresaCount.get(emp) ?? 0) + 1);
+      } else {
+        matriculasSemEmpresa++;
+      }
+    }
+    const rankingEmpresas = Array.from(empresaCount.entries())
+      .map(([empresa, count]) => ({ empresa, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
+    const cursosConcluidos = cursos.filter((c) => c.status === 'completed').length;
+    const rankingCursos = [...cursos]
+      .sort((a, b) => b.enrolledCount - a.enrolledCount)
+      .map((c) => ({ id: c.id, title: c.title, enrolledCount: c.enrolledCount, certifiedCount: c.certifiedCount, status: c.status }));
+
+    return {
+      certificadosEmitidos,
+      alunosFormados,
+      cursosConcluidos,
+      totalCursos: cursos.length,
+      totalMatriculas: allEnrollments.length,
+      matriculasComEmpresa,
+      matriculasSemEmpresa,
+      rankingCursos,
+      rankingEmpresas,
+    };
   }
 
   async getCourseByAuthCode(code: string): Promise<Course | undefined> {

@@ -39,7 +39,7 @@ import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, ClipboardList, Check, Bell, Eye,
-  AlignLeft, AlignCenter, AlignRight, Search, Mail,
+  AlignLeft, AlignCenter, AlignRight, Search, Mail, BarChart3, Award, Building2, TrendingUp, Trophy,
 } from 'lucide-react';
 import { printListaChamada } from '@/lib/lista-chamada';
 import { PDFDocument, rgb } from 'pdf-lib';
@@ -256,6 +256,7 @@ const enrollmentFormSchema = z.object({
   cpf: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  company: z.string().optional(),
 });
 
 type EnrollmentFormData = z.infer<typeof enrollmentFormSchema>;
@@ -279,20 +280,21 @@ function EnrollmentFormDialog({
 
   const form = useForm<EnrollmentFormData>({
     resolver: zodResolver(enrollmentFormSchema),
-    defaultValues: { fullName: '', cpf: '', phone: '', email: '' },
+    defaultValues: { fullName: '', cpf: '', phone: '', email: '', company: '' },
   });
 
   React.useEffect(() => {
     if (open) {
       if (editingEnrollment) {
         form.reset({
-          fullName: editingEnrollment.fullName,
-          cpf: editingEnrollment.cpf,
-          phone: editingEnrollment.phone,
-          email: editingEnrollment.email,
+          fullName: editingEnrollment.fullName ?? '',
+          cpf: editingEnrollment.cpf ?? '',
+          phone: editingEnrollment.phone ?? '',
+          email: editingEnrollment.email ?? '',
+          company: editingEnrollment.company ?? '',
         });
       } else {
-        form.reset({ fullName: '', cpf: '', phone: '', email: '' });
+        form.reset({ fullName: '', cpf: '', phone: '', email: '', company: '' });
       }
     }
   }, [open, editingEnrollment]);
@@ -365,6 +367,13 @@ function EnrollmentFormDialog({
               <FormItem>
                 <FormLabel>E-mail *</FormLabel>
                 <FormControl><Input type="email" placeholder="aluno@email.com" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="company" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Empresa <span className="text-xs font-normal text-gray-400">(opcional)</span></FormLabel>
+                <FormControl><Input placeholder="Empresa de origem, se houver" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
@@ -554,11 +563,11 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
   };
 
   const handleExportCSV = () => {
-    const rows = [['nome', 'cpf', 'telefone', 'email']];
+    const rows = [['nome', 'cpf', 'telefone', 'email', 'empresa']];
     for (const e of enrollments) {
-      rows.push([e.fullName, e.cpf, e.phone, e.email]);
+      rows.push([e.fullName ?? '', e.cpf ?? '', e.phone ?? '', e.email ?? '', e.company ?? '']);
     }
-    const csv = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = rows.map((r) => r.map((c) => `"${(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -583,6 +592,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       const cpfIdx = header.indexOf('cpf');
       const phoneIdx = header.indexOf('telefone');
       const emailIdx = header.indexOf('email');
+      const empresaIdx = header.indexOf('empresa');
       if (nameIdx < 0 && cpfIdx < 0 && phoneIdx < 0 && emailIdx < 0) {
         toast({ title: 'Colunas inválidas', description: 'O CSV deve ter ao menos uma das colunas: nome, cpf, telefone, email.', variant: 'destructive' });
         return;
@@ -594,6 +604,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
           cpf: cpfIdx >= 0 ? (cols[cpfIdx] ?? '') : '',
           phone: phoneIdx >= 0 ? (cols[phoneIdx] ?? '') : '',
           email: emailIdx >= 0 ? (cols[emailIdx] ?? '') : '',
+          company: empresaIdx >= 0 ? (cols[empresaIdx] ?? '') : '',
         };
       }).filter((r) => r.fullName || r.cpf || r.email || r.phone);
 
@@ -939,6 +950,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                       <th className="text-left py-2 pr-4 font-medium text-gray-600">CPF</th>
                       <th className="text-left py-2 pr-4 font-medium text-gray-600">E-mail</th>
                       <th className="text-left py-2 pr-4 font-medium text-gray-600">Telefone</th>
+                      <th className="text-left py-2 pr-4 font-medium text-gray-600">Empresa</th>
                       <th className="text-left py-2 font-medium text-gray-600">Certificado</th>
                       <th className="text-left py-2 font-medium text-gray-600">Ações</th>
                     </tr>
@@ -946,7 +958,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                   <tbody>
                     {filteredEnrollments.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-4 text-center text-sm text-gray-500">
+                        <td colSpan={7} className="py-4 text-center text-sm text-gray-500">
                           Nenhum aluno encontrado para "{searchTerm}".
                         </td>
                       </tr>
@@ -956,6 +968,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                         <td className="py-2 pr-4 font-mono text-xs">{e.cpf}</td>
                         <td className="py-2 pr-4">{e.email}</td>
                         <td className="py-2 pr-4">{e.phone}</td>
+                        <td className="py-2 pr-4 text-gray-600">{e.company || <span className="text-gray-300">—</span>}</td>
                         <td className="py-2 pr-4">
                           {e.hasCertificate ? (
                             <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Enviado</Badge>
@@ -2372,9 +2385,145 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
   );
 }
 
+type CapAnalytics = {
+  certificadosEmitidos: number;
+  alunosFormados: number;
+  cursosConcluidos: number;
+  totalCursos: number;
+  totalMatriculas: number;
+  matriculasComEmpresa: number;
+  matriculasSemEmpresa: number;
+  rankingCursos: { id: string; title: string; enrolledCount: number; certifiedCount: number; status: string }[];
+  rankingEmpresas: { empresa: string; count: number }[];
+};
+
+function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
+  const { data, isLoading } = useQuery<CapAnalytics>({
+    queryKey: ['/api/capacitacao/analytics'],
+    queryFn: async () => {
+      const res = await fetch('/api/capacitacao/analytics', { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>;
+  }
+  if (!data) {
+    return <div className="text-center py-16 text-gray-400">Erro ao carregar analytics</div>;
+  }
+
+  const pctEmpresa = data.totalMatriculas > 0 ? Math.round((data.matriculasComEmpresa / data.totalMatriculas) * 100) : 0;
+  const maxMatriculas = Math.max(1, ...data.rankingCursos.map((c) => c.enrolledCount));
+
+  const cards = [
+    { icon: Award, color: 'text-green-600', label: 'Certificados emitidos', value: data.certificadosEmitidos as number | string },
+    { icon: GraduationCap, color: 'text-forest', label: 'Alunos formados', value: data.alunosFormados },
+    { icon: Check, color: 'text-blue-600', label: 'Cursos concluídos', value: `${data.cursosConcluidos}/${data.totalCursos}` },
+    { icon: Users, color: 'text-purple-600', label: 'Total de matrículas', value: data.totalMatriculas },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Analytics da Capacitação</h2>
+        <p className="text-sm text-gray-500">Indicadores consolidados do programa</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map((c) => (
+          <Card key={c.label} className="border border-gray-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <c.icon className={`w-4 h-4 ${c.color}`} />
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{c.label}</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{typeof c.value === 'number' ? c.value.toLocaleString('pt-BR') : c.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="border border-gray-200">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Building2 className="w-4 h-4 text-forest" />
+            <p className="text-sm font-semibold text-gray-800">Origem das matrículas</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Vieram de empresa</p>
+              <p className="text-2xl font-bold text-forest">{data.matriculasComEmpresa.toLocaleString('pt-BR')} <span className="text-sm font-medium text-gray-400">({pctEmpresa}%)</span></p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Sem indicação de empresa</p>
+              <p className="text-2xl font-bold text-gray-700">{data.matriculasSemEmpresa.toLocaleString('pt-BR')}</p>
+            </div>
+          </div>
+          <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div className="bg-forest h-full" style={{ width: `${pctEmpresa}%` }} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="border border-gray-200">
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Trophy className="w-4 h-4 text-forest" /> Cursos com mais matrículas</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            {data.rankingCursos.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">Nenhum curso.</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {data.rankingCursos.map((c, i) => (
+                  <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="text-xs font-bold text-gray-400 w-5 text-center">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800 truncate">{c.title}</p>
+                      <div className="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="bg-forest h-full" style={{ width: `${Math.round((c.enrolledCount / maxMatriculas) * 100)}%` }} />
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-forest">{c.enrolledCount}</p>
+                      <p className="text-[10px] text-gray-400">{c.certifiedCount} cert.</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200">
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4 text-forest" /> Empresas de origem</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            {data.rankingEmpresas.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">Nenhum aluno indicou empresa ainda.</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {data.rankingEmpresas.map((e, i) => (
+                  <div key={e.empresa} className="flex items-center justify-between px-4 py-2.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xs font-bold text-gray-400 w-5 text-center">{i + 1}</span>
+                      <p className="text-sm text-gray-800 truncate">{e.empresa}</p>
+                    </div>
+                    <Badge className="bg-forest/10 text-forest border-forest/20 text-xs shrink-0">{e.count} aluno{e.count !== 1 ? 's' : ''}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardCapacitacao() {
   const { adminToken } = useAuth();
-  const [activeTab, setActiveTab] = useState<'cursos' | 'notificacoes' | 'gerar-pdfs'>('cursos');
+  const [activeTab, setActiveTab] = useState<'cursos' | 'notificacoes' | 'gerar-pdfs' | 'analytics'>('cursos');
   const [formOpen, setFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
@@ -2461,6 +2610,17 @@ export default function DashboardCapacitacao() {
           <FileDown className="w-4 h-4" />
           Gerar PDFs
         </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'analytics'
+              ? 'border-forest text-forest'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          Analytics
+        </button>
       </div>
 
       {activeTab === 'cursos' ? (
@@ -2518,6 +2678,8 @@ export default function DashboardCapacitacao() {
         </>
       ) : activeTab === 'notificacoes' ? (
         <NotificationsTab adminToken={adminToken} />
+      ) : activeTab === 'analytics' ? (
+        <CapacitacaoAnalyticsTab adminToken={adminToken} />
       ) : (
         <GerarPdfsTab adminToken={adminToken} courses={courses} />
       )}
