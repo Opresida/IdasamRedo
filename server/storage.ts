@@ -52,8 +52,22 @@ export type CapacitacaoAnalytics = {
   rankingEmpresas: { empresa: string; count: number }[];
 };
 
+export type AlunoFicha = {
+  fullName: string | null;
+  cpf: string | null;
+  phone: string | null;
+  email: string | null;
+  company: string | null;
+  totalInscricoes: number;
+  totalConcluidos: number;
+  totalCertificados: number;
+  cursos: { title: string; status: string; concluido: boolean }[];
+  naListaNotificacoes: boolean;
+};
+
 export interface IStorage {
   getCapacitacaoAnalytics(): Promise<CapacitacaoAnalytics>;
+  getAlunoFicha(identifier: string): Promise<AlunoFicha | null>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -372,6 +386,52 @@ export class DatabaseStorage implements IStorage {
       matriculasSemEmpresa,
       rankingCursos,
       rankingEmpresas,
+    };
+  }
+
+  // Ficha consolidada de um aluno (por CPF/e-mail): junta inscrições, certificados,
+  // cursos, empresa e presença na lista de Notificações.
+  async getAlunoFicha(identifier: string): Promise<AlunoFicha | null> {
+    const enrolls = await this.getEnrollmentByIdentifier(identifier);
+    if (enrolls.length === 0) return null;
+
+    const certs = await this.getCertificatesByEnrollmentIds(enrolls.map((e) => e.id));
+    const certifiedIds = new Set(certs.filter((c) => !!c.fileData && c.fileData !== '').map((c) => c.enrollmentId));
+
+    const cursos = await this.getCourses();
+    const courseMap = new Map(cursos.map((c) => [c.id, c]));
+
+    // registro mais recente para os dados pessoais
+    const sorted = [...enrolls].sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+    const latest = sorted[0];
+    const withCompany = sorted.find((e) => e.company && e.company.trim());
+    const company = (withCompany?.company ?? latest.company) || null;
+
+    const cursosList = enrolls.map((e) => {
+      const c = courseMap.get(e.courseId);
+      return { title: c?.title ?? 'Curso removido', status: c?.status ?? 'unknown', concluido: certifiedIds.has(e.id) };
+    });
+
+    // Notificações: casar por qualquer e-mail do aluno (normalizado)
+    const subs = await this.getCourseNotificationSubscriptions();
+    const emailSet = new Set(enrolls.map((e) => (e.email ? normalizeIdentifier(e.email) : '')).filter(Boolean));
+    const naListaNotificacoes = subs.some((s) => s.email && emailSet.has(normalizeIdentifier(s.email)));
+
+    return {
+      fullName: latest.fullName,
+      cpf: latest.cpf,
+      phone: latest.phone,
+      email: latest.email,
+      company,
+      totalInscricoes: enrolls.length,
+      totalConcluidos: certifiedIds.size,
+      totalCertificados: certifiedIds.size,
+      cursos: cursosList,
+      naListaNotificacoes,
     };
   }
 

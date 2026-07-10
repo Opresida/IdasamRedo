@@ -42,6 +42,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, Search, Mail, BarChart3, Award, Building2, TrendingUp, Trophy,
 } from 'lucide-react';
 import { printListaChamada } from '@/lib/lista-chamada';
+import { baixarRelatorioAnalytics, baixarFichaAluno } from '@/lib/relatorios-capacitacao';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { Progress } from '@/components/ui/progress';
@@ -460,6 +461,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [fichaId, setFichaId] = useState<string | null>(null);
   const [addingStudent, setAddingStudent] = useState(false);
   const [editingEnrollment, setEditingEnrollment] = useState<EnrollmentWithCert | null>(null);
   const [deletingEnrollment, setDeletingEnrollment] = useState<EnrollmentWithCert | null>(null);
@@ -1010,6 +1012,36 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                                 <Mail className="w-3 h-3" />
                               </Button>
                             )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-forest hover:text-forest hover:bg-forest/10"
+                              disabled={fichaId === e.id}
+                              title="Ficha do aluno (PDF)"
+                              onClick={async () => {
+                                const identifier = e.cpf || e.email || e.fullName;
+                                if (!identifier) {
+                                  toast({ title: 'Aluno sem CPF/e-mail para referência', variant: 'destructive' });
+                                  return;
+                                }
+                                setFichaId(e.id);
+                                try {
+                                  const res = await fetch(`/api/capacitacao/aluno?identifier=${encodeURIComponent(identifier)}`, {
+                                    headers: { Authorization: `Bearer ${adminToken}` },
+                                  });
+                                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                  const ficha = await res.json();
+                                  await baixarFichaAluno(ficha);
+                                } catch (err) {
+                                  console.error(err);
+                                  toast({ title: 'Erro ao gerar a ficha do aluno', variant: 'destructive' });
+                                } finally {
+                                  setFichaId(null);
+                                }
+                              }}
+                            >
+                              <FileDown className="w-3 h-3" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -2408,6 +2440,9 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
     enabled: !!adminToken,
   });
 
+  const { toast } = useToast();
+  const [baixando, setBaixando] = useState(false);
+
   if (isLoading) {
     return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>;
   }
@@ -2427,9 +2462,31 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">Analytics da Capacitação</h2>
-        <p className="text-sm text-gray-500">Indicadores consolidados do programa</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Analytics da Capacitação</h2>
+          <p className="text-sm text-gray-500">Indicadores consolidados do programa</p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={baixando}
+          className="text-forest border-forest/40 hover:bg-forest/10 shrink-0"
+          onClick={async () => {
+            setBaixando(true);
+            try {
+              await baixarRelatorioAnalytics(data);
+            } catch (err) {
+              console.error(err);
+              toast({ title: 'Erro ao gerar o relatório', variant: 'destructive' });
+            } finally {
+              setBaixando(false);
+            }
+          }}
+        >
+          <FileDown className="w-4 h-4 mr-1.5" />
+          {baixando ? 'Gerando…' : 'Baixar Relatório'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

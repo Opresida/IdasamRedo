@@ -1801,6 +1801,19 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Capacitação: ficha consolidada de um aluno (por CPF/e-mail)
+  app.get("/api/capacitacao/aluno", requireAdmin, async (req, res) => {
+    try {
+      const identifier = (req.query.identifier as string | undefined)?.trim();
+      if (!identifier) return res.status(400).json({ message: "Identificador (CPF/e-mail) é obrigatório" });
+      const ficha = await storage.getAlunoFicha(identifier);
+      if (!ficha) return res.status(404).json({ message: "Aluno não encontrado" });
+      res.json(ficha);
+    } catch {
+      res.status(500).json({ message: "Erro ao gerar ficha do aluno" });
+    }
+  });
+
   // Marketing: Send campaign
   app.post("/api/marketing/send", requireAdmin, async (req, res) => {
     try {

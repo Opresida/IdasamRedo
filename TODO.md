@@ -50,6 +50,7 @@ Lista de tarefas pendentes, melhorias planejadas e bugs conhecidos.
 
 ## Concluído
 
+- [x] **Relatórios em PDF no papel timbrado oficial (Capacitação)** — motor reaproveitável `client/src/lib/letterhead-pdf.ts` (cabeçalho/rodapé oficiais do Suite Documental via html2canvas+jsPDF; corpo em HTML com cores hex inline) + `client/src/lib/relatorios-capacitacao.ts`. (1) Botão **"Baixar Relatório"** na sub-aba Analytics → PDF dos indicadores + ranking de cursos + empresas no timbrado. (2) Botão **"Ficha do aluno"** (ícone FileDown) nas Ações de cada curso → PDF completo do aluno por CPF (dados pessoais, veio de empresa/qual, nº de inscrições/concluídos/certificados, se consta na lista de Notificações e seus cursos com status). Novo endpoint `GET /api/capacitacao/aluno?identifier=<cpf|email>` (`requireAdmin`) + `storage.getAlunoFicha`. Sem migração (só leitura/agregação). Typecheck sem erros novos ✓ *2026-07-10*
 - [x] Clone e setup local do repositório
 - [x] Instalação de dependências (`npm install`)
 - [x] Correção de compatibilidade Windows (cross-env + --env-file)
