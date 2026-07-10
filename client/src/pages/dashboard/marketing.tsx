@@ -861,7 +861,7 @@ function HtmlTemplatesTab({ adminToken }: { adminToken: string }) {
     enabled: !!adminToken,
   });
 
-  const { data: campaigns = [] } = useQuery<{ id: string; audienceId: string; templateId: string | null; customHtmlTemplateId?: string | null; sentAt?: string | null; sentCount: number }[]>({
+  const { data: campaigns = [] } = useQuery<{ id: string; audienceId: string | null; templateId: string | null; customHtmlTemplateId?: string | null; sentAt?: string | null; sentCount: number }[]>({
     queryKey: ['/api/marketing/campaigns'],
     queryFn: async () => {
       const res = await fetch('/api/marketing/campaigns', { headers: { Authorization: `Bearer ${adminToken}` } });
@@ -1630,7 +1630,9 @@ function CampaignTab({ adminToken }: { adminToken: string }) {
                   <tbody>
                     {[...campaigns].reverse().map(c => (
                       <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                        <td className="py-3 px-4">{audienceMap[c.audienceId] ?? c.audienceId.slice(0, 8)}</td>
+                        <td className="py-3 px-4">{c.audienceId
+                          ? (audienceMap[c.audienceId] ?? c.audienceId.slice(0, 8))
+                          : <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">⚡ Automação</Badge>}</td>
                         <td className="py-3 px-4">{c.templateId ? (templateMap[c.templateId] ?? c.templateId.slice(0, 8)) : <span className="text-gray-400 text-xs">—</span>}</td>
                         <td className="py-3 px-4">
                           {c.customHtmlTemplateId ? (
