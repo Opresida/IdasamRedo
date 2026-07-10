@@ -1203,8 +1203,8 @@ interface CampaignDetails {
   rosterAvailable: boolean;
   sentCount: number;
   openCount: number;
-  opened: { name: string; email: string; openedAt: string | null }[];
-  notOpened: { name: string; email: string }[];
+  opened: { id: string; name: string; email: string; openedAt: string | null }[];
+  notOpened: { id: string; name: string; email: string }[];
 }
 
 type WizardStep = 1 | 2 | 3 | 4;
@@ -1892,6 +1892,8 @@ function AnalyticsTab({ adminToken }: { adminToken: string }) {
 
 function CampaignDetailsModal({ campaign, adminToken, onClose }: { campaign: EmailCampaignRecord; adminToken: string; onClose: () => void }) {
   const { toast } = useToast();
+  const qc = useQueryClient();
+  const [confirmAll, setConfirmAll] = useState(false);
   const { data, isLoading, isError } = useQuery<CampaignDetails>({
     queryKey: ['/api/marketing/campaigns', campaign.id, 'details'],
     queryFn: async () => {
@@ -1901,6 +1903,23 @@ function CampaignDetailsModal({ campaign, adminToken, onClose }: { campaign: Ema
     },
     enabled: !!adminToken,
   });
+
+  const resend = useMutation({
+    mutationFn: async (leadIds: string[]) => {
+      const res = await apiRequest('POST', `/api/marketing/campaigns/${campaign.id}/resend`, { leadIds });
+      return res.json() as Promise<{ sent: number; failed: number; total: number }>;
+    },
+    onSuccess: (r) => {
+      setConfirmAll(false);
+      toast({ title: 'Reenvio concluído', description: `${r.sent} enviado(s)${r.failed ? `, ${r.failed} falha(s)` : ''}.` });
+      qc.invalidateQueries({ queryKey: ['/api/marketing/campaigns', campaign.id, 'details'] });
+      qc.invalidateQueries({ queryKey: ['/api/marketing/analytics'] });
+    },
+    onError: () => toast({ title: 'Erro no reenvio', description: 'Não foi possível reenviar. Tente novamente.', variant: 'destructive' }),
+  });
+  // Pendência: 1 alvo = reenvio individual (spinner na linha); vários = "enviar para todos".
+  const pendingLeadId = resend.isPending && resend.variables?.length === 1 ? resend.variables[0] : null;
+  const sendingAll = resend.isPending && (resend.variables?.length ?? 0) > 1;
 
   const copyEmails = (list: { email: string }[]) => {
     const txt = list.map(x => x.email).filter(e => e && e !== '—').join('; ');
@@ -1966,11 +1985,30 @@ function CampaignDetailsModal({ campaign, adminToken, onClose }: { campaign: Ema
                   </div>
                 </div>
 
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between bg-gray-50 px-3 py-2 border-b">
-                    <span className="text-sm font-medium text-gray-600 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Não abriram ({data.rosterAvailable ? data.notOpened.length : '—'})</span>
+                <div className="border rounded-lg overflow-hidden flex flex-col">
+                  <div className="bg-gray-50 px-3 py-2 border-b space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-600 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Não abriram ({data.rosterAvailable ? data.notOpened.length : '—'})</span>
+                      {data.rosterAvailable && data.notOpened.length > 0 && (
+                        <button type="button" onClick={() => copyEmails(data.notOpened)} className="text-xs text-gray-600 hover:underline">Copiar e-mails</button>
+                      )}
+                    </div>
                     {data.rosterAvailable && data.notOpened.length > 0 && (
-                      <button type="button" onClick={() => copyEmails(data.notOpened)} className="text-xs text-gray-600 hover:underline">Copiar e-mails</button>
+                      confirmAll ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600 flex-1">Reenviar para os {data.notOpened.length} que não abriram?</span>
+                          <Button size="sm" className="h-7 px-2 text-xs bg-forest hover:bg-forest/90 text-white" disabled={sendingAll}
+                            onClick={() => resend.mutate(data.notOpened.map(r => r.id))}>
+                            {sendingAll ? 'Enviando…' : 'Confirmar'}
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={sendingAll} onClick={() => setConfirmAll(false)}>Cancelar</Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs w-full border-forest/40 text-forest hover:bg-forest/10"
+                          onClick={() => setConfirmAll(true)}>
+                          <Send className="w-3 h-3 mr-1.5" /> Enviar para todos que não abriram ({data.notOpened.length})
+                        </Button>
+                      )
                     )}
                   </div>
                   <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
@@ -1980,10 +2018,18 @@ function CampaignDetailsModal({ campaign, adminToken, onClose }: { campaign: Ema
                       </div>
                     ) : data.notOpened.length === 0 ? (
                       <div className="px-3 py-6 text-center text-xs text-gray-400">Todos abriram 🎉</div>
-                    ) : data.notOpened.map((r, i) => (
-                      <div key={i} className="px-3 py-2 text-sm">
-                        <div className="text-gray-800 truncate">{r.name || '—'}</div>
-                        <div className="text-xs text-gray-500 truncate">{r.email}</div>
+                    ) : data.notOpened.map((r) => (
+                      <div key={r.id} className="px-3 py-2 text-sm flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-gray-800 truncate">{r.name || '—'}</div>
+                          <div className="text-xs text-gray-500 truncate">{r.email}</div>
+                        </div>
+                        <button type="button" title="Reenviar para este contato" disabled={resend.isPending}
+                          onClick={() => resend.mutate([r.id])}
+                          className="shrink-0 inline-flex items-center gap-1 text-xs text-forest hover:bg-forest/10 rounded px-1.5 py-1 disabled:opacity-50">
+                          {pendingLeadId === r.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                          Reenviar
+                        </button>
                       </div>
                     ))}
                   </div>

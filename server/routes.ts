@@ -1740,8 +1740,8 @@ export async function registerRoutes(app: Express) {
       const opens = await storage.getCampaignOpenEvents(campaign.id);
       const openedAtByLead = new Map(opens.map((o) => [o.leadId, o.openedAt]));
 
-      let opened: { name: string; email: string; openedAt: Date | null }[] = [];
-      let notOpened: { name: string; email: string }[] = [];
+      let opened: { id: string; name: string; email: string; openedAt: Date | null }[] = [];
+      let notOpened: { id: string; name: string; email: string }[] = [];
       const isAutomation = !campaign.audienceId;
       let rosterAvailable = false;
 
@@ -1751,9 +1751,9 @@ export async function registerRoutes(app: Express) {
         const leads = await storage.getAudienceLeads(campaign.audienceId);
         for (const l of leads) {
           if (openedAtByLead.has(l.id)) {
-            opened.push({ name: l.name, email: l.email, openedAt: openedAtByLead.get(l.id) ?? null });
+            opened.push({ id: l.id, name: l.name, email: l.email, openedAt: openedAtByLead.get(l.id) ?? null });
           } else {
-            notOpened.push({ name: l.name, email: l.email });
+            notOpened.push({ id: l.id, name: l.name, email: l.email });
           }
         }
       } else {
@@ -1762,7 +1762,7 @@ export async function registerRoutes(app: Express) {
         const enrollById = new Map(enrolls.map((e) => [e.id, e]));
         opened = opens.map((o) => {
           const e = enrollById.get(o.leadId);
-          return { name: e?.fullName ?? "—", email: e?.email ?? "—", openedAt: o.openedAt };
+          return { id: o.leadId, name: e?.fullName ?? "—", email: e?.email ?? "—", openedAt: o.openedAt };
         });
       }
 
@@ -1781,6 +1781,58 @@ export async function registerRoutes(app: Express) {
       });
     } catch {
       res.status(500).json({ message: "Erro ao buscar detalhes da campanha" });
+    }
+  });
+
+  // Marketing: reenviar a MESMA campanha para leads específicos (remarketing de quem não abriu).
+  // Reusa o mesmo campaignId no pixel → aberturas migram "não abriu" → "abriu" na própria campanha
+  // (o tracking é idempotente por (campaignId, leadId), então não há dupla contagem).
+  app.post("/api/marketing/campaigns/:id/resend", requireAdmin, async (req, res) => {
+    try {
+      const leadIds: string[] = Array.isArray(req.body?.leadIds) ? req.body.leadIds : [];
+      if (leadIds.length === 0) return res.status(400).json({ message: "leadIds é obrigatório" });
+
+      const campaign = await storage.getEmailCampaign(req.params.id);
+      if (!campaign) return res.status(404).json({ message: "Campanha não encontrada" });
+      if (!campaign.audienceId) {
+        return res.status(400).json({ message: "Reenvio indisponível para campanhas de automação" });
+      }
+
+      // Reconstrói o corpo a partir do template (o envio não guarda o HTML final).
+      let htmlBody = "";
+      if (campaign.customHtmlTemplateId) {
+        const htmlTpl = await storage.getCustomHtmlTemplate(campaign.customHtmlTemplateId);
+        if (htmlTpl) htmlBody = htmlTpl.htmlContent;
+      } else if (campaign.templateId) {
+        const tpl = await storage.getEmailTemplate(campaign.templateId);
+        if (tpl) htmlBody = await markdownToHtml(tpl.body);
+      }
+      if (!htmlBody) return res.status(400).json({ message: "Não foi possível montar o corpo da campanha" });
+      const emailSubject = campaign.subject ?? "Mensagem";
+
+      // Só reenvia para leads que ainda existem na audiência.
+      const leads = await storage.getAudienceLeads(campaign.audienceId);
+      const leadById = new Map(leads.map((l) => [l.id, l]));
+      const targets = leadIds.map((id) => leadById.get(id)).filter((l): l is NonNullable<typeof l> => !!l);
+      if (targets.length === 0) return res.status(400).json({ message: "Nenhum destinatário válido para esta campanha" });
+
+      const appBaseUrl = process.env.APP_URL
+        || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null)
+        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null)
+        || `${req.protocol}://${req.get('host')}`;
+
+      let sent = 0;
+      let failed = 0;
+      for (const lead of targets) {
+        const trackingPixel = `<img src="${appBaseUrl}/api/marketing/track/open/${campaign.id}/${lead.id}" width="1" height="1" style="display:none" alt="" />`;
+        const rendered = renderTemplate(htmlBody + trackingPixel, { nome: lead.name, email: lead.email });
+        const ok = await sendEmail(lead.email, emailSubject, rendered);
+        if (ok) sent++; else failed++;
+      }
+
+      res.json({ message: "Reenvio concluído", sent, failed, total: targets.length });
+    } catch {
+      res.status(500).json({ message: "Erro ao reenviar a campanha" });
     }
   });
 
