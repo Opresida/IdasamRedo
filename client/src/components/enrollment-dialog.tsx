@@ -19,19 +19,25 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
 import { Calendar, Clock, CheckCircle, BookOpen, HelpCircle } from 'lucide-react';
 import type { Course, CourseWithEnrollment } from '@shared/schema';
 
 const enrollmentSchema = z.object({
   courseId: z.string().uuid(),
-  fullName: z.string().optional(),
-  cpf: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  fullName: z.string().trim().min(3, 'Informe seu nome completo'),
+  cpf: z.string().trim().min(11, 'CPF inválido'),
+  phone: z.string().trim().min(8, 'Telefone inválido'),
+  email: z.string().trim().email('E-mail inválido'),
+  hasCompany: z.enum(['sim', 'nao']).default('nao'),
   company: z.string().optional(),
+}).refine((d) => d.hasCompany !== 'sim' || !!d.company?.trim(), {
+  message: 'Informe o nome da empresa',
+  path: ['company'],
 });
 
 type EnrollmentForm = z.infer<typeof enrollmentSchema>;
@@ -54,19 +60,20 @@ export default function EnrollmentDialog({ course, open, onOpenChange }: Enrollm
 
   const form = useForm<EnrollmentForm>({
     resolver: zodResolver(enrollmentSchema),
-    defaultValues: { courseId: '', fullName: '', cpf: '', phone: '', email: '', company: '' },
+    defaultValues: { courseId: '', fullName: '', cpf: '', phone: '', email: '', hasCompany: 'nao', company: '' },
   });
 
   // Reseta o formulário e a tela de confirmação sempre que o curso muda ou o modal reabre.
   useEffect(() => {
     if (open && course) {
       setEnrolled(false);
-      form.reset({ courseId: course.id, fullName: '', cpf: '', phone: '', email: '', company: '' });
+      form.reset({ courseId: course.id, fullName: '', cpf: '', phone: '', email: '', hasCompany: 'nao', company: '' });
     }
   }, [open, course?.id]);
 
   const mutation = useMutation({
-    mutationFn: (data: EnrollmentForm) => apiRequest('POST', '/api/enrollments', data),
+    mutationFn: (data: { courseId: string; fullName: string; cpf: string; phone: string; email: string; company: string }) =>
+      apiRequest('POST', '/api/enrollments', data),
     onSuccess: () => {
       setEnrolled(true);
       toast({ title: 'Inscrição realizada!', description: 'Sua inscrição foi confirmada com sucesso.' });
@@ -149,39 +156,49 @@ export default function EnrollmentDialog({ course, open, onOpenChange }: Enrollm
               )}
             </div>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit((d) => mutation.mutate({
+                  courseId: d.courseId,
+                  fullName: d.fullName,
+                  cpf: d.cpf,
+                  phone: d.phone,
+                  email: d.email,
+                  company: d.hasCompany === 'sim' ? (d.company ?? '').trim() : '',
+                }))}
+                className="space-y-4"
+              >
                 <FormField control={form.control} name="fullName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome Completo</FormLabel>
+                    <FormLabel>Nome Completo <span className="text-forest">*</span></FormLabel>
                     <FormControl><Input placeholder="Seu nome completo" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="cpf" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CPF</FormLabel>
+                    <FormLabel>CPF <span className="text-forest">*</span></FormLabel>
                     <FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="phone" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone</FormLabel>
+                    <FormLabel>Telefone <span className="text-forest">*</span></FormLabel>
                     <FormControl><Input placeholder="(92) 99999-9999" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>E-mail</FormLabel>
+                    <FormLabel>E-mail <span className="text-forest">*</span></FormLabel>
                     <FormControl><Input type="email" placeholder="seu@email.com" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="company" render={({ field }) => (
+                <FormField control={form.control} name="hasCompany" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center gap-1.5">
-                      Empresa <span className="text-xs font-normal text-gray-400">(opcional)</span>
+                      Vem de empresa? <span className="text-forest">*</span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button type="button" className="text-gray-400 hover:text-forest" aria-label="Ajuda sobre o campo Empresa">
@@ -189,14 +206,54 @@ export default function EnrollmentDialog({ course, open, onOpenChange }: Enrollm
                           </button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[240px] text-center">
-                          Esse campo é opcional, mas caso venha de alguma empresa, favor preencher o nome abaixo.
+                          Marque "Sim" caso esteja vindo por alguma empresa e informe o nome — ajuda a filtrar e agrupar os alunos por origem.
                         </TooltipContent>
                       </Tooltip>
                     </FormLabel>
-                    <FormControl><Input placeholder="Nome da empresa (se houver)" {...field} /></FormControl>
+                    <FormControl>
+                      <RadioGroup
+                        value={field.value}
+                        onValueChange={(v) => {
+                          field.onChange(v);
+                          // Ao voltar pra "Não", limpa o nome da empresa e o erro do campo.
+                          if (v === 'nao') {
+                            form.setValue('company', '');
+                            form.clearErrors('company');
+                          }
+                        }}
+                        className="grid grid-cols-2 gap-3"
+                      >
+                        {[{ v: 'nao', label: 'Não' }, { v: 'sim', label: 'Sim' }].map((opt) => (
+                          <label
+                            key={opt.v}
+                            className={cn(
+                              'flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 cursor-pointer text-sm font-medium transition-colors',
+                              field.value === opt.v
+                                ? 'border-forest bg-forest/10 text-forest'
+                                : 'border-gray-200 text-gray-600 hover:border-forest/40'
+                            )}
+                          >
+                            <RadioGroupItem
+                              value={opt.v}
+                              className={field.value === opt.v ? 'border-forest text-forest' : ''}
+                            />
+                            {opt.label}
+                          </label>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
+                {form.watch('hasCompany') === 'sim' && (
+                  <FormField control={form.control} name="company" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Empresa <span className="text-forest">*</span></FormLabel>
+                      <FormControl><Input placeholder="Nome da empresa" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
                 <div className="flex gap-3 pt-2">
                   <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
                     Cancelar
