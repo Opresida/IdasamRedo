@@ -1716,6 +1716,74 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Marketing: detalhes de uma campanha (prévia da mensagem + quem abriu × quem não abriu)
+  app.get("/api/marketing/campaigns/:id/details", requireAdmin, async (req, res) => {
+    try {
+      const campaign = await storage.getEmailCampaign(req.params.id);
+      if (!campaign) return res.status(404).json({ message: "Campanha não encontrada" });
+
+      // Prévia: re-renderiza o corpo a partir do template (o envio não guarda o HTML final).
+      let previewHtml = "";
+      try {
+        if (campaign.customHtmlTemplateId) {
+          const htmlTpl = await storage.getCustomHtmlTemplate(campaign.customHtmlTemplateId);
+          if (htmlTpl) previewHtml = htmlTpl.htmlContent;
+        } else if (campaign.templateId) {
+          const tpl = await storage.getEmailTemplate(campaign.templateId);
+          if (tpl) previewHtml = await markdownToHtml(tpl.body);
+        }
+        previewHtml = renderTemplate(previewHtml, { nome: "Fulano de Tal", email: "exemplo@email.com" });
+      } catch {
+        previewHtml = "";
+      }
+
+      const opens = await storage.getCampaignOpenEvents(campaign.id);
+      const openedAtByLead = new Map(opens.map((o) => [o.leadId, o.openedAt]));
+
+      let opened: { name: string; email: string; openedAt: Date | null }[] = [];
+      let notOpened: { name: string; email: string }[] = [];
+      const isAutomation = !campaign.audienceId;
+      let rosterAvailable = false;
+
+      if (campaign.audienceId) {
+        // Campanha normal: público = leads atuais da audiência.
+        rosterAvailable = true;
+        const leads = await storage.getAudienceLeads(campaign.audienceId);
+        for (const l of leads) {
+          if (openedAtByLead.has(l.id)) {
+            opened.push({ name: l.name, email: l.email, openedAt: openedAtByLead.get(l.id) ?? null });
+          } else {
+            notOpened.push({ name: l.name, email: l.email });
+          }
+        }
+      } else {
+        // Automação: leadId dos eventos = id da matrícula; não há roster de destinatários.
+        const enrolls = await storage.getEnrollmentsByIds(opens.map((o) => o.leadId));
+        const enrollById = new Map(enrolls.map((e) => [e.id, e]));
+        opened = opens.map((o) => {
+          const e = enrollById.get(o.leadId);
+          return { name: e?.fullName ?? "—", email: e?.email ?? "—", openedAt: o.openedAt };
+        });
+      }
+
+      opened.sort((a, b) => (b.openedAt ? new Date(b.openedAt).getTime() : 0) - (a.openedAt ? new Date(a.openedAt).getTime() : 0));
+      notOpened.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+      res.json({
+        subject: campaign.subject ?? null,
+        previewHtml,
+        isAutomation,
+        rosterAvailable,
+        sentCount: campaign.sentCount,
+        openCount: campaign.openCount ?? opened.length,
+        opened,
+        notOpened,
+      });
+    } catch {
+      res.status(500).json({ message: "Erro ao buscar detalhes da campanha" });
+    }
+  });
+
   app.post("/api/marketing/campaigns", requireAdmin, async (req, res) => {
     try {
       const parsed = insertEmailCampaignSchema.safeParse(req.body);

@@ -40,7 +40,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Mail, Users, Pencil, Trash2, Plus, Send, Search, X, FileText,
+  Mail, MailOpen, Users, Pencil, Trash2, Plus, Send, Search, X, FileText,
   Zap, Bell, BookOpen, Code2, Eye, BarChart3, TrendingUp, AlertCircle, CheckCircle2,
   ChevronRight, ArrowRight, ArrowLeft, Layers, Target, RefreshCw,
 } from 'lucide-react';
@@ -1196,6 +1196,17 @@ interface EmailCampaignRecord {
   subject?: string | null;
 }
 
+interface CampaignDetails {
+  subject: string | null;
+  previewHtml: string;
+  isAutomation: boolean;
+  rosterAvailable: boolean;
+  sentCount: number;
+  openCount: number;
+  opened: { name: string; email: string; openedAt: string | null }[];
+  notOpened: { name: string; email: string }[];
+}
+
 type WizardStep = 1 | 2 | 3 | 4;
 
 const WIZARD_STEPS = [
@@ -1721,6 +1732,8 @@ function AnalyticsTab({ adminToken }: { adminToken: string }) {
     enabled: !!adminToken,
   });
 
+  const [detailsCampaign, setDetailsCampaign] = useState<EmailCampaignRecord | null>(null);
+
   const audienceMap = Object.fromEntries(audiences.map(a => [a.id, a.name]));
   const templateMap = Object.fromEntries(templates.map(t => [t.id, t.name]));
 
@@ -1805,6 +1818,7 @@ function AnalyticsTab({ adminToken }: { adminToken: string }) {
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Erros</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Aberturas</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Taxa</th>
+                      <th className="py-3 px-4"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1843,6 +1857,16 @@ function AnalyticsTab({ adminToken }: { adminToken: string }) {
                               {openRate}%
                             </span>
                           </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setDetailsCampaign(c)}
+                              title="Ver detalhes da campanha"
+                              className="text-gray-400 hover:text-forest transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1853,7 +1877,123 @@ function AnalyticsTab({ adminToken }: { adminToken: string }) {
           </Card>
         </div>
       )}
+      {detailsCampaign && (
+        <CampaignDetailsModal
+          campaign={detailsCampaign}
+          adminToken={adminToken}
+          onClose={() => setDetailsCampaign(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── Campaign details modal (prévia + quem abriu × quem não abriu) ──────────────
+
+function CampaignDetailsModal({ campaign, adminToken, onClose }: { campaign: EmailCampaignRecord; adminToken: string; onClose: () => void }) {
+  const { toast } = useToast();
+  const { data, isLoading, isError } = useQuery<CampaignDetails>({
+    queryKey: ['/api/marketing/campaigns', campaign.id, 'details'],
+    queryFn: async () => {
+      const res = await fetch(`/api/marketing/campaigns/${campaign.id}/details`, { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (!res.ok) throw new Error('Erro');
+      return res.json();
+    },
+    enabled: !!adminToken,
+  });
+
+  const copyEmails = (list: { email: string }[]) => {
+    const txt = list.map(x => x.email).filter(e => e && e !== '—').join('; ');
+    navigator.clipboard.writeText(txt);
+    toast({ title: 'E-mails copiados', description: `${list.length} endereço(s) na área de transferência.` });
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-4xl max-h-[88vh] flex flex-col p-0">
+        <DialogHeader className="p-4 pb-3 border-b shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-forest">
+            <Eye className="w-4 h-4" />
+            Detalhes da campanha
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto p-4 space-y-5 min-h-0">
+          {isLoading ? (
+            <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>
+          ) : isError || !data ? (
+            <div className="text-center py-16 text-gray-400">Erro ao carregar os detalhes</div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <div className="text-xs uppercase tracking-wide text-gray-400">Assunto</div>
+                <div className="font-medium text-gray-800">{data.subject || '—'}</div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Abriram: {data.opened.length}</Badge>
+                  {data.rosterAvailable
+                    ? <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">Não abriram: {data.notOpened.length}</Badge>
+                    : <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Enviados: {data.sentCount}</Badge>}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Prévia da mensagem</div>
+                <iframe
+                  srcDoc={data.previewHtml || '<p style="color:#aaa;padding:16px;font-family:sans-serif">Sem conteúdo para exibir</p>'}
+                  sandbox="allow-same-origin"
+                  className="w-full h-[300px] border rounded-lg bg-white"
+                  title="Prévia da mensagem enviada"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between bg-green-50 px-3 py-2 border-b">
+                    <span className="text-sm font-medium text-green-700 flex items-center gap-1.5"><MailOpen className="w-3.5 h-3.5" /> Abriram ({data.opened.length})</span>
+                    {data.opened.length > 0 && (
+                      <button type="button" onClick={() => copyEmails(data.opened)} className="text-xs text-green-700 hover:underline">Copiar e-mails</button>
+                    )}
+                  </div>
+                  <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
+                    {data.opened.length === 0 ? (
+                      <div className="px-3 py-6 text-center text-xs text-gray-400">Ninguém abriu ainda</div>
+                    ) : data.opened.map((r, i) => (
+                      <div key={i} className="px-3 py-2 text-sm">
+                        <div className="text-gray-800 truncate">{r.name || '—'}</div>
+                        <div className="text-xs text-gray-500 truncate">{r.email}</div>
+                        {r.openedAt && <div className="text-[11px] text-green-600">Abriu em {new Date(r.openedAt).toLocaleString('pt-BR')}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between bg-gray-50 px-3 py-2 border-b">
+                    <span className="text-sm font-medium text-gray-600 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Não abriram ({data.rosterAvailable ? data.notOpened.length : '—'})</span>
+                    {data.rosterAvailable && data.notOpened.length > 0 && (
+                      <button type="button" onClick={() => copyEmails(data.notOpened)} className="text-xs text-gray-600 hover:underline">Copiar e-mails</button>
+                    )}
+                  </div>
+                  <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
+                    {!data.rosterAvailable ? (
+                      <div className="px-3 py-6 text-center text-xs text-gray-400 leading-relaxed">
+                        Campanhas de automação não guardam a lista completa de destinatários — mostramos apenas quem abriu.
+                      </div>
+                    ) : data.notOpened.length === 0 ? (
+                      <div className="px-3 py-6 text-center text-xs text-gray-400">Todos abriram 🎉</div>
+                    ) : data.notOpened.map((r, i) => (
+                      <div key={i} className="px-3 py-2 text-sm">
+                        <div className="text-gray-800 truncate">{r.name || '—'}</div>
+                        <div className="text-xs text-gray-500 truncate">{r.email}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

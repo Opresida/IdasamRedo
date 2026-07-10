@@ -152,6 +152,8 @@ export interface IStorage {
   updateEmailCampaign(id: string, campaign: Partial<InsertEmailCampaign>): Promise<EmailCampaign | undefined>;
   deleteEmailCampaign(id: string): Promise<void>;
   trackCampaignOpen(campaignId: string, leadId: string): Promise<void>;
+  getCampaignOpenEvents(campaignId: string): Promise<{ leadId: string; openedAt: Date | null }[]>;
+  getEnrollmentsByIds(ids: string[]): Promise<Enrollment[]>;
 
   searchLeads(query: string): Promise<{ name: string; email: string; source: string }[]>;
   getLeadsByCourseIds(courseIds: string[]): Promise<{ name: string; email: string; source: string; courseTitle: string }[]>;
@@ -969,6 +971,19 @@ export class DatabaseStorage implements IStorage {
         throw err;
       }
     }
+  }
+
+  async getCampaignOpenEvents(campaignId: string): Promise<{ leadId: string; openedAt: Date | null }[]> {
+    const rows = await db
+      .select({ leadId: campaignOpenEvents.leadId, openedAt: campaignOpenEvents.openedAt })
+      .from(campaignOpenEvents)
+      .where(eq(campaignOpenEvents.campaignId, campaignId));
+    return rows;
+  }
+
+  async getEnrollmentsByIds(ids: string[]): Promise<Enrollment[]> {
+    if (ids.length === 0) return [];
+    return await db.select().from(enrollments).where(inArray(enrollments.id, ids));
   }
 
   async searchLeads(query: string): Promise<{ name: string; email: string; source: string }[]> {
