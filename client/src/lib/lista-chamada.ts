@@ -158,19 +158,33 @@ ${rows}
 export function printHtml(html: string): void {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
+  // IMPORTANTE: o iframe precisa de dimensões reais e estar renderizado para que
+  // window.print() imprima o SEU conteúdo. Um iframe 0x0 (ou display:none) não é
+  // renderizado e o Chrome acaba imprimindo a janela pai (o dashboard) no lugar.
+  // Por isso posicionamos fora da área visível, mas com tamanho de página A4.
   iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
+  iframe.style.left = '-10000px';
+  iframe.style.top = '0';
+  iframe.style.width = '210mm';
+  iframe.style.height = '297mm';
   iframe.style.border = '0';
   iframe.srcdoc = html;
   iframe.onload = () => {
     const win = iframe.contentWindow;
     if (!win) return;
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      iframe.remove();
+    };
+    win.addEventListener('afterprint', cleanup);
+    // Foca o documento do próprio iframe antes de imprimir para garantir que a
+    // impressão seja disparada nele, e não na janela principal.
     win.focus();
     win.print();
-    window.setTimeout(() => iframe.remove(), 1500);
+    // Fallback de limpeza caso o navegador não dispare 'afterprint'.
+    window.setTimeout(cleanup, 60000);
   };
   document.body.appendChild(iframe);
 }
