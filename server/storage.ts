@@ -1,6 +1,6 @@
 import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, newsletterSubscribers, financialAccounts, financialCategories, financialProjects, financialTransactions, portfolioProjects, type User, type InsertUser, type Course, type CourseWithEnrollment, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios, type NewsletterSubscriber, type InsertNewsletterSubscriber, type FinancialAccount, type InsertFinancialAccount, type FinancialCategory, type InsertFinancialCategory, type FinancialProject, type InsertFinancialProject, type FinancialTransaction, type InsertFinancialTransaction, type PortfolioProject, type InsertPortfolioProject, projectCategories, type ProjectCategoryRecord, type InsertProjectCategory } from "@shared/schema";
 import { db } from "./db";
-import { eq, or, inArray, desc, isNull, and, sql } from "drizzle-orm";
+import { eq, or, inArray, desc, isNull, isNotNull, and, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 function generateAuthCode(): string {
@@ -638,8 +638,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteOrphanedCertificates(): Promise<void> {
-    const allCerts = await db.select().from(certificates);
-    const orphaned = allCerts.filter((c) => !c.fileData && c.filePath);
+    // Órfão = sem blob no banco (file_data null) mas com caminho em disco (file_path).
+    // Filtra no SQL e traz apenas o id — NUNCA carregar a coluna file_data (blobs base64,
+    // centenas de MB) só pra achar órfãos, senão o boot trava baixando a tabela inteira.
+    const orphaned = await db
+      .select({ id: certificates.id })
+      .from(certificates)
+      .where(and(isNull(certificates.fileData), isNotNull(certificates.filePath)));
     for (const cert of orphaned) {
       await db.delete(certificates).where(eq(certificates.id, cert.id));
     }
@@ -1058,13 +1063,16 @@ export class DatabaseStorage implements IStorage {
 
   async deduplicateEnrollments(): Promise<number> {
     const allEnrollments = await db.select().from(enrollments);
-    const allCertificates = await db.select().from(certificates);
+    // Só precisamos saber QUAIS matrículas têm certificado com blob — traz apenas o
+    // enrollmentId filtrando file_data no SQL; nunca carregar os blobs (centenas de MB).
+    const certRows = await db
+      .select({ enrollmentId: certificates.enrollmentId })
+      .from(certificates)
+      .where(isNotNull(certificates.fileData));
 
     const certsByEnrollment = new Map<string, boolean>();
-    for (const cert of allCertificates) {
-      if (cert.fileData) {
-        certsByEnrollment.set(cert.enrollmentId, true);
-      }
+    for (const cert of certRows) {
+      certsByEnrollment.set(cert.enrollmentId, true);
     }
 
     const grouped = new Map<string, Enrollment[]>();
