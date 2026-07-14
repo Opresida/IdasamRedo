@@ -1,7 +1,8 @@
-// Gera a "Lista de Chamada / Presença" de um curso no MESMO modelo do arquivo
-// output/chamada-fundamentos.html (logo IDASAM, metadados do curso, tabela numerada,
-// rodapé fixo www.idasam.org com tfoot espaçador). Saída via janela de impressão do
-// navegador (Salvar como PDF / imprimir) — fidelidade total ao modelo (vetorial).
+// Gera a "Lista de Chamada / Presença" de um curso como um PDF REAL (vetorial, via jsPDF),
+// no papel timbrado do IDASAM, com os alunos específicos do curso. Antes isto usava a janela
+// de impressão do navegador (window.print de um iframe), o que NÃO funciona no celular — o
+// Chrome mobile acabava "fotografando" a tela do app em vez da lista. Agora o documento é
+// desenhado diretamente no PDF e baixado, funcionando igual no desktop e no celular.
 import idasamLogoSvg from './idasam-logo-chamada-svg';
 import type { Course } from '@shared/schema';
 
@@ -10,14 +11,6 @@ export type ChamadaCurso = Pick<
   'title' | 'instructor' | 'workload' | 'schedule' | 'startDate' | 'endDate' | 'location' | 'address'
 >;
 export type ChamadaAluno = { fullName: string | null; cpf: string | null };
-
-function esc(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function formatDateBR(dateStr?: string | null): string {
   if (!dateStr) return '';
@@ -36,159 +29,301 @@ export function formatCpf(raw?: string | null): string {
   return raw.trim();
 }
 
-const STYLE = `
-  @page { size: A4 portrait; margin: 14mm 12mm 22mm 12mm; }
-  * { box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; color:#1f2937; margin:0; }
-  :root{ --forest:#1c4a2b; --forest2:#2a6b40; --sand:#f5f2ea; --line:#d8d8cf; }
-  .head { display:flex; align-items:center; gap:16px; border-bottom:3px solid var(--forest); padding-bottom:12px; }
-  .logo { width:64px; height:64px; flex:0 0 auto; }
-  .logo svg { width:100%; height:100%; }
-  .head .org { flex:1; }
-  .head .org h1 { margin:0; font-size:13px; letter-spacing:.5px; color:var(--forest); text-transform:uppercase; }
-  .head .org p { margin:2px 0 0; font-size:10px; color:#6b7280; }
-  .doc-tag { text-align:right; font-size:9px; color:#9ca3af; text-transform:uppercase; letter-spacing:1px; }
-  .title { text-align:center; margin:16px 0 4px; }
-  .title h2 { margin:0; font-size:17px; color:var(--forest); text-transform:uppercase; letter-spacing:.5px; }
-  .title .sub { font-size:11px; color:#6b7280; margin-top:3px; }
-  .meta { background:var(--sand); border:1px solid var(--line); border-radius:8px; padding:10px 14px; margin:14px 0 6px;
-          display:grid; grid-template-columns:1fr 1fr; gap:4px 24px; font-size:10.5px; }
-  .meta div b { color:var(--forest); }
-  .data-field { display:flex; justify-content:flex-end; align-items:center; gap:6px; font-size:11px; margin:8px 0 10px; font-weight:bold; color:var(--forest); }
-  .data-field .blank { border-bottom:1.5px solid #374151; display:inline-block; width:42px; height:14px; }
-  table { width:100%; border-collapse:collapse; font-size:10.5px; }
-  thead th { background:var(--forest); color:#fff; padding:8px 6px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.4px; }
-  tbody td { border:1px solid var(--line); padding:0 6px; height:30px; vertical-align:middle; }
-  tbody tr:nth-child(even) { background:#fafaf7; }
-  .num { width:34px; text-align:center; color:#6b7280; }
-  .cpf { width:120px; white-space:nowrap; }
-  .ass { width:200px; }
-  th.num{text-align:center;}
-  .foot { margin-top:22px; display:flex; justify-content:space-between; gap:30px; }
-  .sign { flex:1; text-align:center; font-size:10px; color:#374151; }
-  .sign .ln { border-top:1px solid #374151; margin-top:34px; padding-top:4px; }
-  .legend { margin-top:14px; font-size:8.5px; color:#9ca3af; text-align:center; }
-  tbody tr { break-inside: avoid; }
-  thead { display: table-header-group; }
-  tfoot { display: table-footer-group; }
-  tfoot td { border: none; height: 16mm; padding: 0; }
-  .closing td { border: none; background: #fff; padding: 18px 6px 0; }
-  .page-footer {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    height: 13mm;
-    text-align: center;
-    border-top: 2px solid var(--forest);
-    padding-top: 5px;
-    background: #fff;
-  }
-  .page-footer .site { font-size: 11px; font-weight: bold; color: var(--forest); letter-spacing: .5px; }
-  .page-footer .org { font-size: 8px; color: #9ca3af; margin-top: 2px; }
-`;
+// Paleta (mesmas cores do modelo HTML anterior).
+const FOREST: [number, number, number] = [28, 74, 43]; // #1c4a2b
+const SAND: [number, number, number] = [245, 242, 234]; // #f5f2ea
+const LINE: [number, number, number] = [216, 216, 207]; // #d8d8cf
+const INK: [number, number, number] = [31, 41, 55]; // #1f2937
+const GRAY: [number, number, number] = [107, 114, 128]; // #6b7280
+const ROW_ALT: [number, number, number] = [250, 250, 247]; // #fafaf7
 
-export function buildListaChamadaHtml(course: ChamadaCurso, alunos: ChamadaAluno[]): string {
-  const ano = (course.startDate ?? '').split('-')[0] || '2026';
+/** Garante width/height no <svg> raiz (alguns navegadores mobile dão naturalWidth 0 sem isso). */
+function ensureSvgSize(svg: string, w: number, h: number): string {
+  if (/<svg[^>]*\swidth=/.test(svg)) return svg;
+  return svg.replace(/<svg\b/, `<svg width="${w}" height="${h}"`);
+}
+
+/** Rasteriza o SVG do logo para um PNG data URL, para embutir no jsPDF. Devolve null se falhar. */
+async function logoToPngDataUrl(): Promise<string | null> {
+  try {
+    const svg = ensureSvgSize(idasamLogoSvg, 1772, 1080);
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    return await new Promise<string | null>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const cw = 886; // metade do viewBox, resolução boa e leve
+        const ch = Math.round((cw * 1080) / 1772);
+        const cvs = document.createElement('canvas');
+        cvs.width = cw;
+        cvs.height = ch;
+        const ctx = cvs.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, cw, ch);
+        URL.revokeObjectURL(url);
+        try {
+          resolve(cvs.toDataURL('image/png'));
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
+    });
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeFileName(s: string): string {
+  return (s || 'curso').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
+export async function printListaChamada(course: ChamadaCurso, alunos: ChamadaAluno[]): Promise<void> {
+  const { jsPDF } = await import('jspdf');
+  const logo = await logoToPngDataUrl();
+
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const pageW = 210;
+  const pageH = 297;
+  const marginX = 12;
+  const contentW = pageW - marginX * 2; // 186
+  const footerY = pageH - 16; // acima do rodapé fixo
+
+  const ano = (course.startDate ?? '').split('-')[0] || String(new Date().getFullYear());
   const periodo = `${formatDateBR(course.startDate)} a ${formatDateBR(course.endDate)}`;
 
-  const metaCells: string[] = [
-    `<div><b>Carga horária:</b> ${course.workload}h</div>`,
-    `<div><b>Horário:</b> ${esc(course.schedule || '—')}</div>`,
-    `<div><b>Período:</b> ${esc(periodo)}</div>`,
-    `<div><b>Local:</b> ${esc(course.location || '—')}</div>`,
-  ];
-  if (course.address) metaCells.push(`<div><b>Endereço:</b> ${esc(course.address)}</div>`);
-  metaCells.push(`<div><b>Instrutor(a):</b> ${esc(course.instructor || '_______________________')}</div>`);
-
   const ordenados = [...alunos].sort((a, b) =>
-    (a.fullName ?? '').localeCompare(b.fullName ?? '', 'pt-BR', { sensitivity: 'base' })
+    (a.fullName ?? '').localeCompare(b.fullName ?? '', 'pt-BR', { sensitivity: 'base' }),
   );
-  const rows = ordenados
-    .map((a, i) => {
-      const n = String(i + 1).padStart(2, '0');
-      return `<tr><td class="num">${n}</td><td class="nome">${esc(a.fullName ?? '')}</td><td class="cpf">${esc(formatCpf(a.cpf))}</td><td class="ass"></td></tr>`;
-    })
-    .join('\n');
 
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Lista de Chamada — ${esc(course.title)}</title>
-<style>${STYLE}</style></head>
-<body>
-  <div class="head">
-    <div class="logo">${idasamLogoSvg}</div>
-    <div class="org">
-      <h1>IDASAM — Instituto de Desenvolvimento Ambiental e Social da Amazônia</h1>
-      <p>Capacitação Profissional · Programa ${esc(ano)}</p>
-    </div>
-    <div class="doc-tag">Cautela<br>de Chamada</div>
-  </div>
+  // ---- Cabeçalho (timbre) ----
+  function drawHeader(): number {
+    const top = 14;
+    let textX = marginX;
+    if (logo) {
+      const logoH = 13;
+      const logoW = (logoH * 1772) / 1080;
+      try {
+        pdf.addImage(logo, 'PNG', marginX, top, logoW, logoH);
+        textX = marginX + logoW + 5;
+      } catch {
+        textX = marginX;
+      }
+    }
+    pdf.setTextColor(...FOREST);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(13);
+    pdf.text('IDASAM', textX, top + 4.5);
 
-  <div class="title">
-    <h2>Lista de Presença</h2>
-    <div class="sub">${esc(course.title)}</div>
-  </div>
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...GRAY);
+    const nome = 'Instituto de Desenvolvimento Ambiental e Social da Amazônia';
+    pdf.text(nome, textX, top + 8.5);
+    pdf.text(`Capacitação Profissional · Programa ${ano}`, textX, top + 12);
 
-  <div class="meta">
-    ${metaCells.join('\n    ')}
-  </div>
+    // Tag à direita
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...GRAY);
+    pdf.text('CONTROLE DE FREQUÊNCIA', pageW - marginX, top + 4.5, { align: 'right' });
 
-  <div class="data-field">Data da aula: <span class="blank"></span>/<span class="blank"></span>/<span class="blank"></span></div>
+    const ruleY = top + 16;
+    pdf.setDrawColor(...FOREST);
+    pdf.setLineWidth(0.8);
+    pdf.line(marginX, ruleY, pageW - marginX, ruleY);
+    return ruleY;
+  }
 
-  <table>
-    <thead><tr><th class="num">Nº</th><th>Nome Completo</th><th>CPF</th><th>Assinatura</th></tr></thead>
-    <tbody>
-${rows}
-      <tr class="closing"><td colspan="4">
-        <div class="foot">
-          <div class="sign"><div class="ln">Assinatura do(a) Instrutor(a)</div></div>
-          <div class="sign"><div class="ln">Coordenação IDASAM</div></div>
-        </div>
-        <div class="legend">Documento gerado para controle de frequência · ${ordenados.length} inscritos · Carga horária total de ${course.workload}h · Imprimir uma via por dia de aula.</div>
-      </td></tr>
-    </tbody>
-    <tfoot><tr><td colspan="4"></td></tr></tfoot>
-  </table>
+  // ---- Cabeçalho da tabela (repetido em toda página) ----
+  const colNumW = 12;
+  const colCpfW = 30;
+  const colAssW = 52;
+  const colNomeW = contentW - colNumW - colCpfW - colAssW;
+  const xNum = marginX;
+  const xNome = xNum + colNumW;
+  const xCpf = xNome + colNomeW;
+  const xAss = xCpf + colCpfW;
+  const rowH = 8;
 
-  <div class="page-footer">
-    <div class="site">www.idasam.org</div>
-    <div class="org">Instituto de Desenvolvimento Ambiental e Social da Amazônia</div>
-  </div>
-</body></html>`;
-}
+  function drawTableHeader(y: number): number {
+    pdf.setFillColor(...FOREST);
+    pdf.rect(marginX, y, contentW, rowH, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8.5);
+    const midY = y + rowH / 2;
+    pdf.text('Nº', xNum + colNumW / 2, midY, { align: 'center', baseline: 'middle' });
+    pdf.text('NOME COMPLETO', xNome + 2, midY, { baseline: 'middle' });
+    pdf.text('CPF', xCpf + 2, midY, { baseline: 'middle' });
+    pdf.text('ASSINATURA', xAss + 2, midY, { baseline: 'middle' });
+    return y + rowH;
+  }
 
-/** Renderiza o HTML num iframe oculto e dispara a janela de impressão do navegador. */
-export function printHtml(html: string): void {
-  const iframe = document.createElement('iframe');
-  iframe.setAttribute('aria-hidden', 'true');
-  // IMPORTANTE: o iframe precisa de dimensões reais e estar renderizado para que
-  // window.print() imprima o SEU conteúdo. Um iframe 0x0 (ou display:none) não é
-  // renderizado e o Chrome acaba imprimindo a janela pai (o dashboard) no lugar.
-  // Por isso posicionamos fora da área visível, mas com tamanho de página A4.
-  iframe.style.position = 'fixed';
-  iframe.style.left = '-10000px';
-  iframe.style.top = '0';
-  iframe.style.width = '210mm';
-  iframe.style.height = '297mm';
-  iframe.style.border = '0';
-  iframe.srcdoc = html;
-  iframe.onload = () => {
-    const win = iframe.contentWindow;
-    if (!win) return;
-    let cleaned = false;
-    const cleanup = () => {
-      if (cleaned) return;
-      cleaned = true;
-      iframe.remove();
-    };
-    win.addEventListener('afterprint', cleanup);
-    // Foca o documento do próprio iframe antes de imprimir para garantir que a
-    // impressão seja disparada nele, e não na janela principal.
-    win.focus();
-    win.print();
-    // Fallback de limpeza caso o navegador não dispare 'afterprint'.
-    window.setTimeout(cleanup, 60000);
-  };
-  document.body.appendChild(iframe);
-}
+  function drawPageFooter() {
+    pdf.setDrawColor(...FOREST);
+    pdf.setLineWidth(0.6);
+    pdf.line(marginX, footerY + 3, pageW - marginX, footerY + 3);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(...FOREST);
+    pdf.text('www.idasam.org', pageW / 2, footerY + 7.5, { align: 'center' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(...GRAY);
+    pdf.text('Instituto de Desenvolvimento Ambiental e Social da Amazônia', pageW / 2, footerY + 11, {
+      align: 'center',
+    });
+  }
 
-export function printListaChamada(course: ChamadaCurso, alunos: ChamadaAluno[]): void {
-  printHtml(buildListaChamadaHtml(course, alunos));
+  // ---- Página 1: cabeçalho + título + metadados ----
+  let y = drawHeader();
+
+  // Título
+  y += 9;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(15);
+  pdf.setTextColor(...FOREST);
+  pdf.text('LISTA DE PRESENÇA', pageW / 2, y, { align: 'center' });
+  y += 5.5;
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9.5);
+  pdf.setTextColor(...GRAY);
+  const subtitle = pdf.splitTextToSize(course.title || '', contentW - 10) as string[];
+  for (const ln of subtitle.slice(0, 2)) {
+    pdf.text(ln, pageW / 2, y, { align: 'center' });
+    y += 4.5;
+  }
+
+  // Caixa de metadados
+  y += 2;
+  const meta: Array<[string, string]> = [
+    ['Carga horária:', `${course.workload}h`],
+    ['Horário:', course.schedule || '—'],
+    ['Período:', periodo],
+    ['Local:', course.location || '—'],
+  ];
+  if (course.address) meta.push(['Endereço:', course.address]);
+  meta.push(['Instrutor(a):', course.instructor || '—']);
+
+  const rows2col = Math.ceil(meta.length / 2);
+  const metaBoxH = rows2col * 5.5 + 6;
+  pdf.setFillColor(...SAND);
+  pdf.setDrawColor(...LINE);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(marginX, y, contentW, metaBoxH, 2, 2, 'FD');
+
+  const colX = [marginX + 5, marginX + contentW / 2 + 2];
+  const colValMax = contentW / 2 - 7;
+  let my = y + 5.5;
+  pdf.setFontSize(8.5);
+  meta.forEach(([label, value], i) => {
+    const c = i % 2;
+    if (c === 0 && i > 0) my += 5.5;
+    const cx = colX[c];
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...FOREST);
+    pdf.text(label, cx, my);
+    const labelW = pdf.getTextWidth(label);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...INK);
+    const val = (pdf.splitTextToSize(value, colValMax - labelW - 2) as string[])[0] || '';
+    pdf.text(val, cx + labelW + 2, my);
+  });
+  y += metaBoxH + 5;
+
+  // "Data da aula: __/__/__"
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(9);
+  pdf.setTextColor(...FOREST);
+  pdf.text('Data da aula:  ____ / ____ / ______', pageW - marginX, y, { align: 'right' });
+  y += 5;
+
+  // ---- Tabela de alunos ----
+  y = drawTableHeader(y);
+  pdf.setDrawColor(...LINE);
+  pdf.setLineWidth(0.2);
+
+  ordenados.forEach((a, i) => {
+    if (y + rowH > footerY) {
+      drawPageFooter();
+      pdf.addPage();
+      y = 16;
+      y = drawTableHeader(y);
+    }
+    // fundo alternado
+    if (i % 2 === 1) {
+      pdf.setFillColor(...ROW_ALT);
+      pdf.rect(marginX, y, contentW, rowH, 'F');
+    }
+    // bordas das células
+    pdf.setDrawColor(...LINE);
+    pdf.rect(xNum, y, colNumW, rowH);
+    pdf.rect(xNome, y, colNomeW, rowH);
+    pdf.rect(xCpf, y, colCpfW, rowH);
+    pdf.rect(xAss, y, colAssW, rowH);
+
+    const midY = y + rowH / 2;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(...GRAY);
+    pdf.text(String(i + 1).padStart(2, '0'), xNum + colNumW / 2, midY, {
+      align: 'center',
+      baseline: 'middle',
+    });
+    pdf.setTextColor(...INK);
+    const nome = (pdf.splitTextToSize(a.fullName ?? '', colNomeW - 4) as string[])[0] || '';
+    pdf.text(nome, xNome + 2, midY, { baseline: 'middle' });
+    pdf.text(formatCpf(a.cpf), xCpf + 2, midY, { baseline: 'middle' });
+    y += rowH;
+  });
+
+  // ---- Assinaturas + legenda ----
+  const closingH = 30;
+  if (y + closingH > footerY) {
+    drawPageFooter();
+    pdf.addPage();
+    y = 20;
+  } else {
+    y += 12;
+  }
+  const half = contentW / 2;
+  const sigW = half - 12;
+  const sig1X = marginX + (half - sigW) / 2;
+  const sig2X = marginX + half + (half - sigW) / 2;
+  pdf.setDrawColor(...INK);
+  pdf.setLineWidth(0.3);
+  pdf.line(sig1X, y, sig1X + sigW, y);
+  pdf.line(sig2X, y, sig2X + sigW, y);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(8.5);
+  pdf.setTextColor(...INK);
+  pdf.text('Assinatura do(a) Instrutor(a)', sig1X + sigW / 2, y + 4, { align: 'center' });
+  pdf.text('Coordenação IDASAM', sig2X + sigW / 2, y + 4, { align: 'center' });
+
+  y += 12;
+  pdf.setFontSize(7);
+  pdf.setTextColor(...GRAY);
+  const legenda = `Documento gerado para controle de frequência · ${ordenados.length} inscritos · Carga horária total de ${course.workload}h · Imprimir uma via por dia de aula.`;
+  pdf.text(pdf.splitTextToSize(legenda, contentW) as string[], pageW / 2, y, { align: 'center' });
+
+  // Rodapé em todas as páginas + numeração
+  const total = pdf.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    pdf.setPage(p);
+    drawPageFooter();
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(...GRAY);
+    pdf.text(`Página ${p} de ${total}`, pageW - marginX, footerY + 11, { align: 'right' });
+  }
+
+  pdf.save(`Lista de Chamada - ${sanitizeFileName(course.title)}.pdf`);
 }

@@ -645,7 +645,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
         toast({ title: 'Nenhum aluno inscrito neste curso', variant: 'destructive' });
         return;
       }
-      printListaChamada(course, alunos);
+      await printListaChamada(course, alunos);
     } catch {
       toast({ title: 'Erro ao gerar a lista de chamada', variant: 'destructive' });
     } finally {
