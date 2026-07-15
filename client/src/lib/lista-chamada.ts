@@ -1,8 +1,11 @@
-// Gera a "Lista de Chamada / Presença" de um curso como um PDF REAL (vetorial, via jsPDF),
-// no papel timbrado do IDASAM, com os alunos específicos do curso. Antes isto usava a janela
-// de impressão do navegador (window.print de um iframe), o que NÃO funciona no celular — o
-// Chrome mobile acabava "fotografando" a tela do app em vez da lista. Agora o documento é
-// desenhado diretamente no PDF e baixado, funcionando igual no desktop e no celular.
+// Gera o "Diário de Classe — Controle de Frequência" de um curso como um PDF REAL
+// (vetorial, via jsPDF), em PAISAGEM (horizontal), no papel timbrado oficial do IDASAM.
+// O documento é desenhado direto no PDF e baixado — funciona igual no desktop e no celular
+// (o window.print de iframe não funcionava no Chrome mobile).
+//
+// Layout espelha o modelo "Diário de Classe": logo IDASAM + cabeçalho institucional (com o
+// parceiro do curso), faixa com os dados do curso, tabela com UMA COLUNA POR DIA de aula do
+// período (dd/mm + dia da semana) + TOTAL FALTAS, legenda P/F, assinaturas e o rodapé oficial.
 import idasamLogoSvg from './idasam-logo-chamada-svg';
 import type { Course } from '@shared/schema';
 
@@ -10,13 +13,27 @@ export type ChamadaCurso = Pick<
   Course,
   'title' | 'instructor' | 'workload' | 'schedule' | 'startDate' | 'endDate' | 'location' | 'address'
 >;
-export type ChamadaAluno = { fullName: string | null; cpf: string | null };
+export type ChamadaAluno = { fullName: string | null; cpf: string | null; company?: string | null };
+
+// Textos institucionais fixos (do programa / papel timbrado).
+const EMAIL = 'institucional-am@idasam.org';
+const PARCEIRO_INSTITUCIONAL = 'ITEAM — Instituto Tecnológico Educacional da Amazônia';
+const TAGLINE = 'Inovação. Sustentabilidade. Futuro.';
+
+const WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 function formatDateBR(dateStr?: string | null): string {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
   if (!y || !m || !d) return dateStr;
   return `${d}/${m}/${y}`;
+}
+
+function parseYMD(s?: string | null): Date | null {
+  const parts = (s ?? '').split('-').map(Number);
+  const [y, m, d] = parts;
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
 }
 
 /** 11 dígitos → 000.000.000-00; senão devolve o valor bruto (trim). */
@@ -29,13 +46,13 @@ export function formatCpf(raw?: string | null): string {
   return raw.trim();
 }
 
-// Paleta (mesmas cores do modelo HTML anterior).
+// Paleta.
 const FOREST: [number, number, number] = [28, 74, 43]; // #1c4a2b
-const SAND: [number, number, number] = [245, 242, 234]; // #f5f2ea
-const LINE: [number, number, number] = [216, 216, 207]; // #d8d8cf
+const BAND: [number, number, number] = [237, 244, 239]; // faixa verde-clarinho
+const LINE: [number, number, number] = [200, 221, 213]; // bordas da grade
 const INK: [number, number, number] = [31, 41, 55]; // #1f2937
 const GRAY: [number, number, number] = [107, 114, 128]; // #6b7280
-const ROW_ALT: [number, number, number] = [250, 250, 247]; // #fafaf7
+const ROW_ALT: [number, number, number] = [240, 247, 244]; // zebra
 
 /** Garante width/height no <svg> raiz (alguns navegadores mobile dão naturalWidth 0 sem isso). */
 function ensureSvgSize(svg: string, w: number, h: number): string {
@@ -90,212 +107,304 @@ export async function printListaChamada(course: ChamadaCurso, alunos: ChamadaAlu
   const { jsPDF } = await import('jspdf');
   const logo = await logoToPngDataUrl();
 
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-  const pageW = 210;
-  const pageH = 297;
-  const marginX = 12;
-  const contentW = pageW - marginX * 2; // 186
-  const footerY = pageH - 16; // acima do rodapé fixo
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const pageW = 297;
+  const pageH = 210;
+  const marginX = 10;
+  const contentW = pageW - marginX * 2; // 277
+  const footerY = pageH - 13; // 197 — régua do rodapé
+  const tableBottom = footerY - 6; // limite inferior das linhas
 
   const ano = (course.startDate ?? '').split('-')[0] || String(new Date().getFullYear());
   const periodo = `${formatDateBR(course.startDate)} a ${formatDateBR(course.endDate)}`;
+
+  // Modalidade sai do texto do local: "Manaus – AM (Presencial)" → "Presencial".
+  const modMatch = (course.location ?? '').match(/\(([^)]+)\)/);
+  const modalidade = modMatch ? modMatch[1].trim() : 'Presencial';
+
+  // Parceiro = empresa predominante entre os inscritos (campo "Empresa" da inscrição).
+  // Ignora "IDASAM" (o próprio instituto não é parceiro externo — evita "IDASAM e IDASAM").
+  const companyCounts = new Map<string, number>();
+  for (const a of alunos) {
+    const c = (a.company ?? '').trim();
+    if (c && !/idasam/i.test(c)) companyCounts.set(c, (companyCounts.get(c) ?? 0) + 1);
+  }
+  let partnerFull: string | null = null;
+  let bestCount = 0;
+  for (const [c, n] of Array.from(companyCounts.entries())) {
+    if (n > bestCount) {
+      bestCount = n;
+      partnerFull = c;
+    }
+  }
+  const partnerUpper = partnerFull ? partnerFull.toUpperCase() : '';
+
+  // Dias de aula: um por dia do período (inclusive). Guard de 60 dias.
+  const start = parseYMD(course.startDate);
+  const end = parseYMD(course.endDate);
+  const days: (Date | null)[] = [];
+  if (start && end && end.getTime() >= start.getTime()) {
+    const cur = new Date(start);
+    let guard = 0;
+    while (cur.getTime() <= end.getTime() && guard < 60) {
+      days.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+      guard++;
+    }
+  }
+  if (days.length === 0) days.push(null); // fallback: uma coluna genérica "Data"
 
   const ordenados = [...alunos].sort((a, b) =>
     (a.fullName ?? '').localeCompare(b.fullName ?? '', 'pt-BR', { sensitivity: 'base' }),
   );
 
-  // ---- Cabeçalho (timbre) ----
-  function drawHeader(): number {
-    const top = 14;
-    let textX = marginX;
-    if (logo) {
-      const logoH = 13;
-      const logoW = (logoH * 1772) / 1080;
-      try {
-        pdf.addImage(logo, 'PNG', marginX, top, logoW, logoH);
-        textX = marginX + logoW + 5;
-      } catch {
-        textX = marginX;
-      }
-    }
-    pdf.setTextColor(...FOREST);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(13);
-    pdf.text('IDASAM', textX, top + 4.5);
-
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.5);
-    pdf.setTextColor(...GRAY);
-    const nome = 'Instituto de Desenvolvimento Ambiental e Social da Amazônia';
-    pdf.text(nome, textX, top + 8.5);
-    pdf.text(`Capacitação Profissional · Programa ${ano}`, textX, top + 12);
-
-    // Tag à direita
-    pdf.setFontSize(7.5);
-    pdf.setTextColor(...GRAY);
-    pdf.text('CONTROLE DE FREQUÊNCIA', pageW - marginX, top + 4.5, { align: 'right' });
-
-    const ruleY = top + 16;
-    pdf.setDrawColor(...FOREST);
-    pdf.setLineWidth(0.8);
-    pdf.line(marginX, ruleY, pageW - marginX, ruleY);
-    return ruleY;
-  }
-
-  // ---- Cabeçalho da tabela (repetido em toda página) ----
-  const colNumW = 12;
-  const colCpfW = 30;
-  const colAssW = 52;
-  const colNomeW = contentW - colNumW - colCpfW - colAssW;
+  // ---- Colunas da tabela (larguras) ----
+  const colNumW = 10;
+  const colCpfW = 32;
+  const colTotalW = 20;
+  const availNomeDays = contentW - colNumW - colCpfW - colTotalW; // p/ NOME + dias
+  const nomeMin = 60;
+  const dayColW = Math.min(15, Math.max(9, (availNomeDays - nomeMin) / days.length));
+  const colNomeW = availNomeDays - dayColW * days.length;
   const xNum = marginX;
   const xNome = xNum + colNumW;
   const xCpf = xNome + colNomeW;
-  const xAss = xCpf + colCpfW;
-  const rowH = 8;
+  const xDay0 = xCpf + colCpfW;
+  const xTotal = xDay0 + dayColW * days.length;
+  const headerH = 10;
+  const rowH = 6.2;
 
-  function drawTableHeader(y: number): number {
-    pdf.setFillColor(...FOREST);
-    pdf.rect(marginX, y, contentW, rowH, 'F');
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8.5);
-    const midY = y + rowH / 2;
-    pdf.text('Nº', xNum + colNumW / 2, midY, { align: 'center', baseline: 'middle' });
-    pdf.text('NOME COMPLETO', xNome + 2, midY, { baseline: 'middle' });
-    pdf.text('CPF', xCpf + 2, midY, { baseline: 'middle' });
-    pdf.text('ASSINATURA', xAss + 2, midY, { baseline: 'middle' });
-    return y + rowH;
-  }
-
+  // ---- Rodapé oficial (papel timbrado), em toda página ----
   function drawPageFooter() {
     pdf.setDrawColor(...FOREST);
-    pdf.setLineWidth(0.6);
-    pdf.line(marginX, footerY + 3, pageW - marginX, footerY + 3);
+    pdf.setLineWidth(0.5);
+    pdf.line(marginX, footerY, pageW - marginX, footerY);
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(9);
+    pdf.setFontSize(7.5);
     pdf.setTextColor(...FOREST);
-    pdf.text('www.idasam.org', pageW / 2, footerY + 7.5, { align: 'center' });
+    pdf.text('Instituto de Desenvolvimento Ambiental e Social da Amazônia — IDASAM', pageW / 2, footerY + 3.6, {
+      align: 'center',
+    });
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(6.5);
     pdf.setTextColor(...GRAY);
-    pdf.text('Instituto de Desenvolvimento Ambiental e Social da Amazônia', pageW / 2, footerY + 11, {
-      align: 'center',
-    });
+    pdf.text(
+      'www.idasam.org.br · CNPJ: 02.906.177/0001-87 · Centro Empresarial Art Center, 3694 — Manaus/AM',
+      pageW / 2,
+      footerY + 7,
+      { align: 'center' },
+    );
   }
 
-  // ---- Página 1: cabeçalho + título + metadados ----
-  let y = drawHeader();
-
-  // Título
-  y += 9;
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(15);
-  pdf.setTextColor(...FOREST);
-  pdf.text('LISTA DE PRESENÇA', pageW / 2, y, { align: 'center' });
-  y += 5.5;
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(9.5);
-  pdf.setTextColor(...GRAY);
-  const subtitle = pdf.splitTextToSize(course.title || '', contentW - 10) as string[];
-  for (const ln of subtitle.slice(0, 2)) {
-    pdf.text(ln, pageW / 2, y, { align: 'center' });
-    y += 4.5;
-  }
-
-  // Caixa de metadados
-  y += 2;
-  const meta: Array<[string, string]> = [
-    ['Carga horária:', `${course.workload}h`],
-    ['Horário:', course.schedule || '—'],
-    ['Período:', periodo],
-    ['Local:', course.location || '—'],
-  ];
-  if (course.address) meta.push(['Endereço:', course.address]);
-  meta.push(['Instrutor(a):', course.instructor || '—']);
-
-  const rows2col = Math.ceil(meta.length / 2);
-  const metaBoxH = rows2col * 5.5 + 6;
-  pdf.setFillColor(...SAND);
-  pdf.setDrawColor(...LINE);
-  pdf.setLineWidth(0.3);
-  pdf.roundedRect(marginX, y, contentW, metaBoxH, 2, 2, 'FD');
-
-  const colX = [marginX + 5, marginX + contentW / 2 + 2];
-  const colValMax = contentW / 2 - 7;
-  let my = y + 5.5;
-  pdf.setFontSize(8.5);
-  meta.forEach(([label, value], i) => {
-    const c = i % 2;
-    if (c === 0 && i > 0) my += 5.5;
-    const cx = colX[c];
+  // ---- Cabeçalho da tabela (repetido em toda página) ----
+  function drawTableHeader(y: number): number {
+    pdf.setFillColor(...FOREST);
+    pdf.rect(marginX, y, contentW, headerH, 'F');
+    pdf.setTextColor(255, 255, 255);
     pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(...FOREST);
-    pdf.text(label, cx, my);
-    const labelW = pdf.getTextWidth(label);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(...INK);
-    const val = (pdf.splitTextToSize(value, colValMax - labelW - 2) as string[])[0] || '';
-    pdf.text(val, cx + labelW + 2, my);
-  });
-  y += metaBoxH + 5;
+    const midY = y + headerH / 2;
 
-  // "Data da aula: __/__/__"
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(9);
-  pdf.setTextColor(...FOREST);
-  pdf.text('Data da aula:  ____ / ____ / ______', pageW - marginX, y, { align: 'right' });
-  y += 5;
+    pdf.setFontSize(8);
+    pdf.text('Nº', xNum + colNumW / 2, midY, { align: 'center', baseline: 'middle' });
+    pdf.text('NOME COMPLETO', xNome + 3, midY, { baseline: 'middle' });
+    pdf.text('CPF', xCpf + colCpfW / 2, midY, { align: 'center', baseline: 'middle' });
 
-  // ---- Tabela de alunos ----
-  y = drawTableHeader(y);
-  pdf.setDrawColor(...LINE);
-  pdf.setLineWidth(0.2);
+    pdf.setFontSize(6.8);
+    days.forEach((d, i) => {
+      const cx = xDay0 + i * dayColW + dayColW / 2;
+      const top = d
+        ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+        : 'Data';
+      const bot = d ? WD[d.getDay()] : '';
+      pdf.text(top, cx, midY - 1.4, { align: 'center', baseline: 'middle' });
+      if (bot) pdf.text(bot, cx, midY + 2.4, { align: 'center', baseline: 'middle' });
+    });
+    pdf.text('TOTAL', xTotal + colTotalW / 2, midY - 1.4, { align: 'center', baseline: 'middle' });
+    pdf.text('FALTAS', xTotal + colTotalW / 2, midY + 2.4, { align: 'center', baseline: 'middle' });
 
-  ordenados.forEach((a, i) => {
-    if (y + rowH > footerY) {
-      drawPageFooter();
-      pdf.addPage();
-      y = 16;
-      y = drawTableHeader(y);
-    }
-    // fundo alternado
+    // separadores brancos sutis entre colunas
+    pdf.setDrawColor(255, 255, 255);
+    pdf.setLineWidth(0.2);
+    const seps = [xNome, xCpf, xDay0];
+    for (let k = 0; k <= days.length; k++) seps.push(xDay0 + k * dayColW);
+    seps.push(xTotal);
+    seps.forEach((sx) => pdf.line(sx, y + 1, sx, y + headerH - 1));
+    return y + headerH;
+  }
+
+  function drawRow(a: ChamadaAluno, i: number, y: number) {
     if (i % 2 === 1) {
       pdf.setFillColor(...ROW_ALT);
       pdf.rect(marginX, y, contentW, rowH, 'F');
     }
-    // bordas das células
     pdf.setDrawColor(...LINE);
+    pdf.setLineWidth(0.2);
     pdf.rect(xNum, y, colNumW, rowH);
     pdf.rect(xNome, y, colNomeW, rowH);
     pdf.rect(xCpf, y, colCpfW, rowH);
-    pdf.rect(xAss, y, colAssW, rowH);
+    for (let k = 0; k < days.length; k++) pdf.rect(xDay0 + k * dayColW, y, dayColW, rowH);
+    pdf.rect(xTotal, y, colTotalW, rowH);
 
     const midY = y + rowH / 2;
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9);
+    pdf.setFontSize(8.5);
     pdf.setTextColor(...GRAY);
-    pdf.text(String(i + 1).padStart(2, '0'), xNum + colNumW / 2, midY, {
-      align: 'center',
-      baseline: 'middle',
-    });
+    pdf.text(String(i + 1).padStart(2, '0'), xNum + colNumW / 2, midY, { align: 'center', baseline: 'middle' });
     pdf.setTextColor(...INK);
     const nome = (pdf.splitTextToSize(a.fullName ?? '', colNomeW - 4) as string[])[0] || '';
-    pdf.text(nome, xNome + 2, midY, { baseline: 'middle' });
-    pdf.text(formatCpf(a.cpf), xCpf + 2, midY, { baseline: 'middle' });
+    pdf.text(nome, xNome + 2.5, midY, { baseline: 'middle' });
+    pdf.setFontSize(8);
+    pdf.text(formatCpf(a.cpf), xCpf + colCpfW / 2, midY, { align: 'center', baseline: 'middle' });
+  }
+
+  // ---- Cabeçalho institucional (só página 1) ----
+  function drawInstitutionalHeader(): number {
+    let yy = 8;
+    if (logo) {
+      const logoH = 12;
+      const logoW = (logoH * 1772) / 1080;
+      try {
+        pdf.addImage(logo, 'PNG', (pageW - logoW) / 2, yy, logoW, logoH);
+        yy += logoH + 3.5;
+      } catch {
+        yy += 4;
+      }
+    } else {
+      yy += 4;
+    }
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10.5);
+    pdf.setTextColor(...FOREST);
+    pdf.text('IDASAM — INSTITUTO DE DESENVOLVIMENTO AMBIENTAL E SOCIAL DA AMAZÔNIA', pageW / 2, yy, {
+      align: 'center',
+    });
+    yy += 4.2;
+    if (partnerFull) {
+      pdf.setFontSize(8);
+      pdf.setTextColor(...INK);
+      pdf.text(`em parceria com ${partnerUpper}`, pageW / 2, yy, { align: 'center' });
+      yy += 4;
+    }
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...GRAY);
+    pdf.text(`Capacitação Profissional · Programa ${ano} · Parceiro Institucional: ${PARCEIRO_INSTITUCIONAL}`, pageW / 2, yy, {
+      align: 'center',
+    });
+    yy += 6.5;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(15);
+    pdf.setTextColor(...FOREST);
+    pdf.text('DIÁRIO DE CLASSE — CONTROLE DE FREQUÊNCIA', pageW / 2, yy, { align: 'center' });
+    yy += 5.5;
+    pdf.setFontSize(10);
+    const sub = pdf.splitTextToSize(
+      `Curso IDASAM${partnerFull ? ` e ${partnerFull}` : ''} — ${course.title || ''}`,
+      contentW - 20,
+    ) as string[];
+    sub.slice(0, 2).forEach((ln) => {
+      pdf.text(ln, pageW / 2, yy, { align: 'center' });
+      yy += 4.6;
+    });
+    return yy + 1;
+  }
+
+  // ---- Faixa de informações do curso ----
+  function cellKV(x: number, w: number, label: string, value: string, baseline: number) {
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(7.3);
+    pdf.setTextColor(...FOREST);
+    pdf.text(label, x + 2, baseline);
+    const lw = pdf.getTextWidth(label);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...INK);
+    const val = (pdf.splitTextToSize(value, Math.max(4, w - lw - 4)) as string[])[0] || '';
+    pdf.text(val, x + 2 + lw + 1.5, baseline);
+  }
+
+  function drawInfoBand(y: number): number {
+    const h = 7;
+    // Linha 1
+    pdf.setFillColor(...BAND);
+    pdf.setDrawColor(...LINE);
+    pdf.setLineWidth(0.3);
+    pdf.rect(marginX, y, contentW, h, 'FD');
+    const w1 = [0.2, 0.16, 0.16, 0.16, 0.32].map((f) => f * contentW);
+    const r1: Array<[string, string]> = [
+      ['Período:', periodo],
+      ['Horário:', course.schedule || '—'],
+      ['Carga horária:', `${course.workload}h`],
+      ['Modalidade:', modalidade],
+      ['Instrutor(a):', course.instructor || '—'],
+    ];
+    let cx = marginX;
+    r1.forEach(([l, v], idx) => {
+      if (idx > 0) {
+        pdf.setDrawColor(...LINE);
+        pdf.line(cx, y, cx, y + h);
+      }
+      cellKV(cx, w1[idx], l, v, y + h / 2 + 1.2);
+      cx += w1[idx];
+    });
+    // Linha 2
+    const y2 = y + h;
+    pdf.setFillColor(...BAND);
+    pdf.rect(marginX, y2, contentW, h, 'FD');
+    const w2 = [0.72, 0.28].map((f) => f * contentW);
+    const r2: Array<[string, string]> = [
+      ['Endereço:', course.address || course.location || '—'],
+      ['E-mail:', EMAIL],
+    ];
+    cx = marginX;
+    r2.forEach(([l, v], idx) => {
+      if (idx > 0) {
+        pdf.setDrawColor(...LINE);
+        pdf.line(cx, y2, cx, y2 + h);
+      }
+      cellKV(cx, w2[idx], l, v, y2 + h / 2 + 1.2);
+      cx += w2[idx];
+    });
+    return y2 + h;
+  }
+
+  // ================= Render =================
+  let y = drawInstitutionalHeader();
+  y = drawInfoBand(y + 1);
+  y += 3;
+  y = drawTableHeader(y);
+
+  ordenados.forEach((a, i) => {
+    if (y + rowH > tableBottom) {
+      drawPageFooter();
+      pdf.addPage();
+      y = 14;
+      y = drawTableHeader(y);
+    }
+    drawRow(a, i, y);
     y += rowH;
   });
 
-  // ---- Assinaturas + legenda ----
+  // ---- Legenda + assinaturas + fecho ----
   const closingH = 30;
-  if (y + closingH > footerY) {
+  if (y + closingH > tableBottom) {
     drawPageFooter();
     pdf.addPage();
-    y = 20;
+    y = 16;
   } else {
-    y += 12;
+    y += 6;
   }
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(...INK);
+  pdf.text(
+    'Legenda: P = Presente · F = Falta · Marcar a frequência de cada aluno na coluna correspondente ao dia da aula.',
+    marginX,
+    y,
+  );
+  y += 11;
+
   const half = contentW / 2;
-  const sigW = half - 12;
+  const sigW = half - 30;
   const sig1X = marginX + (half - sigW) / 2;
   const sig2X = marginX + half + (half - sigW) / 2;
   pdf.setDrawColor(...INK);
@@ -308,13 +417,24 @@ export async function printListaChamada(course: ChamadaCurso, alunos: ChamadaAlu
   pdf.text('Assinatura do(a) Instrutor(a)', sig1X + sigW / 2, y + 4, { align: 'center' });
   pdf.text('Coordenação IDASAM', sig2X + sigW / 2, y + 4, { align: 'center' });
 
-  y += 12;
+  y += 11;
   pdf.setFontSize(7);
   pdf.setTextColor(...GRAY);
-  const legenda = `Documento gerado para controle de frequência · ${ordenados.length} inscritos · Carga horária total de ${course.workload}h · Imprimir uma via por dia de aula.`;
-  pdf.text(pdf.splitTextToSize(legenda, contentW) as string[], pageW / 2, y, { align: 'center' });
+  pdf.text(
+    `Diário de classe para controle de frequência · ${ordenados.length} inscritos · Carga horária total: ${course.workload}h`,
+    pageW / 2,
+    y,
+    { align: 'center' },
+  );
+  y += 3.5;
+  pdf.text(
+    `Realização: IDASAM${partnerFull ? ` e ${partnerFull}` : ''} · Parceiro Institucional: ITEAM · ${TAGLINE}`,
+    pageW / 2,
+    y,
+    { align: 'center' },
+  );
 
-  // Rodapé em todas as páginas + numeração
+  // Rodapé + numeração em todas as páginas.
   const total = pdf.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     pdf.setPage(p);
@@ -322,8 +442,8 @@ export async function printListaChamada(course: ChamadaCurso, alunos: ChamadaAlu
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(6.5);
     pdf.setTextColor(...GRAY);
-    pdf.text(`Página ${p} de ${total}`, pageW - marginX, footerY + 11, { align: 'right' });
+    pdf.text(`Página ${p} de ${total}`, pageW - marginX, footerY + 3.6, { align: 'right' });
   }
 
-  pdf.save(`Lista de Chamada - ${sanitizeFileName(course.title)}.pdf`);
+  pdf.save(`Diário de Classe - ${sanitizeFileName(course.title)}.pdf`);
 }
