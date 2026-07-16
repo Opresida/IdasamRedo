@@ -40,6 +40,19 @@ function normalizeName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * CPF/e-mail REALMENTE utilizável para identificar a pessoa entre inscrições.
+ * Rejeita lixo comum na base ("", "N/A", "-"): um CPF só vale com 11 dígitos e um
+ * e-mail só vale com "@". Sem isso, "N/A" seria tratado como nome e a busca daria 404.
+ */
+export function identificadorUtil(e: { cpf?: string | null; email?: string | null }): string | null {
+  const cpfDigits = (e.cpf ?? '').replace(/\D/g, '');
+  if (cpfDigits.length === 11) return e.cpf as string;
+  const email = (e.email ?? '').trim();
+  if (email.includes('@')) return email;
+  return null;
+}
+
 export type CapacitacaoAnalytics = {
   certificadosEmitidos: number;
   alunosFormados: number;
@@ -68,6 +81,8 @@ export type AlunoFicha = {
 export interface IStorage {
   getCapacitacaoAnalytics(): Promise<CapacitacaoAnalytics>;
   getAlunoFicha(identifier: string): Promise<AlunoFicha | null>;
+  getAlunoFichaByEnrollment(enrollmentId: string): Promise<AlunoFicha | null>;
+  getEnrollmentById(id: string): Promise<Enrollment | undefined>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -388,6 +403,49 @@ export class DatabaseStorage implements IStorage {
       matriculasSemEmpresa,
       rankingCursos,
       rankingEmpresas,
+    };
+  }
+
+  async getEnrollmentById(id: string): Promise<Enrollment | undefined> {
+    const [row] = await db.select().from(enrollments).where(eq(enrollments.id, id));
+    return row;
+  }
+
+  // Ficha a partir de UMA inscrição (determinístico — usado para gerar a ficha de todos
+  // os alunos de um curso). Se a inscrição tiver CPF/e-mail utilizável, devolve a ficha
+  // consolidada da pessoa (todos os cursos dela); senão monta a ficha só com esta
+  // inscrição, para que NINGUÉM fique de fora do relatório.
+  async getAlunoFichaByEnrollment(enrollmentId: string): Promise<AlunoFicha | null> {
+    const enr = await this.getEnrollmentById(enrollmentId);
+    if (!enr) return null;
+
+    const ident = identificadorUtil(enr);
+    if (ident) {
+      const ficha = await this.getAlunoFicha(ident);
+      if (ficha) return ficha;
+    }
+
+    // Sem CPF/e-mail utilizável (ex.: cpf vazio e e-mail "N/A"): ficha só desta inscrição.
+    const certs = await this.getCertificatesByEnrollmentIds([enr.id]);
+    const concluido = certs.some((c) => !!c.fileData && c.fileData !== '');
+    const curso = await this.getCourse(enr.courseId);
+    return {
+      fullName: enr.fullName,
+      cpf: enr.cpf,
+      phone: enr.phone,
+      email: enr.email,
+      company: enr.company || null,
+      totalInscricoes: 1,
+      totalConcluidos: concluido ? 1 : 0,
+      totalCertificados: concluido ? 1 : 0,
+      cursos: [
+        {
+          title: curso?.title ?? 'Curso removido',
+          status: curso?.status ?? 'unknown',
+          concluido,
+        },
+      ],
+      naListaNotificacoes: false, // sem e-mail não há como casar na lista
     };
   }
 

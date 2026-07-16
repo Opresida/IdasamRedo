@@ -1924,8 +1924,17 @@ export async function registerRoutes(app: Express) {
   // Capacitação: ficha consolidada de um aluno (por CPF/e-mail)
   app.get("/api/capacitacao/aluno", requireAdmin, async (req, res) => {
     try {
+      // Preferir o id da inscrição: é determinístico e cobre alunos sem CPF/e-mail
+      // (ex.: cpf vazio + e-mail "N/A"), que pelo identifier cairiam em 404.
+      const enrollmentId = (req.query.enrollmentId as string | undefined)?.trim();
+      if (enrollmentId) {
+        const ficha = await storage.getAlunoFichaByEnrollment(enrollmentId);
+        if (!ficha) return res.status(404).json({ message: "Inscrição não encontrada" });
+        return res.json(ficha);
+      }
+
       const identifier = (req.query.identifier as string | undefined)?.trim();
-      if (!identifier) return res.status(400).json({ message: "Identificador (CPF/e-mail) é obrigatório" });
+      if (!identifier) return res.status(400).json({ message: "Informe enrollmentId ou identifier (CPF/e-mail)" });
       const ficha = await storage.getAlunoFicha(identifier);
       if (!ficha) return res.status(404).json({ message: "Aluno não encontrado" });
       res.json(ficha);

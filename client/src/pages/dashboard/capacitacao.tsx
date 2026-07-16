@@ -670,25 +670,21 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
         return;
       }
 
-      // A ficha é por PESSOA (agrega todos os cursos dela), então dedupe pelo identificador
-      // pra não gerar PDFs idênticos. Sem CPF/e-mail/nome não dá pra consultar → pula.
+      // TODO aluno entra no relatório — inclusive sem CPF/e-mail (a ficha é buscada pelo
+      // id da inscrição). O dedupe só vale para quem tem CPF/e-mail REAL, porque nesse caso
+      // a ficha é da pessoa (agrega os cursos dela) e sairia idêntica; quem não tem
+      // identificador utilizável ganha sempre a própria ficha.
       const vistos = new Set<string>();
       const alvos: EnrollmentWithCert[] = [];
-      let pulados = 0;
       for (const e of alunos) {
-        const ident = e.cpf || e.email || e.fullName;
-        if (!ident || !ident.trim()) {
-          pulados++;
-          continue;
+        const cpfDigits = (e.cpf ?? '').replace(/\D/g, '');
+        const email = (e.email ?? '').trim();
+        const ident = cpfDigits.length === 11 ? cpfDigits : email.includes('@') ? email.toLowerCase() : null;
+        if (ident) {
+          if (vistos.has(ident)) continue;
+          vistos.add(ident);
         }
-        const chave = ident.trim().toLowerCase();
-        if (vistos.has(chave)) continue;
-        vistos.add(chave);
         alvos.push(e);
-      }
-      if (alvos.length === 0) {
-        toast({ title: 'Nenhum aluno com CPF/e-mail para gerar ficha', variant: 'destructive' });
-        return;
       }
 
       setZipProgress({ done: 0, total: alvos.length });
@@ -698,8 +694,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
 
       for (const e of alvos) {
         try {
-          const ident = (e.cpf || e.email || e.fullName) as string;
-          const res = await fetch(`/api/capacitacao/aluno?identifier=${encodeURIComponent(ident)}`, {
+          const res = await fetch(`/api/capacitacao/aluno?enrollmentId=${encodeURIComponent(e.id)}`, {
             headers: { Authorization: `Bearer ${adminToken}` },
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -728,13 +723,9 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       const zipName = `Fichas - ${(course.title || 'curso').replace(/[\\/:*?"<>|]+/g, '-').trim()}.zip`;
       saveAs(zipBlob, zipName);
 
-      const extras = [
-        falhas > 0 ? `${falhas} falha(s)` : '',
-        pulados > 0 ? `${pulados} sem CPF/e-mail (pulado(s))` : '',
-      ].filter(Boolean);
       toast({
         title: 'Fichas geradas!',
-        description: `${gerados} PDF(s) em ${zipName}${extras.length ? ` · ${extras.join(' · ')}` : ''}.`,
+        description: `${gerados} PDF(s) em ${zipName}${falhas > 0 ? ` · ${falhas} falha(s)` : ''}.`,
       });
     } catch {
       toast({ title: 'Erro ao gerar as fichas', variant: 'destructive' });
@@ -1126,14 +1117,10 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                               disabled={fichaId === e.id}
                               title="Ficha do aluno (PDF)"
                               onClick={async () => {
-                                const identifier = e.cpf || e.email || e.fullName;
-                                if (!identifier) {
-                                  toast({ title: 'Aluno sem CPF/e-mail para referência', variant: 'destructive' });
-                                  return;
-                                }
                                 setFichaId(e.id);
                                 try {
-                                  const res = await fetch(`/api/capacitacao/aluno?identifier=${encodeURIComponent(identifier)}`, {
+                                  // Pelo id da inscrição: funciona inclusive sem CPF/e-mail.
+                                  const res = await fetch(`/api/capacitacao/aluno?enrollmentId=${encodeURIComponent(e.id)}`, {
                                     headers: { Authorization: `Bearer ${adminToken}` },
                                   });
                                   if (!res.ok) throw new Error(`HTTP ${res.status}`);
