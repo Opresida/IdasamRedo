@@ -233,12 +233,17 @@ async function capturePagesToBlob(container: HTMLElement): Promise<Blob> {
 }
 
 /**
- * Gera e baixa um PDF no papel timbrado oficial do IDASAM.
+ * Gera o PDF no papel timbrado oficial e devolve o **Blob** (sem baixar).
+ * Útil pra empacotar vários PDFs (ex.: fichas de todos os alunos num ZIP).
+ *
+ * ⚠️ Chame de forma **sequencial** (nunca em `Promise.all`): esta função monta um
+ * container offscreen no `document.body` e alterna a classe global `sd-exporting`
+ * — duas execuções concorrentes disputariam esse estado.
+ *
  * @param bodyHtml HTML do corpo (filhos de bloco; use cores hex inline).
- * @param docType  rótulo no topo direito do cabeçalho (ex.: "Relatório de Capacitação").
- * @param filename nome do arquivo baixado.
+ * @param docType  rótulo no topo direito do cabeçalho (ex.: "Ficha do Aluno").
  */
-export async function generateLetterheadPdf(bodyHtml: string, docType: string, filename: string): Promise<void> {
+export async function generateLetterheadPdfBlob(bodyHtml: string, docType: string): Promise<Blob> {
   const source = document.createElement('div');
   source.innerHTML = bodyHtml;
 
@@ -249,15 +254,25 @@ export async function generateLetterheadPdf(bodyHtml: string, docType: string, f
   document.body.classList.add('sd-exporting');
   try {
     await autoPaginate(source, container, docType);
-    const blob = await capturePagesToBlob(container);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return await capturePagesToBlob(container);
   } finally {
     document.body.classList.remove('sd-exporting');
     container.remove();
   }
+}
+
+/**
+ * Gera e baixa um PDF no papel timbrado oficial do IDASAM.
+ * @param bodyHtml HTML do corpo (filhos de bloco; use cores hex inline).
+ * @param docType  rótulo no topo direito do cabeçalho (ex.: "Relatório de Capacitação").
+ * @param filename nome do arquivo baixado.
+ */
+export async function generateLetterheadPdf(bodyHtml: string, docType: string, filename: string): Promise<void> {
+  const blob = await generateLetterheadPdfBlob(bodyHtml, docType);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }

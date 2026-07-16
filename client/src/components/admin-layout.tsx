@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/auth-context';
 import {
   LayoutDashboard,
@@ -15,7 +16,8 @@ import {
   GraduationCap,
   Mail,
   FileText,
-  Contact
+  Contact,
+  Menu
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -25,10 +27,17 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
+  // No celular a sidebar vira gaveta (Sheet); no desktop (lg+) segue fixa como sempre.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     setLocation('/admin');
+  };
+
+  const navigate = (path: string) => {
+    setLocation(path);
+    setMobileNavOpen(false);
   };
 
   const navigationItems = [
@@ -94,10 +103,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
+  // Conteúdo da sidebar — reusado no desktop (fixo) e na gaveta do celular.
+  const sidebarContent = (
+    <>
       {/* Sidebar */}
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
         {/* Logo e Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -136,7 +146,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               return (
                 <button
                   key={item.path}
-                  onClick={() => setLocation(item.path)}
+                  onClick={() => navigate(item.path)}
                   className={`w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-all duration-200 group ${
                     isActive
                       ? 'bg-idasam-green-dark text-white shadow-md'
@@ -184,38 +194,65 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </div>
       </div>
+    </>
+  );
 
-      {/* Área de Conteúdo Principal */}
-      <div className="flex-1 flex flex-col">
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar fixa — só do lg pra cima */}
+      <div className="hidden lg:flex shrink-0">{sidebarContent}</div>
+
+      {/* Gaveta de navegação no celular/tablet */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="left" className="p-0 w-64 lg:hidden">
+          {/* Título só para leitores de tela (exigido pelo Radix Dialog) */}
+          <SheetTitle className="sr-only">Navegação do painel administrativo</SheetTitle>
+          {sidebarContent}
+        </SheetContent>
+      </Sheet>
+
+      {/* Área de Conteúdo Principal — min-w-0 deixa o conteúdo encolher em vez de esticar a página */}
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header Principal */}
-        <div className="bg-white border-b border-gray-200 px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div>
-                <p className="text-sm text-gray-600">
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Hambúrguer: abre a navegação no celular */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="lg:hidden shrink-0 px-2"
+                onClick={() => setMobileNavOpen(true)}
+                aria-label="Abrir menu de navegação"
+              >
+                <Menu className="w-4 h-4" />
+              </Button>
+              <div className="min-w-0">
+                <p className="text-sm text-gray-600 truncate">
                   Bem-vindo ao painel administrativo
                 </p>
                 <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                  <span>Última atualização: {new Date().toLocaleString('pt-BR')}</span>
+                  <span className="truncate">Última atualização: {new Date().toLocaleString('pt-BR')}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-3 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setLocation('/')}
                 className="text-gray-600"
               >
-                Ver Site Público
+                <span className="hidden sm:inline">Ver Site Público</span>
+                <span className="sm:hidden">Site</span>
               </Button>
             </div>
           </div>
         </div>
 
         {/* Conteúdo */}
-        <div className="flex-1 p-8 overflow-y-auto">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto min-w-0">
           {children}
         </div>
       </div>

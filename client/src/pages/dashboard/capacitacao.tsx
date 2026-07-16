@@ -39,10 +39,10 @@ import { useAuth } from '@/contexts/auth-context';
 import {
   GraduationCap, Upload, Users, ChevronDown, ChevronUp,
   Plus, Pencil, Trash2, BookOpen, FileDown, FileUp, UserPlus, Clipboard, ClipboardList, Check, Bell, Eye,
-  AlignLeft, AlignCenter, AlignRight, Search, Mail, BarChart3, Award, Building2, TrendingUp, Trophy,
+  AlignLeft, AlignCenter, AlignRight, Search, Mail, BarChart3, Award, Building2, TrendingUp, Trophy, Archive,
 } from 'lucide-react';
 import { printListaChamada } from '@/lib/lista-chamada';
-import { baixarRelatorioAnalytics, baixarFichaAluno } from '@/lib/relatorios-capacitacao';
+import { baixarRelatorioAnalytics, baixarFichaAluno, gerarFichaAlunoBlob, nomeArquivoFicha } from '@/lib/relatorios-capacitacao';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { Progress } from '@/components/ui/progress';
@@ -334,7 +334,7 @@ function EnrollmentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-forest flex items-center gap-2">
             <UserPlus className="w-5 h-5" />
@@ -469,6 +469,8 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
   const [dispatching, setDispatching] = useState(false);
   const [dispatchProgress, setDispatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [generatingList, setGeneratingList] = useState(false);
+  const [zipping, setZipping] = useState(false);
+  const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
   const [emailDialogTarget, setEmailDialogTarget] = useState<'turma' | EnrollmentWithCert | null>(null);
   const [emailTemplateId, setEmailTemplateId] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -653,6 +655,95 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
     }
   };
 
+  // Gera a ficha (PDF no timbrado) de TODOS os alunos do curso e baixa tudo num ZIP.
+  // Cada ficha é rasterizada via html2canvas (~2-4s), então o laço é SEQUENCIAL — o motor
+  // monta um container offscreen e alterna a classe global `sd-exporting`, que não suporta
+  // concorrência. O progresso aparece no próprio botão.
+  const handleFichasZip = async (ev: React.MouseEvent) => {
+    ev.stopPropagation();
+    setZipping(true);
+    setZipProgress(null);
+    try {
+      const alunos = await fetchEnrollmentsWithCerts(course.id, adminToken);
+      if (alunos.length === 0) {
+        toast({ title: 'Nenhum aluno inscrito neste curso', variant: 'destructive' });
+        return;
+      }
+
+      // A ficha é por PESSOA (agrega todos os cursos dela), então dedupe pelo identificador
+      // pra não gerar PDFs idênticos. Sem CPF/e-mail/nome não dá pra consultar → pula.
+      const vistos = new Set<string>();
+      const alvos: EnrollmentWithCert[] = [];
+      let pulados = 0;
+      for (const e of alunos) {
+        const ident = e.cpf || e.email || e.fullName;
+        if (!ident || !ident.trim()) {
+          pulados++;
+          continue;
+        }
+        const chave = ident.trim().toLowerCase();
+        if (vistos.has(chave)) continue;
+        vistos.add(chave);
+        alvos.push(e);
+      }
+      if (alvos.length === 0) {
+        toast({ title: 'Nenhum aluno com CPF/e-mail para gerar ficha', variant: 'destructive' });
+        return;
+      }
+
+      setZipProgress({ done: 0, total: alvos.length });
+      const zip = new JSZip();
+      const usados = new Set<string>();
+      let falhas = 0;
+
+      for (const e of alvos) {
+        try {
+          const ident = (e.cpf || e.email || e.fullName) as string;
+          const res = await fetch(`/api/capacitacao/aluno?identifier=${encodeURIComponent(ident)}`, {
+            headers: { Authorization: `Bearer ${adminToken}` },
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const ficha = await res.json();
+          const blob = await gerarFichaAlunoBlob(ficha);
+          const base = nomeArquivoFicha(ficha);
+          let nome = `${base}.pdf`;
+          let n = 2;
+          while (usados.has(nome)) nome = `${base}_${n++}.pdf`;
+          usados.add(nome);
+          zip.file(nome, blob);
+        } catch (err) {
+          console.error('Falha na ficha de', e.fullName, err);
+          falhas++;
+        } finally {
+          setZipProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+        }
+      }
+
+      const gerados = usados.size;
+      if (gerados === 0) {
+        toast({ title: 'Não foi possível gerar nenhuma ficha', variant: 'destructive' });
+        return;
+      }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipName = `Fichas - ${(course.title || 'curso').replace(/[\\/:*?"<>|]+/g, '-').trim()}.zip`;
+      saveAs(zipBlob, zipName);
+
+      const extras = [
+        falhas > 0 ? `${falhas} falha(s)` : '',
+        pulados > 0 ? `${pulados} sem CPF/e-mail (pulado(s))` : '',
+      ].filter(Boolean);
+      toast({
+        title: 'Fichas geradas!',
+        description: `${gerados} PDF(s) em ${zipName}${extras.length ? ` · ${extras.join(' · ')}` : ''}.`,
+      });
+    } catch {
+      toast({ title: 'Erro ao gerar as fichas', variant: 'destructive' });
+    } finally {
+      setZipping(false);
+      setZipProgress(null);
+    }
+  };
+
   const handleDispatchFromCourse = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!hasCertConfig) return;
@@ -745,9 +836,9 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
     <>
       <Card className="border border-gray-200">
         <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((v) => !v)}>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-base text-forest">{course.title}</CardTitle>
+              <CardTitle className="text-base text-forest line-clamp-2">{course.title}</CardTitle>
               <p className="text-sm text-gray-500 mt-1">
                 {course.instructor} • {course.workload}h
                 {course.schedule ? ` • ${course.schedule}` : ''}
@@ -757,7 +848,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                 <p className="text-xs text-gray-400 mt-0.5">{course.address}</p>
               )}
               {course.authCode && (
-                <div className="flex items-center gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
                   <span className="text-xs text-gray-400">Cód. auth:</span>
                   <code className="text-xs font-mono text-forest bg-forest/8 border border-forest/20 px-1.5 py-0.5 rounded">{course.authCode}</code>
                   <Button
@@ -774,7 +865,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                   </Button>
                 </div>
               )}
-              <div className="flex items-center gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
                 <span className="text-xs text-gray-400">Link de matrícula:</span>
                 <Button
                   size="sm"
@@ -790,7 +881,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                 </Button>
               </div>
             </div>
-            <div className="flex items-center gap-2 ml-4 flex-wrap justify-end">
+            <div className="flex items-center gap-2 ml-0 sm:ml-4 flex-wrap justify-start sm:justify-end shrink-0">
               <Badge className={`text-xs border ${STATUS_BADGE_CLASSES[course.status] ?? STATUS_BADGE_CLASSES.open}`}>
                 {STATUS_LABELS[course.status] ?? 'Aberto'}
               </Badge>
@@ -904,6 +995,21 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                 <FileDown className="w-3 h-3 mr-1" />
                 Exportar CSV
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs text-forest border-forest/40 hover:bg-forest/10"
+                disabled={zipping || enrollments.length === 0}
+                onClick={handleFichasZip}
+                title="Baixar a ficha de todos os alunos deste curso (ZIP de PDFs)"
+              >
+                <Archive className="w-3 h-3 mr-1" />
+                {zipping
+                  ? zipProgress
+                    ? `Gerando ${zipProgress.done}/${zipProgress.total}...`
+                    : 'Gerando...'
+                  : 'Fichas (ZIP)'}
+              </Button>
               {emailTemplates.length > 0 && enrollments.length > 0 && (
                 <Button
                   size="sm"
@@ -944,17 +1050,18 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                     className="pl-9 h-9 text-sm"
                   />
                 </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="overflow-x-auto -mx-2 px-2">
+                {/* min-w garante ROLAGEM horizontal no celular em vez de espremer as 7 colunas */}
+                <table className="min-w-[900px] w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100">
-                      <th className="text-left py-2 pr-4 font-medium text-gray-600">Nome</th>
-                      <th className="text-left py-2 pr-4 font-medium text-gray-600">CPF</th>
-                      <th className="text-left py-2 pr-4 font-medium text-gray-600">E-mail</th>
-                      <th className="text-left py-2 pr-4 font-medium text-gray-600">Telefone</th>
-                      <th className="text-left py-2 pr-4 font-medium text-gray-600">Empresa</th>
-                      <th className="text-left py-2 font-medium text-gray-600">Certificado</th>
-                      <th className="text-left py-2 font-medium text-gray-600">Ações</th>
+                      <th className="text-left py-2 pr-4 font-medium text-gray-600 whitespace-nowrap">Nome</th>
+                      <th className="text-left py-2 pr-4 font-medium text-gray-600 whitespace-nowrap">CPF</th>
+                      <th className="text-left py-2 pr-4 font-medium text-gray-600 whitespace-nowrap">E-mail</th>
+                      <th className="text-left py-2 pr-4 font-medium text-gray-600 whitespace-nowrap">Telefone</th>
+                      <th className="text-left py-2 pr-4 font-medium text-gray-600 whitespace-nowrap">Empresa</th>
+                      <th className="text-left py-2 font-medium text-gray-600 whitespace-nowrap">Certificado</th>
+                      <th className="text-left py-2 font-medium text-gray-600 whitespace-nowrap">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -966,12 +1073,12 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                       </tr>
                     ) : filteredEnrollments.map((e) => (
                       <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="py-2 pr-4">{e.fullName}</td>
-                        <td className="py-2 pr-4 font-mono text-xs">{e.cpf}</td>
-                        <td className="py-2 pr-4">{e.email}</td>
-                        <td className="py-2 pr-4">{e.phone}</td>
-                        <td className="py-2 pr-4 text-gray-600">{e.company || <span className="text-gray-300">—</span>}</td>
-                        <td className="py-2 pr-4">
+                        <td className="py-2 pr-4 whitespace-nowrap">{e.fullName}</td>
+                        <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">{e.cpf}</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">{e.email}</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">{e.phone}</td>
+                        <td className="py-2 pr-4 text-gray-600 whitespace-nowrap">{e.company || <span className="text-gray-300">—</span>}</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">
                           {e.hasCertificate ? (
                             <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Enviado</Badge>
                           ) : (
@@ -999,7 +1106,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
                             </div>
                           )}
                         </td>
-                        <td className="py-2">
+                        <td className="py-2 whitespace-nowrap">
                           <div className="flex items-center gap-1">
                             {emailTemplates.length > 0 && e.email && (
                               <Button
@@ -2196,7 +2303,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
                 {dispatchProgress && (
                   <Progress value={(dispatchProgress.done / dispatchProgress.total) * 100} className="h-1.5" />
                 )}
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     variant="outline"
                     className="flex-1 text-sm"
@@ -2462,7 +2569,7 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Analytics da Capacitação</h2>
           <p className="text-sm text-gray-500">Indicadores consolidados do programa</p>
@@ -2489,7 +2596,7 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c) => (
           <Card key={c.label} className="border border-gray-200">
             <CardContent className="p-4">
@@ -2509,7 +2616,7 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
             <Building2 className="w-4 h-4 text-forest" />
             <p className="text-sm font-semibold text-gray-800">Origem das matrículas</p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Vieram de empresa</p>
               <p className="text-2xl font-bold text-forest">{data.matriculasComEmpresa.toLocaleString('pt-BR')} <span className="text-sm font-medium text-gray-400">({pctEmpresa}%)</span></p>
@@ -2612,19 +2719,19 @@ export default function DashboardCapacitacao() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-50 rounded-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 bg-green-50 rounded-lg shrink-0">
             <GraduationCap className="w-6 h-6 text-forest" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gestão de Capacitação</h1>
-            <p className="text-gray-600">Gerencie cursos, inscrições e certificados IDASAM 2026</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Gestão de Capacitação</h1>
+            <p className="text-sm sm:text-base text-gray-600">Gerencie cursos, inscrições e certificados IDASAM 2026</p>
           </div>
         </div>
         {activeTab === 'cursos' && (
           <Button
-            className="bg-forest hover:bg-forest/90 text-white"
+            className="bg-forest hover:bg-forest/90 text-white shrink-0 w-full sm:w-auto"
             onClick={() => { setEditingCourse(null); setFormOpen(true); }}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -2633,10 +2740,10 @@ export default function DashboardCapacitacao() {
         )}
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
         <button
           onClick={() => setActiveTab('cursos')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap ${
             activeTab === 'cursos'
               ? 'border-forest text-forest'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -2647,7 +2754,7 @@ export default function DashboardCapacitacao() {
         </button>
         <button
           onClick={() => setActiveTab('notificacoes')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap ${
             activeTab === 'notificacoes'
               ? 'border-forest text-forest'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -2658,7 +2765,7 @@ export default function DashboardCapacitacao() {
         </button>
         <button
           onClick={() => setActiveTab('gerar-pdfs')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap ${
             activeTab === 'gerar-pdfs'
               ? 'border-forest text-forest'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -2669,7 +2776,7 @@ export default function DashboardCapacitacao() {
         </button>
         <button
           onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap ${
             activeTab === 'analytics'
               ? 'border-forest text-forest'
               : 'border-transparent text-gray-500 hover:text-gray-700'

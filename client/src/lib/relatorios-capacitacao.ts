@@ -1,6 +1,6 @@
 // Relatórios da Capacitação em PDF no papel timbrado oficial do IDASAM.
 // Corpo em HTML com CORES HEX INLINE (html2canvas não lê oklch).
-import { generateLetterheadPdf } from '@/lib/letterhead-pdf';
+import { generateLetterheadPdf, generateLetterheadPdfBlob } from '@/lib/letterhead-pdf';
 
 export type CapAnalytics = {
   certificadosEmitidos: number;
@@ -130,7 +130,19 @@ export function buildFichaAlunoHTML(a: AlunoFicha): string {
   return h;
 }
 
+/** Nome de arquivo padrão da ficha (sem extensão). */
+export function nomeArquivoFicha(a: Pick<AlunoFicha, 'fullName'>): string {
+  return `Ficha_${(a.fullName || 'aluno').replace(/[^a-zA-Z0-9]/g, '_')}`;
+}
+
 export async function baixarFichaAluno(a: AlunoFicha): Promise<void> {
-  const nome = (a.fullName || 'aluno').replace(/[^a-zA-Z0-9]/g, '_');
-  await generateLetterheadPdf(buildFichaAlunoHTML(a), 'Ficha do Aluno', `Ficha_${nome}.pdf`);
+  await generateLetterheadPdf(buildFichaAlunoHTML(a), 'Ficha do Aluno', `${nomeArquivoFicha(a)}.pdf`);
+}
+
+/**
+ * Gera a ficha do aluno e devolve o **Blob** (sem baixar) — pra empacotar várias num ZIP.
+ * ⚠️ Chamar sequencialmente (ver `generateLetterheadPdfBlob`).
+ */
+export async function gerarFichaAlunoBlob(a: AlunoFicha): Promise<Blob> {
+  return await generateLetterheadPdfBlob(buildFichaAlunoHTML(a), 'Ficha do Aluno');
 }
