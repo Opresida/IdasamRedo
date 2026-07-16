@@ -273,6 +273,12 @@ export async function generateLetterheadPdf(bodyHtml: string, docType: string, f
   const a = document.createElement('a');
   a.href = url;
   a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+  // Anexar ao documento antes do clique é o padrão confiável: sem isso o Firefox ignora
+  // o clique e alguns navegadores descartam o `download`, baixando o arquivo com o UUID
+  // do blob (sem extensão) em vez do nome certo.
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
