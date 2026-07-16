@@ -61,8 +61,16 @@ export type CapacitacaoAnalytics = {
   totalMatriculas: number;
   matriculasComEmpresa: number;
   matriculasSemEmpresa: number;
-  rankingCursos: { id: string; title: string; enrolledCount: number; certifiedCount: number; status: string }[];
+  rankingCursos: { id: string; title: string; enrolledCount: number; certifiedCount: number; status: string; program: string }[];
   rankingEmpresas: { empresa: string; count: number }[];
+  /** Totais por programa (PROINDI 4.0 × PTI) para o relatório geral. */
+  resumoProgramas: {
+    program: string;
+    cursos: number;
+    matriculas: number;
+    certificados: number;
+    cursosConcluidos: number;
+  }[];
 };
 
 export type AlunoFicha = {
@@ -391,7 +399,34 @@ export class DatabaseStorage implements IStorage {
     const cursosConcluidos = cursos.filter((c) => c.status === 'completed').length;
     const rankingCursos = [...cursos]
       .sort((a, b) => b.enrolledCount - a.enrolledCount)
-      .map((c) => ({ id: c.id, title: c.title, enrolledCount: c.enrolledCount, certifiedCount: c.certifiedCount, status: c.status }));
+      .map((c) => ({
+        id: c.id,
+        title: c.title,
+        enrolledCount: c.enrolledCount,
+        certifiedCount: c.certifiedCount,
+        status: c.status,
+        program: c.program ?? 'pti',
+      }));
+
+    // Totais por programa — PROINDI 4.0 sempre antes do PTI no relatório.
+    const porPrograma = new Map<string, { cursos: number; matriculas: number; certificados: number; cursosConcluidos: number }>();
+    for (const c of cursos) {
+      const p = c.program ?? 'pti';
+      const acc = porPrograma.get(p) ?? { cursos: 0, matriculas: 0, certificados: 0, cursosConcluidos: 0 };
+      acc.cursos += 1;
+      acc.matriculas += c.enrolledCount;
+      acc.certificados += c.certifiedCount;
+      if (c.status === 'completed') acc.cursosConcluidos += 1;
+      porPrograma.set(p, acc);
+    }
+    const ordem = ['proindi', 'pti'];
+    const resumoProgramas = Array.from(porPrograma.entries())
+      .map(([program, v]) => ({ program, ...v }))
+      .sort((a, b) => {
+        const ia = ordem.indexOf(a.program);
+        const ib = ordem.indexOf(b.program);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      });
 
     return {
       certificadosEmitidos,
@@ -403,6 +438,7 @@ export class DatabaseStorage implements IStorage {
       matriculasSemEmpresa,
       rankingCursos,
       rankingEmpresas,
+      resumoProgramas,
     };
   }
 

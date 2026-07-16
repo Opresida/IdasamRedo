@@ -10,9 +10,13 @@ export type CapAnalytics = {
   totalMatriculas: number;
   matriculasComEmpresa: number;
   matriculasSemEmpresa: number;
-  rankingCursos: { id: string; title: string; enrolledCount: number; certifiedCount: number; status: string }[];
+  rankingCursos: { id: string; title: string; enrolledCount: number; certifiedCount: number; status: string; program?: string }[];
   rankingEmpresas: { empresa: string; count: number }[];
+  resumoProgramas?: { program: string; cursos: number; matriculas: number; certificados: number; cursosConcluidos: number }[];
 };
+
+const PROGRAM_LABEL: Record<string, string> = { proindi: 'PROINDI 4.0', pti: 'PTI' };
+const programLabel = (p?: string) => PROGRAM_LABEL[p ?? 'pti'] ?? (p ?? '—');
 
 export type AlunoFicha = {
   fullName: string | null;
@@ -74,9 +78,21 @@ export function buildRelatorioAnalyticsHTML(d: CapAnalytics): string {
     ['Matrículas sem indicação de empresa', `<b>${d.matriculasSemEmpresa}</b>`],
   ]);
 
+  if (d.resumoProgramas && d.resumoProgramas.length > 0) {
+    h += `<h3>Resumo por programa</h3>`;
+    h += table(['Programa', 'Cursos', 'Concluídos', 'Matrículas', 'Certificados'],
+      d.resumoProgramas.map((p) => [
+        `<b>${esc(programLabel(p.program))}</b>`,
+        String(p.cursos),
+        String(p.cursosConcluidos),
+        `<b>${p.matriculas}</b>`,
+        `<b>${p.certificados}</b>`,
+      ]));
+  }
+
   h += `<h3>Ranking de cursos por matrículas</h3>`;
-  h += table(['#', 'Curso', 'Matrículas', 'Certificados', 'Status'],
-    d.rankingCursos.map((c, i) => [String(i + 1), esc(c.title), String(c.enrolledCount), String(c.certifiedCount), esc(STATUS_LABEL[c.status] ?? c.status)]));
+  h += table(['#', 'Curso', 'Programa', 'Matrículas', 'Certificados', 'Status'],
+    d.rankingCursos.map((c, i) => [String(i + 1), esc(c.title), `<b>${esc(programLabel(c.program))}</b>`, String(c.enrolledCount), String(c.certifiedCount), esc(STATUS_LABEL[c.status] ?? c.status)]));
 
   h += `<h3>Empresas de origem dos alunos</h3>`;
   if (d.rankingEmpresas.length === 0) {

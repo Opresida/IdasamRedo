@@ -22,6 +22,14 @@ export type User = typeof users.$inferSelect;
 export const COURSE_STATUSES = ['open', 'closed', 'coming_soon', 'completed'] as const;
 export type CourseStatus = typeof COURSE_STATUSES[number];
 
+/** Programa ao qual o curso pertence (filtro + relatórios da Capacitação). */
+export const COURSE_PROGRAMS = ['proindi', 'pti'] as const;
+export type CourseProgram = typeof COURSE_PROGRAMS[number];
+export const COURSE_PROGRAM_LABELS: Record<CourseProgram, string> = {
+  proindi: 'PROINDI 4.0',
+  pti: 'PTI',
+};
+
 export const courses = pgTable("courses", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -36,6 +44,9 @@ export const courses = pgTable("courses", {
   curriculum: text("curriculum"),
   vacancies: integer("vacancies"),
   status: text("status").notNull().default("open"),
+  // 'proindi' (PROINDI 4.0) | 'pti' — default 'pti' faz o backfill dos cursos antigos
+  // virem PTI; os do PROINDI são marcados explicitamente.
+  program: text("program").notNull().default("pti"),
   authCode: text("auth_code").unique(),
   certTemplate: text("cert_template"),
   certBlockConfig: text("cert_block_config"),
@@ -52,6 +63,8 @@ export const insertCourseSchema = createInsertSchema(courses).omit({
   curriculum: z.string().optional().nullable(),
   vacancies: z.number().int().positive().optional().nullable(),
   status: z.enum(COURSE_STATUSES).optional().default('open'),
+  // Opcional: quem não informar cai no default 'pti' da coluna.
+  program: z.enum(COURSE_PROGRAMS).optional(),
 });
 
 export const updateCourseSchema = insertCourseSchema.extend({

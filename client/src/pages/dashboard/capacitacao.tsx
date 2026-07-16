@@ -49,7 +49,7 @@ import { Progress } from '@/components/ui/progress';
 import JSZip from 'jszip';
 import { downloadBlob } from '@/lib/download';
 import type { Course, CourseWithEnrollment, Enrollment, CourseNotificationSubscription } from '@shared/schema';
-import { COURSE_STATUSES } from '@shared/schema';
+import { COURSE_STATUSES, COURSE_PROGRAMS } from '@shared/schema';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -78,6 +78,7 @@ const courseFormSchema = z.object({
   curriculum: z.string().optional().nullable(),
   vacancies: z.coerce.number().int().positive().optional().nullable(),
   status: z.enum(COURSE_STATUSES).default('open'),
+  program: z.enum(COURSE_PROGRAMS).default('pti'),
 });
 
 type CourseFormData = z.infer<typeof courseFormSchema>;
@@ -95,6 +96,7 @@ const defaultValues: CourseFormData = {
   curriculum: '',
   vacancies: null,
   status: 'open',
+  program: 'pti',
 };
 
 function courseToFormData(course: Course): CourseFormData {
@@ -111,6 +113,7 @@ function courseToFormData(course: Course): CourseFormData {
     curriculum: course.curriculum ?? '',
     vacancies: course.vacancies ?? null,
     status: (course.status as typeof COURSE_STATUSES[number]) ?? 'open',
+    program: (course.program as CourseFormData['program']) ?? 'pti',
   };
 }
 
@@ -127,6 +130,14 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
   coming_soon: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   completed: 'bg-gray-100 text-gray-600 border-gray-200',
 };
+
+// Programa do curso (PROINDI 4.0 × PTI) — filtro, selo no card e relatórios.
+const PROGRAM_LABELS: Record<string, string> = { proindi: 'PROINDI 4.0', pti: 'PTI' };
+const PROGRAM_BADGE_CLASSES: Record<string, string> = {
+  proindi: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  pti: 'bg-amber-100 text-amber-700 border-amber-200',
+};
+const programLabel = (p?: string | null) => PROGRAM_LABELS[p ?? 'pti'] ?? (p ?? '—');
 
 async function fetchEnrollmentsWithCerts(courseId: string, token: string): Promise<EnrollmentWithCert[]> {
   const res = await fetch(`/api/enrollments/course/${courseId}`, {
@@ -873,6 +884,9 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
               </div>
             </div>
             <div className="flex items-center gap-2 ml-0 sm:ml-4 flex-wrap justify-start sm:justify-end shrink-0">
+              <Badge className={`text-xs border ${PROGRAM_BADGE_CLASSES[course.program ?? 'pti'] ?? PROGRAM_BADGE_CLASSES.pti}`}>
+                {programLabel(course.program)}
+              </Badge>
               <Badge className={`text-xs border ${STATUS_BADGE_CLASSES[course.status] ?? STATUS_BADGE_CLASSES.open}`}>
                 {STATUS_LABELS[course.status] ?? 'Aberto'}
               </Badge>
@@ -1427,6 +1441,24 @@ function CourseFormDialog({
                       value={field.value ?? ''}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="program" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Programa *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value ?? 'pti'}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o programa" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="proindi">PROINDI 4.0</SelectItem>
+                      <SelectItem value="pti">PTI</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -2519,8 +2551,9 @@ type CapAnalytics = {
   totalMatriculas: number;
   matriculasComEmpresa: number;
   matriculasSemEmpresa: number;
-  rankingCursos: { id: string; title: string; enrolledCount: number; certifiedCount: number; status: string }[];
+  rankingCursos: { id: string; title: string; enrolledCount: number; certifiedCount: number; status: string; program?: string }[];
   rankingEmpresas: { empresa: string; count: number }[];
+  resumoProgramas?: { program: string; cursos: number; matriculas: number; certificados: number; cursosConcluidos: number }[];
 };
 
 function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
@@ -2597,6 +2630,40 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
         ))}
       </div>
 
+      {data.resumoProgramas && data.resumoProgramas.length > 0 && (
+        <Card className="border border-gray-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <GraduationCap className="w-4 h-4 text-forest" />
+              <p className="text-sm font-semibold text-gray-800">Resumo por programa</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {data.resumoProgramas.map((p) => (
+                <div key={p.program} className="border border-gray-100 rounded-lg p-3">
+                  <Badge className={`text-xs border ${PROGRAM_BADGE_CLASSES[p.program] ?? PROGRAM_BADGE_CLASSES.pti}`}>
+                    {programLabel(p.program)}
+                  </Badge>
+                  <div className="grid grid-cols-3 gap-2 mt-3">
+                    <div>
+                      <p className="text-lg font-bold text-gray-900">{p.cursos}</p>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wide">Cursos</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-forest">{p.matriculas.toLocaleString('pt-BR')}</p>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wide">Matrículas</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-green-600">{p.certificados.toLocaleString('pt-BR')}</p>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wide">Certificados</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border border-gray-200">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -2631,7 +2698,12 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
                   <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
                     <span className="text-xs font-bold text-gray-400 w-5 text-center">{i + 1}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-800 truncate">{c.title}</p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="text-sm text-gray-800 truncate">{c.title}</p>
+                        <Badge className={`text-[10px] px-1.5 py-0 border shrink-0 ${PROGRAM_BADGE_CLASSES[c.program ?? 'pti'] ?? PROGRAM_BADGE_CLASSES.pti}`}>
+                          {programLabel(c.program)}
+                        </Badge>
+                      </div>
                       <div className="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                         <div className="bg-forest h-full" style={{ width: `${Math.round((c.enrolledCount / maxMatriculas) * 100)}%` }} />
                       </div>
@@ -2679,12 +2751,17 @@ export default function DashboardCapacitacao() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'coming_soon' | 'completed'>('all');
+  const [programFilter, setProgramFilter] = useState<'all' | 'proindi' | 'pti'>('all');
 
   const { data: courses = [], isLoading } = useQuery<CourseWithEnrollment[]>({
     queryKey: ['/api/courses'],
   });
 
-  const filteredCourses = statusFilter === 'all' ? courses : courses.filter((c) => c.status === statusFilter);
+  const filteredCourses = courses.filter(
+    (c) =>
+      (statusFilter === 'all' || c.status === statusFilter) &&
+      (programFilter === 'all' || (c.program ?? 'pti') === programFilter),
+  );
 
   if (!adminToken) {
     return (
@@ -2797,6 +2874,33 @@ export default function DashboardCapacitacao() {
               </button>
             ))}
           </div>
+
+          {/* Filtro por programa (PROINDI 4.0 × PTI) */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-gray-400 mr-1">Programa</span>
+            {([
+              { value: 'all', label: 'Todos' },
+              { value: 'proindi', label: 'PROINDI 4.0' },
+              { value: 'pti', label: 'PTI' },
+            ] as const).map(({ value, label }) => {
+              const n = value === 'all' ? courses.length : courses.filter((c) => (c.program ?? 'pti') === value).length;
+              return (
+                <button
+                  key={value}
+                  onClick={() => setProgramFilter(value)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    programFilter === value
+                      ? 'bg-forest text-white border-forest'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:text-gray-800'
+                  }`}
+                >
+                  {label}
+                  <span className={`ml-1.5 text-xs ${programFilter === value ? 'text-white/80' : 'text-gray-400'}`}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {isLoading ? (
             <div className="flex justify-center py-16">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest" />
