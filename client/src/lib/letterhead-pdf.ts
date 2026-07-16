@@ -7,6 +7,7 @@
 // buildWhiteLogoDataUrl) — mantidas aqui para não tocar naquele arquivo crítico
 // (documentos legais/assinaturas). Importa o suite.css (estilos sd-* obrigatórios).
 import '@/components/suite-documental/suite.css';
+import { downloadBlob } from '@/lib/download';
 
 const LOGO = '/logo-idasam.svg';
 
@@ -269,16 +270,5 @@ export async function generateLetterheadPdfBlob(bodyHtml: string, docType: strin
  */
 export async function generateLetterheadPdf(bodyHtml: string, docType: string, filename: string): Promise<void> {
   const blob = await generateLetterheadPdfBlob(bodyHtml, docType);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
-  // Anexar ao documento antes do clique é o padrão confiável: sem isso o Firefox ignora
-  // o clique e alguns navegadores descartam o `download`, baixando o arquivo com o UUID
-  // do blob (sem extensão) em vez do nome certo.
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  downloadBlob(blob, filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
 }

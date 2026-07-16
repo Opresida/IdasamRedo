@@ -47,7 +47,7 @@ import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { Progress } from '@/components/ui/progress';
 import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
+import { downloadBlob } from '@/lib/download';
 import type { Course, CourseWithEnrollment, Enrollment, CourseNotificationSubscription } from '@shared/schema';
 import { COURSE_STATUSES } from '@shared/schema';
 
@@ -721,7 +721,7 @@ function CourseEnrollments({ course, adminToken, onEdit, onDelete }: {
       }
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       const zipName = `Fichas - ${(course.title || 'curso').replace(/[\\/:*?"<>|]+/g, '-').trim()}.zip`;
-      saveAs(zipBlob, zipName);
+      downloadBlob(zipBlob, zipName);
 
       toast({
         title: 'Fichas geradas!',
@@ -2086,7 +2086,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
 
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       const zipName = `certificados-${selectedCourse.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.zip`;
-      saveAs(zipBlob, zipName);
+      downloadBlob(zipBlob, zipName);
       toast({ title: 'Certificados gerados!', description: `${enrollments.length} PDF(s) compactados em ${zipName}.` });
     } catch (err) {
       console.error('Generate error:', err instanceof Error ? err.message : err);
@@ -2112,7 +2112,7 @@ function GerarPdfsTab({ adminToken, courses }: { adminToken: string; courses: Co
         templateBytes, block, 'Nome do Aluno', alexBrushBytes, poppinsBytes
       );
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      saveAs(blob, 'previa-certificado.pdf');
+      downloadBlob(blob, 'previa-certificado.pdf');
     } catch (err) {
       console.error('Preview error:', err instanceof Error ? err.message : err);
       toast({ title: 'Erro ao gerar prévia', description: err instanceof Error ? err.message : 'Verifique o template e tente novamente.', variant: 'destructive' });

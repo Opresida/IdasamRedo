@@ -7,6 +7,7 @@
 // parceiro do curso), faixa com os dados do curso, tabela com UMA COLUNA POR DIA de aula do
 // período (dd/mm + dia da semana) + TOTAL FALTAS, legenda P/F, assinaturas e o rodapé oficial.
 import idasamLogoSvg from './idasam-logo-chamada-svg';
+import { downloadBlob } from '@/lib/download';
 import type { Course } from '@shared/schema';
 
 export type ChamadaCurso = Pick<
@@ -445,5 +446,7 @@ export async function printListaChamada(course: ChamadaCurso, alunos: ChamadaAlu
     pdf.text(`Página ${p} de ${total}`, pageW - marginX, footerY + 3.6, { align: 'right' });
   }
 
-  pdf.save(`Diário de Classe - ${sanitizeFileName(course.title)}.pdf`);
+  // Não usar pdf.save(): o jsPDF dispara o clique num link solto e o Chrome pode
+  // descartar o nome, salvando com o UUID do blob. downloadBlob anexa o link antes.
+  downloadBlob(pdf.output('blob'), `Diário de Classe - ${sanitizeFileName(course.title)}.pdf`);
 }
