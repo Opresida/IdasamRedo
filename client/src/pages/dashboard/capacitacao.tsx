@@ -2568,7 +2568,26 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
   });
 
   const { toast } = useToast();
-  const [baixando, setBaixando] = useState(false);
+  // Qual relatório está gerando ('geral' | 'proindi' | 'pti') — só o botão clicado mostra "Gerando…".
+  const [baixandoRel, setBaixandoRel] = useState<string | null>(null);
+
+  // Baixa o relatório escopado a um programa (busca os dados isolados no backend).
+  const baixarRelatorioPrograma = async (program: string) => {
+    setBaixandoRel(program);
+    try {
+      const res = await fetch(`/api/capacitacao/analytics?program=${encodeURIComponent(program)}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scoped = await res.json();
+      await baixarRelatorioAnalytics(scoped, program);
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao gerar o relatório do programa', variant: 'destructive' });
+    } finally {
+      setBaixandoRel(null);
+    }
+  };
 
   if (isLoading) {
     return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" /></div>;
@@ -2597,22 +2616,22 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
         <Button
           size="sm"
           variant="outline"
-          disabled={baixando}
+          disabled={!!baixandoRel}
           className="text-forest border-forest/40 hover:bg-forest/10 shrink-0"
           onClick={async () => {
-            setBaixando(true);
+            setBaixandoRel('geral');
             try {
               await baixarRelatorioAnalytics(data);
             } catch (err) {
               console.error(err);
               toast({ title: 'Erro ao gerar o relatório', variant: 'destructive' });
             } finally {
-              setBaixando(false);
+              setBaixandoRel(null);
             }
           }}
         >
           <FileDown className="w-4 h-4 mr-1.5" />
-          {baixando ? 'Gerando…' : 'Baixar Relatório'}
+          {baixandoRel === 'geral' ? 'Gerando…' : 'Baixar Relatório'}
         </Button>
       </div>
 
@@ -2657,6 +2676,16 @@ function CapacitacaoAnalyticsTab({ adminToken }: { adminToken: string }) {
                       <p className="text-[10px] text-gray-500 uppercase tracking-wide">Certificados</p>
                     </div>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!baixandoRel}
+                    className="w-full mt-3 text-forest border-forest/40 hover:bg-forest/10"
+                    onClick={() => baixarRelatorioPrograma(p.program)}
+                  >
+                    <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                    {baixandoRel === p.program ? 'Gerando…' : `Baixar relatório ${programLabel(p.program)}`}
+                  </Button>
                 </div>
               ))}
             </div>

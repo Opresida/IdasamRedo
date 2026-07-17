@@ -87,7 +87,7 @@ export type AlunoFicha = {
 };
 
 export interface IStorage {
-  getCapacitacaoAnalytics(): Promise<CapacitacaoAnalytics>;
+  getCapacitacaoAnalytics(program?: string): Promise<CapacitacaoAnalytics>;
   getAlunoFicha(identifier: string): Promise<AlunoFicha | null>;
   getAlunoFichaByEnrollment(enrollmentId: string): Promise<AlunoFicha | null>;
   getEnrollmentById(id: string): Promise<Enrollment | undefined>;
@@ -352,8 +352,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Indicadores consolidados da Capacitação (sub-aba Analytics).
-  async getCapacitacaoAnalytics(): Promise<CapacitacaoAnalytics> {
-    const cursos = await this.getCourses(); // já traz enrolledCount, certifiedCount, status
+  async getCapacitacaoAnalytics(program?: string): Promise<CapacitacaoAnalytics> {
+    // Quando `program` vem, tudo é escopado aos cursos daquele programa. Como enrollments/
+    // certificates NÃO têm coluna de programa (ele mora só no curso), a filtragem das
+    // inscrições/certificados é feita juntando por courseId ao conjunto de cursos do programa.
+    const allCursos = await this.getCourses(); // já traz enrolledCount, certifiedCount, status
+    const cursos = program ? allCursos.filter((c) => (c.program ?? 'pti') === program) : allCursos;
+    const courseIds = new Set(cursos.map((c) => c.id));
+    const noPrograma = (e: { courseId: string }) => !program || courseIds.has(e.courseId);
+
     const allEnrollments = await db.select().from(enrollments);
 
     // Certificados emitidos = certificados com arquivo (mesma regra do certifiedCount)
@@ -370,6 +377,7 @@ export class DatabaseStorage implements IStorage {
     const formados = new Set<string>();
     for (const e of allEnrollments) {
       if (!certifiedIds.has(e.id)) continue;
+      if (!noPrograma(e)) continue;
       const key = (e.cpf && normalizeIdentifier(e.cpf))
         || (e.email && normalizeIdentifier(e.email))
         || (e.fullName && normalizeName(e.fullName))
@@ -381,8 +389,11 @@ export class DatabaseStorage implements IStorage {
     // Empresa: com × sem, e ranking por empresa
     let matriculasComEmpresa = 0;
     let matriculasSemEmpresa = 0;
+    let totalMatriculas = 0;
     const empresaCount = new Map<string, number>();
     for (const e of allEnrollments) {
+      if (!noPrograma(e)) continue;
+      totalMatriculas++;
       const emp = (e.company ?? '').trim();
       if (emp) {
         matriculasComEmpresa++;
@@ -433,7 +444,7 @@ export class DatabaseStorage implements IStorage {
       alunosFormados,
       cursosConcluidos,
       totalCursos: cursos.length,
-      totalMatriculas: allEnrollments.length,
+      totalMatriculas,
       matriculasComEmpresa,
       matriculasSemEmpresa,
       rankingCursos,

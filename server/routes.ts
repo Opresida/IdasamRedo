@@ -1,7 +1,7 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, insertPortfolioProjectSchema, insertProjectCategorySchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, insertPortfolioProjectSchema, insertProjectCategorySchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES, COURSE_PROGRAMS } from "@shared/schema";
 import type { ProposalStatus, SignatureType } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import multer from "multer";
@@ -1911,10 +1911,13 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Capacitação: indicadores consolidados (sub-aba Analytics)
-  app.get("/api/capacitacao/analytics", requireAdmin, async (_req, res) => {
+  // Capacitação: indicadores consolidados (sub-aba Analytics).
+  // ?program=proindi|pti escopa tudo àquele programa (relatório exclusivo); ausente/ inválido = geral.
+  app.get("/api/capacitacao/analytics", requireAdmin, async (req, res) => {
     try {
-      const data = await storage.getCapacitacaoAnalytics();
+      const raw = (req.query.program as string | undefined)?.trim();
+      const program = (COURSE_PROGRAMS as readonly string[]).includes(raw ?? '') ? raw : undefined;
+      const data = await storage.getCapacitacaoAnalytics(program);
       res.json(data);
     } catch {
       res.status(500).json({ message: "Erro ao buscar analytics da capacitação" });

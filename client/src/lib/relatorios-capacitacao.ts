@@ -64,9 +64,12 @@ function table(headers: string[], rows: string[][]): string {
 }
 
 // ── Relatório de Analytics ──
-export function buildRelatorioAnalyticsHTML(d: CapAnalytics): string {
+export function buildRelatorioAnalyticsHTML(d: CapAnalytics, program?: string): string {
   const pctEmpresa = d.totalMatriculas > 0 ? Math.round((d.matriculasComEmpresa / d.totalMatriculas) * 100) : 0;
-  let h = introCard('Relatório de Indicadores', 'Programa de Capacitação Profissional', `Emitido em ${esc(hoje())}`);
+  const subtitulo = program
+    ? `Programa de Capacitação Profissional — ${programLabel(program)}`
+    : 'Programa de Capacitação Profissional';
+  let h = introCard('Relatório de Indicadores', subtitulo, `Emitido em ${esc(hoje())}`);
 
   h += `<h3>Resumo geral</h3>`;
   h += table(['Indicador', 'Valor'], [
@@ -78,7 +81,8 @@ export function buildRelatorioAnalyticsHTML(d: CapAnalytics): string {
     ['Matrículas sem indicação de empresa', `<b>${d.matriculasSemEmpresa}</b>`],
   ]);
 
-  if (d.resumoProgramas && d.resumoProgramas.length > 0) {
+  // Resumo por programa só faz sentido no relatório GERAL (não num de programa único).
+  if (!program && d.resumoProgramas && d.resumoProgramas.length > 0) {
     h += `<h3>Resumo por programa</h3>`;
     h += table(['Programa', 'Cursos', 'Concluídos', 'Matrículas', 'Certificados'],
       d.resumoProgramas.map((p) => [
@@ -91,8 +95,14 @@ export function buildRelatorioAnalyticsHTML(d: CapAnalytics): string {
   }
 
   h += `<h3>Ranking de cursos por matrículas</h3>`;
-  h += table(['#', 'Curso', 'Programa', 'Matrículas', 'Certificados', 'Status'],
-    d.rankingCursos.map((c, i) => [String(i + 1), esc(c.title), `<b>${esc(programLabel(c.program))}</b>`, String(c.enrolledCount), String(c.certifiedCount), esc(STATUS_LABEL[c.status] ?? c.status)]));
+  if (program) {
+    // Relatório de um programa só: a coluna "Programa" seria redundante.
+    h += table(['#', 'Curso', 'Matrículas', 'Certificados', 'Status'],
+      d.rankingCursos.map((c, i) => [String(i + 1), esc(c.title), String(c.enrolledCount), String(c.certifiedCount), esc(STATUS_LABEL[c.status] ?? c.status)]));
+  } else {
+    h += table(['#', 'Curso', 'Programa', 'Matrículas', 'Certificados', 'Status'],
+      d.rankingCursos.map((c, i) => [String(i + 1), esc(c.title), `<b>${esc(programLabel(c.program))}</b>`, String(c.enrolledCount), String(c.certifiedCount), esc(STATUS_LABEL[c.status] ?? c.status)]));
+  }
 
   h += `<h3>Empresas de origem dos alunos</h3>`;
   if (d.rankingEmpresas.length === 0) {
@@ -104,8 +114,10 @@ export function buildRelatorioAnalyticsHTML(d: CapAnalytics): string {
   return h;
 }
 
-export async function baixarRelatorioAnalytics(d: CapAnalytics): Promise<void> {
-  await generateLetterheadPdf(buildRelatorioAnalyticsHTML(d), 'Relatório de Capacitação', 'Relatorio_Capacitacao_IDASAM.pdf');
+export async function baixarRelatorioAnalytics(d: CapAnalytics, program?: string): Promise<void> {
+  const docType = program ? `Relatório de Capacitação — ${programLabel(program)}` : 'Relatório de Capacitação';
+  const slug = program ? programLabel(program).replace(/[^a-zA-Z0-9]+/g, '_') : 'Geral';
+  await generateLetterheadPdf(buildRelatorioAnalyticsHTML(d, program), docType, `Relatorio_Capacitacao_${slug}_IDASAM.pdf`);
 }
 
 // ── Ficha do aluno ──
