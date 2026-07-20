@@ -3209,12 +3209,17 @@ export async function registerRoutes(app: Express) {
     const catMap = new Map(cats.map(c => [c.id, c.nome]));
     const impactoGlobalOn = (await storage.getAppSetting(SETTING_IMPACTO_PUBLICO_GLOBAL)) === 'true';
 
-    const result = transparentes.map(p => {
+    const result = await Promise.all(transparentes.map(async p => {
       const projectTxs = txs.filter(t => t.projetoId === p.id && t.isPublic && t.status === 'pago');
       const receitas = projectTxs.filter(t => t.tipo === 'receita').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
       const despesas = projectTxs.filter(t => t.tipo === 'despesa').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+      // Números de impacto públicos: só se o mestre GLOBAL e o do projeto estão ligados, e o item é público.
+      const impactoOn = impactoGlobalOn && p.impactoPublico;
+      const impactos = impactoOn
+        ? (await storage.getProjectImpacts(p.id)).filter(i => i.isPublic).map(i => ({ id: i.id, titulo: i.titulo, valor: i.valor, descricao: i.descricao }))
+        : [];
       // Mostra o CTA/olho "Ver análise & impacto" quando há analytics detalhado ou impacto público.
-      const temAnalytics = p.analyticsPublico || (impactoGlobalOn && p.impactoPublico);
+      const temAnalytics = p.analyticsPublico || impactos.length > 0;
       return {
         id: p.id,
         nome: p.nome,
@@ -3228,6 +3233,8 @@ export async function registerRoutes(app: Express) {
         mostrarTransacoes: p.mostrarTransacoes,
         nivelTransparencia: p.nivelTransparencia,
         temAnalytics,
+        impactoIntro: impactoOn ? (p.impactoIntro || '') : '',
+        impactos,
         transacoes: p.mostrarTransacoes ? projectTxs.map(t => ({
           id: t.id,
           data: t.data,
@@ -3237,7 +3244,7 @@ export async function registerRoutes(app: Express) {
           categoria: t.categoriaId ? catMap.get(t.categoriaId) || '' : '',
         })) : [],
       };
-    });
+    }));
     res.json(result);
   });
 

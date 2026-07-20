@@ -1653,6 +1653,7 @@ export default function ProjetosAdminPage() {
                 {/* Números de impacto PRÓPRIOS do projeto (add/remover livremente) */}
                 <div className="pt-2 border-t">
                   <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5 mb-1"><TrendingUp className="w-4 h-4 text-forest" /> Números de impacto deste projeto</p>
+                  <p className="text-xs text-gray-500 mb-1">Adicione <strong>quantos rótulos quiser</strong> (ex.: Famílias impactadas, Árvores plantadas, 85% de aprovação) — cada um pode ser um número ou uma porcentagem. Os que estiverem com <strong>Público</strong> ligado aparecem no portal da transparência.</p>
                   {!editingProject ? (
                     <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-3">
                       Salve o projeto primeiro (botão abaixo) para adicionar os números de impacto. As demais opções desta aba já são salvas junto com o projeto.
@@ -1696,7 +1697,14 @@ export default function ProjetosAdminPage() {
                               }
                             }}
                           >
-                            {editingImpactoId ? 'Salvar' : 'Adicionar'}
+                            {editingImpactoId ? (
+                              'Salvar'
+                            ) : (
+                              <>
+                                <Plus className="w-4 h-4 mr-1.5" />
+                                Adicionar rótulo
+                              </>
+                            )}
                           </Button>
                           {editingImpactoId && (
                             <Button type="button" size="sm" variant="ghost" onClick={() => { setEditingImpactoId(null); setImpactoForm({ titulo: '', valor: '', descricao: '', icone: '', ordem: 0 }); }}>Cancelar</Button>

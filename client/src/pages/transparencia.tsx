@@ -19,6 +19,7 @@ import {
   DollarSign,
   Calendar,
   Info,
+  Sparkles,
   Loader2
 } from 'lucide-react';
 
@@ -35,6 +36,8 @@ interface TransparencyProject {
   mostrarTransacoes: boolean;
   nivelTransparencia: string;
   temAnalytics?: boolean;
+  impactoIntro?: string;
+  impactos?: { id: string; titulo: string; valor: string; descricao: string | null }[];
   transacoes: TransparencyTransaction[];
 }
 
@@ -260,6 +263,37 @@ export default function TransparenciaPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Impacto Positivo — números do projeto selecionado, direto na página pública */}
+            {selectedProjectInfo && selectedProject !== 'all' && (selectedProjectInfo.impactos?.length ?? 0) > 0 && (
+              <Card className="border-l-4 border-l-forest">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-forest" />
+                    Impacto Positivo
+                  </CardTitle>
+                  {selectedProjectInfo.impactoIntro && (
+                    <CardDescription>{selectedProjectInfo.impactoIntro}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {selectedProjectInfo.impactos!.map((imp) => (
+                      <div
+                        key={imp.id}
+                        className="rounded-xl border bg-gradient-to-br from-forest/5 to-transparent p-4 text-center"
+                      >
+                        <div className="text-3xl font-bold text-forest">{imp.valor}</div>
+                        <div className="mt-1 text-sm font-medium text-gray-800">{imp.titulo}</div>
+                        {imp.descricao && (
+                          <div className="mt-1 text-xs text-gray-500 leading-snug">{imp.descricao}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Gráfico de Despesas por Categoria */}
