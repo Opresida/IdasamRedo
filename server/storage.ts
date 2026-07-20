@@ -1695,7 +1695,8 @@ export class DatabaseStorage implements IStorage {
     // Impacto
     const globalImpactoOn = (await this.getAppSetting(SETTING_IMPACTO_PUBLICO_GLOBAL)) === 'true';
     let impactos = await this.getProjectImpacts(projectId);
-    const impactoVisivel = !publicOnly || (globalImpactoOn && projeto.impactoPublico);
+    // 2 chaves: mestre GLOBAL do portal + "Público" por item. (impactoPublico por projeto foi aposentado.)
+    const impactoVisivel = !publicOnly || globalImpactoOn;
     if (publicOnly) impactos = impactoVisivel ? impactos.filter((i) => i.isPublic) : [];
 
     // Capacitação (por programa)

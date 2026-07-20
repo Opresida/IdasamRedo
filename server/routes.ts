@@ -3213,8 +3213,8 @@ export async function registerRoutes(app: Express) {
       const projectTxs = txs.filter(t => t.projetoId === p.id && t.isPublic && t.status === 'pago');
       const receitas = projectTxs.filter(t => t.tipo === 'receita').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
       const despesas = projectTxs.filter(t => t.tipo === 'despesa').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
-      // Números de impacto públicos: só se o mestre GLOBAL e o do projeto estão ligados, e o item é público.
-      const impactoOn = impactoGlobalOn && p.impactoPublico;
+      // Números de impacto públicos: bastam o mestre GLOBAL do portal ligado + o item marcado como público.
+      const impactoOn = impactoGlobalOn;
       const impactos = impactoOn
         ? (await storage.getProjectImpacts(p.id)).filter(i => i.isPublic).map(i => ({ id: i.id, titulo: i.titulo, valor: i.valor, descricao: i.descricao }))
         : [];

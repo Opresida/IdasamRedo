@@ -1627,16 +1627,20 @@ export default function ProjetosAdminPage() {
                   </div>
                 </div>
 
-                {/* Master da seção de impacto DESTE projeto + texto de abertura */}
-                <div className="flex items-center space-x-3 p-3 bg-forest/5 border border-forest/20 rounded-lg">
+                {/* Interruptor MESTRE do portal (mesmo da aba Execução), trazido pra cá pra ligar tudo no mesmo lugar */}
+                <div className={`flex items-center space-x-3 p-3 rounded-lg border ${impactoGlobal?.enabled ? 'bg-forest/5 border-forest/20' : 'bg-amber-50 border-amber-300'}`}>
                   <Switch
-                    id="form-impactoPublico"
-                    checked={projectForm.impactoPublico}
-                    onCheckedChange={(checked) => setProjectForm({ ...projectForm, impactoPublico: checked })}
+                    id="form-impactoGlobal"
+                    checked={!!impactoGlobal?.enabled}
+                    onCheckedChange={(checked) => setGlobalImpactoMutation.mutate(checked)}
                   />
                   <div className="flex-1">
-                    <Label htmlFor="form-impactoPublico" className="text-sm font-medium">Seção de impacto pública (deste projeto)</Label>
-                    <p className="text-xs text-gray-600 mt-1">Liga/desliga a seção de impacto deste projeto no público (respeita o mestre do portal, na aba Projetos em Execução).</p>
+                    <Label htmlFor="form-impactoGlobal" className="text-sm font-medium flex items-center gap-1.5"><Globe className="w-4 h-4 text-forest" /> Mostrar impacto no portal (interruptor mestre)</Label>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {impactoGlobal?.enabled
+                        ? 'Ligado: os números marcados como Público abaixo já aparecem no portal da transparência (na página e no modal de análise).'
+                        : '⚠️ Desligado: nenhum número de impacto aparece ao público — nem os marcados como Público abaixo. Ligue aqui para publicar.'}
+                    </p>
                   </div>
                 </div>
                 <div>
