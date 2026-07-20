@@ -39,7 +39,9 @@ import type {
   FinancialProject,
   FinancialTransaction,
   FinancialCategory,
+  ProjectImpact,
 } from '@shared/schema';
+import ProjectAnalyticsModal from '@/components/project-analytics-modal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -107,6 +109,9 @@ const emptyProjectForm = {
   mostrarTransacoes: false,
   nivelTransparencia: 'basico',
   pixKey: '',
+  programaCapacitacao: 'none' as string, // 'none' | 'proindi' | 'pti' (UI); vira null no submit
+  analyticsPublico: false,
+  impactoIntro: '',
 };
 
 const emptyTxForm = {
@@ -297,6 +302,41 @@ export default function ProjetosAdminPage() {
     },
   });
 
+  // ─── Analytics / Impacto Positivo ─────────────────────────────────────────
+  const adminToken = typeof window !== 'undefined' ? (localStorage.getItem('idasam_admin_token') ?? undefined) : undefined;
+  const [analyticsProjectId, setAnalyticsProjectId] = useState<string | null>(null);
+  const [impactoProjectId, setImpactoProjectId] = useState<string>('');
+  const [impactoForm, setImpactoForm] = useState({ titulo: '', valor: '', descricao: '', icone: '', ordem: 0 });
+  const [editingImpactoId, setEditingImpactoId] = useState<string | null>(null);
+
+  const { data: impactoGlobal } = useQuery<{ enabled: boolean }>({
+    queryKey: ['/api/admin/settings/impacto-publico'],
+  });
+  const { data: impactos = [] } = useQuery<ProjectImpact[]>({
+    queryKey: [`/api/admin/projetos/${impactoProjectId}/impactos`],
+    enabled: !!impactoProjectId,
+  });
+
+  const setGlobalImpactoMutation = useMutation({
+    mutationFn: (enabled: boolean) => apiRequest('PATCH', '/api/admin/settings/impacto-publico', { enabled }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/admin/settings/impacto-publico'] }),
+  });
+  const invalidateImpactos = () => qc.invalidateQueries({ queryKey: [`/api/admin/projetos/${impactoProjectId}/impactos`] });
+  const createImpactoMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', `/api/admin/projetos/${impactoProjectId}/impactos`, data),
+    onSuccess: () => { invalidateImpactos(); toast({ title: 'Número de impacto adicionado' }); setImpactoForm({ titulo: '', valor: '', descricao: '', icone: '', ordem: 0 }); setEditingImpactoId(null); },
+    onError: (err: Error) => toast({ title: 'Erro ao salvar impacto', description: err.message, variant: 'destructive' }),
+  });
+  const updateImpactoMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest('PATCH', `/api/admin/projetos/impactos/${id}`, data),
+    onSuccess: () => { invalidateImpactos(); },
+    onError: (err: Error) => toast({ title: 'Erro ao atualizar impacto', description: err.message, variant: 'destructive' }),
+  });
+  const deleteImpactoMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/projetos/impactos/${id}`),
+    onSuccess: () => { invalidateImpactos(); toast({ title: 'Impacto removido' }); },
+  });
+
   // ─── Mutations: Transactions ──────────────────────────────────────────────
   const createTxMutation = useMutation({
     mutationFn: (data: any) => apiRequest('POST', '/api/admin/financeiro/transacoes', data),
@@ -372,6 +412,9 @@ export default function ProjetosAdminPage() {
       mostrarTransacoes: project.mostrarTransacoes ?? false,
       nivelTransparencia: project.nivelTransparencia || 'basico',
       pixKey: project.pixKey || '',
+      programaCapacitacao: (project as any).programaCapacitacao || 'none',
+      analyticsPublico: (project as any).analyticsPublico ?? false,
+      impactoIntro: (project as any).impactoIntro || '',
     });
     setShowProjectDialog(true);
   };
@@ -385,6 +428,9 @@ export default function ProjetosAdminPage() {
       descricaoCurta: projectForm.descricaoCurta || null,
       descricaoCompleta: projectForm.descricaoCompleta || null,
       pixKey: projectForm.pixKey || null,
+      // 'none' (UI) → null (DB); senão manda o programa escolhido.
+      programaCapacitacao: projectForm.programaCapacitacao === 'none' ? null : projectForm.programaCapacitacao,
+      impactoIntro: projectForm.impactoIntro || null,
     };
     if (editingProject) {
       updateProjectMutation.mutate({ id: editingProject.id, data: payload });
@@ -485,7 +531,7 @@ export default function ProjetosAdminPage() {
 
       {/* ─── Top-level Tabs ─────────────────────────────────────────────────── */}
       <Tabs defaultValue="portfolio" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="portfolio" className="flex items-center gap-2">
             <BookOpen className="w-4 h-4" />
             Portfólio de Pesquisa
@@ -493,6 +539,10 @@ export default function ProjetosAdminPage() {
           <TabsTrigger value="execucao" className="flex items-center gap-2">
             <Layers className="w-4 h-4" />
             Projetos em Execução
+          </TabsTrigger>
+          <TabsTrigger value="impacto" className="flex items-center gap-2">
+            <Heart className="w-4 h-4" />
+            Impacto Positivo
           </TabsTrigger>
         </TabsList>
 
@@ -993,7 +1043,17 @@ export default function ProjetosAdminPage() {
                   )}
 
                   {/* Action buttons */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAnalyticsProjectId(project.id)}
+                      className="flex-1 text-forest border-forest/40 hover:bg-forest/10"
+                      title="Ver análise & impacto deste projeto"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      Análise
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -1274,6 +1334,39 @@ export default function ProjetosAdminPage() {
                         </p>
                       </div>
                     </div>
+
+                    {/* Analytics detalhado + vínculo com a Capacitação */}
+                    <div className="flex items-center space-x-3 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                      <Switch
+                        id="form-analyticsPublico"
+                        checked={projectForm.analyticsPublico}
+                        onCheckedChange={(checked) => setProjectForm({ ...projectForm, analyticsPublico: checked })}
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="form-analyticsPublico" className="text-sm font-medium">Analytics público</Label>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Libera os gráficos de custo e os dados da Capacitação no modal público de análise
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Puxar dados da Capacitação</Label>
+                      <Select
+                        value={projectForm.programaCapacitacao}
+                        onValueChange={(value) => setProjectForm({ ...projectForm, programaCapacitacao: value })}
+                      >
+                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Não puxar</SelectItem>
+                          <SelectItem value="proindi">PROINDI 4.0</SelectItem>
+                          <SelectItem value="pti">PTI</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Traz matrículas, certificados e alunos formados do programa pro analytics deste projeto.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -1538,7 +1631,151 @@ export default function ProjetosAdminPage() {
 
       {/* ─── Transaction Dialog (within project edit context) ────────────────── */}
       </TabsContent>
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* ─── Tab: Impacto Positivo ───────────────────────────────────────── */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="impacto" className="space-y-6">
+          {/* Master GLOBAL do portal */}
+          <Card className="border border-gray-200">
+            <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5"><Globe className="w-4 h-4 text-forest" /> Transparência de Impacto (portal)</p>
+                <p className="text-xs text-gray-500 mt-0.5">Interruptor mestre: com ele desligado, nenhum impacto aparece ao público, mesmo os marcados como públicos.</p>
+              </div>
+              <Switch
+                checked={!!impactoGlobal?.enabled}
+                onCheckedChange={(checked) => setGlobalImpactoMutation.mutate(checked)}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Selecionar projeto */}
+          <Card className="border border-gray-200">
+            <CardContent className="p-4 space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Projeto</Label>
+                <Select value={impactoProjectId} onValueChange={setImpactoProjectId}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha um projeto para gerenciar o impacto" /></SelectTrigger>
+                  <SelectContent>
+                    {projetos.map((p) => (<SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {impactoProjectId && (() => {
+                const proj = projetos.find((p) => p.id === impactoProjectId);
+                if (!proj) return null;
+                return (
+                  <>
+                    {/* Master por projeto + intro editável */}
+                    <div className="flex items-center justify-between gap-3 p-3 bg-forest/5 rounded-lg">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800">Seção de impacto pública (deste projeto)</p>
+                        <p className="text-xs text-gray-500">Liga/desliga toda a seção de impacto deste projeto no público (respeita o mestre do portal acima).</p>
+                      </div>
+                      <Switch
+                        checked={(proj as any).impactoPublico ?? false}
+                        onCheckedChange={(checked) => handleToggleField(proj, 'impactoPublico', checked)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Texto de abertura (opcional)</Label>
+                      <Textarea
+                        value={(proj as any).impactoIntro || ''}
+                        onChange={(e) => updateProjectMutation.mutate({ id: proj.id, data: { impactoIntro: e.target.value } })}
+                        placeholder="Ex.: Em 2 anos, o projeto transformou a realidade de comunidades da Amazônia…"
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Form de novo/editar número de impacto */}
+                    <div className="border border-gray-100 rounded-lg p-3 space-y-3">
+                      <p className="text-xs font-semibold text-gray-600">{editingImpactoId ? 'Editar número' : 'Adicionar número de impacto'}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-xs">Rótulo</Label>
+                          <Input value={impactoForm.titulo} onChange={(e) => setImpactoForm({ ...impactoForm, titulo: e.target.value })} placeholder="Famílias impactadas" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Valor</Label>
+                          <Input value={impactoForm.valor} onChange={(e) => setImpactoForm({ ...impactoForm, valor: e.target.value })} placeholder="1.200 ou 85%" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Ordem</Label>
+                          <Input type="number" value={impactoForm.ordem} onChange={(e) => setImpactoForm({ ...impactoForm, ordem: parseInt(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Texto (opcional)</Label>
+                        <Textarea value={impactoForm.descricao} onChange={(e) => setImpactoForm({ ...impactoForm, descricao: e.target.value })} rows={2} placeholder="Descrição/contexto do número" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="bg-forest hover:bg-forest/90 text-white"
+                          disabled={!impactoForm.titulo || !impactoForm.valor || createImpactoMutation.isPending}
+                          onClick={() => {
+                            if (editingImpactoId) {
+                              updateImpactoMutation.mutate({ id: editingImpactoId, data: { titulo: impactoForm.titulo, valor: impactoForm.valor, descricao: impactoForm.descricao || null, ordem: impactoForm.ordem } });
+                              setEditingImpactoId(null);
+                              setImpactoForm({ titulo: '', valor: '', descricao: '', icone: '', ordem: 0 });
+                            } else {
+                              createImpactoMutation.mutate({ titulo: impactoForm.titulo, valor: impactoForm.valor, descricao: impactoForm.descricao || null, ordem: impactoForm.ordem });
+                            }
+                          }}
+                        >
+                          {editingImpactoId ? 'Salvar' : 'Adicionar'}
+                        </Button>
+                        {editingImpactoId && (
+                          <Button size="sm" variant="ghost" onClick={() => { setEditingImpactoId(null); setImpactoForm({ titulo: '', valor: '', descricao: '', icone: '', ordem: 0 }); }}>Cancelar</Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Lista de números */}
+                    <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+                      {impactos.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-6">Nenhum número de impacto cadastrado ainda.</p>
+                      ) : impactos.map((i) => (
+                        <div key={i.id} className="flex items-center gap-3 px-3 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-800"><span className="font-bold text-forest">{i.valor}</span> · {i.titulo}</p>
+                            {i.descricao && <p className="text-xs text-gray-500 truncate">{i.descricao}</p>}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-gray-400 uppercase">Público</span>
+                              <Switch checked={i.isPublic} onCheckedChange={(checked) => updateImpactoMutation.mutate({ id: i.id, data: { isPublic: checked } })} />
+                            </div>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingImpactoId(i.id); setImpactoForm({ titulo: i.titulo, valor: i.valor, descricao: i.descricao || '', icone: i.icone || '', ordem: i.ordem }); }}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" onClick={() => deleteImpactoMutation.mutate(i.id)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Modal de Analytics do projeto (admin) */}
+      {analyticsProjectId && (
+        <ProjectAnalyticsModal
+          open={!!analyticsProjectId}
+          onClose={() => setAnalyticsProjectId(null)}
+          fetchUrl={`/api/admin/financeiro/projetos/${analyticsProjectId}/analytics`}
+          adminToken={adminToken}
+          admin
+        />
+      )}
 
       <Dialog open={showTxDialog} onOpenChange={setShowTxDialog}>
         <DialogContent className="max-w-lg">

@@ -1,4 +1,4 @@
-import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, newsletterSubscribers, financialAccounts, financialCategories, financialProjects, financialTransactions, portfolioProjects, type User, type InsertUser, type Course, type CourseWithEnrollment, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios, type NewsletterSubscriber, type InsertNewsletterSubscriber, type FinancialAccount, type InsertFinancialAccount, type FinancialCategory, type InsertFinancialCategory, type FinancialProject, type InsertFinancialProject, type FinancialTransaction, type InsertFinancialTransaction, type PortfolioProject, type InsertPortfolioProject, projectCategories, type ProjectCategoryRecord, type InsertProjectCategory } from "@shared/schema";
+import { users, courses, enrollments, certificates, contactSubmissions, courseNotificationSubscriptions, articleCategories, articles, articleComments, articleReactions, emailAudiences, audienceLeads, emailTemplates, emailCampaigns, customHtmlTemplates, campaignOpenEvents, proposals, signatarios, assinaturaLinks, assinaturaLogs, delegacoes, adminSessions, crmStakeholders, crmPessoaJuridica, crmPessoaFisica, crmDoador, crmOrgaoPublico, crmPesquisador, crmDocumentos, crmRecibos, crmInteracoes, crmDadosBancarios, newsletterSubscribers, financialAccounts, financialCategories, financialProjects, financialTransactions, portfolioProjects, projectImpacts, appSettings, type ProjectImpact, type InsertProjectImpact, type User, type InsertUser, type Course, type CourseWithEnrollment, type InsertCourse, type Enrollment, type InsertEnrollment, type Certificate, type InsertCertificate, type ContactSubmission, type InsertContactSubmission, type CourseNotificationSubscription, type InsertCourseNotificationSubscription, type ArticleCategory, type InsertArticleCategory, type Article, type InsertArticle, type UpdateArticle, type ArticleComment, type InsertArticleComment, type EmailAudience, type InsertEmailAudience, type AudienceLead, type InsertAudienceLead, type EmailTemplate, type InsertEmailTemplate, type EmailCampaign, type InsertEmailCampaign, type CustomHtmlTemplate, type InsertCustomHtmlTemplate, type Proposal, type InsertProposal, type ProposalStatus, type Signatario, type InsertSignatario, type AssinaturaLink, type AssinaturaLog, type InsertAssinaturaLog, type Delegacao, type InsertDelegacao, type DelegacaoStatus, type AdminSession, type CrmStakeholder, type InsertCrmStakeholder, type CrmPessoaJuridica, type CrmPessoaFisica, type CrmDoador, type CrmOrgaoPublico, type CrmPesquisador, type CrmDocumento, type CrmRecibo, type CrmInteracao, type CrmDadosBancarios, type NewsletterSubscriber, type InsertNewsletterSubscriber, type FinancialAccount, type InsertFinancialAccount, type FinancialCategory, type InsertFinancialCategory, type FinancialProject, type InsertFinancialProject, type FinancialTransaction, type InsertFinancialTransaction, type PortfolioProject, type InsertPortfolioProject, projectCategories, type ProjectCategoryRecord, type InsertProjectCategory, SETTING_IMPACTO_PUBLICO_GLOBAL } from "@shared/schema";
 import { db } from "./db";
 import { eq, or, inArray, desc, isNull, isNotNull, and, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -71,6 +71,24 @@ export type CapacitacaoAnalytics = {
     certificados: number;
     cursosConcluidos: number;
   }[];
+};
+
+export type ProjectAnalytics = {
+  projeto: {
+    id: string; nome: string; descricao: string; categoria: string; status: string;
+    orcamentoTotal: number; programaCapacitacao: string | null; impactoIntro: string | null;
+    analyticsPublico: boolean; impactoPublico: boolean; visivelTransparencia: boolean;
+    mostrarOrcamento: boolean; mostrarTransacoes: boolean;
+  };
+  custos: {
+    receitas: number; despesas: number; saldo: number;
+    despesasPorCategoria: { categoria: string; total: number }[];
+    custosFixos: number; custosVariaveis: number;
+    evolucaoMensal: { mes: string; receitas: number; despesas: number }[];
+  };
+  impactos: ProjectImpact[];
+  impactoVisivel: boolean;
+  capacitacao: CapacitacaoAnalytics | null;
 };
 
 export type AlunoFicha = {
@@ -288,6 +306,15 @@ export interface IStorage {
   createPortfolioProject(data: InsertPortfolioProject): Promise<PortfolioProject>;
   updatePortfolioProject(id: string, data: Partial<InsertPortfolioProject>): Promise<PortfolioProject | undefined>;
   deletePortfolioProject(id: string): Promise<void>;
+
+  // Impacto Positivo + settings + analytics de projeto
+  getProjectImpacts(projetoId: string): Promise<ProjectImpact[]>;
+  createProjectImpact(data: InsertProjectImpact): Promise<ProjectImpact>;
+  updateProjectImpact(id: string, data: Partial<InsertProjectImpact>): Promise<ProjectImpact | undefined>;
+  deleteProjectImpact(id: string): Promise<void>;
+  getAppSetting(key: string): Promise<string | null>;
+  setAppSetting(key: string, value: string): Promise<void>;
+  getProjectAnalytics(projectId: string, opts?: { publicOnly?: boolean }): Promise<ProjectAnalytics | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1553,6 +1580,7 @@ export class DatabaseStorage implements IStorage {
   }
   async deleteFinancialProject(id: string): Promise<void> {
     await db.delete(financialTransactions).where(eq(financialTransactions.projetoId, id));
+    await db.delete(projectImpacts).where(eq(projectImpacts.projetoId, id));
     await db.delete(financialProjects).where(eq(financialProjects.id, id));
   }
 
@@ -1585,6 +1613,127 @@ export class DatabaseStorage implements IStorage {
   }
   async deletePortfolioProject(id: string): Promise<void> {
     await db.delete(portfolioProjects).where(eq(portfolioProjects.id, id));
+  }
+
+  // ---- Impacto Positivo ----
+  async getProjectImpacts(projetoId: string): Promise<ProjectImpact[]> {
+    return db.select().from(projectImpacts).where(eq(projectImpacts.projetoId, projetoId)).orderBy(projectImpacts.ordem);
+  }
+  async createProjectImpact(data: InsertProjectImpact): Promise<ProjectImpact> {
+    const [row] = await db.insert(projectImpacts).values(data).returning();
+    return row;
+  }
+  async updateProjectImpact(id: string, data: Partial<InsertProjectImpact>): Promise<ProjectImpact | undefined> {
+    const [row] = await db.update(projectImpacts).set(data).where(eq(projectImpacts.id, id)).returning();
+    return row || undefined;
+  }
+  async deleteProjectImpact(id: string): Promise<void> {
+    await db.delete(projectImpacts).where(eq(projectImpacts.id, id));
+  }
+
+  // ---- Configurações globais (key/value) ----
+  async getAppSetting(key: string): Promise<string | null> {
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return row?.value ?? null;
+  }
+  async setAppSetting(key: string, value: string): Promise<void> {
+    await db.insert(appSettings)
+      .values({ key, value, atualizadoEm: new Date() })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, atualizadoEm: new Date() } });
+  }
+
+  // ---- Analytics consolidado de um projeto (custos + impacto + capacitação) ----
+  async getProjectAnalytics(projectId: string, opts?: { publicOnly?: boolean }): Promise<ProjectAnalytics | null> {
+    const publicOnly = !!opts?.publicOnly;
+    const [projeto] = await db.select().from(financialProjects).where(eq(financialProjects.id, projectId));
+    if (!projeto) return null;
+    if (publicOnly && !(projeto.visivelTransparencia && projeto.ativo)) return null;
+
+    const cats = await db.select().from(financialCategories);
+    const catMap = new Map(cats.map((c) => [c.id, c.nome]));
+
+    let txs = await db.select().from(financialTransactions).where(eq(financialTransactions.projetoId, projectId));
+    if (publicOnly) txs = txs.filter((t) => t.isPublic && t.status === 'pago');
+
+    const num = (v: string | null) => parseFloat(v || '0') || 0;
+    const receitas = txs.filter((t) => t.tipo === 'receita').reduce((s, t) => s + num(t.valor), 0);
+    const despesas = txs.filter((t) => t.tipo === 'despesa').reduce((s, t) => s + num(t.valor), 0);
+
+    // Despesas por categoria
+    const catAgg = new Map<string, number>();
+    for (const t of txs) {
+      if (t.tipo !== 'despesa') continue;
+      const nome = t.categoriaId ? (catMap.get(t.categoriaId) ?? 'Sem categoria') : 'Sem categoria';
+      catAgg.set(nome, (catAgg.get(nome) ?? 0) + num(t.valor));
+    }
+    const despesasPorCategoria = Array.from(catAgg.entries())
+      .map(([categoria, total]) => ({ categoria, total }))
+      .sort((a, b) => b.total - a.total);
+
+    // Fixo × variável
+    let custosFixos = 0, custosVariaveis = 0;
+    for (const t of txs) {
+      if (t.tipo !== 'despesa') continue;
+      if (t.tipoCusto === 'fixo') custosFixos += num(t.valor);
+      else if (t.tipoCusto === 'variavel') custosVariaveis += num(t.valor);
+    }
+
+    // Evolução mensal (por mês de `data` = 'yyyy-MM-dd')
+    const mesAgg = new Map<string, { receitas: number; despesas: number }>();
+    for (const t of txs) {
+      const mes = (t.data || '').slice(0, 7); // yyyy-MM
+      if (!mes) continue;
+      const acc = mesAgg.get(mes) ?? { receitas: 0, despesas: 0 };
+      if (t.tipo === 'receita') acc.receitas += num(t.valor);
+      else acc.despesas += num(t.valor);
+      mesAgg.set(mes, acc);
+    }
+    const evolucaoMensal = Array.from(mesAgg.entries())
+      .map(([mes, v]) => ({ mes, ...v }))
+      .sort((a, b) => a.mes.localeCompare(b.mes));
+
+    // Impacto
+    const globalImpactoOn = (await this.getAppSetting(SETTING_IMPACTO_PUBLICO_GLOBAL)) === 'true';
+    let impactos = await this.getProjectImpacts(projectId);
+    const impactoVisivel = !publicOnly || (globalImpactoOn && projeto.impactoPublico);
+    if (publicOnly) impactos = impactoVisivel ? impactos.filter((i) => i.isPublic) : [];
+
+    // Capacitação (por programa)
+    let capacitacao: CapacitacaoAnalytics | null = null;
+    const podeCap = !publicOnly || projeto.analyticsPublico;
+    if (projeto.programaCapacitacao && podeCap) {
+      capacitacao = await this.getCapacitacaoAnalytics(projeto.programaCapacitacao);
+    }
+
+    return {
+      projeto: {
+        id: projeto.id,
+        nome: projeto.nome,
+        descricao: projeto.descricaoCurta || projeto.descricao || '',
+        categoria: projeto.categoria || '',
+        status: projeto.status || 'planejamento',
+        orcamentoTotal: num(projeto.orcamentoTotal),
+        programaCapacitacao: projeto.programaCapacitacao ?? null,
+        impactoIntro: projeto.impactoIntro ?? null,
+        analyticsPublico: projeto.analyticsPublico,
+        impactoPublico: projeto.impactoPublico,
+        visivelTransparencia: projeto.visivelTransparencia,
+        mostrarOrcamento: projeto.mostrarOrcamento,
+        mostrarTransacoes: projeto.mostrarTransacoes,
+      },
+      custos: {
+        receitas,
+        despesas,
+        saldo: receitas - despesas,
+        despesasPorCategoria,
+        custosFixos,
+        custosVariaveis,
+        evolucaoMensal,
+      },
+      impactos,
+      impactoVisivel,
+      capacitacao,
+    };
   }
 }
 

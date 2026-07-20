@@ -800,6 +800,14 @@ export const financialProjects = pgTable("financial_projects", {
   mostrarTransacoes: boolean("mostrar_transacoes").notNull().default(false),
   nivelTransparencia: text("nivel_transparencia").$type<TransparencyLevel>().default("basico"),
   pixKey: text("pix_key"),
+  // Programa da Capacitação a puxar no analytics do projeto (null = não puxa).
+  programaCapacitacao: text("programa_capacitacao").$type<CourseProgram>(),
+  // Analytics detalhado (gráficos de custo + Capacitação) visível ao público.
+  analyticsPublico: boolean("analytics_publico").notNull().default(false),
+  // Master POR PROJETO da seção Impacto Positivo pública.
+  impactoPublico: boolean("impacto_publico").notNull().default(false),
+  // Texto editável de abertura da seção de impacto.
+  impactoIntro: text("impacto_intro"),
   ativo: boolean("ativo").notNull().default(true),
   criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
   atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).default(sql`NOW()`),
@@ -814,6 +822,8 @@ export const insertFinancialProjectSchema = createInsertSchema(financialProjects
   status: z.string().optional().nullable(),
   orcamentoTotal: z.string().optional().nullable(),
   pixKey: z.string().optional().nullable(),
+  programaCapacitacao: z.enum(COURSE_PROGRAMS).optional().nullable(),
+  impactoIntro: z.string().optional().nullable(),
 });
 export type InsertFinancialProject = z.infer<typeof insertFinancialProjectSchema>;
 export type FinancialProject = typeof financialProjects.$inferSelect;
@@ -880,3 +890,42 @@ export const insertPortfolioProjectSchema = createInsertSchema(portfolioProjects
 });
 export type InsertPortfolioProject = z.infer<typeof insertPortfolioProjectSchema>;
 export type PortfolioProject = typeof portfolioProjects.$inferSelect;
+
+// ══════════════════════════════════════════════════════════════
+// IMPACTO POSITIVO (números de impacto flexíveis por projeto)
+// ══════════════════════════════════════════════════════════════
+
+export const projectImpacts = pgTable("project_impacts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projetoId: uuid("projeto_id").notNull().references(() => financialProjects.id, { onDelete: 'cascade' }),
+  titulo: text("titulo").notNull(),              // rótulo, ex.: "Famílias impactadas"
+  valor: text("valor").notNull(),                // flexível: "1.200", "85%", "R$ 2 mi"
+  descricao: text("descricao"),                  // texto editável explicativo
+  icone: text("icone"),                          // opcional
+  isPublic: boolean("is_public").notNull().default(false),
+  ordem: integer("ordem").notNull().default(0),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export const insertProjectImpactSchema = createInsertSchema(projectImpacts).omit({ id: true, criadoEm: true }).extend({
+  projetoId: z.string().uuid(),
+  titulo: z.string().min(1),
+  valor: z.string().min(1),
+  descricao: z.string().optional().nullable(),
+  icone: z.string().optional().nullable(),
+  isPublic: z.boolean().optional().default(false),
+  ordem: z.number().optional().default(0),
+});
+export type InsertProjectImpact = z.infer<typeof insertProjectImpactSchema>;
+export type ProjectImpact = typeof projectImpacts.$inferSelect;
+
+// ══════════════════════════════════════════════════════════════
+// CONFIGURAÇÕES GLOBAIS (key/value) — ex.: master global do impacto público
+// ══════════════════════════════════════════════════════════════
+
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).default(sql`NOW()`),
+});
+export type AppSetting = typeof appSettings.$inferSelect;
+export const SETTING_IMPACTO_PUBLICO_GLOBAL = 'impacto_positivo_publico';

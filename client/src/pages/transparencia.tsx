@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import Footer from '@/components/shadcnblocks-com-footer2';
+import { Button } from '@/components/ui/button';
+import ProjectAnalyticsModal from '@/components/project-analytics-modal';
 import {
   Eye,
   Shield,
@@ -32,6 +34,7 @@ interface TransparencyProject {
   mostrarOrcamento: boolean;
   mostrarTransacoes: boolean;
   nivelTransparencia: string;
+  temAnalytics?: boolean;
   transacoes: TransparencyTransaction[];
 }
 
@@ -48,6 +51,7 @@ export default function TransparenciaPage() {
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [projects, setProjects] = useState<TransparencyProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [analyticsId, setAnalyticsId] = useState<string | null>(null);
 
   // Read query param for direct project filter
   useEffect(() => {
@@ -195,6 +199,17 @@ export default function TransparenciaPage() {
                             </span>
                           )}
                         </div>
+                        {selectedProjectInfo.temAnalytics && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-3 text-forest border-forest/40 hover:bg-forest/10"
+                            onClick={() => setAnalyticsId(selectedProjectInfo.id)}
+                          >
+                            <Eye className="w-4 h-4 mr-1.5" />
+                            Ver análise & impacto
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -368,6 +383,15 @@ export default function TransparenciaPage() {
       </div>
 
       <Footer />
+
+      {/* Modal público de Análise & Impacto do projeto */}
+      {analyticsId && (
+        <ProjectAnalyticsModal
+          open={!!analyticsId}
+          onClose={() => setAnalyticsId(null)}
+          fetchUrl={`/api/public/projetos/${analyticsId}/analytics`}
+        />
+      )}
     </div>
   );
 }

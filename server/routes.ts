@@ -1,7 +1,7 @@
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, insertPortfolioProjectSchema, insertProjectCategorySchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES, COURSE_PROGRAMS } from "@shared/schema";
+import { insertEnrollmentSchema, insertCourseSchema, updateCourseSchema, insertContactSubmissionSchema, insertCourseNotificationSubscriptionSchema, insertArticleCategorySchema, insertArticleSchema, updateArticleSchema, insertArticleCommentSchema, insertEmailAudienceSchema, insertAudienceLeadSchema, insertEmailTemplateSchema, insertEmailCampaignSchema, insertCustomHtmlTemplateSchema, insertProposalSchema, insertSignatarioSchema, insertNewsletterSubscriberSchema, insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialProjectSchema, insertFinancialTransactionSchema, insertPortfolioProjectSchema, insertProjectCategorySchema, assinaturaLogs as assinaturaLogsTable, PROPOSAL_STATUSES, COURSE_PROGRAMS, insertProjectImpactSchema, SETTING_IMPACTO_PUBLICO_GLOBAL } from "@shared/schema";
 import type { ProposalStatus, SignatureType } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import multer from "multer";
@@ -3073,6 +3073,64 @@ export async function registerRoutes(app: Express) {
     catch (e: any) { console.error("Erro ao deletar projeto:", e); res.status(500).json({ message: e.message || "Erro ao remover projeto." }); }
   });
 
+  // Analytics consolidado do projeto (admin: dados completos)
+  app.get("/api/admin/financeiro/projetos/:id/analytics", requireAdmin, async (req, res) => {
+    try {
+      const data = await storage.getProjectAnalytics(req.params.id);
+      if (!data) return res.status(404).json({ message: "Projeto não encontrado" });
+      res.json(data);
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao gerar analytics do projeto" }); }
+  });
+
+  // Impacto Positivo (itens de impacto por projeto)
+  app.get("/api/admin/projetos/:id/impactos", requireAdmin, async (req, res) => {
+    try { res.json(await storage.getProjectImpacts(req.params.id)); }
+    catch (e: any) { res.status(500).json({ message: "Erro ao buscar impactos" }); }
+  });
+  app.post("/api/admin/projetos/:id/impactos", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertProjectImpactSchema.safeParse({ ...req.body, projetoId: req.params.id });
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message });
+      res.json(await storage.createProjectImpact(parsed.data));
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao criar impacto" }); }
+  });
+  app.patch("/api/admin/projetos/impactos/:impactoId", requireAdmin, async (req, res) => {
+    try {
+      const { id: _, projetoId: _p, criadoEm: _c, ...data } = req.body;
+      const row = await storage.updateProjectImpact(req.params.impactoId, data);
+      if (!row) return res.status(404).json({ message: "Impacto não encontrado" });
+      res.json(row);
+    } catch (e: any) { res.status(500).json({ message: e.message || "Erro ao atualizar impacto" }); }
+  });
+  app.delete("/api/admin/projetos/impactos/:impactoId", requireAdmin, async (req, res) => {
+    try { await storage.deleteProjectImpact(req.params.impactoId); res.json({ message: "Impacto removido" }); }
+    catch (e: any) { res.status(500).json({ message: e.message || "Erro ao remover impacto" }); }
+  });
+
+  // Master GLOBAL da transparência de Impacto Positivo
+  app.get("/api/admin/settings/impacto-publico", requireAdmin, async (_req, res) => {
+    try {
+      const v = await storage.getAppSetting(SETTING_IMPACTO_PUBLICO_GLOBAL);
+      res.json({ enabled: v === 'true' });
+    } catch (e: any) { res.status(500).json({ message: "Erro ao ler configuração" }); }
+  });
+  app.patch("/api/admin/settings/impacto-publico", requireAdmin, async (req, res) => {
+    try {
+      const enabled = !!req.body?.enabled;
+      await storage.setAppSetting(SETTING_IMPACTO_PUBLICO_GLOBAL, enabled ? 'true' : 'false');
+      res.json({ enabled });
+    } catch (e: any) { res.status(500).json({ message: "Erro ao salvar configuração" }); }
+  });
+
+  // Público: analytics do projeto (só o permitido pelos toggles)
+  app.get("/api/public/projetos/:id/analytics", async (req, res) => {
+    try {
+      const data = await storage.getProjectAnalytics(req.params.id, { publicOnly: true });
+      if (!data) return res.status(404).json({ message: "Analytics indisponível" });
+      res.json(data);
+    } catch (e: any) { res.status(500).json({ message: "Erro ao carregar analytics" }); }
+  });
+
   // Transactions
   app.get("/api/admin/financeiro/transacoes", requireAdmin, async (_req, res) => {
     try { res.json(await storage.getFinancialTransactions()); }
@@ -3149,11 +3207,14 @@ export async function registerRoutes(app: Express) {
     const txs = await storage.getFinancialTransactions();
     const cats = await storage.getFinancialCategories();
     const catMap = new Map(cats.map(c => [c.id, c.nome]));
+    const impactoGlobalOn = (await storage.getAppSetting(SETTING_IMPACTO_PUBLICO_GLOBAL)) === 'true';
 
     const result = transparentes.map(p => {
       const projectTxs = txs.filter(t => t.projetoId === p.id && t.isPublic && t.status === 'pago');
       const receitas = projectTxs.filter(t => t.tipo === 'receita').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
       const despesas = projectTxs.filter(t => t.tipo === 'despesa').reduce((s, t) => s + parseFloat(t.valor || '0'), 0);
+      // Mostra o CTA/olho "Ver análise & impacto" quando há analytics detalhado ou impacto público.
+      const temAnalytics = p.analyticsPublico || (impactoGlobalOn && p.impactoPublico);
       return {
         id: p.id,
         nome: p.nome,
@@ -3166,6 +3227,7 @@ export async function registerRoutes(app: Express) {
         mostrarOrcamento: p.mostrarOrcamento,
         mostrarTransacoes: p.mostrarTransacoes,
         nivelTransparencia: p.nivelTransparencia,
+        temAnalytics,
         transacoes: p.mostrarTransacoes ? projectTxs.map(t => ({
           id: t.id,
           data: t.data,
