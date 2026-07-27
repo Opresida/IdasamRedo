@@ -6,6 +6,17 @@ const app = express();
 // Atrás do proxy do Replit (e de qualquer 1 proxy reverso): confia no X-Forwarded-For
 // para o express-rate-limit identificar o cliente e para req.protocol/req.ip corretos.
 app.set('trust proxy', 1);
+
+// ── Canonical host: redireciona o apex (sem www) para www com 301 permanente. ──
+// Evita que o Google indexe idasam.org e www.idasam.org como sites duplicados.
+// Só dispara para o host real de produção; localhost e domínios de preview passam direto.
+app.use((req, res, next) => {
+  if (req.hostname === 'idasam.org') {
+    return res.redirect(301, `https://www.idasam.org${req.originalUrl}`);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
