@@ -1,0 +1,27 @@
+{
+  "name": "IDASAM — Instituto de Desenvolvimento Ambiental e Social da Amazônia",
+  "short_name": "IDASAM",
+  "description": "Bioeconomia, desenvolvimento sustentável, capacitação e inovação tecnológica para a Amazônia. Desde 1996, em Manaus (AM).",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F0F4F8",
+  "theme_color": "#2A5B46",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["education", "environment", "nonprofit"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

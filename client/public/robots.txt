@@ -1,0 +1,19 @@
+# robots.txt — IDASAM (www.idasam.org)
+User-agent: *
+Allow: /
+
+# Áreas administrativas, autenticadas e transacionais (não indexar)
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /login
+Disallow: /imprensa
+Disallow: /agenda
+Disallow: /projetos-admin
+Disallow: /assinar/
+Disallow: /validar/
+Disallow: /lgpd/
+Disallow: /registro/
+Disallow: /matricula/
+Disallow: /meu-certificado
+
+Sitemap: https://www.idasam.org/sitemap.xml

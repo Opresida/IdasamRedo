@@ -38,6 +38,7 @@ import {
   Star, Award, GraduationCap, Bell,
 } from 'lucide-react';
 import type { Course, CourseWithEnrollment } from '@shared/schema';
+import SEO from '@/components/seo';
 import EnrollmentDialog from '@/components/enrollment-dialog';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -824,6 +825,11 @@ export default function CapacitacaoPage() {
 
   return (
     <div className="font-inter bg-sand text-gray-800 min-h-screen">
+      <SEO
+        title="Capacitação e Cursos Gratuitos"
+        path="/capacitacao"
+        description="Cursos gratuitos do IDASAM para democratizar a capacitação profissional no Amazonas. Inscreva-se, estude e emita seu certificado. Educação e inovação para a Amazônia."
+      />
       <FloatingNavbar />
 
       {/* Hero */}

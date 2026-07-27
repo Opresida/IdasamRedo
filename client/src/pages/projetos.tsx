@@ -6,6 +6,7 @@ import ShadcnblocksComFooter2 from '@/components/shadcnblocks-com-footer2';
 import GlobeFeatureSection from '@/components/ui/globe-feature-section';
 import Floating, { FloatingElement } from '@/components/ui/parallax-floating';
 import ContactForm from '@/components/contact-form';
+import SEO from '@/components/seo';
 import {
   Dialog,
   DialogContent,
@@ -514,6 +515,11 @@ export default function ProjetosPage() {
 
   return (
     <div className="min-h-screen bg-idasam-bg font-inter">
+      <SEO
+        title="Projetos"
+        path="/projetos"
+        description="Conheça os projetos do IDASAM em bioeconomia, tecnologia social e desenvolvimento sustentável na Amazônia — soluções de impacto para as comunidades da região."
+      />
       {/* Floating Navbar */}
       <FloatingNavbar />
 

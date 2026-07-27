@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { ExternalLink, Instagram, Twitter } from 'lucide-react';
+import SEO from '@/components/seo';
 
 export default function BioPage() {
   const links = [
@@ -43,6 +44,11 @@ export default function BioPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
+      <SEO
+        title="Links Oficiais"
+        path="/bio"
+        description="Todos os canais oficiais do IDASAM em um só lugar: site, projetos, notícias, doações e contato."
+      />
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center opacity-20"

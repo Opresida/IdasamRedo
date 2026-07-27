@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import SEO from '@/components/seo';
 import {
   Calendar,
   Clock,
@@ -402,6 +403,11 @@ export default function NoticiasPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title="Notícias"
+        path="/noticias"
+        description="Notícias e novidades do IDASAM sobre bioeconomia, sustentabilidade, projetos, capacitação e desenvolvimento da Amazônia."
+      />
 
       {/* Hero Section */}
       <div

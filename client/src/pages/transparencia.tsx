@@ -22,6 +22,7 @@ import {
   Sparkles,
   Loader2
 } from 'lucide-react';
+import SEO from '@/components/seo';
 
 interface TransparencyProject {
   id: string;
@@ -121,6 +122,11 @@ export default function TransparenciaPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO
+        title="Transparência"
+        path="/transparencia"
+        description="Portal de transparência do IDASAM: orçamentos, receitas, despesas e relatórios dos projetos. Acompanhe a aplicação de recursos com ética e prestação de contas."
+      />
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-12">
