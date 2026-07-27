@@ -190,7 +190,7 @@ export async function printListaChamada(course: ChamadaCurso, alunos: ChamadaAlu
     pdf.setFontSize(6.5);
     pdf.setTextColor(...GRAY);
     pdf.text(
-      'www.idasam.org.br · CNPJ: 02.906.177/0001-87 · Centro Empresarial Art Center, 3694 — Manaus/AM',
+      'www.idasam.org · CNPJ: 02.906.177/0001-87 · Centro Empresarial Art Center, 3694 — Manaus/AM',
       pageW / 2,
       footerY + 7,
       { align: 'center' },

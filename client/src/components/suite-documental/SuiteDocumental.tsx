@@ -200,7 +200,7 @@ function createA4Page(docType: string, isOrc = false): HTMLElement {
     <div class="sd-footer">
       <div class="sd-footer-left">
         <span class="sd-footer-brand">Instituto de Desenvolvimento Ambiental e Social da Amazônia — IDASAM</span>
-        <span class="sd-footer-info">www.idasam.org.br &bull; CNPJ: 02.906.177/0001-87 &bull; Centro Empresarial Art Center, 3694 — Manaus/AM</span>
+        <span class="sd-footer-info">www.idasam.org &bull; CNPJ: 02.906.177/0001-87 &bull; Centro Empresarial Art Center, 3694 — Manaus/AM</span>
       </div>
       <div class="sd-footer-right"><span class="sd-page-num"></span></div>
     </div>
@@ -1438,7 +1438,7 @@ export function SuiteDocumental() {
     obs: '',
     respNome:  'Mauricio Santos Rocha',
     respCargo: 'Vice Presidente — IDASAM',
-    respEmail: 'contato@idasam.org.br',
+    respEmail: 'contato@idasam.org',
   })
   const [oItems, setOItems] = useState<OrcItem[]>(DEFAULT_ORC_ITEMS)
 
@@ -1452,7 +1452,7 @@ export function SuiteDocumental() {
     emitCnpj:  '02.906.177/0001-87',
     emitEnd:   'Centro Empresarial Art Center, 3694, Manaus - AM, CEP 69055-038',
     emitTel:   '(92) 99999-0000',
-    emitEmail: 'contato@idasam.org.br',
+    emitEmail: 'contato@idasam.org',
     numero:    '001/2026',
     local:     'Manaus/AM',
     data:      new Date().toISOString().slice(0, 10),

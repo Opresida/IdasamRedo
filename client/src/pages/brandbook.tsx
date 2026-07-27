@@ -83,7 +83,7 @@ const EMAIL_SIGNATURE_HTML = `<table cellpadding="0" cellspacing="0" border="0" 
         </tr>
         <tr>
           <td style="padding:2px 0;">
-            <span style="color:#2A5B46;font-weight:600;">W:</span> <a href="https://www.idasam.org.br" style="color:#2A5B46;text-decoration:none;font-weight:600;">www.idasam.org.br</a>
+            <span style="color:#2A5B46;font-weight:600;">W:</span> <a href="https://www.idasam.org" style="color:#2A5B46;text-decoration:none;font-weight:600;">www.idasam.org</a>
           </td>
         </tr>
       </table>
@@ -627,10 +627,10 @@ export default function BrandbookPage() {
                     {/* Rodape — Contatos */}
                     <div className="flex items-end justify-between pl-[5%]">
                       <div className="space-y-[2px]">
-                        <p className="text-white/70 text-[clamp(4px,0.75vw,6px)]">[email]@idasam.org.br</p>
+                        <p className="text-white/70 text-[clamp(4px,0.75vw,6px)]">[email]@idasam.org</p>
                         <p className="text-white/70 text-[clamp(4px,0.75vw,6px)]">(92) XXXXX-XXXX</p>
                       </div>
-                      <p className="text-white/40 text-[clamp(4px,0.7vw,5.5px)] font-semibold">www.idasam.org.br</p>
+                      <p className="text-white/40 text-[clamp(4px,0.7vw,5.5px)] font-semibold">www.idasam.org</p>
                     </div>
                   </div>
                 </div>
@@ -741,7 +741,7 @@ export default function BrandbookPage() {
                   <button className="px-4 py-2 rounded-lg bg-[#2A5B46] text-white text-xs font-semibold">Saiba mais</button>
                 </div>
                 <div className="bg-gray-50 px-4 py-3 border-t">
-                  <p className="text-[9px] text-gray-400 text-center">IDASAM &mdash; Manaus, AM | contato@idasam.org.br</p>
+                  <p className="text-[9px] text-gray-400 text-center">IDASAM &mdash; Manaus, AM | contato@idasam.org</p>
                 </div>
               </div>
             </div>
@@ -762,7 +762,7 @@ export default function BrandbookPage() {
               </div>
               <p className="text-[10px] text-gray-400">
                 Assinatura eletronica nos termos da Lei 14.063/2020. A autenticidade pode ser verificada
-                pelo QR Code ou em idasam.org.br/validar.
+                pelo QR Code ou em idasam.org/validar.
               </p>
             </div>
             <p className="text-xs text-gray-400 mt-3">
@@ -830,12 +830,12 @@ export default function BrandbookPage() {
               <h3 className="text-xl font-bold mb-2">IDASAM &mdash; Brandbook 2026</h3>
               <p className="text-white/60 text-sm leading-relaxed max-w-xl">
                 Este guia define os padroes visuais e de comunicacao do Instituto de Desenvolvimento Ambiental
-                e Social da Amazonia. Para duvidas sobre uso da marca, entre em contato: contato@idasam.org.br
+                e Social da Amazonia. Para duvidas sobre uso da marca, entre em contato: contato@idasam.org
               </p>
               <div className="flex items-center gap-4 mt-4 text-xs text-white/40">
                 <span>CNPJ: 02.906.177/0001-87</span>
                 <span>Manaus, AM</span>
-                <span>www.idasam.org.br</span>
+                <span>www.idasam.org</span>
               </div>
               <div className="mt-4 pt-4 border-t border-white/10">
                 <p className="text-xs text-white/30">Desenvolvido por <strong className="text-white/50">MAZARI CORP</strong></p>

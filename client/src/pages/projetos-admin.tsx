@@ -1579,7 +1579,7 @@ export default function ProjetosAdminPage() {
                     id="form-pixKey"
                     value={projectForm.pixKey}
                     onChange={(e) => setProjectForm({ ...projectForm, pixKey: e.target.value })}
-                    placeholder="Ex: projeto@idasam.org.br ou CPF/CNPJ"
+                    placeholder="Ex: projeto@idasam.org ou CPF/CNPJ"
                   />
                 </div>
 

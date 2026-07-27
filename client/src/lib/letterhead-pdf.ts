@@ -67,7 +67,7 @@ function createA4Page(docType: string): HTMLElement {
     <div class="sd-footer">
       <div class="sd-footer-left">
         <span class="sd-footer-brand">Instituto de Desenvolvimento Ambiental e Social da Amazônia — IDASAM</span>
-        <span class="sd-footer-info">www.idasam.org.br &bull; CNPJ: 02.906.177/0001-87 &bull; Centro Empresarial Art Center, 3694 — Manaus/AM</span>
+        <span class="sd-footer-info">www.idasam.org &bull; CNPJ: 02.906.177/0001-87 &bull; Centro Empresarial Art Center, 3694 — Manaus/AM</span>
       </div>
       <div class="sd-footer-right"><span class="sd-page-num"></span></div>
     </div>
